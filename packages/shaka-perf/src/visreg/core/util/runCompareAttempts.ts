@@ -15,6 +15,7 @@ import { formatLogPrefix } from '../../../pipeline/log-prefix-format';
 import { createComparisonSide as defaultCreateComparisonSide, type ComparisonSide } from './createComparisonSide';
 import { ScreenshotPool, crossMatch, type PoolFrame, type CrossMatchResult } from './screenshotPool';
 import { setUpContextForNavigation } from '../../../pre-navigation';
+import { assertConsoleClean, type BrowserConsolePolicy } from '../../../browser-console';
 import { reconstructEffectiveConfig } from '../../../effective-config';
 import {
   attachLatestTestAnnotation,
@@ -87,6 +88,7 @@ interface CaptureComparisonSideParams {
   url: string;
   isControl: boolean;
   beforeNavigate: Awaited<ReturnType<typeof reconstructEffectiveConfig>>['shared']['beforeNavigate'];
+  browserConsole: BrowserConsolePolicy;
   runs: SelectorRun[];
   activeSides: Set<ComparisonSide>;
   createSide: NonNullable<CompareAttemptsDeps['createSide']>;
@@ -111,6 +113,7 @@ async function captureComparisonSide(
     url,
     isControl,
     beforeNavigate,
+    browserConsole,
     runs,
     activeSides,
     createSide,
@@ -133,6 +136,7 @@ async function captureComparisonSide(
           isControl,
           testType: 'visreg',
           beforeNavigate,
+          browserConsole,
         }),
       );
       activeSides.add(side);
@@ -159,6 +163,9 @@ async function captureComparisonSide(
         }
         captures.set(run.selector, screenshot);
       }
+
+      assertConsoleClean(side.context);
+
       return captures;
     } catch (err) {
       attachLatestTestAnnotation(err, getLatestTestAnnotation(err));
@@ -225,6 +232,7 @@ export async function runCompareAttempts(
   // rebuild this test's effective config here and read from it.
   const effectiveConfig = await reconstructEffectiveConfig(scenario._testDef);
   const beforeNavigate = effectiveConfig.shared.beforeNavigate;
+  const browserConsole = effectiveConfig.shared.browserConsole;
 
   for (let attempt = 0; attempt <= maxRetries && (attempt === 0 || runs.some((r) => !r.done)); attempt++) {
     if (attempt > 0) {
@@ -274,6 +282,7 @@ export async function runCompareAttempts(
       viewport,
       scenario,
       beforeNavigate,
+      browserConsole,
       runs,
       activeSides,
       createSide,

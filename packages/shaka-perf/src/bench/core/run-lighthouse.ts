@@ -5,7 +5,6 @@
  * License in LICENSE.md.
  */
 
-import chalk from 'chalk';
 import type { RunnerResult } from 'lighthouse';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -25,12 +24,6 @@ export function accessibilityScoreFromLhr(
   const score = lhr.categories?.accessibility?.score;
   return typeof score === 'number' ? score * 100 : null;
 }
-
-// Read console errors whitelist from environment variable.
-const allowedConsoleErrors: string[] = process.env
-  .SHAKA_BENCH_ALLOWED_CONSOLE_ERRORS
-  ? process.env.SHAKA_BENCH_ALLOWED_CONSOLE_ERRORS.split(',')
-  : [];
 
 export async function runLighthouse(
   group: Group,
@@ -79,19 +72,11 @@ export async function runLighthouse(
       )}`
     );
   }
-  runnerResult.artifacts.ConsoleMessages?.forEach((message) => {
-    if (
-      !allowedConsoleErrors.some((allowedError) =>
-        JSON.stringify(message).includes(allowedError)
-      )
-    ) {
-      console.log(
-        chalk.red(
-          `Measurements Error: console.${message.level}: ${message.text} ${message.url} TESTED PAGE: ${url}`
-        )
-      );
-    }
-  });
+  // Console messages are no longer read off Lighthouse's `ConsoleMessages`
+  // artifact here. They are captured uniformly by the `console.*` patch that
+  // `setUpContextForNavigation` installs, and turned into a verdict by
+  // `assertPageConsoleClean` in the worker — so perf and visreg agree on what
+  // counts as a violation and one `browserConsole.allowList` covers both.
 
   let results: PhaseSample[] = [];
 

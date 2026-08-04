@@ -145,6 +145,22 @@ const ResembleOutputOptionsSchema = z
   })
   .passthrough();
 
+/**
+ * A `console.error` / `console.warn` from the page under test fails that test,
+ * on either side. Captured from Playwright's context-level `console` event, so
+ * only the page's own console API calls count — not failed subresource loads,
+ * CSP violations or uncaught exceptions.
+ */
+export const BrowserConsoleConfigSchema = z
+  .object({
+    // `[]` disables the check — hence no separate `enabled` flag.
+    failOn: z.array(z.enum(['error', 'warn'])),
+    // Substrings matched against the message text or the logging script's URL.
+    // A per-test override REPLACES this list rather than extending it.
+    allowList: z.array(z.string()),
+  })
+  .strict();
+
 export const SharedConfigSchema = z
   .object({
     controlURL: z.string().url(),
@@ -190,6 +206,8 @@ export const SharedConfigSchema = z
     // `visreg.playwrightOptions` and `perf.playwrightOptions` may override
     // per-category (partial, merged per-key).
     playwrightOptions: PlaywrightOptionsSchema,
+    // Required, no defaults — same reasoning as `playwrightOptions`.
+    browserConsole: BrowserConsoleConfigSchema,
   })
   // Strict: an unknown key is a typo or a removed option. Zod's default is to
   // strip silently, which is how a renamed knob quietly falls back to its
@@ -382,6 +400,7 @@ export type PerfConfig = z.infer<typeof PerfConfigSchema>;
 export type AuditConfig = z.infer<typeof AuditConfigSchema>;
 export type AccessibilityConfig = z.infer<typeof AccessibilityConfigSchema>;
 export type AgentReadinessConfig = z.infer<typeof AgentReadinessConfigSchema>;
+export type BrowserConsoleConfig = z.infer<typeof BrowserConsoleConfigSchema>;
 export type BisectConfig = z.infer<typeof BisectConfigSchema>;
 
 /**

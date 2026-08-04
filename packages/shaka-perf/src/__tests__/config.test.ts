@@ -13,18 +13,27 @@ import {
   viewportsByStageCategory,
   viewportsForCategory,
 } from '../config';
+import { applyPerTestConfigOverrides } from '../effective-config';
 
 function baseConfig(extra: Record<string, unknown> = {}) {
+  const { shared, ...sections } = extra;
   return {
     shared: {
       controlURL: 'http://localhost:3020',
       experimentURL: 'http://localhost:3030',
       parallelism: 2,
       playwrightOptions: { browser: 'chromium', args: ['--no-sandbox'], waitTimeout: 60_000 },
+      browserConsole: { failOn: ['error', 'warn'], allowList: [] },
+      // Merged INTO the defaults so a caller can add one shared key without
+      // restating the required ones.
+      ...(shared as Record<string, unknown> | undefined),
     },
-    ...extra,
+    ...sections,
   };
 }
+
+const withBrowserConsole = (browserConsole: unknown) =>
+  baseConfig({ shared: { browserConsole } });
 
 describe('accessibility config', () => {
   it('defaults accessibility to desktop and phone axe checks', () => {
@@ -182,6 +191,49 @@ describe('agentReadiness config', () => {
     expect(buildAbTestsConfig(baseConfig({
       agentReadiness: { enabled: true },
     })).agentReadiness).toEqual({ enabled: true });
+  });
+});
+
+describe('shared.browserConsole config', () => {
+  it('requires the section and both of its fields', () => {
+    const base = baseConfig();
+    const { browserConsole: _dropped, ...sharedWithout } = base.shared;
+    expect(() => buildAbTestsConfig({ ...base, shared: sharedWithout }))
+      .toThrow(/shared\.browserConsole: Required/);
+    expect(() => buildAbTestsConfig(withBrowserConsole({ allowList: [] })))
+      .toThrow(/shared\.browserConsole\.failOn: Required/);
+    expect(() => buildAbTestsConfig(withBrowserConsole({ failOn: [] })))
+      .toThrow(/shared\.browserConsole\.allowList: Required/);
+  });
+
+  it('parses what the config states', () => {
+    expect(buildAbTestsConfig(withBrowserConsole({ failOn: ['error'], allowList: ['noise'] }))
+      .shared.browserConsole).toEqual({ failOn: ['error'], allowList: ['noise'] });
+  });
+
+  it('rejects a level that is not a console method, and an unknown key', () => {
+    expect(() => buildAbTestsConfig(withBrowserConsole({ failOn: ['warning'], allowList: [] })))
+      .toThrow(/shared\.browserConsole\.failOn/);
+    expect(() => buildAbTestsConfig(withBrowserConsole({
+      failOn: [], allowList: [], allowlist: ['typo'],
+    }))).toThrow(/shared\.browserConsole: Unrecognized key.*allowlist/);
+  });
+
+  it('lets a per-test override REPLACE the file allowList, not extend it', () => {
+    const effective = applyPerTestConfigOverrides(
+      buildAbTestsConfig(withBrowserConsole({ failOn: ['error', 'warn'], allowList: ['file'] })),
+      {
+        name: 'Cart',
+        startingPath: '/cart',
+        file: null,
+        line: null,
+        testTypes: null,
+        testFn: async () => {},
+        config: { shared: { browserConsole: { allowList: ['test'] } } },
+      },
+    );
+
+    expect(effective.shared.browserConsole).toEqual({ failOn: ['error', 'warn'], allowList: ['test'] });
   });
 });
 

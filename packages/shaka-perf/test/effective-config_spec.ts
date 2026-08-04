@@ -24,7 +24,7 @@ describe('reconstructEffectiveConfig', function () {
         "    controlURL: 'http://localhost:3011/',",
         "    experimentURL: 'http://localhost:3012/',",
         '    parallelism: 1,',
-        "    playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },",
+        "    playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] },",
         '    beforeNavigate: async ({ context }) => {',
         `      context.loadedFromConfig = ${JSON.stringify(marker)};`,
         '    },',
@@ -149,7 +149,7 @@ describe('reconstructEffectiveConfig', function () {
     // effective config must FAIL, not degrade to no-config.
     fs.writeFileSync(
       configPath,
-      "module.exports = { shared: { controlURL: 'http://localhost:1/', experimentURL: 'http://localhost:2/', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } }, visreg: { defaultMisMatchThreshold: 0.1 } };\n",
+      "module.exports = { shared: { controlURL: 'http://localhost:1/', experimentURL: 'http://localhost:2/', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, browserConsole: { failOn: ['error', 'warn'], allowList: [] } }, visreg: { defaultMisMatchThreshold: 0.1 } };\n",
     );
     process.env[envKey] = configPath;
     jest.resetModules();
@@ -205,6 +205,7 @@ describe('applyPerTestConfigOverrides validation', function () {
         experimentURL: 'http://localhost:3012/',
         parallelism: 1,
         playwrightOptions: { browser: 'chromium' },
+        browserConsole: { failOn: ['error', 'warn'], allowList: [] },
       },
       visreg: { mismatchThreshold: 0.1, viewports: ['desktop', 'phone'] },
     });
@@ -306,6 +307,7 @@ describe('applyPerTestConfigOverrides validation', function () {
         experimentURL: 'http://localhost:3012/',
         parallelism: 1,
         playwrightOptions: { browser: 'chromium' },
+        browserConsole: { failOn: ['error', 'warn'], allowList: [] },
       },
       perf: { samplingMode: 'sequential' },
     });

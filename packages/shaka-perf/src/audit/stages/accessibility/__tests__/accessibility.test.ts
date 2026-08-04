@@ -516,7 +516,7 @@ function fakeContext(
     readPriorResult: jest.fn(),
     raceCancellation: jest.fn(),
     config: applyPerTestConfigOverrides(
-      buildAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+      buildAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] } } }),
       test,
     ),
   } as unknown as TestContext;
@@ -530,7 +530,6 @@ function fakeBrowser(options: { events?: string[] } = {}) {
     goto: jest.fn(async () => { events?.push('goto'); }),
     waitForSelector: jest.fn(async () => {}),
     evaluate: jest.fn(async () => {}),
-    on: jest.fn(),
     removeListener: jest.fn(),
     screenshot: jest.fn(async () => Buffer.from('png')),
   };

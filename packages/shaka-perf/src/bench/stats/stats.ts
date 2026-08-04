@@ -5,8 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { mean, histogram, quantile } from 'd3-array';
-import { scaleLinear } from 'd3-scale';
+import { mean, histogram, quantile, ticks } from 'd3-array';
 
 import {
   pairedConfidenceInterval,
@@ -334,16 +333,16 @@ export class Stats {
     range: { min: number; max: number },
     a: number[]
   ): number[] {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const x: any = scaleLinear()
-      .domain([range.min, range.max])
-      .range([range.min, range.max]);
+    // Equivalent to the identity `scaleLinear().domain(d).range(d).ticks()`
+    // this replaced: a linear scale's default tick count is 10, and its
+    // `ticks()` is d3-array's `ticks()` over the domain endpoints.
+    const domain: [number, number] = [range.min, range.max];
     const h = histogram()
       .value((d) => {
         return d;
       })
-      .domain(x.domain())
-      .thresholds(x.ticks());
+      .domain(domain)
+      .thresholds(ticks(domain[0], domain[1], 10));
 
     return h(a).map((i) => {
       return i.length;

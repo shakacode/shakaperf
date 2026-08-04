@@ -25,6 +25,7 @@ import {
 } from '../../test-annotation';
 import { loadTestFile } from '../../config-loader';
 import { setUpContextForNavigation } from '../../pre-navigation';
+import { assertConsoleClean } from '../../browser-console';
 import { reconstructEffectiveConfig } from '../../effective-config';
 import { installBeforePageNavigateBarrier } from './barrier-synchronization';
 import {
@@ -339,6 +340,7 @@ class LighthouseWorkerSampler {
         isControl: options.isControl ?? false,
         testType: 'perf',
         beforeNavigate: config.shared.beforeNavigate,
+        browserConsole: config.shared.browserConsole,
       });
 
       let releaseTracking: () => void = () => {};
@@ -427,6 +429,10 @@ class LighthouseWorkerSampler {
           if (options.captureCoverage && options.resultsFolder) {
             await captureWindowCoverage(page, options.resultsFolder, url);
           }
+          return inp;
+        })
+        .then((inp) => {
+          assertConsoleClean(context);
           return inp;
         })
         // testFn settled (resolved or threw): release Lighthouse's gather-hold

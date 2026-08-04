@@ -12,6 +12,39 @@ version being released and updates the "Current version" line at the bottom.
 
 ---
 
+## Unreleased
+
+### `SHAKA_BENCH_ALLOWED_CONSOLE_ERRORS` removed (Replaced by `browserConsole.allowList`)
+### Browser console errors and warnings now fail a test
+
+A `console.error` / `console.warn` from the page under test now fails that test,
+on either side. Previously visreg ignored console output entirely and perf only
+printed it in red. On by default, so pages that log warnings will start failing.
+
+`shared.browserConsole` is REQUIRED, and so are both of its fields, so every
+config must be updated — a missing section fails with
+
+
+```bash
+# BEFORE
+SHAKA_BENCH_ALLOWED_CONSOLE_ERRORS='Failed to load resource,favicon' shaka-perf compare
+```
+```ts
+// AFTER — in abtests.config.ts
+shared: {
+  browserConsole: { 
+    failOn: ['error', 'warn'], 
+    allowList: ['Failed to load resource', 'favicon'],
+  },
+},
+```
+
+Entries are no longer matched against a `JSON.stringify` of the whole message
+record, so a value that used to match the level (e.g. `"error"`) now silences
+nothing.
+
+---
+
 ## 0.2.0 — 2026-07-28
 
 ### Existing result artifacts must be removed

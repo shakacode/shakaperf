@@ -144,6 +144,9 @@ FAILED_SUITES=()
 run_suite() {
   local tag="$1" baseline="$2"
   local args=("${EXTRA_ARGS[@]}" --grep "$tag")
+  # Only this suite can fail *in global setup* — the rest run with
+  # SKIP_GLOBAL_SETUP=1, so a global-setup frame in their logs is unrelated.
+  local ran_setup=$SETUP_NEEDED
   if ! $SETUP_NEEDED; then
     export SKIP_GLOBAL_SETUP=1
   fi
@@ -159,17 +162,24 @@ run_suite() {
   normalize_log "$baseline"
   if [ "$status" -ne 0 ]; then
     FAILED_SUITES+=("$tag")
-    echo "=== $tag FAILED (exit $status) — continuing so the remaining suites still update ==="
+    if $ran_setup && grep -qE 'at globalSetup \(|global-setup\.ts' "$baseline"; then
+      SETUP_FAILED=true
+      echo "=== $tag FAILED (exit $status) in global setup — skipping the remaining suites ==="
+      echo "=== (they would only overwrite their baselines with the same failure) ==="
+    else
+      echo "=== $tag FAILED (exit $status) — continuing so the remaining suites still update ==="
+    fi
   fi
   return 0
 }
 
 # Run each selected suite. First suite runs global setup; subsequent ones skip it.
 SETUP_NEEDED=true
-$TWIN_SERVERS && run_suite "@twin-servers" "$SNAPSHOTS/baseline-twin-servers.log"
-$VISREG       && run_suite "@visreg"       "$SNAPSHOTS/baseline-visreg.log"
-$PERF         && run_suite "@perf"         "$SNAPSHOTS/baseline-perf.log"
-$AUDIT        && run_suite "@audit"        "$SNAPSHOTS/baseline-audit.log"
+SETUP_FAILED=false
+                   $TWIN_SERVERS && run_suite "@twin-servers" "$SNAPSHOTS/baseline-twin-servers.log"
+! $SETUP_FAILED && $VISREG       && run_suite "@visreg"       "$SNAPSHOTS/baseline-visreg.log"
+! $SETUP_FAILED && $PERF         && run_suite "@perf"         "$SNAPSHOTS/baseline-perf.log"
+! $SETUP_FAILED && $AUDIT        && run_suite "@audit"        "$SNAPSHOTS/baseline-audit.log"
 
 # Stop containers after all suites
 echo "=== Stopping containers ==="
