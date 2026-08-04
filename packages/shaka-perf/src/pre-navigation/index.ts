@@ -27,11 +27,34 @@ export interface ContextNavigationSetup {
 }
 
 /**
+ * Test files load through tsx, whose esbuild transform sets `keepNames`. That
+ * rewrites every *named* inner function — `const attach = () => {}`, a class, a
+ * function declaration — to `__name(fn, 'name')`, where `__name` is a helper
+ * esbuild puts in the Node module scope. Playwright serializes a function
+ * argument with `Function.prototype.toString`, so `addInitScript(fn)` and
+ * `page.evaluate(fn)` carry that call into the page, where the helper does not
+ * exist and the script dies on `__name is not defined`.
+ *
+ * Nothing about that is visible: `addInitScript` still resolves, and the throw
+ * lands on `pageerror`. A hide or a stub simply does not happen, and the run
+ * goes green with wrong screenshots. Whether it bites depends on the installed
+ * tsx — 4.21.0 emits no helper, 4.23.1 does — so a caret-ranged transitive bump
+ * can start corrupting baselines with no code change.
+ *
+ * Defining the helper in the page costs nothing when no script references it,
+ * and `||=` yields to any bundle that ships its own.
+ */
+const KEEP_NAMES_SHIM =
+  "globalThis.__name ||= (fn, name) => Object.defineProperty(fn, 'name', { value: name, configurable: true });";
+
+/**
  * The single pre-navigation sequence shared by every engine, run on the
  * `BrowserContext` before any page is created. Order is uniform and matters:
  * arm console capture, clear all state (so a reused perf context is reset),
- * then `beforeNavigate` last, so a hook that seeds its own cookie/auth survives
- * the clear. Throws if the hook throws — a failed setup hook should fail the test.
+ * install the `__name` shim, then `beforeNavigate` last, so a hook that seeds
+ * its own cookie/auth survives the clear — and so the shim is already in place
+ * for any init script the hook registers. Throws if the hook throws — a failed
+ * setup hook should fail the test.
  */
 export async function setUpContextForNavigation(setup: ContextNavigationSetup): Promise<void> {
   if (setup.browserConsole) {
@@ -40,6 +63,7 @@ export async function setUpContextForNavigation(setup: ContextNavigationSetup): 
   }
   await setup.context.clearCookies();
   await clearBrowserData(setup.context, setup.url);
+  await setup.context.addInitScript(KEEP_NAMES_SHIM);
   if (setup.beforeNavigate) {
     await setup.beforeNavigate({
       context: setup.context,

@@ -402,6 +402,8 @@ describe('accessibility browser launch', () => {
       'cdp:Network.clearBrowserCookies',
       'cdp:Storage.clearDataForOrigin',
       'cdp:detach',
+      // The __name shim goes in before any hook-registered init script.
+      'addInitScript',
       'beforeNavigate',
       'goto',
       'testFn',
@@ -549,6 +551,7 @@ function fakeBrowser(options: { events?: string[] } = {}) {
       .mockResolvedValue(page),
     newCDPSession: jest.fn(async () => cdpSession),
     clearCookies: jest.fn(async () => { events?.push('clearCookies'); }),
+    addInitScript: jest.fn(async () => { events?.push('addInitScript'); }),
     addCookies: jest.fn(async () => {}),
     close: jest.fn(async () => {}),
   };
