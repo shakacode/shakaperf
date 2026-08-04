@@ -18,7 +18,17 @@ import type {
 } from './agent-ready-report';
 
 const execFileAsync = promisify(execFile);
-const CLAUDE_TIMEOUT_MS = 150_000;
+const DEFAULT_AGENT_TIMEOUT_MS = 150_000;
+const MAX_TIMEOUT_MS = 2_147_483_647;
+export function resolveAgentTimeoutMs(): number {
+  const raw = process.env.SHAKAPERF_AGENT_TIMEOUT_MS;
+  const parsed = Number(raw);
+  const valid = Number.isInteger(parsed) && parsed > 0 && parsed <= MAX_TIMEOUT_MS;
+  if (raw && !valid) {
+    console.warn(`shaka-perf: ignoring SHAKAPERF_AGENT_TIMEOUT_MS="${raw}" (expected a positive whole number of milliseconds up to ${MAX_TIMEOUT_MS})`);
+  }
+  return valid ? parsed : DEFAULT_AGENT_TIMEOUT_MS;
+}
 const MAX_PROMPT_BYTES = 100_000;
 const MAX_SUMMARY_CHARS = 240;
 const MAX_SITE_CHARS = 400;
@@ -39,12 +49,13 @@ export function claudeAgentSummarizer(model = 'sonnet'): AgentSummarizer {
       console.warn(chalk.yellow('shaka-perf: agent-readiness summary prompt too large - using the plain findings list.'));
       return null;
     }
+    const timeoutMs = resolveAgentTimeoutMs();
 
     console.log(`Writing plain-language Agent Ready summaries for ${reqs.length} page(s) via claude (${model})...`);
     let stdout: string;
     try {
       ({ stdout } = await execFileAsync('claude', ['-p', prompt, '--model', model], {
-        timeout: CLAUDE_TIMEOUT_MS,
+        timeout: timeoutMs,
         maxBuffer: 4 * 1024 * 1024,
       }));
     } catch (err) {
@@ -52,7 +63,7 @@ export function claudeAgentSummarizer(model = 'sonnet'): AgentSummarizer {
       if (e.code === 'ENOENT') {
         console.warn(chalk.yellow('shaka-perf: `claude` CLI not on PATH - the Agent Ready cards use the plain findings list (no AI rewrite).'));
       } else if (e.killed) {
-        console.warn(chalk.yellow(`shaka-perf: AI Agent Ready summary timed out after ${CLAUDE_TIMEOUT_MS / 1000}s - using the plain findings list.`));
+        console.warn(chalk.yellow(`shaka-perf: AI Agent Ready summary timed out after ${timeoutMs / 1000}s - using the plain findings list.`));
       } else {
         console.warn(chalk.yellow('shaka-perf: AI Agent Ready summary did not complete - using the plain findings list.'));
       }

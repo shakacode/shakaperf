@@ -18,8 +18,17 @@ import {
 } from './client-report-narrative';
 
 const execFileAsync = promisify(execFile);
-// One small batched prompt; 90s is plenty (sonnet on a short prompt) but leave room.
-const CLAUDE_TIMEOUT_MS = 90_000;
+const DEFAULT_NARRATIVE_TIMEOUT_MS = 90_000;
+const MAX_TIMEOUT_MS = 2_147_483_647;
+export function resolveNarrativeTimeoutMs(): number {
+  const raw = process.env.SHAKAPERF_NARRATIVE_TIMEOUT_MS;
+  const parsed = Number(raw);
+  const valid = Number.isInteger(parsed) && parsed > 0 && parsed <= MAX_TIMEOUT_MS;
+  if (raw && !valid) {
+    console.warn(`shaka-perf: ignoring SHAKAPERF_NARRATIVE_TIMEOUT_MS="${raw}" (expected a positive whole number of milliseconds up to ${MAX_TIMEOUT_MS})`);
+  }
+  return valid ? parsed : DEFAULT_NARRATIVE_TIMEOUT_MS;
+}
 const MAX_PROMPT_BYTES = 60_000;
 
 // Rewrites the client report's verdict copy (bottom line + per-tab verdicts) into
@@ -34,11 +43,12 @@ export function claudeNarrator(model = 'sonnet'): NarrativeSummarizer {
       console.warn(chalk.yellow('shaka-perf: narrative prompt too large - using the built-in verdict copy.'));
       return null;
     }
+    const timeoutMs = resolveNarrativeTimeoutMs();
     console.log(`Writing the report's plain-language verdicts via claude (${model})...`);
     let stdout: string;
     try {
       ({ stdout } = await execFileAsync('claude', ['-p', prompt, '--model', model], {
-        timeout: CLAUDE_TIMEOUT_MS,
+        timeout: timeoutMs,
         maxBuffer: 4 * 1024 * 1024,
       }));
     } catch (err) {
@@ -46,7 +56,7 @@ export function claudeNarrator(model = 'sonnet'): NarrativeSummarizer {
       if (e.code === 'ENOENT') {
         console.warn(chalk.yellow('shaka-perf: `claude` CLI not on PATH - the report uses its built-in verdict copy (no AI rewrite).'));
       } else if (e.killed) {
-        console.warn(chalk.yellow(`shaka-perf: AI narrative timed out after ${CLAUDE_TIMEOUT_MS / 1000}s - using the built-in verdict copy.`));
+        console.warn(chalk.yellow(`shaka-perf: AI narrative timed out after ${timeoutMs / 1000}s - using the built-in verdict copy.`));
       } else {
         console.warn(chalk.yellow('shaka-perf: AI narrative did not complete - using the built-in verdict copy.'));
       }
