@@ -67,7 +67,7 @@ export interface A11ySitePromptFinding {
   defectCount: number;
   /** Number of audited pages where the family appears. */
   pageCount: number;
-  /** Same-origin audited URLs for named finding examples. */
+  /** Audited page URLs for named finding examples; they may span hosts. */
   pageUrls?: readonly string[];
   /** Deliberately ignored because page titles are site-provided text. */
   pageNames?: readonly string[];
@@ -105,7 +105,7 @@ export interface PerfSitePromptData {
   pageCount: number;
   homepage: PerfFactPage;
   pages: readonly PerfFactPage[];
-  /** Same-origin audited URLs in the same order as pages. */
+  /** Audited page URLs in the same order as pages; they may span hosts. */
   pageUrls: readonly string[];
 }
 
@@ -339,8 +339,8 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
   const pageCount = wholeNumber(input.pageCount);
   const highImpactCount = wholeNumber(input.highImpactCount);
   const worstCount = wholeNumber(input.worstPage.highImpactCount);
-  const pageUrls = url ? input.pageUrls.map((pageUrl) => sameOriginUrl(pageUrl, url)) : [];
-  const worstPageUrl = url ? sameOriginUrl(input.worstPage.url, url) : undefined;
+  const pageUrls = input.pageUrls.map(urlSlot);
+  const worstPageUrl = urlSlot(input.worstPage.url);
   if (
     !url
     || pageCount === undefined
@@ -358,7 +358,7 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
   const completePageUrls = pageUrls as string[];
   const auditedPageUrls = new Set(completePageUrls.map(canonicalUrl));
   if (!auditedPageUrls.has(canonicalUrl(worstPageUrl))) return undefined;
-  const findings = input.findings.map((finding) => siteFinding(finding, url, auditedPageUrls, true));
+  const findings = input.findings.map((finding) => siteFinding(finding, auditedPageUrls, true));
   if (findings.some((finding) => !finding)) return undefined;
   const completeFindings = findings as SitePromptFinding[];
   if (
@@ -374,7 +374,7 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
   const findingLines = orderedFindings.map((finding) => siteFindingLine(finding, pageCount));
   const rawExtras = input.lowerImpactFindings;
   if (rawExtras !== undefined && !Array.isArray(rawExtras)) return undefined;
-  const extras = (rawExtras ?? []).map((finding) => siteFinding(finding, url, auditedPageUrls));
+  const extras = (rawExtras ?? []).map((finding) => siteFinding(finding, auditedPageUrls));
   if (extras.some((finding) => !finding)) return undefined;
   const completeExtras = extras as SitePromptFinding[];
   if (completeExtras.some((finding) => finding.pageCount > pageCount)) return undefined;
@@ -423,7 +423,7 @@ export function buildPerfSitePrompt(data: PerfSitePromptData): string | undefine
   const url = urlSlot(input.url);
   const pageCount = wholeNumber(input.pageCount);
   const pages = input.pages.map(measuredPerfFactPage);
-  const pageUrls = url ? input.pageUrls.map((pageUrl) => sameOriginUrl(pageUrl, url)) : [];
+  const pageUrls = input.pageUrls.map(urlSlot);
   const homepage = measuredPerfFactPage(input.homepage);
   const homepageBeforeContentKb = homepage?.downloadsBeforeLcpKb;
   if (
@@ -799,7 +799,6 @@ const A11Y_FAMILIES: Readonly<Record<string, { label: string; priority: string; 
 
 function siteFinding(
   finding: unknown,
-  auditedUrl: string,
   auditedPageUrls: ReadonlySet<string>,
   requireHighImpact = false,
 ): SitePromptFinding | undefined {
@@ -826,7 +825,7 @@ function siteFinding(
   if (sharedLocation !== undefined && sharedLocation !== 'footer' && sharedLocation !== 'header' && sharedLocation !== 'navigation') return undefined;
   if (finding.pageUrls !== undefined && !Array.isArray(finding.pageUrls)) return undefined;
   const pageUrls = Array.isArray(finding.pageUrls)
-    ? finding.pageUrls.map((pageUrl) => sameOriginUrl(pageUrl, auditedUrl))
+    ? finding.pageUrls.map(urlSlot)
     : [];
   if (
     pageUrls.some((pageUrl) => !pageUrl)
@@ -921,16 +920,6 @@ function verificationRuleIdsFor(rawRuleIds: unknown): string[] | undefined {
   if (ruleIds.some((ruleId) => !ruleId)) return undefined;
   const uniqueRuleIds = [...new Set(ruleIds as string[])];
   return uniqueRuleIds.length > 0 ? uniqueRuleIds : undefined;
-}
-
-function sameOriginUrl(raw: unknown, auditedUrl: string): string | undefined {
-  const pageUrl = urlSlot(raw);
-  if (!pageUrl) return undefined;
-  try {
-    return new URL(pageUrl).origin === new URL(auditedUrl).origin ? pageUrl : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 function canonicalUrl(url: string): string {
