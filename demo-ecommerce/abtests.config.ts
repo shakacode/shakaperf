@@ -63,7 +63,18 @@ export default defineConfig({
       // is separate: lighthouseConfig.maxWaitForLoad.
       waitTimeout: 60_000,
     },
-    browserConsole: { failOn: ['error', 'warn'], allowList: [] },
+    browserConsole: {
+      failOn: ['error', 'warn'],
+      allowList: [
+        'includes ~14KB of server-rendering code',
+        // layouts/pages.html.erb declares no <link rel="icon">, so the browser
+        // falls back to /favicon.ico and 404s. Only Lighthouse's chrome-launcher
+        // Chrome actually requests it — Playwright's headless chromium doesn't —
+        // so this fires in perf/audit but not visreg. Matched on the message's
+        // location URL, which is the failing resource.
+        'favicon.ico',
+      ],
+    },
   },
 
   visreg: {
