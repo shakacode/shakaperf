@@ -419,7 +419,7 @@ function reportOnlyConfig(): AbTestsConfig {
       controlURL: 'http://control.test',
       experimentURL: 'http://experiment.test',
       parallelism: 2,
-      playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
+      playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] },
     },
   });
 }

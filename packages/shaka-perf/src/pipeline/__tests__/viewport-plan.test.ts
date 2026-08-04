@@ -33,7 +33,7 @@ const skippedOutcome = (stage: string): Outcome => ({ kind: 'skipped', stage, re
 // Default config: shared viewports desktop/tablet/phone; visreg at all three,
 // accessibility at desktop/phone.
 const config = buildAbTestsConfig({
-  shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3031', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } },
+  shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3031', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] } },
 });
 const visregStage = makeStage('visreg', 'visreg');
 const a11yStage = makeStage('accessibility', 'accessibility');

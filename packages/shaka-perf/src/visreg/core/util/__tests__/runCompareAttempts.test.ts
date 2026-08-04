@@ -17,16 +17,24 @@ jest.mock('../preparePage', () => ({
   default: jest.fn(),
 }));
 jest.mock('../createComparisonSide', () => ({ createComparisonSide: jest.fn() }));
-// The attempt loop rebuilds the test's effective config for `beforeNavigate`
-// (mandatory abtests.config.ts — the real loader THROWS without one, and these
-// tests run configless by design). The loop only reads `shared.beforeNavigate`.
+// The attempt loop rebuilds the test's effective config (mandatory
+// abtests.config.ts — the real loader THROWS without one, and these tests run
+// configless by design). `mock`-prefixed: jest hoists the factory above this.
+const mockEffectiveConfig = {
+  shared: {
+    browserConsole: { failOn: ['error', 'warn'] as ('error' | 'warn')[], allowList: [] as string[] },
+  },
+};
 jest.mock('../../../../effective-config', () => ({
-  reconstructEffectiveConfig: jest.fn().mockResolvedValue({ shared: {} }),
+  reconstructEffectiveConfig: jest.fn(async () => mockEffectiveConfig),
 }));
 
 import { runCompareAttempts, type CompareAttemptsDeps, type CompareSelectorOutcome } from '../runCompareAttempts';
 import { ScreenshotPool } from '../screenshotPool';
+import { installConsoleCapture } from '../../../../browser-console';
 import type { DecoratedCompareConfig, Scenario, Viewport, Browser } from '../../types';
+
+interface ConsoleBySide { control?: string; experiment?: string }
 
 // Solid-colour PNG; `dirtyPixels` flips the first N pixels to white so two
 // otherwise-identical frames differ by a controllable number of pixels.
@@ -78,15 +86,26 @@ function makeConfig(overrides: Partial<Record<string, unknown>> = {}): Decorated
  * attempt for the single 'document' selector, so call index N maps to
  * attempt=floor(N/2), side=even?ref:test.
  */
-function makeDeps(produce: Produce) {
+function makeDeps(produce: Produce, consoleBySide: ConsoleBySide = {}) {
   let captureCalls = 0;
   let created = 0;
   let disposed = 0;
   const sleeps: number[] = [];
 
   const createSide = jest.fn(async () => {
+    // Sides are built control-then-experiment within an attempt, so evens are control.
+    const isControl = created % 2 === 0;
     created++;
-    return { page: {} as never, context: {} as never, dispose: async () => { disposed++; } };
+    let onConsole: ((message: unknown) => void) | undefined;
+    const context = {
+      on: (event: string, handler: (message: unknown) => void) => {
+        if (event === 'console') onConsole = handler;
+      },
+    } as never;
+    installConsoleCapture(context, mockEffectiveConfig.shared.browserConsole, 'side');
+    const text = isControl ? consoleBySide.control : consoleBySide.experiment;
+    if (text) onConsole?.({ type: () => 'error', text: () => text, location: () => ({ url: '' }) });
+    return { page: {} as never, context, dispose: async () => { disposed++; } };
   });
   const preparePage = jest.fn(async () => {});
   const captureScreenshot = jest.fn(async () => {
@@ -197,4 +216,34 @@ it('missing selector throws, with the attempt sides still disposed', async () =>
   await expect(run(deps, makeConfig())).rejects.toThrow('Selector "document" not found on reference page');
   await new Promise<void>((resolve) => setImmediate(resolve));
   expect(counts()).toMatchObject({ created: 2, disposed: 2 });
+});
+
+describe('browser console verdict', () => {
+  beforeEach(() => {
+    mockEffectiveConfig.shared.browserConsole = { failOn: ['error', 'warn'], allowList: [] };
+  });
+
+  it('fails the unit, naming the side, and does not spend the retry budget', async () => {
+    const { deps, sleeps, counts } = makeDeps(() => png(BLUE), { experiment: 'boom' });
+
+    await expect(run(deps, makeConfig({ compareRetries: 2 })))
+      .rejects.toThrow('console.error on side: boom');
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(sleeps).toEqual([]);
+    expect(counts()).toMatchObject({ created: 2, disposed: 2 });
+  });
+
+  it('passes when the message is allowlisted', async () => {
+    mockEffectiveConfig.shared.browserConsole = { failOn: ['error', 'warn'], allowList: ['boo'] };
+    const { deps } = makeDeps(() => png(BLUE), { experiment: 'boom' });
+
+    await expect(run(deps, makeConfig())).resolves.toHaveLength(1);
+  });
+
+  it('passes when failOn is empty (the off switch)', async () => {
+    mockEffectiveConfig.shared.browserConsole = { failOn: [], allowList: [] };
+    const { deps } = makeDeps(() => png(BLUE), { experiment: 'boom' });
+
+    await expect(run(deps, makeConfig())).resolves.toHaveLength(1);
+  });
 });

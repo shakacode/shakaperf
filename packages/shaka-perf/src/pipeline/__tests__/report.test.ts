@@ -316,7 +316,7 @@ describe('writeMachineReport', () => {
       { resultsRoot: dir } as StageRuntime,
       new Map(),
       buildAbTestsConfig({
-        shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3031', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } },
+        shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3031', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] } },
       }),
     );
 

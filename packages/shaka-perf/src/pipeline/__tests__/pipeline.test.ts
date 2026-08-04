@@ -155,7 +155,7 @@ describe('runPipeline', () => {
     try {
       return await runPipeline(pipeline(), {
         cwd,
-        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         retries: 0,
@@ -215,7 +215,7 @@ describe('pre-run wipe', () => {
     try {
       return await runPipeline(pipeline(), {
         cwd,
-        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         retries: 0,
@@ -366,6 +366,7 @@ describe('per-side visreg failures', () => {
           close: async () => {},
         };
         return {
+          on: () => {},
           clearCookies: async () => {},
           newPage: async () => page,
           close: async () => {
@@ -416,7 +417,7 @@ describe('per-side visreg failures', () => {
     const configPath = path.join(cwd, 'abtests.config.js');
     fs.writeFileSync(
       configPath,
-      'module.exports = { shared: { controlURL: "http://control.test", experimentURL: "http://experiment.test", parallelism: 1, playwrightOptions: { browser: "chromium", waitTimeout: 60000 } } };',
+      'module.exports = { shared: { controlURL: "http://control.test", experimentURL: "http://experiment.test", parallelism: 1, playwrightOptions: { browser: "chromium", waitTimeout: 60000 }, browserConsole: { failOn: ["error", "warn"], allowList: [] } } };',
     );
     const savedTmpdir = process.env.TMPDIR;
     process.env.TMPDIR = cwd;
@@ -427,7 +428,7 @@ describe('per-side visreg failures', () => {
       const result = await withAbTestsConfigPath(configPath, () =>
         runPipeline(visregPipeline(), {
           cwd,
-          config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+          config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] } } }),
           controlURL: 'http://control.test',
           experimentURL: 'http://experiment.test',
           retries: 0,

@@ -105,6 +105,14 @@ export default defineConfig({
       // Lighthouse's page-load wait is separate: LIGHTHOUSE_CONFIG.maxWaitForLoad.
       waitTimeout: 60_000,
     },
+
+    // A console.error / console.warn from the page fails that test, on either
+    // side. Both fields required; `failOn: []` turns the check off.
+    browserConsole: {
+      failOn: ['error', 'warn'],
+      // Substrings matched against the message text or the logging script's URL.
+      allowList: [],
+    },
   },
 
   visreg: {

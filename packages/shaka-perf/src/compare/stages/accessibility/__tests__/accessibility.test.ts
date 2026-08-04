@@ -436,7 +436,7 @@ function fakeContext(
     readPriorResult: jest.fn(),
     raceCancellation: jest.fn(),
     config: applyPerTestConfigOverrides(
-      buildAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+      buildAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] } } }),
       test,
     ),
   } as unknown as TestContext;

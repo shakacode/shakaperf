@@ -48,6 +48,16 @@ export interface ResembleOutputOptionsInput {
   [key: string]: unknown;
 }
 
+export interface BrowserConsoleConfigInput {
+  /** Console methods that fail a test, on either side. `[]` disables the check. */
+  failOn: ('error' | 'warn')[];
+  /**
+   * Substrings that silence a message, matched against its text or the URL of
+   * the script that logged it. A per-test override REPLACES this list.
+   */
+  allowList: string[];
+}
+
 export interface SharedConfigInput {
   controlURL: string;
   experimentURL: string;
@@ -84,6 +94,8 @@ export interface SharedConfigInput {
    * Required — there are no hidden launch defaults.
    */
   playwrightOptions: PlaywrightOptionsInput;
+  /** Required, no defaults — same reasoning as `playwrightOptions`. */
+  browserConsole: BrowserConsoleConfigInput;
 }
 
 export interface VisregConfigInput {
@@ -204,8 +216,9 @@ export type PerTestConfig = {
     // `shared.playwrightOptions` is a required, browser-mandatory block at the
     // file level, but a per-test override merges per-key — so here it is a
     // partial like every other override.
-    ? Omit<Partial<SharedConfigInput>, 'playwrightOptions'> & {
+    ? Omit<Partial<SharedConfigInput>, 'playwrightOptions' | 'browserConsole'> & {
         playwrightOptions?: Partial<PlaywrightOptionsInput>;
+        browserConsole?: Partial<BrowserConsoleConfigInput>;
       }
     : Partial<AbTestsConfigInput[K]>;
 };

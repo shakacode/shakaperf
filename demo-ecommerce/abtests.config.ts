@@ -63,6 +63,7 @@ export default defineConfig({
       // is separate: lighthouseConfig.maxWaitForLoad.
       waitTimeout: 60_000,
     },
+    browserConsole: { failOn: ['error', 'warn'], allowList: [] },
   },
 
   visreg: {
