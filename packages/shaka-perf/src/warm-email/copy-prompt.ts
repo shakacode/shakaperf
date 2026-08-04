@@ -7,6 +7,7 @@
 
 import type { PerfFactPage } from './client-report-model/cost';
 import { DEFAULT_ACCESSIBILITY_TAGS } from '../audit/stages/accessibility/defaults';
+import { isPublicHost } from '../net/public-host';
 
 export type CopyPromptKind = 'ai' | 'perf' | 'a11y';
 
@@ -339,8 +340,8 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
   const pageCount = wholeNumber(input.pageCount);
   const highImpactCount = wholeNumber(input.highImpactCount);
   const worstCount = wholeNumber(input.worstPage.highImpactCount);
-  const pageUrls = input.pageUrls.map(urlSlot);
-  const worstPageUrl = urlSlot(input.worstPage.url);
+  const pageUrls = url ? input.pageUrls.map((pageUrl) => auditedUrlSlot(pageUrl, url)) : [];
+  const worstPageUrl = url ? auditedUrlSlot(input.worstPage.url, url) : undefined;
   if (
     !url
     || pageCount === undefined
@@ -423,7 +424,7 @@ export function buildPerfSitePrompt(data: PerfSitePromptData): string | undefine
   const url = urlSlot(input.url);
   const pageCount = wholeNumber(input.pageCount);
   const pages = input.pages.map(measuredPerfFactPage);
-  const pageUrls = input.pageUrls.map(urlSlot);
+  const pageUrls = url ? input.pageUrls.map((pageUrl) => auditedUrlSlot(pageUrl, url)) : [];
   const homepage = measuredPerfFactPage(input.homepage);
   const homepageBeforeContentKb = homepage?.downloadsBeforeLcpKb;
   if (
@@ -552,6 +553,13 @@ function urlSlot(raw: unknown): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function auditedUrlSlot(raw: unknown, auditedUrl: string): string | undefined {
+  const pageUrl = urlSlot(raw);
+  if (!pageUrl) return undefined;
+  const pageHost = new URL(pageUrl).hostname;
+  return pageHost === new URL(auditedUrl).hostname || isPublicHost(pageHost) ? pageUrl : undefined;
 }
 
 function shellArg(value: string): string {

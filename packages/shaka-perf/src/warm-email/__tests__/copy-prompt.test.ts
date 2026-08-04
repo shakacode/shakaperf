@@ -748,10 +748,18 @@ describe('site-wide copy prompts', () => {
     }
   });
 
-  it('rejects malformed, duplicate, or hostile site-derived inputs', () => {
+  it('rejects malformed, off-origin, duplicate, or hostile site-derived inputs', () => {
+    expect(buildA11ySitePrompt({
+      ...a11ySiteData,
+      pageUrls: [...a11ySiteData.pageUrls.slice(0, -1), 'http://169.254.169.254/latest/meta-data/'],
+    })).toBeUndefined();
     expect(buildA11ySitePrompt({
       ...a11ySiteData,
       pageUrls: [...a11ySiteData.pageUrls.slice(0, -1), 'not a URL'],
+    })).toBeUndefined();
+    expect(buildPerfSitePrompt({
+      ...perfSiteData,
+      pageUrls: [...perfSiteData.pageUrls.slice(0, -1), 'http://169.254.169.254/latest/meta-data/'],
     })).toBeUndefined();
     expect(buildA11ySitePrompt({
       ...a11ySiteData,
