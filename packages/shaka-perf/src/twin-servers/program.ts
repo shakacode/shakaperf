@@ -22,6 +22,7 @@ import { notifyServerStarted } from './commands/notify-server-started';
 import { copyChangesToSsh } from './commands/copy-changes-to-ssh';
 import { forwardPorts } from './commands/forward-ports';
 import { customizeDockerCompose } from './commands/customize-docker-compose';
+import { pruneBuildCache } from './commands/prune-cache';
 import type { ResolvedConfig } from './types';
 import { colorize } from './helpers/ui';
 import { tryProxy } from './ipc/client';
@@ -250,6 +251,23 @@ function stopContainersSub(): Command {
   );
 }
 
+function pruneCacheSub(): Command {
+  return addCommonOptions(
+    new Command('prune-cache')
+      .description('Prune only this project\'s isolated Buildx cache')
+      .action(wrapAction(async function(this: Command) {
+        const { resolvedConfig } = await getResolvedConfig(this);
+        const verbose = inheritedOpts(this).verbose ?? false;
+        await proxyOrRun(
+          resolvedConfig,
+          verbose,
+          { cmd: 'prune-cache' },
+          () => pruneBuildCache(resolvedConfig),
+        );
+      }))
+  );
+}
+
 function startServersSub(): Command {
   return addCommonOptions(
     new Command('start-servers')
@@ -440,6 +458,7 @@ export function createServersCommand(): Command {
     getConfigSub(),
     startContainersSub(),
     stopContainersSub(),
+    pruneCacheSub(),
     startServersSub(),
     runCmdSub(),
     runCmdParallelSub(),

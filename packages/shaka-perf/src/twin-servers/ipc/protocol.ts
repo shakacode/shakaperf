@@ -54,6 +54,7 @@ export type ProxyRequestPayload =
   | { cmd: 'build'; target?: BuildTarget; noCache: boolean }
   | { cmd: 'start-containers' }
   | { cmd: 'stop-containers' }
+  | { cmd: 'prune-cache' }
   | { cmd: 'start-servers' }
   | { cmd: 'run-cmd'; target: ProxyTarget; shellCommand: string }
   | { cmd: 'run-cmd-parallel'; shellCommand: string }
