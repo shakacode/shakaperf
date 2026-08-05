@@ -111,15 +111,22 @@ test('run shaka-perf compare --categories visreg on twin servers @visreg', async
     'a function serialized into the page must not reference Node-only transpiler helpers',
   ).toEqual([]);
 
-  // Every config and test file loads through the ESM path; the CJS fallback is
-  // a safety net, not a destination. It catches and logs, so a loader that stops
-  // resolving imports degrades silently — the run still completes, just through
-  // another code path, announced only by this line. `abtests.config.ts` imports
+  // On a Node that strips TypeScript natively, every config and test file has to
+  // load that way; tsx is a fallback, not a destination. Taking it is not an
+  // error — the run still completes — so it degrades silently, announced only by
+  // this line, and it drags back everything native loading avoids: esbuild's
+  // `__name` in serialized functions, source-map-dependent `file:line`, and ESM
+  // rewritten to `require()`. `abtests.config.ts` imports
   // `./ab-tests/serialization-check` relative and EXTENSIONLESS precisely so
   // this covers that specifier shape; nothing else in the repo used one.
+  //
+  // Only meaningful where native loading exists. On older Node the fallback is
+  // the only path and the line is never printed, so this would pass vacuously.
   expect(
-    stripAnsi(compareOutput).split('\n').filter((l) => l.includes('tsx ESM import failed')),
-    'the ESM loader must resolve every import without falling back to CJS',
+    stripAnsi(compareOutput)
+      .split('\n')
+      .filter((l) => l.includes('native load failed for')),
+    'every config and test file must load natively, without falling back to tsx',
   ).toEqual([]);
 
   // `abTest()` derives each test's file:line from a stack frame, so the log

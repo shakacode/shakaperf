@@ -15,25 +15,32 @@ import { pathToFileURL } from 'node:url';
 // `src/config-loader/`; if both diverge, reconcile via the matching file
 // there.
 
-let namespaceCounter = 0;
+// Cast: `features.typescript` is absent from @types/node 20, which this package
+// still builds against, and the field is a runtime probe either way.
+const NATIVE_TS = typeof (process.features as { typescript?: string }).typescript === 'string';
 
-/**
- * Stands in for tsx's `tsImport()`, which is unusable on Node 24: it leaves the
- * CJS require-hook registered, and that hook's `?namespace=<id>` cache-key
- * reaches the ESM resolver percent-encoded *inside* the URL pathname, so the
- * resolver looks for a file literally named `index.js?namespace=<id>` and
- * throws. Any config importing anything from disk fails to load.
- * See privatenumber/tsx#801; still reproduces on tsx 4.23.6.
- *
- * `register({ namespace })` is the same namespaced ESM loader `tsImport()` uses
- * internally, without the stray CJS registration. Mirrors
- * `shaka-perf/src/config-loader/tsx-import.ts` — reconcile both if either moves.
- */
-async function tsxImport(specifier: string, parentPath: string): Promise<Record<string, any>> {
+const dynamicImport = new Function('specifier', 'return import(specifier)') as (
+  specifier: string,
+) => Promise<Record<string, any>>;
+
+/** Mirrors shaka-perf's `load-module.ts` — reconcile both if either changes. */
+async function loadModule(absolutePath: string): Promise<Record<string, any>> {
+  const isTypeScript = path.extname(absolutePath) === '.ts';
+  if (!isTypeScript || NATIVE_TS) {
+    try {
+      return await dynamicImport(pathToFileURL(absolutePath).href);
+    } catch (error) {
+      console.log(
+        `[shaka-bundle-size] native load failed for ${absolutePath}, falling back to tsx:`,
+      );
+      console.log(error);
+    }
+  }
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { register } = require('tsx/esm/api');
-  const scoped = register({ namespace: `shaka-bundle-size-${++namespaceCounter}` });
-  return scoped.import(specifier, pathToFileURL(parentPath).href);
+  return isTypeScript
+    ? require('tsx/cjs/api').require(absolutePath, __filename)
+    : // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require(absolutePath);
 }
 
 export function findConfigFile(filenames: string[], cwd: string = process.cwd()): string | null {
@@ -59,25 +66,7 @@ export async function loadConfigFile(configPath: string): Promise<Record<string,
     throw new Error(`Unsupported config file extension: ${ext}. Use .js or .ts`);
   }
 
-  let configModule;
-
-  if (ext === '.ts') {
-    try {
-      const tsModule = await tsxImport(absolutePath, __filename);
-      configModule = tsModule.default?.default ?? tsModule.default ?? tsModule;
-    } catch (esmError) {
-      // Fallback to CJS API (e.g. Node 18 CommonJS context)
-      console.log(`tsx ESM import failed, falling back to CJS API...`);
-      console.log(esmError instanceof Error ? esmError.stack : esmError);
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const tsx = require('tsx/cjs/api');
-      const tsModule = tsx.require(absolutePath, __filename);
-      configModule = tsModule.default ?? tsModule;
-    }
-  } else {
-    configModule = await import(absolutePath);
-  }
-
+  const configModule = await loadModule(absolutePath);
   const config = configModule.default || configModule;
 
   if (!config || typeof config !== 'object') {
