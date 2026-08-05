@@ -10,10 +10,7 @@ import * as path from 'path';
 import ignore, { Ignore } from 'ignore';
 import type { ResolvedConfig } from '../types';
 import { dockerImageExists, getImageCreatedAt as inspectImageCreatedAt } from './docker';
-import {
-  effectiveDockerignore,
-  readProjectDockerignore,
-} from './dockerignore';
+import { readProjectDockerignore } from './dockerignore';
 import { dockerBuildDirForSide, dockerfileAbsForSide } from './project-paths';
 
 const imageCreatedCache = new Map<string, Date | null>();
@@ -77,7 +74,7 @@ const MANIFEST_VERSION = 1;
 
 export interface BuildManifest {
   version: typeof MANIFEST_VERSION;
-  /** Effective Docker ignore rules (Shaka Perf defaults + project rules) used at build time. */
+  /** Verbatim `.dockerignore` content as it was at build time. */
   dockerignore: string;
   /**
    * COPY/ADD source roots parsed from the Dockerfile at build time, or
@@ -145,7 +142,7 @@ function buildIgnore(dockerignoreContent: string): Ignore {
 }
 
 export function loadDockerignore(buildDir: string, dockerfileAbs: string): Ignore {
-  return buildIgnore(effectiveDockerignore(readProjectDockerignore(buildDir, dockerfileAbs)));
+  return buildIgnore(readProjectDockerignore(buildDir, dockerfileAbs));
 }
 
 /** Reconstruct an `Ignore` matcher from a manifest's frozen dockerignore. */
@@ -344,9 +341,7 @@ export function recordBuildManifest(config: ResolvedConfig, side: RebuildTarget)
   const buildDir = dockerBuildDirForSide(config, side);
   if (!fs.existsSync(buildDir)) return;
   const dockerfileAbs = dockerfileAbsForSide(config, side);
-  const dockerignoreContent = effectiveDockerignore(
-    readProjectDockerignore(buildDir, dockerfileAbs),
-  );
+  const dockerignoreContent = readProjectDockerignore(buildDir, dockerfileAbs);
   const ig = buildIgnore(dockerignoreContent);
   const copySources = parseCopySources(dockerfileAbs);
   const roots = copySources ?? ['.'];

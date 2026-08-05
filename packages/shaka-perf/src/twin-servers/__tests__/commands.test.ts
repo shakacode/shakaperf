@@ -347,6 +347,7 @@ describe('copy-changes-to-ssh command', () => {
 
 describe('build command', () => {
   const tmpDir = path.join(__dirname, 'tmp-build');
+  let warnSpy: jest.SpyInstance;
 
   // Save originals so we can restore after mocking process.exit
   const originalExit = process.exit;
@@ -355,10 +356,12 @@ describe('build command', () => {
     fs.mkdirSync(tmpDir, { recursive: true });
     jest.clearAllMocks();
     jest.resetModules();
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation();
     process.exit = jest.fn() as any;
   });
 
   afterEach(() => {
+    warnSpy.mockRestore();
     process.exit = originalExit;
   });
 
@@ -386,19 +389,6 @@ describe('build command', () => {
       getUsername: jest.fn(() => 'testuser'),
       ensureProjectBuildxBuilder: jest.fn(async () => 'shaka-perf-test-slug'),
     }));
-
-    // Dockerignore preparation is covered separately. Keep these command tests
-    // focused on orchestration; their mocked clone does not create a checkout.
-    jest.doMock('../helpers/dockerignore', () => {
-      const actual = jest.requireActual('../helpers/dockerignore');
-      return {
-        ...actual,
-        prepareDockerfileWithDefaults: jest.fn((_buildDir: string, dockerfilePath: string) => ({
-          dockerfilePath,
-          cleanup: jest.fn(),
-        })),
-      };
-    });
 
     // Mock shell helpers
     const mockExec = jest.fn().mockResolvedValue({ stdout: '', stderr: '', code: cloneExitCode });
