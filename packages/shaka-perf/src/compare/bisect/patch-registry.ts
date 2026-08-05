@@ -10,6 +10,7 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import type { CapturedPatch, PatchFileSummary } from './patch-capture';
 import { inspectPatch } from './patch-capture';
@@ -43,6 +44,11 @@ export interface RegisteredPatch {
 }
 
 export type PatchApplyOutcome = 'applied' | 'reversed' | 'applicable' | 'already-native';
+
+export interface PatchVerificationResult {
+  sha: string;
+  outcome: 'applies' | 'already-native';
+}
 
 export class BisectPatchRegistry {
   constructor(private readonly options: PatchRegistryOptions) {}
@@ -148,6 +154,24 @@ export class BisectPatchRegistry {
     if (options.check) return 'applicable';
     gitApply(repoDir, bytes, reverse, false);
     return reverse ? 'reversed' : 'applied';
+  }
+
+  verify(id: string, options: {
+    goodRef?: string;
+    badRef?: string;
+    investigateMerges?: boolean;
+  } = {}): PatchVerificationResult[] {
+    const patch = this.get(id);
+    if (!patch.hashValid) {
+      throw new Error(`Compare-bisect patch "${id}" artifact hash does not match the manifest`);
+    }
+    if ((options.goodRef && !options.badRef) || (!options.goodRef && options.badRef)) {
+      throw new Error('Patch verification requires both good-ref and bad-ref when either is supplied');
+    }
+    const repoDir = gitRoot(this.options.repoDir);
+    const shas = verificationShas(repoDir, patch.entry.appliesTo, options);
+    const bytes = fs.readFileSync(patch.artifactPath);
+    return shas.map((sha) => verifyAtCommit(repoDir, patch.entry.id, sha, bytes));
   }
 
   private load() {
@@ -335,4 +359,112 @@ function gitApply(repoDir: string, bytes: Buffer, reverse: boolean, check: boole
     input: bytes,
     stdio: ['pipe', 'pipe', 'pipe'],
   });
+}
+
+function verificationShas(
+  repoDir: string,
+  selector: BisectPatchSelector,
+  options: { goodRef?: string; badRef?: string; investigateMerges?: boolean },
+): string[] {
+  const goodSha = options.goodRef ? resolveCommit(repoDir, options.goodRef) : undefined;
+  const badSha = options.badRef ? resolveCommit(repoDir, options.badRef) : undefined;
+  const graph = goodSha && badSha
+    ? commitsBetween(repoDir, goodSha, badSha, options.investigateMerges === true)
+    : null;
+  let selected: string[];
+  if ('all' in selector) {
+    selected = graph ?? [resolveCommit(repoDir, 'HEAD')];
+  } else if ('commits' in selector) {
+    selected = selector.commits.map((ref) => resolveCommit(repoDir, ref));
+  } else {
+    const from = selector.from
+      ? resolveCommit(repoDir, selector.from)
+      : goodSha;
+    if (!from) {
+      throw new Error(
+        `Patch interval through ${selector.through} has no lower bound; provide <good-ref> <bad-ref>`,
+      );
+    }
+    const through = resolveCommit(repoDir, selector.through);
+    selected = commitsBetween(repoDir, from, through, false);
+  }
+  if (graph) {
+    const allowed = new Set(graph);
+    selected = selected.filter((sha) => allowed.has(sha));
+  }
+  selected = [...new Set(selected)];
+  if (selected.length === 0) throw new Error('Patch selector does not match any commits in the verification range');
+  return selected;
+}
+
+function commitsBetween(
+  repoDir: string,
+  goodSha: string,
+  badSha: string,
+  includeMergedCommits: boolean,
+): string[] {
+  try {
+    execFileSync('git', ['merge-base', '--is-ancestor', goodSha, badSha], {
+      cwd: repoDir,
+      stdio: 'ignore',
+    });
+  } catch {
+    throw new Error(`Verification lower commit ${goodSha} is not an ancestor of ${badSha}`);
+  }
+  const args = ['rev-list', '--reverse'];
+  if (!includeMergedCommits) args.push('--first-parent');
+  args.push(`${goodSha}..${badSha}`);
+  const later = execFileSync('git', args, { cwd: repoDir, encoding: 'utf8' })
+    .trim().split('\n').filter(Boolean);
+  return [goodSha, ...later];
+}
+
+function resolveCommit(repoDir: string, ref: string): string {
+  return execFileSync('git', ['rev-parse', '--verify', `${ref}^{commit}`], {
+    cwd: repoDir,
+    encoding: 'utf8',
+  }).trim();
+}
+
+function verifyAtCommit(
+  repoDir: string,
+  id: string,
+  sha: string,
+  bytes: Buffer,
+): PatchVerificationResult {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-patch-verify-'));
+  const worktree = path.join(parent, 'checkout');
+  let added = false;
+  try {
+    execFileSync('git', ['worktree', 'add', '--quiet', '--detach', worktree, sha], {
+      cwd: repoDir,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    added = true;
+    if (canApply(worktree, bytes, false)) {
+      gitApply(worktree, bytes, false, false);
+      gitApply(worktree, bytes, true, false);
+      if (!isClean(worktree)) {
+        throw new Error(`Patch "${id}" verification leaked changes at ${sha}`);
+      }
+      return { sha, outcome: 'applies' };
+    }
+    if (isClean(worktree) && canApply(worktree, bytes, true)) {
+      return { sha, outcome: 'already-native' };
+    }
+    throw new Error(`Patch "${id}" does not apply cleanly at ${sha}`);
+  } finally {
+    if (added) {
+      try {
+        execFileSync('git', ['worktree', 'remove', '--force', worktree], {
+          cwd: repoDir,
+          stdio: 'ignore',
+        });
+      } catch {
+        fs.rmSync(worktree, { recursive: true, force: true });
+        execFileSync('git', ['worktree', 'prune'], { cwd: repoDir, stdio: 'ignore' });
+      }
+    }
+    fs.rmSync(parent, { recursive: true, force: true });
+  }
 }

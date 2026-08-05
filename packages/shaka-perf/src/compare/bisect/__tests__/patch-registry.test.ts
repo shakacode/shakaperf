@@ -110,6 +110,27 @@ describe('compare-bisect patch registry', () => {
     expect(() => registry.apply('compat')).toThrow(/hash/i);
   });
 
+  it('verifies a selector in disposable worktrees without touching the active checkout', () => {
+    const goodSha = git(['rev-parse', 'HEAD']);
+    fs.writeFileSync(path.join(repoDir, 'app.txt'), 'after\n');
+    const captured = captureWorkingTreePatch({ repoDir, paths: ['app.txt'] });
+    git(['restore', 'app.txt']);
+    fs.writeFileSync(path.join(repoDir, 'unrelated.txt'), 'middle\n');
+    git(['add', 'unrelated.txt']);
+    git(['commit', '-m', 'middle']);
+    const middleSha = git(['rev-parse', 'HEAD']);
+    registry.create('compat', captured, { kind: 'build', appliesTo: { all: true } });
+
+    const results = registry.verify('compat', { goodRef: goodSha, badRef: middleSha });
+
+    expect(results).toEqual([
+      { sha: goodSha, outcome: 'applies' },
+      { sha: middleSha, outcome: 'applies' },
+    ]);
+    expect(git(['status', '--porcelain'])).toBe('');
+    expect(git(['worktree', 'list', '--porcelain']).match(/worktree /g)).toHaveLength(1);
+  });
+
   function git(args: string[]): string {
     return execFileSync('git', args, { cwd: repoDir, encoding: 'utf8' }).trim();
   }

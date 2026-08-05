@@ -146,16 +146,14 @@ export function createBisectPatchCommand(deps: BisectPatchCliDependencies = {}):
     .argument('[bad-ref]', 'Reserved concrete range upper endpoint')
     .option('--investigate-merges', 'Include eligible merge candidates', false)
     .action(async function (this: Command, id: string, goodRef?: string, badRef?: string) {
-      if ((goodRef && !badRef) || (!goodRef && badRef)) {
-        throw new Error('patch verify requires both good-ref and bad-ref when either is supplied');
-      }
-      if (goodRef || badRef || this.opts().investigateMerges) {
-        throw new Error('Range and merge verification are not implemented yet; omit refs to verify current HEAD');
-      }
       const options = this.optsWithGlobals();
       const registry = await registryFor(options, deps);
-      const outcome = registry.apply(id, { check: true });
-      output({ id, outcome, verified: true }, options.json === true, deps);
+      const results = registry.verify(id, {
+        goodRef,
+        badRef,
+        investigateMerges: options.investigateMerges === true,
+      });
+      output({ id, verified: true, results }, options.json === true, deps);
     }));
 
   patch.addCommand(new Command('remove')
