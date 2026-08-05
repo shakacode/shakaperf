@@ -299,6 +299,9 @@ describe('ipc dispatcher', () => {
         calls.push('run-one-off');
         return runner();
       },
+      async bisectStatus() {
+        return { activeSessionId: 't1' };
+      },
       async beginBisectSession(sessionId, ownerPid) {
         calls.push(`begin:${sessionId}:${ownerPid}`);
       },
@@ -314,6 +317,9 @@ describe('ipc dispatcher', () => {
       },
     };
     const dispatch = createDispatcher(fakeConfig('bisect-dispatch'), () => controller);
+
+    expect(await dispatch({ v: PROTOCOL_VERSION, cmd: 'bisect-status' }))
+      .toEqual({ activeSessionId: 't1' });
 
     await dispatch({
       v: PROTOCOL_VERSION,

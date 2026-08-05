@@ -111,6 +111,19 @@ describe('compare bisect patch CLI', () => {
     expect(fs.existsSync(path.join(rootDir, 'bisect-repairs', 'compat.patch'))).toBe(false);
   });
 
+  it('refuses mutations while compare bisect owns the project', async () => {
+    const busy = createBisectPatchCommand({
+      resolveContext: async () => ({ configDirectory: rootDir, repoDir }),
+      isInteractive: () => false,
+      assertMutable: async () => { throw new Error('active compare-bisect lease'); },
+      print: (message) => output.push(message),
+    }).exitOverride();
+    await expect(busy.parseAsync([
+      'create', 'compat', '--working-tree', '--kind', 'build', '--all',
+      '--all-files', '--no-interactive',
+    ], { from: 'user' })).rejects.toThrow(/active compare-bisect lease/i);
+  });
+
   function command(interactive: boolean, prompt?: PatchPrompt) {
     return createBisectPatchCommand({
       resolveContext: async () => ({ configDirectory: rootDir, repoDir }),
@@ -136,8 +149,8 @@ class ScriptedPrompt implements PatchPrompt {
     return this.script.inputs.shift() ?? '';
   }
 
-  async confirm(): Promise<boolean> {
-    return true;
+  async confirm(question: string): Promise<boolean> {
+    return !question.startsWith('Add ');
   }
 }
 
@@ -155,7 +168,7 @@ class DefaultsPrompt implements PatchPrompt {
     return initial;
   }
 
-  async confirm(): Promise<boolean> {
-    return true;
+  async confirm(question: string): Promise<boolean> {
+    return !question.startsWith('Add ');
   }
 }
