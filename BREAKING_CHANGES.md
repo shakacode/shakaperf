@@ -14,6 +14,24 @@ version being released and updates the "Current version" line at the bottom.
 
 ## Unreleased
 
+### Uncaught page errors now fail a test
+
+An uncaught exception in the page now fails that test, on either side. It never
+reaches `console`, so it was previously invisible — a `beforeNavigate` init
+script could throw and the run stayed green with wrong screenshots.
+
+Gated by the existing `shared.browserConsole` knobs, so no config change is
+required to opt out:
+
+```ts
+shared: {
+  browserConsole: {
+    failOn: ['error', 'warn'], // remove 'error' (or use []) to ignore page errors
+    allowList: ['ResizeObserver loop'], // or silence one by substring
+  },
+},
+```
+
 ### `SHAKA_BENCH_ALLOWED_CONSOLE_ERRORS` removed (Replaced by `browserConsole.allowList`)
 ### Browser console errors and warnings now fail a test
 

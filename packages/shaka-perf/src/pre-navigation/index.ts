@@ -48,6 +48,22 @@ const KEEP_NAMES_SHIM =
   "globalThis.__name ||= (fn, name) => Object.defineProperty(fn, 'name', { value: name, configurable: true });";
 
 /**
+ * `addInitScript` has no dedupe and no removal API, and init scripts survive the
+ * state clear — while perf reuses ONE context across every sample. Installing
+ * per navigation would leave sample N running N copies of the shim on the
+ * measured page, so track the contexts already covered and install once.
+ * The first install is what orders it ahead of `beforeNavigate`'s own scripts;
+ * later navigations inherit that.
+ */
+const shimmedContexts = new WeakSet<BrowserContext>();
+
+async function installKeepNamesShim(context: BrowserContext): Promise<void> {
+  if (shimmedContexts.has(context)) return;
+  shimmedContexts.add(context);
+  await context.addInitScript(KEEP_NAMES_SHIM);
+}
+
+/**
  * The single pre-navigation sequence shared by every engine, run on the
  * `BrowserContext` before any page is created. Order is uniform and matters:
  * arm console capture, clear all state (so a reused perf context is reset),
@@ -63,7 +79,7 @@ export async function setUpContextForNavigation(setup: ContextNavigationSetup): 
   }
   await setup.context.clearCookies();
   await clearBrowserData(setup.context, setup.url);
-  await setup.context.addInitScript(KEEP_NAMES_SHIM);
+  await installKeepNamesShim(setup.context);
   if (setup.beforeNavigate) {
     await setup.beforeNavigate({
       context: setup.context,

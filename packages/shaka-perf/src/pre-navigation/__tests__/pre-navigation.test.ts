@@ -79,4 +79,25 @@ describe('setUpContextForNavigation', () => {
     expect(scope.__name?.(fn, 'attach')).toBe(fn);
     expect(fn.name).toBe('attach');
   });
+
+  // Perf reuses one context for every sample, and Playwright can neither dedupe
+  // nor remove an init script — so a per-navigation install would stack a copy
+  // per sample on the measured page.
+  it('installs the shim once per context, however many navigations it sees', async () => {
+    const { context, calls, initScripts } = fakeContext();
+    const navigate = () => setUpContextForNavigation({
+      context,
+      url: 'https://x.com/',
+      viewport: VIEWPORT,
+      isControl: true,
+      testType: 'perf',
+    });
+
+    await navigate();
+    await navigate();
+    await navigate();
+
+    expect(initScripts).toHaveLength(1);
+    expect(calls).toEqual(['clearCookies', 'addInitScript', 'clearCookies', 'clearCookies']);
+  });
 });

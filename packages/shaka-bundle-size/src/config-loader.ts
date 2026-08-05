@@ -31,7 +31,7 @@ async function loadModule(absolutePath: string): Promise<Record<string, any>> {
       return await dynamicImport(pathToFileURL(absolutePath).href);
     } catch (error) {
       console.log(
-        `[shaka-bundle-size] native load failed for ${absolutePath}, falling back to tsx:`,
+        `[shaka-bundle-size] native load failed for ${absolutePath}, falling back to cjs:`,
       );
       console.log(error);
     }

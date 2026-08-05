@@ -132,6 +132,13 @@ function overlayScript(): void {
   }, { capture: true, passive: true });
 }
 
+// Same reuse hazard as the `__name` shim: the perf worker calls this once per
+// sample on a context it never recreates, and `addInitScript` neither dedupes
+// nor removes. Without the guard, sample N stacks N overlays on one page.
+const overlaidContexts = new WeakSet<BrowserContext>();
+
 export async function attachInteractionOverlay(context: BrowserContext): Promise<void> {
+  if (overlaidContexts.has(context)) return;
+  overlaidContexts.add(context);
   await context.addInitScript(overlayScript);
 }

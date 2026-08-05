@@ -59,7 +59,7 @@ export function installConsoleCapture(
     if (state.failure) return;
     if (!state.policy.failOn.includes(level)) return;
     if (state.policy.allowList.some((a) => text.includes(a) || url.includes(a))) return;
-    state.failure = new Error(`${kind} on ${state.where}: ${text.slice(0, 500)}`);
+    state.failure = new Error(`${kind} on ${state.where}: ${text}`);
   };
 
   context.on('console', (message) => {

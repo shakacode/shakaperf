@@ -43,7 +43,7 @@ export async function loadModule(
       // classified: a genuine mistake in the file stays visible instead of being
       // replaced by whatever the retry goes on to say. If the retry fails too,
       // its error propagates and both are on screen.
-      console.log(`[shaka-perf] native load failed for ${absolutePath}, falling back to tsx:`);
+      console.log(`[shaka-perf] native load failed for ${absolutePath}, falling back to cjs:`);
       console.log(error);
     }
   }

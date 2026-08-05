@@ -147,9 +147,9 @@ const ResembleOutputOptionsSchema = z
 
 /**
  * A `console.error` / `console.warn` from the page under test fails that test,
- * on either side. Captured from Playwright's context-level `console` event, so
- * only the page's own console API calls count — not failed subresource loads,
- * CSP violations or uncaught exceptions.
+ * on either side, as does an uncaught page exception (Playwright's context-level
+ * `console` and `weberror` events). Failed subresource loads and CSP violations
+ * still don't count — they reach neither channel.
  */
 export const BrowserConsoleConfigSchema = z
   .object({
