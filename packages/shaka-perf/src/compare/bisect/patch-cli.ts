@@ -17,6 +17,7 @@ import { buildAbTestsConfig } from '../../config';
 import { resolveConfig } from '../../twin-servers/config';
 import { tryProxy } from '../../twin-servers/ipc/client';
 import { PROTOCOL_VERSION } from '../../twin-servers/ipc/protocol';
+import type { CopyIgnoreConfig } from '../../twin-servers/types';
 import {
   captureSourceCommitPatch,
   captureWorkingTreePatch,
@@ -31,6 +32,7 @@ export interface PatchCliContext {
   configuredManifestPath?: string;
   repoDir: string;
   projectSlug?: string;
+  copyIgnore?: CopyIgnoreConfig;
 }
 
 export interface PatchPrompt {
@@ -215,7 +217,7 @@ async function runCreate(
   const answers = interactive
     ? await completeCreateAnswers(rawOptions, paths, deps.prompt ?? new ReadlinePatchPrompt())
     : { options: rawOptions, paths };
-  const captured = capture(context.repoDir, answers.paths, answers.options);
+  const captured = capture(context.repoDir, answers.paths, answers.options, context.copyIgnore);
   const metadata = metadataFromOptions(context.repoDir, answers.options);
   const preview = { id, metadata, source: captured.source, sha256: captured.sha256, files: captured.files };
   if (rawOptions.dryRun) return output({ dryRun: true, ...preview }, rawOptions.json === true, deps);
@@ -236,7 +238,7 @@ async function runEdit(
   const context = await resolveContext(options.config, deps);
   await assertMutable(context, deps);
   if (sourceCount(options) !== 1) throw sourceChoiceError();
-  const captured = capture(context.repoDir, paths, options);
+  const captured = capture(context.repoDir, paths, options, context.copyIgnore);
   if (options.dryRun) {
     output({ dryRun: true, id, source: captured.source, sha256: captured.sha256, files: captured.files }, options.json === true, deps);
     return;
@@ -309,14 +311,19 @@ async function runRemove(
   output({ id, removed: !options.dryRun, dryRun: options.dryRun === true }, options.json === true, deps);
 }
 
-function capture(repoDir: string, paths: string[], options: SourceOptions): CapturedPatch {
+function capture(
+  repoDir: string,
+  paths: string[],
+  options: SourceOptions,
+  copyIgnore?: CopyIgnoreConfig,
+): CapturedPatch {
   if (sourceCount(options) !== 1) throw sourceChoiceError();
   if (options.patchFile) {
     if (paths.length > 0) throw new Error('--patch-file does not accept pathspecs after --');
     if (options.parent || options.root || options.allFiles) {
       throw new Error('--patch-file cannot be combined with --parent, --root, or --all-files');
     }
-    return importPatchFile({ repoDir, patchFile: options.patchFile });
+    return importPatchFile({ repoDir, patchFile: options.patchFile, copyIgnore });
   }
   if (options.sourceCommit) {
     if (options.allFiles) throw new Error('--source-commit cannot be combined with --all-files');
@@ -326,12 +333,13 @@ function capture(repoDir: string, paths: string[], options: SourceOptions): Capt
       parent: options.parent === undefined ? undefined : parseParent(options.parent),
       root: options.root,
       paths,
+      copyIgnore,
     });
   }
   if (options.parent || options.root) {
     throw new Error('--working-tree cannot be combined with --parent or --root');
   }
-  return captureWorkingTreePatch({ repoDir, paths, allFiles: options.allFiles });
+  return captureWorkingTreePatch({ repoDir, paths, allFiles: options.allFiles, copyIgnore });
 }
 
 function metadataFromOptions(repoDir: string, options: MetadataOptions): PatchMetadata {
@@ -509,6 +517,7 @@ async function resolveContext(
     configuredManifestPath: config.bisect.patchesManifest,
     repoDir: twinServers.experimentDir,
     projectSlug: twinServers.projectSlug,
+    copyIgnore: twinServers.copyIgnore,
   };
 }
 

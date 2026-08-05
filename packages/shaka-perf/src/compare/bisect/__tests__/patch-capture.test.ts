@@ -56,6 +56,21 @@ describe('compare-bisect patch capture', () => {
       .toThrow(/capture is empty/i);
   });
 
+  it('honors configured copy-ignore folders for working-tree and commit capture', () => {
+    fs.mkdirSync(path.join(repoDir, 'generated'));
+    fs.writeFileSync(path.join(repoDir, 'generated', 'cache.txt'), 'ignored\n');
+    fs.writeFileSync(path.join(repoDir, 'kept.txt'), 'kept\n');
+    const copyIgnore = { folders: ['generated'], files: [] };
+
+    expect(captureWorkingTreePatch({ repoDir, allFiles: true, copyIgnore }).files)
+      .toEqual([{ path: 'kept.txt', added: 1, deleted: 0 }]);
+
+    git(['add', 'generated/cache.txt', 'kept.txt']);
+    git(['commit', '-m', 'generated and kept']);
+    expect(captureSourceCommitPatch({ repoDir, ref: 'HEAD', copyIgnore }).files)
+      .toEqual([{ path: 'kept.txt', added: 1, deleted: 0 }]);
+  });
+
   it('captures a source commit and records immutable provenance', () => {
     fs.writeFileSync(path.join(repoDir, 'added.txt'), 'added\n');
     git(['add', 'added.txt']);
@@ -97,6 +112,17 @@ describe('compare-bisect patch capture', () => {
       '',
     ].join('\n'));
     expect(() => importPatchFile({ repoDir, patchFile: unsafePath })).toThrow(/forbidden/i);
+  });
+
+  it('rejects imported patches targeting configured copy-ignore files', () => {
+    fs.writeFileSync(path.join(repoDir, 'tracked.txt'), 'changed\n');
+    const patchFile = path.join(repoDir, 'configured-ignore.patch');
+    fs.writeFileSync(patchFile, execFileSync('git', ['diff', '--binary', '--full-index'], { cwd: repoDir }));
+    expect(() => importPatchFile({
+      repoDir,
+      patchFile,
+      copyIgnore: { folders: [], files: ['tracked.txt'] },
+    })).toThrow(/configured copy-ignore/i);
   });
 
   function git(args: string[]): string {

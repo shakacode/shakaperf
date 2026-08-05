@@ -12,6 +12,12 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { defaultCopyIgnoreConfig } from '../../twin-servers/copy-ignore-defaults';
+import {
+  createCopyIgnoreMatcher,
+  isCopyIgnored,
+} from '../../twin-servers/helpers/copy-ignore';
+import type { CopyIgnoreConfig } from '../../twin-servers/types';
 import type { BisectPatchSource } from './patch-manifest';
 
 const MAX_GIT_OUTPUT = 100 * 1024 * 1024;
@@ -39,6 +45,7 @@ export function captureWorkingTreePatch(options: {
   repoDir: string;
   paths?: readonly string[];
   allFiles?: boolean;
+  copyIgnore?: CopyIgnoreConfig;
 }): CapturedPatch {
   if ((options.paths?.length ?? 0) === 0 && !options.allFiles) {
     throw new Error('Working-tree capture requires pathspecs after -- or explicit --all-files');
@@ -52,14 +59,15 @@ export function captureWorkingTreePatch(options: {
     const addArgs = ['add', '-A'];
     if (!options.allFiles) addArgs.push('--', ...options.paths!);
     git(repoDir, addArgs, { env });
+    unstageCopyIgnored(repoDir, env, options.copyIgnore ?? defaultCopyIgnoreConfig());
     const diffArgs = ['diff', '--cached', '--binary', '--full-index', 'HEAD'];
     if (!options.allFiles) diffArgs.push('--', ...options.paths!);
     const bytes = gitBuffer(repoDir, diffArgs, { env });
     return finishCapture(repoDir, bytes, {
       kind: 'working-tree',
       headSha: git(repoDir, ['rev-parse', 'HEAD']),
-      paths: patchPaths(repoDir, bytes),
-    });
+      paths: patchPaths(repoDir, bytes, options.copyIgnore),
+    }, options.copyIgnore);
   } finally {
     fs.rmSync(temporaryDirectory, { recursive: true, force: true });
   }
@@ -71,6 +79,7 @@ export function captureSourceCommitPatch(options: {
   parent?: number;
   root?: boolean;
   paths?: readonly string[];
+  copyIgnore?: CopyIgnoreConfig;
 }): CapturedPatch {
   if (options.root && options.parent !== undefined) {
     throw new Error('--root cannot be combined with --parent');
@@ -96,20 +105,26 @@ export function captureSourceCommitPatch(options: {
     }
     parentSha = parentShas[parentNumber - 1]!;
   }
-  const args = ['diff', '--binary', '--full-index', parentSha, sha];
-  if (options.paths?.length) args.push('--', ...options.paths);
-  const bytes = gitBuffer(repoDir, args);
+  const namesArgs = ['diff', '--name-only', '-z', parentSha, sha];
+  if (options.paths?.length) namesArgs.push('--', ...options.paths);
+  const matcher = createCopyIgnoreMatcher(options.copyIgnore ?? defaultCopyIgnoreConfig());
+  const includedPaths = gitBuffer(repoDir, namesArgs).toString('utf8')
+    .split('\0').filter(Boolean)
+    .filter((file) => !isCopyIgnored(matcher, file));
+  const args = ['diff', '--binary', '--full-index', parentSha, sha, '--', ...includedPaths];
+  const bytes = includedPaths.length > 0 ? gitBuffer(repoDir, args) : Buffer.alloc(0);
   return finishCapture(repoDir, bytes, {
     kind: 'source-commit',
     sha,
     parentSha,
-    paths: patchPaths(repoDir, bytes),
-  });
+    paths: patchPaths(repoDir, bytes, options.copyIgnore),
+  }, options.copyIgnore);
 }
 
 export function importPatchFile(options: {
   repoDir: string;
   patchFile: string;
+  copyIgnore?: CopyIgnoreConfig;
 }): CapturedPatch {
   const repoDir = gitRoot(options.repoDir);
   const sourcePath = path.resolve(options.patchFile);
@@ -121,10 +136,14 @@ export function importPatchFile(options: {
   return finishCapture(repoDir, bytes, {
     kind: 'patch-file',
     importedFromBasename: path.basename(sourcePath),
-  });
+  }, options.copyIgnore);
 }
 
-export function inspectPatch(repoDir: string, bytes: Buffer): PatchFileSummary[] {
+export function inspectPatch(
+  repoDir: string,
+  bytes: Buffer,
+  copyIgnore: CopyIgnoreConfig = defaultCopyIgnoreConfig(),
+): PatchFileSummary[] {
   if (bytes.length === 0) throw new Error('Patch capture is empty');
   let output: Buffer;
   try {
@@ -134,7 +153,13 @@ export function inspectPatch(repoDir: string, bytes: Buffer): PatchFileSummary[]
   }
   const files = parseNumstat(output);
   if (files.length === 0) throw new Error('Patch does not contain any file changes');
-  for (const file of files) validateTargetPath(file.path);
+  const copyIgnoreMatcher = createCopyIgnoreMatcher(copyIgnore);
+  for (const file of files) {
+    validateTargetPath(file.path);
+    if (isCopyIgnored(copyIgnoreMatcher, file.path)) {
+      throw new Error(`Patch targets configured copy-ignore path: ${file.path}`);
+    }
+  }
   return files;
 }
 
@@ -142,8 +167,9 @@ function finishCapture(
   repoDir: string,
   bytes: Buffer,
   source: BisectPatchSource,
+  copyIgnore?: CopyIgnoreConfig,
 ): CapturedPatch {
-  const files = inspectPatch(repoDir, bytes);
+  const files = inspectPatch(repoDir, bytes, copyIgnore);
   return {
     bytes,
     files,
@@ -152,8 +178,24 @@ function finishCapture(
   };
 }
 
-function patchPaths(repoDir: string, bytes: Buffer): [string, ...string[]] {
-  const paths = inspectPatch(repoDir, bytes).map((file) => file.path);
+function unstageCopyIgnored(
+  repoDir: string,
+  env: NodeJS.ProcessEnv,
+  copyIgnore: CopyIgnoreConfig,
+): void {
+  const changed = gitBuffer(repoDir, ['diff', '--cached', '--name-only', '-z'], { env })
+    .toString('utf8').split('\0').filter(Boolean);
+  const matcher = createCopyIgnoreMatcher(copyIgnore);
+  const ignored = changed.filter((file) => isCopyIgnored(matcher, file));
+  if (ignored.length > 0) git(repoDir, ['reset', 'HEAD', '--', ...ignored], { env });
+}
+
+function patchPaths(
+  repoDir: string,
+  bytes: Buffer,
+  copyIgnore?: CopyIgnoreConfig,
+): [string, ...string[]] {
+  const paths = inspectPatch(repoDir, bytes, copyIgnore).map((file) => file.path);
   return paths as [string, ...string[]];
 }
 
