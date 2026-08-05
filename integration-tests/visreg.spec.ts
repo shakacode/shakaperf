@@ -111,6 +111,17 @@ test('run shaka-perf compare --categories visreg on twin servers @visreg', async
     'a function serialized into the page must not reference Node-only transpiler helpers',
   ).toEqual([]);
 
+  // Every config and test file loads through the ESM path; the CJS fallback is
+  // a safety net, not a destination. It catches and logs, so a loader that stops
+  // resolving imports degrades silently — the run still completes, just through
+  // another code path, announced only by this line. `abtests.config.ts` imports
+  // `./ab-tests/serialization-check` relative and EXTENSIONLESS precisely so
+  // this covers that specifier shape; nothing else in the repo used one.
+  expect(
+    stripAnsi(compareOutput).split('\n').filter((l) => l.includes('tsx ESM import failed')),
+    'the ESM loader must resolve every import without falling back to CJS',
+  ).toEqual([]);
+
   // `abTest()` derives each test's file:line from a stack frame, so the log
   // prefix stays truthful only while the loader emits usable source maps.
   // Without them every prefix silently points at a line in the COMPILED output

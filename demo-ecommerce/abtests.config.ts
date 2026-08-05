@@ -8,6 +8,11 @@
 import * as os from 'node:os';
 import { assignPortsAutomatically, defineConfig } from 'shaka-shared';
 
+// Relative and EXTENSIONLESS on purpose: this is the specifier shape the
+// resolve hook exists to rescue, and until now no fixture in this repo used
+// one — so the loader could stop resolving them and every suite stayed green.
+import { installSerializationCheck } from './ab-tests/serialization-check';
+
 // Auto-assign the control/experiment host ports from a required preferred pair.
 // If either port is in use, BOTH shift up by 1 together — preserving their gap —
 // until the first free pair is found; the pair is then remembered per project
@@ -75,22 +80,10 @@ export default defineConfig({
         'favicon.ico',
       ],
     },
-    // Exercises the Node -> browser function boundary on every run, for free.
-    // Playwright serializes a function argument with `Function.prototype.toString`,
-    // so the emitted source has to stand alone once it lands in the page. A
-    // transform that injects runtime helpers breaks that: esbuild's `keepNames`
-    // wraps the NAMED inner function below in its `__name` helper, which exists
-    // only in the Node module scope. If that ever reaches the
-    // page again, this throws `__name is not defined` at document start, the
-    // uncaught page error fails the unit, and visreg.spec.ts pins its absence.
-    // Deliberately a no-op otherwise — it adds no work and no screenshots.
-    beforeNavigate: ({ context }) => context.addInitScript(() => {
-      const mark = () => {
-        (window as unknown as { __shakaPerfSerializationCheck?: boolean })
-          .__shakaPerfSerializationCheck = true;
-      };
-      mark();
-    }),
+    // See the note in ./ab-tests/serialization-check — it guards the Node ->
+    // browser function boundary, and the RELATIVE EXTENSIONLESS import above is
+    // itself the second thing under test.
+    beforeNavigate: installSerializationCheck,
   },
 
   visreg: {
