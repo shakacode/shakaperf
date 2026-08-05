@@ -8,6 +8,7 @@
 import * as path from 'path';
 import { pathToFileURL } from 'url';
 import { registerTsExtensionResolver } from './register-ts-extensions';
+import { tsxImport } from './tsx-import';
 
 let loadCounter = 0;
 
@@ -31,10 +32,8 @@ export async function loadTestFile(testFilePath: string): Promise<void> {
     // Let test files use extensionless / `.js` relative imports (see the hook).
     registerTsExtensionResolver();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { tsImport } = require('tsx/esm/api');
       const specifier = pathToFileURL(absolutePath).href + cacheBust;
-      await tsImport(specifier, __filename);
+      await tsxImport(specifier, __filename);
     } catch (esmError) {
       // Fallback to CJS API (e.g. Node 18 CommonJS context, or newer Node
       // where the ESM path rejects the file — e.g. native type-stripping

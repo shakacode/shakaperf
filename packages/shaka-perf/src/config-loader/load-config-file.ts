@@ -8,6 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { registerTsExtensionResolver } from './register-ts-extensions';
+import { tsxImport } from './tsx-import';
 
 export async function loadConfigFile(configPath: string): Promise<Record<string, unknown>> {
   const absolutePath = path.resolve(configPath);
@@ -28,9 +29,7 @@ export async function loadConfigFile(configPath: string): Promise<Record<string,
     // Let the config use extensionless / `.js` relative imports (see the hook).
     registerTsExtensionResolver();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { tsImport } = require('tsx/esm/api');
-      const tsModule = await tsImport(absolutePath, __filename);
+      const tsModule = await tsxImport(absolutePath, __filename);
       configModule = tsModule.default?.default ?? tsModule.default ?? tsModule;
     } catch (esmError) {
       // Fallback to CJS API (e.g. Node 18 CommonJS context)
