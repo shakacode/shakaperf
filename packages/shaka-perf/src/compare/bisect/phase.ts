@@ -9,7 +9,6 @@ import type { CandidateResult, ExperimentReloadMode } from './run-candidate';
 import { runCheckpointedAttempt } from './attempt';
 import {
   candidatePlanForGroup,
-  coalesceTargetGroups,
   createInitialTargetGroup,
   partitionTargetGroup,
   type CandidateMeasurementPlan,
@@ -20,6 +19,7 @@ import type {
   CommitRun,
 } from './types';
 import type { NativeBisectStep, NativeBisectVerdict } from './git';
+import { TargetGroupQueue } from './target-group-queue';
 
 export interface RunSearchPhaseOptions {
   phase: BisectSearchPhase;
@@ -169,8 +169,7 @@ function initializeNativeGroups(phase: BisectSearchPhase): BisectSearchPhase {
 }
 
 function nextNativeGroup(phase: BisectSearchPhase): BisectTargetGroup | undefined {
-  return phase.groups?.find((group) => group.status === 'running')
-    ?? phase.groups?.find((group) => group.status === 'pending');
+  return new TargetGroupQueue(phase.groups ?? []).next();
 }
 
 function currentGroup(phase: BisectSearchPhase, groupId: string): BisectTargetGroup {
@@ -194,10 +193,12 @@ function applyPartition(
   const groups = (phase.groups ?? []).map((group) => (
     group.id === groupId ? partition.continuingGroup : group
   ));
+  const queue = new TargetGroupQueue(groups);
+  queue.addAll(partition.queuedGroups);
   return {
     ...phase,
     targets: partition.targets,
-    groups: coalesceTargetGroups([...groups, ...partition.queuedGroups]),
+    groups: queue.values(),
   };
 }
 
