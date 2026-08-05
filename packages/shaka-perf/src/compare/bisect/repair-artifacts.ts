@@ -10,8 +10,8 @@
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { BisectRepairConfig } from '../../config';
 import { resolveCommit, type PreparedGitRange } from './git';
+import type { BisectPatchManifestEntry } from './patch-manifest';
 import type { BisectRepair } from './types';
 
 export interface PreparedBisectRepairArtifact {
@@ -24,9 +24,9 @@ export interface PreparedBisectRepairSet {
   artifacts: PreparedBisectRepairArtifact[];
 }
 
-export async function prepareConfiguredRepairs(options: {
-  repairs: readonly BisectRepairConfig[];
-  configDirectory: string;
+export async function prepareManifestRepairs(options: {
+  patches: readonly BisectPatchManifestEntry[];
+  manifestDirectory: string;
   experimentDir: string;
   range: PreparedGitRange;
   registeredAt: string;
@@ -35,9 +35,9 @@ export async function prepareConfiguredRepairs(options: {
   const repairs: BisectRepair[] = [];
   const artifacts: PreparedBisectRepairArtifact[] = [];
 
-  for (const [order, configured] of options.repairs.entries()) {
+  for (const [order, configured] of options.patches.entries()) {
     validateDataRepair(configured, options.rebuildContainer);
-    const sourcePath = path.resolve(options.configDirectory, configured.patch);
+    const sourcePath = path.resolve(options.manifestDirectory, configured.filename);
     let contents: Buffer;
     try {
       contents = fs.readFileSync(sourcePath);
@@ -49,14 +49,18 @@ export async function prepareConfiguredRepairs(options: {
     if (contents.length === 0) {
       throw new Error(`Bisect repair "${configured.id}" patch is empty`);
     }
-    const filename = `patches/${configured.id}.patch`;
+    const actualHash = hash(contents);
+    if (actualHash !== configured.sha256) {
+      throw new Error(`Compare-bisect repair "${configured.id}" patch hash does not match manifest`);
+    }
+    const filename = `patches/${configured.filename}`;
     const appliesToAll = 'all' in configured.appliesTo;
     repairs.push({
       id: configured.id,
       kind: configured.kind,
       purpose: configured.purpose,
       filename,
-      sha256: hash(contents),
+      sha256: actualHash,
       order,
       appliesToAll,
       applicableShas: appliesToAll
@@ -65,7 +69,7 @@ export async function prepareConfiguredRepairs(options: {
       prepareCommands: configured.prepareCommands.map((command) => ({ ...command })),
       cleanupCommands: configured.cleanupCommands.map((command) => ({ ...command })),
       registeredAt: options.registeredAt,
-      source: 'config',
+      source: 'manifest',
     });
     artifacts.push({ filename, contents });
   }
@@ -122,7 +126,7 @@ export function repairArtifactPath(resultsDirectory: string, filename: string): 
 }
 
 async function resolveApplicableShas(
-  configured: BisectRepairConfig,
+  configured: BisectPatchManifestEntry,
   experimentDir: string,
   range: PreparedGitRange,
 ): Promise<string[]> {
@@ -158,7 +162,7 @@ async function resolveApplicableShas(
   return range.orderedCommits.slice(fromIndex, throughIndex + 1);
 }
 
-function validateDataRepair(repair: BisectRepairConfig, rebuildContainer: boolean): void {
+function validateDataRepair(repair: BisectPatchManifestEntry, rebuildContainer: boolean): void {
   if (repair.kind === 'data' && repair.prepareCommands.length > 0
     && repair.cleanupCommands.length === 0 && !rebuildContainer) {
     throw new Error(

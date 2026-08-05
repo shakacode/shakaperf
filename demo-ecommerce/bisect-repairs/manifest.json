@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "patches": [
+    {
+      "id": "backport-deals-abtest",
+      "kind": "test-harness",
+      "purpose": "Keep the frozen deals AB test available on historical candidates",
+      "filename": "backport-deals-abtest.patch",
+      "sha256": "1677d69ad467279b778239161cf936159ac8f35718196c16321720c83202fd49",
+      "source": {
+        "kind": "source-commit",
+        "sha": "0d81d0d2552425f6f53b2bf9b3560b275b5b97a9",
+        "parentSha": "5b8c4e79587178aec8c9b1c12bd75c64a4da7c8a",
+        "paths": [
+          "demo-ecommerce/ab-tests/deals.abtest.ts"
+        ]
+      },
+      "appliesTo": {
+        "all": true
+      },
+      "prepareCommands": [],
+      "cleanupCommands": []
+    }
+  ]
+}

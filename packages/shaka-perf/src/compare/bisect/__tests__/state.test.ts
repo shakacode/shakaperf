@@ -146,7 +146,7 @@ describe('resumable bisect state', () => {
       prepareCommands: [],
       cleanupCommands: [],
       registeredAt: '2026-07-27T00:00:00.000Z',
-      source: 'config' as const,
+      source: 'manifest' as const,
     };
     const value = session();
     const current = {

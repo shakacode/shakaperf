@@ -125,7 +125,7 @@ const repairCommandSchema = z.object({
 const repairSchema = z.object({
   id: z.string(),
   kind: z.enum(['test-harness', 'build', 'data', 'other']),
-  purpose: z.string(),
+  purpose: z.string().optional(),
   filename: z.string(),
   sha256: z.string(),
   order: z.number().int().nonnegative(),
@@ -134,7 +134,7 @@ const repairSchema = z.object({
   prepareCommands: z.array(repairCommandSchema),
   cleanupCommands: z.array(repairCommandSchema),
   registeredAt: z.string(),
-  source: z.literal('config'),
+  source: z.literal('manifest'),
 }).strict();
 
 const compatibilitySchema = z.object({
