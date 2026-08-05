@@ -13,8 +13,8 @@ import { pathToFileURL } from 'url';
 // every attempt would fail identically and log for nothing.
 const NATIVE_TS = typeof (process.features as { typescript?: string }).typescript === 'string';
 
-// Built via `new Function` so Jest's `import()` transform leaves it alone —
-// otherwise Jest treats the `?shaka-perf-load=N` cache-bust as part of the path.
+// Built via `new Function` so Jest's transform leaves it alone — Jest rewrites
+// `import()` to `require()`, which cannot take the `file://` URL we pass.
 const dynamicImport = new Function('specifier', 'return import(specifier)') as (
   specifier: string,
 ) => Promise<Record<string, any>>;
@@ -26,18 +26,19 @@ const dynamicImport = new Function('specifier', 'return import(specifier)') as (
  * `__name` out of serialized functions (see pre-navigation's KEEP_NAMES_SHIM)
  * and `abTest()`'s stack-derived `file:line` honest.
  *
- * Pass `cacheBust` to force re-execution on a repeated load; omit it to let the
- * module cache stand. Returns the module namespace — callers unwrap `default`.
+ * Evaluates a given file at most once per process — every loader here caches,
+ * and none of them can be talked out of it (native stripping keys `.ts` by path
+ * and ignores a query string; `require` keys by path). Callers that need a
+ * module's side effects more than once must remember them; see
+ * `load-tests.ts`'s `registrationsByFile`. Returns the module namespace —
+ * callers unwrap `default`.
  */
-export async function loadModule(
-  absolutePath: string,
-  cacheBust = '',
-): Promise<Record<string, any>> {
+export async function loadModule(absolutePath: string): Promise<Record<string, any>> {
   const isTypeScript = path.extname(absolutePath) === '.ts';
 
   if (!isTypeScript || NATIVE_TS) {
     try {
-      return await dynamicImport(pathToFileURL(absolutePath).href + cacheBust);
+      return await dynamicImport(pathToFileURL(absolutePath).href);
     } catch (error) {
       // Every failure falls through, so the reason is printed raw rather than
       // classified: a genuine mistake in the file stays visible instead of being
@@ -48,13 +49,6 @@ export async function loadModule(
     }
   }
 
-  // tsx's CJS api caches under `<path>?namespace=<id>` keys as well as the bare
-  // path, so drop every entry for this file or the re-require is a silent no-op.
-  if (cacheBust) {
-    for (const key of Object.keys(require.cache)) {
-      if (key === absolutePath || key.startsWith(`${absolutePath}?`)) delete require.cache[key];
-    }
-  }
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   return isTypeScript
     ? require('tsx/cjs/api').require(absolutePath, __filename)
