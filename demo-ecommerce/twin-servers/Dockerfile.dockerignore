@@ -17,6 +17,10 @@ demo-ecommerce/log/*
 demo-ecommerce/tmp/*
 demo-ecommerce/storage/*
 
+# Ignore host-side Shaka Perf results (these can be many gigabytes)
+demo-ecommerce/compare-bisect-results*/
+demo-ecommerce/compare-results*/
+
 # Ignore built assets (rebuilt in Docker)
 demo-ecommerce/public/assets
 demo-ecommerce/app/assets/builds/*

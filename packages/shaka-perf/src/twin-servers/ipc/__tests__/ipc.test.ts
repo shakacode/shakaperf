@@ -17,6 +17,10 @@ import { MenuBusyError, type MenuController } from '../../commands/servers-menu'
 import type { BisectExperimentReloadResult } from '../../commands/bisect-session';
 import type { ResolvedConfig } from '../../types';
 
+jest.mock('../../commands/prune-cache', () => ({
+  pruneBuildCache: jest.fn(async () => undefined),
+}));
+
 /**
  * IPC discovery lives under `$XDG_RUNTIME_DIR/shaka-perf/<slug>/` (host-local,
  * per-user runtime dir — see `ipc/paths.ts`). The tests need a real Unix
@@ -323,12 +327,19 @@ describe('ipc dispatcher', () => {
       noCache: false,
     });
     await dispatch({ v: PROTOCOL_VERSION, cmd: 'bisect-end', sessionId: 't1' });
+    await dispatch({ v: PROTOCOL_VERSION, cmd: 'prune-cache', images: true });
 
     expect(calls).toEqual([
       `begin:t1:${process.pid}`,
       'refresh:t1:commands:yarn build',
       'end:t1',
+      'run-one-off',
     ]);
     expect(result).toEqual({ mode: 'container', usedFallback: true });
+    const { pruneBuildCache } = require('../../commands/prune-cache');
+    expect(pruneBuildCache).toHaveBeenCalledWith(
+      expect.objectContaining({ projectSlug: 'bisect-dispatch' }),
+      { images: true },
+    );
   });
 });

@@ -22,7 +22,7 @@ export type ProxyTarget = 'control' | 'experiment';
  * `PROTOCOL_VERSION` and fall back to direct execution — preferable to a
  * mysterious failure deep inside a request the server can't parse.
  */
-export const PROTOCOL_VERSION = 2 as const;
+export const PROTOCOL_VERSION = 3 as const;
 
 /**
  * Frames are line-delimited JSON over a Unix domain socket. Each frame is a
@@ -54,6 +54,7 @@ export type ProxyRequestPayload =
   | { cmd: 'build'; target?: BuildTarget; noCache: boolean }
   | { cmd: 'start-containers' }
   | { cmd: 'stop-containers' }
+  | { cmd: 'prune-cache'; images: boolean }
   | { cmd: 'start-servers' }
   | { cmd: 'run-cmd'; target: ProxyTarget; shellCommand: string }
   | { cmd: 'run-cmd-parallel'; shellCommand: string }

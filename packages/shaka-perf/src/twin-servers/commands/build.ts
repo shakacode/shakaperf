@@ -14,11 +14,18 @@ import {
   getUserId,
   getGroupId,
   getUsername,
+  ensureProjectBuildxBuilder,
 } from '../helpers/docker';
 import { getGitRemoteUrl, getDefaultBranch } from '../helpers/git';
 import { printBanner, printSuccess, printError, printInfo } from '../helpers/ui';
 import { invalidateImageCreated, recordBuildAttempt, recordBuildManifest } from '../helpers/rebuild-check';
-import { dockerBuildDirForSide, dockerfilePathForSide } from '../helpers/project-paths';
+import { warnIfShakaResultsNotIgnored } from '../helpers/dockerignore';
+import {
+  dockerBuildDirForSide,
+  dockerfileAbsForSide,
+  dockerfilePathForSide,
+  projectDirForSide,
+} from '../helpers/project-paths';
 
 export type BuildTarget = 'control' | 'experiment';
 
@@ -26,17 +33,35 @@ export interface BuildOptions {
   verbose?: boolean;
   /** Build only a single target (control or experiment). If not specified, builds both. */
   target?: BuildTarget;
-  /** Disable Docker layer cache (docker build --no-cache). */
+  /** Disable Docker layer cache (docker buildx build --no-cache). */
   noCache?: boolean;
 }
 
-function buildDockerCmd(serverType: 'control' | 'experiment', config: ResolvedConfig, noCache?: boolean): { cmd: string; cwd: string } {
+function buildDockerCmd(
+  serverType: 'control' | 'experiment',
+  config: ResolvedConfig,
+  builderName: string,
+  noCache?: boolean,
+): { cmd: string; cwd: string } {
   const isControl = serverType === 'control';
   const imageName = isControl ? config.images.control : config.images.experiment;
   const buildDir = dockerBuildDirForSide(config, serverType);
   const dockerfilePath = dockerfilePathForSide(config, serverType);
+  warnIfShakaResultsNotIgnored(
+    serverType,
+    buildDir,
+    dockerfileAbsForSide(config, serverType),
+    projectDirForSide(config, serverType),
+  );
 
-  const args = ['build', '--progress=plain', '-t', imageName, '-f', dockerfilePath];
+  const args = [
+    'buildx', 'build',
+    '--builder', builderName,
+    '--load',
+    '--progress=plain',
+    '-t', imageName,
+    '-f', dockerfilePath,
+  ];
   if (noCache) args.push('--no-cache');
   const buildArgs: Record<string, string> = {
     ...config.dockerBuildArgs,
@@ -53,8 +78,13 @@ function buildDockerCmd(serverType: 'control' | 'experiment', config: ResolvedCo
   return { cmd: `docker ${escaped}`, cwd: buildDir };
 }
 
-async function buildServer(serverType: 'control' | 'experiment', config: ResolvedConfig, options: { verbose?: boolean; noCache?: boolean } = {}): Promise<void> {
-  const { cmd, cwd } = buildDockerCmd(serverType, config, options.noCache);
+async function buildServer(
+  serverType: 'control' | 'experiment',
+  config: ResolvedConfig,
+  builderName: string,
+  options: { verbose?: boolean; noCache?: boolean } = {},
+): Promise<void> {
+  const { cmd, cwd } = buildDockerCmd(serverType, config, builderName, options.noCache);
 
   console.log(`Building ${serverType} from ${cwd}...`);
   if (options.verbose) {
@@ -62,6 +92,7 @@ async function buildServer(serverType: 'control' | 'experiment', config: Resolve
     const imageName = isControl ? config.images.control : config.images.experiment;
     const dockerfilePath = dockerfilePathForSide(config, serverType);
     console.log(`  Image: ${imageName}`);
+    console.log(`  Buildx builder: ${builderName}`);
     console.log(`  Dockerfile: ${dockerfilePath}`);
     console.log(`  Git SHA: ${getGitSha(cwd)}`);
   }
@@ -74,9 +105,9 @@ async function buildServer(serverType: 'control' | 'experiment', config: Resolve
   console.log(`Finished building ${serverType}`);
 }
 
-async function buildInParallel(config: ResolvedConfig, noCache?: boolean): Promise<void> {
-  const experiment = buildDockerCmd('experiment', config, noCache);
-  const control = buildDockerCmd('control', config, noCache);
+async function buildInParallel(config: ResolvedConfig, builderName: string, noCache?: boolean): Promise<void> {
+  const experiment = buildDockerCmd('experiment', config, builderName, noCache);
+  const control = buildDockerCmd('control', config, builderName, noCache);
 
   await runInParallel(
     `cd '${experiment.cwd}' && ${experiment.cmd}`,
@@ -149,17 +180,21 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
   }
   console.log('');
 
+  const builderName = await ensureProjectBuildxBuilder(config);
+  console.log(`Using project Buildx builder: ${builderName}`);
+  console.log('');
+
   if (target) {
     console.log(`Building ${target} Docker image...`);
     console.log('');
-    await buildServer(target, config, { verbose, noCache });
+    await buildServer(target, config, builderName, { verbose, noCache });
     invalidateImageCreated(config.images[target]);
     recordBuildAttempt(config.volumes[target]);
     recordBuildManifest(config, target);
   } else {
     console.log('Building both Docker images in parallel...');
     console.log('');
-    await buildInParallel(config, noCache);
+    await buildInParallel(config, builderName, noCache);
     invalidateImageCreated(config.images.experiment);
     invalidateImageCreated(config.images.control);
     recordBuildAttempt(config.volumes.experiment);

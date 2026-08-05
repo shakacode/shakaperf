@@ -116,6 +116,17 @@ Create `twin-servers/Dockerfile`. **Read `references/writing-the-dockerfile.md` 
 
 Create `twin-servers/Dockerfile.dockerignore`. Docker looks for `<dockerfile-path>.dockerignore` before the context-root `.dockerignore`, so naming it after the Dockerfile keeps twin-servers' ignore rules separate from any existing one. Paths are relative to the **build context** (`dockerBuildDir`), not to `twin-servers/`.
 
+Always include Shaka Perf's host-side result directories. Use both forms so
+the rules work whether the build context is the project root or a monorepo
+root containing the project:
+
+```
+compare-bisect-results*/
+**/compare-bisect-results*/
+compare-results*/
+**/compare-results*/
+```
+
 Two reasons it matters:
 1. **A tight context builds faster** — don't ship `node_modules`, build artifacts, logs, `tmp`, `.git`, or secrets that are generated/installed inside the image.
 2. **Stable context = stable rebuild signal.** twin-servers watches the files Docker actually ingests to decide whether a rebuild is needed. If host-only files (editor saves, host test runs, files the container never reads) are in the context, every such edit needlessly flips the rebuild signal. Ignore anything the container doesn't consume.

@@ -10,6 +10,7 @@ import * as path from 'path';
 import ignore, { Ignore } from 'ignore';
 import type { ResolvedConfig } from '../types';
 import { dockerImageExists, getImageCreatedAt as inspectImageCreatedAt } from './docker';
+import { readProjectDockerignore } from './dockerignore';
 import { dockerBuildDirForSide, dockerfileAbsForSide } from './project-paths';
 
 const imageCreatedCache = new Map<string, Date | null>();
@@ -133,17 +134,6 @@ const ALWAYS_IGNORE = [
   '.overmind.sock',
 ];
 
-function readDockerignoreContent(buildDir: string, dockerfileAbs: string): string {
-  const candidates = [
-    `${dockerfileAbs}.dockerignore`,
-    path.join(buildDir, '.dockerignore'),
-  ];
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return fs.readFileSync(candidate, 'utf8');
-  }
-  return '';
-}
-
 function buildIgnore(dockerignoreContent: string): Ignore {
   const ig = ignore();
   for (const pattern of ALWAYS_IGNORE) ig.add(pattern);
@@ -152,7 +142,7 @@ function buildIgnore(dockerignoreContent: string): Ignore {
 }
 
 export function loadDockerignore(buildDir: string, dockerfileAbs: string): Ignore {
-  return buildIgnore(readDockerignoreContent(buildDir, dockerfileAbs));
+  return buildIgnore(readProjectDockerignore(buildDir, dockerfileAbs));
 }
 
 /** Reconstruct an `Ignore` matcher from a manifest's frozen dockerignore. */
@@ -351,7 +341,7 @@ export function recordBuildManifest(config: ResolvedConfig, side: RebuildTarget)
   const buildDir = dockerBuildDirForSide(config, side);
   if (!fs.existsSync(buildDir)) return;
   const dockerfileAbs = dockerfileAbsForSide(config, side);
-  const dockerignoreContent = readDockerignoreContent(buildDir, dockerfileAbs);
+  const dockerignoreContent = readProjectDockerignore(buildDir, dockerfileAbs);
   const ig = buildIgnore(dockerignoreContent);
   const copySources = parseCopySources(dockerfileAbs);
   const roots = copySources ?? ['.'];

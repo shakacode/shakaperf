@@ -347,6 +347,7 @@ describe('copy-changes-to-ssh command', () => {
 
 describe('build command', () => {
   const tmpDir = path.join(__dirname, 'tmp-build');
+  let warnSpy: jest.SpyInstance;
 
   // Save originals so we can restore after mocking process.exit
   const originalExit = process.exit;
@@ -355,10 +356,12 @@ describe('build command', () => {
     fs.mkdirSync(tmpDir, { recursive: true });
     jest.clearAllMocks();
     jest.resetModules();
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation();
     process.exit = jest.fn() as any;
   });
 
   afterEach(() => {
+    warnSpy.mockRestore();
     process.exit = originalExit;
   });
 
@@ -384,6 +387,7 @@ describe('build command', () => {
       getUserId: jest.fn(() => '1000'),
       getGroupId: jest.fn(() => '1000'),
       getUsername: jest.fn(() => 'testuser'),
+      ensureProjectBuildxBuilder: jest.fn(async () => 'shaka-perf-test-slug'),
     }));
 
     // Mock shell helpers
@@ -559,6 +563,22 @@ describe('build command', () => {
     const script: string = buildCall[1][1];
     expect(script).toContain(`cd '${path.join(tmpDir, 'experiment-repo')}'`);
     expect(script).toContain("'app/Dockerfile'");
+    expect(script).toContain("docker 'buildx' 'build'");
+    expect(script).toContain("'--builder' 'shaka-perf-test-slug'");
+    expect(script).toContain("'--load'");
+  });
+
+  it('passes --no-cache to the project Buildx build', async () => {
+    const { mockExec } = setupBuildMocks();
+    const { build } = require('../commands/build');
+
+    const config = createMockConfig(tmpDir);
+    await build(config, { target: 'experiment', noCache: true });
+
+    const buildCall = mockExec.mock.calls.find(
+      (call: any[]) => call[0] === 'bash' && call[1]?.[1]?.includes('myapp:experiment'),
+    );
+    expect(buildCall[1][1]).toContain("'--no-cache'");
   });
 });
 

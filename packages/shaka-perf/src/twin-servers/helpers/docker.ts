@@ -6,6 +6,7 @@
  */
 
 import * as fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import { exec, execSync_ } from './shell';
 import { colorize } from './ui';
 import type { ResolvedConfig } from '../types';
@@ -16,6 +17,66 @@ export interface DockerBuildOptions {
   buildContext: string;
   buildArgs?: Record<string, string>;
   noCache?: boolean;
+}
+
+const BUILDX_BUILDER_PREFIX = 'shaka-perf-';
+const MAX_BUILDX_BUILDER_NAME_LENGTH = 63;
+
+/**
+ * Return the stable Buildx builder name owned by one twin-servers project.
+ *
+ * Docker's default builder shares one cache graph across every local project,
+ * which makes a project-only prune impossible once layers have common parents.
+ * A dedicated docker-container builder gives each project its own BuildKit
+ * state volume while still allowing control and experiment to share layers.
+ */
+export function projectBuildxBuilderName(projectSlug: string): string {
+  const fullName = `${BUILDX_BUILDER_PREFIX}${projectSlug}`;
+  if (fullName.length <= MAX_BUILDX_BUILDER_NAME_LENGTH) return fullName;
+
+  const suffix = createHash('sha256').update(projectSlug).digest('hex').slice(0, 12);
+  const prefixLength = MAX_BUILDX_BUILDER_NAME_LENGTH - suffix.length - 1;
+  return `${fullName.slice(0, prefixLength)}-${suffix}`;
+}
+
+/** Refuse a same-named builder that does not provide isolated cache storage. */
+export function assertProjectBuildxBuilderIsIsolated(builderName: string, inspectOutput: string): void {
+  const driver = inspectOutput.match(/^Driver:\s*(\S+)/m)?.[1];
+  if (driver !== 'docker-container') {
+    throw new Error(
+      `Buildx builder ${builderName} must use the docker-container driver ` +
+      `(found ${driver || 'an unknown driver'}). Remove or rename that builder before retrying.`,
+    );
+  }
+}
+
+/** Ensure the project's isolated docker-container builder exists. */
+export async function ensureProjectBuildxBuilder(config: ResolvedConfig): Promise<string> {
+  const builderName = projectBuildxBuilderName(config.projectSlug);
+  const inspect = await exec('docker', ['buildx', 'inspect', builderName], { silent: true });
+  if (inspect.code === 0) {
+    assertProjectBuildxBuilderIsIsolated(builderName, inspect.stdout);
+    return builderName;
+  }
+
+  const create = await exec(
+    'docker',
+    ['buildx', 'create', '--name', builderName, '--driver', 'docker-container'],
+    { silent: true },
+  );
+  if (create.code === 0) return builderName;
+
+  // Another process may have created the same project builder between our
+  // inspect and create calls. Re-inspect before reporting a real failure.
+  const retryInspect = await exec('docker', ['buildx', 'inspect', builderName], { silent: true });
+  if (retryInspect.code === 0) {
+    assertProjectBuildxBuilderIsIsolated(builderName, retryInspect.stdout);
+    return builderName;
+  }
+
+  throw new Error(
+    `Failed to create project Buildx builder ${builderName}: ${create.stderr.trim() || 'unknown error'}`,
+  );
 }
 
 export async function dockerBuild(options: DockerBuildOptions): Promise<void> {

@@ -14,6 +14,9 @@ import {
   getUserId,
   getGroupId,
   getUsername,
+  projectBuildxBuilderName,
+  ensureProjectBuildxBuilder,
+  assertProjectBuildxBuilderIsIsolated,
 } from '../helpers/docker';
 import * as shell from '../helpers/shell';
 import type { ResolvedConfig } from '../types';
@@ -21,6 +24,61 @@ import type { ResolvedConfig } from '../types';
 jest.mock('../helpers/shell');
 const mockExec = shell.exec as jest.MockedFunction<typeof shell.exec>;
 const mockExecSync = shell.execSync_ as jest.MockedFunction<typeof shell.execSync_>;
+
+describe('project Buildx builder', () => {
+  beforeEach(() => {
+    mockExec.mockReset();
+  });
+
+  it('derives a readable stable name from the project slug', () => {
+    expect(projectBuildxBuilderName('code--shaka--shop'))
+      .toBe('shaka-perf-code--shaka--shop');
+  });
+
+  it('bounds long names and preserves uniqueness with a hash', () => {
+    const first = projectBuildxBuilderName(`code--${'a'.repeat(100)}`);
+    const second = projectBuildxBuilderName(`code--${'a'.repeat(99)}b`);
+
+    expect(first).toHaveLength(63);
+    expect(second).toHaveLength(63);
+    expect(first).not.toBe(second);
+  });
+
+  it('reuses an existing project builder', async () => {
+    mockExec.mockResolvedValue({ stdout: 'Name: shaka-perf-printivity\nDriver: docker-container\n', stderr: '', code: 0 });
+    const config = { projectSlug: 'printivity' } as ResolvedConfig;
+
+    await expect(ensureProjectBuildxBuilder(config)).resolves.toBe('shaka-perf-printivity');
+    expect(mockExec).toHaveBeenCalledTimes(1);
+    expect(mockExec).toHaveBeenCalledWith(
+      'docker',
+      ['buildx', 'inspect', 'shaka-perf-printivity'],
+      { silent: true },
+    );
+  });
+
+  it('refuses a same-named builder backed by the global docker driver', () => {
+    expect(() => assertProjectBuildxBuilderIsIsolated(
+      'shaka-perf-printivity',
+      'Name: shaka-perf-printivity\nDriver: docker\n',
+    )).toThrow(/must use the docker-container driver/);
+  });
+
+  it('creates a docker-container builder when the project has none', async () => {
+    mockExec
+      .mockResolvedValueOnce({ stdout: '', stderr: '', code: 1 })
+      .mockResolvedValueOnce({ stdout: 'shaka-perf-printivity', stderr: '', code: 0 });
+    const config = { projectSlug: 'printivity' } as ResolvedConfig;
+
+    await expect(ensureProjectBuildxBuilder(config)).resolves.toBe('shaka-perf-printivity');
+    expect(mockExec).toHaveBeenNthCalledWith(
+      2,
+      'docker',
+      ['buildx', 'create', '--name', 'shaka-perf-printivity', '--driver', 'docker-container'],
+      { silent: true },
+    );
+  });
+});
 
 describe('dockerImageExists', () => {
   beforeEach(() => {

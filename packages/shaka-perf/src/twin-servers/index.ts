@@ -10,6 +10,7 @@ export type { TwinServersConfig, TwinServersConfigInput, ResolvedConfig, SetupCo
 export { build } from './commands/build';
 export { startContainers } from './commands/start-containers';
 export { startServers } from './commands/start-servers';
+export { pruneBuildCache } from './commands/prune-cache';
 export { runOvermindCommand } from './commands/run-overmind-command';
 export { runCmd } from './commands/run-cmd';
 export { runCmdParallel } from './commands/run-cmd-parallel';

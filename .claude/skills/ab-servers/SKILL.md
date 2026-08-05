@@ -14,6 +14,7 @@ description: How to drive shaka-perf twin-servers (the control + experiment Dock
 | `build [--target control\|experiment] [--no-cache]` | Rebuilds image(s) **and restarts the servers** (containers re-created — in-container state reset). | Builds the Docker image(s) only; doesn't touch a running session. |
 | `start-containers` | Recreates containers **and restarts the servers** (state reset). | Brings containers up idle and runs `setupCommands` on both sides. |
 | `stop-containers` | Stops containers and ends the menu session. | Stops containers and removes volumes. |
+| `prune-cache [--images]` | Queues behind any active lifecycle action, then prunes only this project's isolated Buildx cache; `--images` also removes its control and experiment images. | Prunes only this project's isolated Buildx cache; `--images` also removes its control and experiment images. |
 | `start-servers` | Restarts overmind in the live session (containers untouched). | Launches the app via Overmind in this terminal — **blocks**; run in background. |
 | `run-cmd <control\|experiment> <cmd>` | Same as local — `docker exec`s into the named side (queued behind any in-flight lifecycle work). | Runs a one-off command inside the named side via `docker exec`. |
 | `run-cmd-parallel <cmd>` | Same as local — `docker exec`s into both sides in parallel (queued behind lifecycle work). | Runs the same command in both containers in parallel. |
@@ -27,6 +28,12 @@ description: How to drive shaka-perf twin-servers (the control + experiment Dock
 | `customize-docker-compose` | Local. | Copies the bundled `docker-compose.yml` into the project for local editing. |
 
 **Lifecycle from cold start (no menu)**: `build` → `start-containers` → `start-servers`. Inside a running menu, the proxied versions of `build` / `start-containers` already include the restart step.
+
+Each project builds through an auto-created `docker-container` Buildx builder
+derived from its project slug. Control and experiment share that builder, while
+other projects use different builders. Use `prune-cache` for project-scoped
+cleanup; add `--images` only when the loaded control and experiment images
+should be removed too.
 
 ## Behaviour with `shaka-perf servers` running
 

@@ -8,6 +8,7 @@
 import type { ResolvedConfig } from '../types';
 import { runCmd } from '../commands/run-cmd';
 import { runCmdParallel } from '../commands/run-cmd-parallel';
+import { pruneBuildCache } from '../commands/prune-cache';
 import { MenuBusyError, type MenuController } from '../commands/servers-menu';
 import { UnknownCommandError } from './protocol';
 import type { ProxyDispatcher } from './server';
@@ -57,6 +58,14 @@ export function createDispatcher(
         // session ends cleanly and the next proxied call falls back to
         // local execution.
         await requireController().stopContainersAndExit();
+        return;
+      case 'prune-cache':
+        // Queue behind lifecycle work so cache pruning cannot race an active
+        // control/experiment build in the interactive session.
+        await requireController().runOneOff(
+          'prune-cache',
+          () => pruneBuildCache(config, { images: req.images }),
+        );
         return;
       case 'start-servers':
         // Proxied start-servers means "restart overmind in the live session"
