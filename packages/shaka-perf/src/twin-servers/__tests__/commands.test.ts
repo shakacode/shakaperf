@@ -387,6 +387,19 @@ describe('build command', () => {
       ensureProjectBuildxBuilder: jest.fn(async () => 'shaka-perf-test-slug'),
     }));
 
+    // Dockerignore preparation is covered separately. Keep these command tests
+    // focused on orchestration; their mocked clone does not create a checkout.
+    jest.doMock('../helpers/dockerignore', () => {
+      const actual = jest.requireActual('../helpers/dockerignore');
+      return {
+        ...actual,
+        prepareDockerfileWithDefaults: jest.fn((_buildDir: string, dockerfilePath: string) => ({
+          dockerfilePath,
+          cleanup: jest.fn(),
+        })),
+      };
+    });
+
     // Mock shell helpers
     const mockExec = jest.fn().mockResolvedValue({ stdout: '', stderr: '', code: cloneExitCode });
     const mockConfirm = jest.fn().mockResolvedValue(confirmAnswer);

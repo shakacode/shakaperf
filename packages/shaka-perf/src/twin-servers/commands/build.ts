@@ -19,6 +19,7 @@ import {
 import { getGitRemoteUrl, getDefaultBranch } from '../helpers/git';
 import { printBanner, printSuccess, printError, printInfo } from '../helpers/ui';
 import { invalidateImageCreated, recordBuildAttempt, recordBuildManifest } from '../helpers/rebuild-check';
+import { prepareDockerfileWithDefaults } from '../helpers/dockerignore';
 import { dockerBuildDirForSide, dockerfilePathForSide } from '../helpers/project-paths';
 
 export type BuildTarget = 'control' | 'experiment';
@@ -36,11 +37,12 @@ function buildDockerCmd(
   config: ResolvedConfig,
   builderName: string,
   noCache?: boolean,
-): { cmd: string; cwd: string } {
+): { cmd: string; cwd: string; cleanup: () => void } {
   const isControl = serverType === 'control';
   const imageName = isControl ? config.images.control : config.images.experiment;
   const buildDir = dockerBuildDirForSide(config, serverType);
-  const dockerfilePath = dockerfilePathForSide(config, serverType);
+  const configuredDockerfilePath = dockerfilePathForSide(config, serverType);
+  const prepared = prepareDockerfileWithDefaults(buildDir, configuredDockerfilePath);
 
   const args = [
     'buildx', 'build',
@@ -48,7 +50,7 @@ function buildDockerCmd(
     '--load',
     '--progress=plain',
     '-t', imageName,
-    '-f', dockerfilePath,
+    '-f', prepared.dockerfilePath,
   ];
   if (noCache) args.push('--no-cache');
   const buildArgs: Record<string, string> = {
@@ -63,7 +65,7 @@ function buildDockerCmd(
   args.push('.');
 
   const escaped = args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ');
-  return { cmd: `docker ${escaped}`, cwd: buildDir };
+  return { cmd: `docker ${escaped}`, cwd: buildDir, cleanup: prepared.cleanup };
 }
 
 async function buildServer(
@@ -72,7 +74,7 @@ async function buildServer(
   builderName: string,
   options: { verbose?: boolean; noCache?: boolean } = {},
 ): Promise<void> {
-  const { cmd, cwd } = buildDockerCmd(serverType, config, builderName, options.noCache);
+  const { cmd, cwd, cleanup } = buildDockerCmd(serverType, config, builderName, options.noCache);
 
   console.log(`Building ${serverType} from ${cwd}...`);
   if (options.verbose) {
@@ -85,22 +87,33 @@ async function buildServer(
     console.log(`  Git SHA: ${getGitSha(cwd)}`);
   }
 
-  const result = await exec('bash', ['-c', `cd '${cwd.replace(/'/g, "'\\''")}' && ${cmd}`]);
-  if (result.code !== 0) {
-    throw new Error(`Docker build failed for ${serverType}`);
+  try {
+    const result = await exec('bash', ['-c', `cd '${cwd.replace(/'/g, "'\\''")}' && ${cmd}`]);
+    if (result.code !== 0) {
+      throw new Error(`Docker build failed for ${serverType}`);
+    }
+  } finally {
+    cleanup();
   }
 
   console.log(`Finished building ${serverType}`);
 }
 
 async function buildInParallel(config: ResolvedConfig, builderName: string, noCache?: boolean): Promise<void> {
-  const experiment = buildDockerCmd('experiment', config, builderName, noCache);
-  const control = buildDockerCmd('control', config, builderName, noCache);
+  const preparedBuilds: Array<ReturnType<typeof buildDockerCmd>> = [];
 
-  await runInParallel(
-    `cd '${experiment.cwd}' && ${experiment.cmd}`,
-    `cd '${control.cwd}' && ${control.cmd}`,
-  );
+  try {
+    const experiment = buildDockerCmd('experiment', config, builderName, noCache);
+    preparedBuilds.push(experiment);
+    const control = buildDockerCmd('control', config, builderName, noCache);
+    preparedBuilds.push(control);
+    await runInParallel(
+      `cd '${experiment.cwd}' && ${experiment.cmd}`,
+      `cd '${control.cwd}' && ${control.cmd}`,
+    );
+  } finally {
+    for (const prepared of preparedBuilds) prepared.cleanup();
+  }
 }
 
 export async function build(config: ResolvedConfig, options: BuildOptions = {}): Promise<void> {
