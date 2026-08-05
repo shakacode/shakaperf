@@ -11,7 +11,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { captureWorkingTreePatch } from '../patch-capture';
+import { captureWorkingTreePatch, importPatchFile } from '../patch-capture';
 import { BisectPatchRegistry } from '../patch-registry';
 
 describe('compare-bisect patch registry', () => {
@@ -108,6 +108,32 @@ describe('compare-bisect patch registry', () => {
     fs.appendFileSync(path.join(rootDir, 'bisect-repairs', 'compat.patch'), '\n');
     expect(registry.get('compat').hashValid).toBe(false);
     expect(() => registry.apply('compat')).toThrow(/hash/i);
+  });
+
+  it('preserves the old artifact and manifest when edited bytes fail verification', () => {
+    fs.writeFileSync(path.join(repoDir, 'app.txt'), 'after\n');
+    const captured = captureWorkingTreePatch({ repoDir, paths: ['app.txt'] });
+    git(['restore', 'app.txt']);
+    registry.create('compat', captured, { kind: 'build', appliesTo: { all: true } });
+    const artifact = path.join(rootDir, 'bisect-repairs', 'compat.patch');
+    const manifest = path.join(rootDir, 'bisect-repairs', 'manifest.json');
+    const artifactBefore = fs.readFileSync(artifact);
+    const manifestBefore = fs.readFileSync(manifest);
+    const invalidPath = path.join(rootDir, 'invalid.patch');
+    fs.writeFileSync(invalidPath, [
+      'diff --git a/app.txt b/app.txt',
+      '--- a/app.txt',
+      '+++ b/app.txt',
+      '@@ -1 +1 @@',
+      '-different base',
+      '+replacement',
+      '',
+    ].join('\n'));
+    const invalid = importPatchFile({ repoDir, patchFile: invalidPath });
+
+    expect(() => registry.edit('compat', invalid)).toThrow(/does not apply cleanly/i);
+    expect(fs.readFileSync(artifact).equals(artifactBefore)).toBe(true);
+    expect(fs.readFileSync(manifest).equals(manifestBefore)).toBe(true);
   });
 
   it('verifies a selector in disposable worktrees without touching the active checkout', () => {

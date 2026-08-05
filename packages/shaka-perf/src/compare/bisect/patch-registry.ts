@@ -86,6 +86,7 @@ export class BisectPatchRegistry {
       version: 1,
       patches: [...loaded.manifest.patches, entry],
     });
+    verifyPatchBytes(this.options.repoDir, entry.id, entry.appliesTo, captured.bytes);
     writeCreateTransaction(loaded.path, loaded.directory, entry, captured.bytes, manifest);
     return this.describe(entry, loaded.directory);
   }
@@ -97,6 +98,12 @@ export class BisectPatchRegistry {
     const entry = normalizeEntry({ ...loaded.manifest.patches[index]!, ...metadata });
     const patches = [...loaded.manifest.patches];
     patches[index] = entry;
+    verifyPatchBytes(
+      this.options.repoDir,
+      entry.id,
+      entry.appliesTo,
+      fs.readFileSync(path.join(loaded.directory, entry.filename)),
+    );
     writeManifestAtomic(loaded.path, parseManifest({ version: 1, patches }));
     return this.describe(entry, loaded.directory);
   }
@@ -114,6 +121,7 @@ export class BisectPatchRegistry {
     const patches = [...loaded.manifest.patches];
     patches[index] = entry;
     const manifest = parseManifest({ version: 1, patches });
+    verifyPatchBytes(this.options.repoDir, entry.id, entry.appliesTo, captured.bytes);
     replaceArtifactTransaction(loaded.path, loaded.directory, entry, captured.bytes, manifest);
     return this.describe(entry, loaded.directory);
   }
@@ -169,9 +177,8 @@ export class BisectPatchRegistry {
       throw new Error('Patch verification requires both good-ref and bad-ref when either is supplied');
     }
     const repoDir = gitRoot(this.options.repoDir);
-    const shas = verificationShas(repoDir, patch.entry.appliesTo, options);
     const bytes = fs.readFileSync(patch.artifactPath);
-    return shas.map((sha) => verifyAtCommit(repoDir, patch.entry.id, sha, bytes));
+    return verifyPatchBytes(repoDir, patch.entry.id, patch.entry.appliesTo, bytes, options);
   }
 
   private load() {
@@ -381,12 +388,11 @@ function verificationShas(
       ? resolveCommit(repoDir, selector.from)
       : goodSha;
     if (!from) {
-      throw new Error(
-        `Patch interval through ${selector.through} has no lower bound; provide <good-ref> <bad-ref>`,
-      );
+      selected = [resolveCommit(repoDir, selector.through)];
+    } else {
+      const through = resolveCommit(repoDir, selector.through);
+      selected = commitsBetween(repoDir, from, through, false);
     }
-    const through = resolveCommit(repoDir, selector.through);
-    selected = commitsBetween(repoDir, from, through, false);
   }
   if (graph) {
     const allowed = new Set(graph);
@@ -395,6 +401,18 @@ function verificationShas(
   selected = [...new Set(selected)];
   if (selected.length === 0) throw new Error('Patch selector does not match any commits in the verification range');
   return selected;
+}
+
+function verifyPatchBytes(
+  repoDir: string,
+  id: string,
+  selector: BisectPatchSelector,
+  bytes: Buffer,
+  options: { goodRef?: string; badRef?: string; investigateMerges?: boolean } = {},
+): PatchVerificationResult[] {
+  const root = gitRoot(repoDir);
+  const shas = verificationShas(root, selector, options);
+  return shas.map((sha) => verifyAtCommit(root, id, sha, bytes));
 }
 
 function commitsBetween(
