@@ -63,6 +63,8 @@ import type {
   BisectTestSelection,
   BisectTarget,
   CommitRun,
+  MergeInvestigation,
+  MergeTargetResult,
   PersistedRebuildStrategy,
   TargetEvaluationAtCommit,
 } from './types';
@@ -1678,19 +1680,8 @@ function printBisectSummary(
     if (targets.length === 0) console.log('No regression targets were detected at the bad ref.');
     return;
   }
-  for (const target of found) {
-    const investigation = target.firstBadSha
-      ? session.mergeInvestigations?.[target.firstBadSha]
-      : undefined;
-    const mergeResult = investigation?.targetResults[target.id];
-    const source = mergeResult && 'sourceSha' in mergeResult
-      ? `; source ${shortSha(mergeResult.sourceSha)} (${mergeResult.kind})`
-      : mergeResult ? `; ${mergeResult.kind}` : '';
-    console.log(
-      `  ${target.category} ${target.testName} ${target.viewport} ${target.subject}: ` +
-      `${shortSha(target.firstBadSha!)}${source}`,
-    );
-  }
+  console.log('Regressions by commit:');
+  printFoundTargetsByCommit(session, found);
   const hasUninvestigatedMerge = Object.values(session.mergeInvestigations ?? {})
     .some((investigation) => investigation.status === 'merge-uninvestigated');
   if (hasUninvestigatedMerge) {
@@ -1699,6 +1690,79 @@ function printBisectSummary(
       `${session.compatibility.effective.categories.join(',')} --resume --investigate-merges`,
     );
   }
+}
+
+function printFoundTargetsByCommit(
+  session: BisectSession,
+  found: readonly BisectTarget[],
+): void {
+  const targetsByCommit = groupBy(found, (target) => target.firstBadSha!);
+  const orderedShas = session.primary.orderedCommits.filter((sha) => targetsByCommit.has(sha));
+  for (const sha of targetsByCommit.keys()) {
+    if (!orderedShas.includes(sha)) orderedShas.push(sha);
+  }
+
+  for (const sha of orderedShas) {
+    const commitTargets = targetsByCommit.get(sha)!;
+    const subject = session.primary.commitSubjects[sha];
+    const investigation = session.mergeInvestigations?.[sha];
+    const commitDetails = [subject, mergeInvestigationSummary(investigation?.status)]
+      .filter((detail): detail is string => Boolean(detail));
+    console.log(`  ${shortSha(sha)}${commitDetails.length > 0 ? ` ${commitDetails.join(' · ')}` : ''}`);
+
+    const targetsByCategory = groupBy(commitTargets, (target) => target.category);
+    for (const [category, categoryTargets] of targetsByCategory) {
+      console.log(`    ${category}`);
+      const targetsByTest = groupBy(
+        categoryTargets,
+        (target) => `${target.testFile}\0${target.testName}`,
+      );
+      for (const testTargets of targetsByTest.values()) {
+        console.log(`      ${testTargets[0].testName}`);
+        for (const target of testTargets) {
+          const mergeResult = investigation?.targetResults[target.id];
+          console.log(
+            `        ${target.viewport}: ${target.subject}${mergeTargetResultSummary(mergeResult)}`,
+          );
+        }
+      }
+    }
+  }
+}
+
+function groupBy<T, K>(values: readonly T[], keyFor: (value: T) => K): Map<K, T[]> {
+  const groups = new Map<K, T[]>();
+  for (const value of values) {
+    const key = keyFor(value);
+    const group = groups.get(key);
+    if (group) group.push(value);
+    else groups.set(key, [value]);
+  }
+  return groups;
+}
+
+function mergeInvestigationSummary(
+  status: MergeInvestigation['status'] | undefined,
+): string | undefined {
+  if (!status) return undefined;
+  const labels: Record<MergeInvestigation['status'], string> = {
+    'merge-uninvestigated': 'merge · investigation not started',
+    running: 'merge · investigation running',
+    complete: 'merge · investigation complete',
+    'octopus-unsupported': 'merge · octopus investigation unsupported',
+    failed: 'merge · investigation failed',
+  };
+  return labels[status];
+}
+
+function mergeTargetResultSummary(result: MergeTargetResult | undefined): string {
+  if (!result || result.kind === 'merge-uninvestigated') return '';
+  if (result.kind === 'source-found' || result.kind === 'nested-merge') {
+    const label = result.kind === 'source-found' ? 'source found' : 'nested merge';
+    return ` → source ${shortSha(result.sourceSha)} (${label})`;
+  }
+  if (result.kind === 'merge-introduced') return ' (introduced by merge)';
+  return ' (octopus investigation unsupported)';
 }
 
 function dryRunNextAction(

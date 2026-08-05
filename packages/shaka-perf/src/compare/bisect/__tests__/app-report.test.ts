@@ -35,10 +35,14 @@ describe('bisect report App rendering', () => {
     const firstBundle = html.indexOf('data-bisect-clean-run="0"');
     const firstRegression = html.indexOf('data-bisect-sha="mixed-commit"');
     const secondBundle = html.indexOf('data-bisect-clean-run="1"');
+    const thirdBundle = html.indexOf('data-bisect-clean-run="2"');
     const secondRegression = html.indexOf('data-bisect-sha="later-commit"');
 
-    expect(html.match(/aria-label="2 commits with no first-bad regressions"/g)).toHaveLength(2);
-    expect(html.match(/\[2 commits\]/g)).toHaveLength(2);
+    expect(html).toContain('aria-label="2 commits, not measured, with no first-bad regressions"');
+    expect(html).toContain('aria-label="1 commit, measured, with no first-bad regressions"');
+    expect(html).toContain('aria-label="1 commit, not measured, with no first-bad regressions"');
+    expect(html.match(/\[2 commits\]/g)).toHaveLength(1);
+    expect(html.match(/\[1 commit\]/g)).toHaveLength(2);
     expect(html).toContain('good baseline');
     expect(html).toContain('refactor styles');
     expect(html).toContain('update copy');
@@ -48,9 +52,10 @@ describe('bisect report App rendering', () => {
     expect(firstBundle).toBeGreaterThan(-1);
     expect(firstRegression).toBeGreaterThan(firstBundle);
     expect(secondBundle).toBeGreaterThan(firstRegression);
-    expect(secondRegression).toBeGreaterThan(secondBundle);
-    expect(html.match(/aria-haspopup="dialog"/g)).toHaveLength(3);
-    expect(html.match(/data-bisect-clean-run-dialog=/g)).toHaveLength(2);
+    expect(thirdBundle).toBeGreaterThan(secondBundle);
+    expect(secondRegression).toBeGreaterThan(thirdBundle);
+    expect(html.match(/aria-haspopup="dialog"/g)).toHaveLength(4);
+    expect(html.match(/data-bisect-clean-run-dialog=/g)).toHaveLength(3);
     expect(html.match(/data-bisect-selection="commit"/g)).toHaveLength(2);
   });
 

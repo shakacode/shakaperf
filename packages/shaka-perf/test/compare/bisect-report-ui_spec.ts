@@ -65,12 +65,19 @@ describe('compare bisect report browser acceptance', () => {
   it('filters saved bad-ref cards and renders every selection state', async () => {
     const nodes = page.locator('.bisect-node');
     await expectCount(nodes, 2);
-    await expectCount(page.locator('[data-bisect-clean-run]'), 2);
+    await expectCount(page.locator('[data-bisect-clean-run]'), 3);
     await expectText(
       page.locator('[data-bisect-clean-run="0"]'),
-      '[2 commits]',
+      '[1 commit]not measured · no first-bad regressions',
     );
-    await expectText(page.locator('[data-bisect-clean-run="1"]'), '[1 commit]');
+    await expectText(
+      page.locator('[data-bisect-clean-run="1"]'),
+      '[1 commit]measured · no first-bad regressions',
+    );
+    await expectText(
+      page.locator('[data-bisect-clean-run="2"]'),
+      '[1 commit]not measured · no first-bad regressions',
+    );
     expect(await page.locator('.bisect-tree__list').evaluate((element) => (
       Array.from(element.children).map((child) => {
         const cleanRun = child.querySelector('[data-bisect-clean-run]');
@@ -79,14 +86,13 @@ describe('compare bisect report browser acceptance', () => {
           ? `clean:${cleanRun.getAttribute('data-bisect-clean-run')}`
           : commit?.getAttribute('data-bisect-sha');
       })
-    ))).toEqual(['clean:0', VISUAL_SHA, 'clean:1', BAD_SHA]);
+    ))).toEqual(['clean:0', 'clean:1', VISUAL_SHA, 'clean:2', BAD_SHA]);
 
     await page.locator('[data-bisect-clean-run="0"]').click();
     const cleanRunDialog = page.locator('.ui-dialog--compact[open]');
     await expectCount(cleanRunDialog, 1);
-    await expectCount(cleanRunDialog.locator('.bisect-clean-run-dialog__commit'), 2);
+    await expectCount(cleanRunDialog.locator('.bisect-clean-run-dialog__commit'), 1);
     await expectText(cleanRunDialog, 'baseline');
-    await expectText(cleanRunDialog, 'prepare hero');
     expect(await cleanRunDialog.evaluate((element) => element.getBoundingClientRect().width))
       .toBeLessThanOrEqual(720);
     await cleanRunDialog.locator('.ui-dialog__close').click();
