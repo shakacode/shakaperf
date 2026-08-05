@@ -148,7 +148,7 @@ export function createBisectPatchCommand(deps: BisectPatchCliDependencies = {}):
     }));
 
   patch.addCommand(new Command('verify')
-    .description('Verify a registered patch against the current experiment HEAD')
+    .description('Verify a registered patch against its configured commit scope')
     .argument('<id>', 'Patch ID')
     .argument('[good-ref]', 'Reserved concrete range lower endpoint')
     .argument('[bad-ref]', 'Reserved concrete range upper endpoint')
