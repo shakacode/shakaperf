@@ -89,7 +89,7 @@ export interface A11ySitePromptData {
   /** Reconciled distinct high-impact defect count. */
   highImpactCount: number;
   worstPage: { url: string; highImpactCount: number };
-  /** Page URLs the caller has already confirmed were audited; they may span origins. */
+  /** Caller-confirmed audited HTTP(S) URLs; fetch-time host policy stays with the caller. */
   pageUrls: readonly string[];
   findings: readonly A11ySitePromptFinding[];
   lowerImpactFindings?: readonly A11ySitePromptFinding[];
@@ -106,7 +106,7 @@ export interface PerfSitePromptData {
   pageCount: number;
   homepage: PerfFactPage;
   pages: readonly PerfFactPage[];
-  /** Page URLs the caller has already confirmed were audited, in the same order as pages. */
+  /** Caller-confirmed audited HTTP(S) URLs, in page order; fetch-time host policy stays with the caller. */
   pageUrls: readonly string[];
 }
 
@@ -340,6 +340,7 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
   const pageCount = wholeNumber(input.pageCount);
   const highImpactCount = wholeNumber(input.highImpactCount);
   const worstCount = wholeNumber(input.worstPage.highImpactCount);
+  // These URLs describe completed audits; this builder never fetches them.
   const pageUrls = input.pageUrls.map(urlSlot);
   const worstPageUrl = urlSlot(input.worstPage.url);
   if (
@@ -424,6 +425,7 @@ export function buildPerfSitePrompt(data: PerfSitePromptData): string | undefine
   const url = urlSlot(input.url);
   const pageCount = wholeNumber(input.pageCount);
   const pages = input.pages.map(measuredPerfFactPage);
+  // These URLs describe completed audits; this builder never fetches them.
   const pageUrls = input.pageUrls.map(urlSlot);
   const homepage = measuredPerfFactPage(input.homepage);
   const homepageBeforeContentKb = homepage?.downloadsBeforeLcpKb;
@@ -937,7 +939,8 @@ function pageRouteLabel(url: string, auditedUrl?: string): string {
   if (auditedUrl) {
     const audited = new URL(canonicalUrl(auditedUrl));
     if (parsed.host !== audited.host) {
-      return redactFrameworkWords(path === '/' ? parsed.host : `${parsed.host}${path}`);
+      const protocol = parsed.protocol === audited.protocol ? '' : `${parsed.protocol}//`;
+      return redactFrameworkWords(path === '/' ? `${protocol}${parsed.host}` : `${protocol}${parsed.host}${path}`);
     }
     if (parsed.protocol !== audited.protocol) {
       return redactFrameworkWords(`${parsed.protocol}//${parsed.host}${path}`);

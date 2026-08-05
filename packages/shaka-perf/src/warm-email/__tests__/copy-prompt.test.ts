@@ -592,6 +592,22 @@ describe('site-wide copy prompts', () => {
     expect(perfPrompt).toContain('starting with the m.example.com route');
   });
 
+  it('distinguishes protocol twins on a secondary audited host', () => {
+    const httpPage = 'http://m.example.com/platform';
+    const httpsPage = 'https://m.example.com/platform';
+    const pageUrls = [a11ySiteData.url, httpPage, httpsPage, ...a11ySiteData.pageUrls.slice(3)];
+    const prompt = buildA11ySitePrompt({
+      ...a11ySiteData,
+      worstPage: { url: httpPage, highImpactCount: 4 },
+      pageUrls,
+      findings: a11ySiteData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageUrls: [httpPage, httpsPage] }
+        : finding),
+    });
+
+    expect(prompt).toContain('(http://m.example.com/platform, m.example.com/platform - 3 images)');
+  });
+
   it('does not apply fetch-oriented host restrictions to audited page URLs', () => {
     const auditedPageUrl = 'http://localhost:3000/platform';
     const pageUrls = [a11ySiteData.url, auditedPageUrl, ...a11ySiteData.pageUrls.slice(2)];
@@ -605,6 +621,23 @@ describe('site-wide copy prompts', () => {
     });
 
     expect(prompt).toContain("'http://localhost:3000/platform'");
+    expect(buildPerfSitePrompt({ ...perfSiteData, pageUrls })).toContain('slowest page http://localhost:3000/platform 3.4s');
+  });
+
+  it('accepts audited pages on non-default ports', () => {
+    const auditedPageUrl = 'https://example.com:8443/platform';
+    const pageUrls = [a11ySiteData.url, auditedPageUrl, ...a11ySiteData.pageUrls.slice(2)];
+    const prompt = buildA11ySitePrompt({
+      ...a11ySiteData,
+      worstPage: { url: auditedPageUrl, highImpactCount: 4 },
+      pageUrls,
+      findings: a11ySiteData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageUrls: [a11ySiteData.url, auditedPageUrl] }
+        : finding),
+    });
+
+    expect(prompt).toContain('(homepage, example.com:8443/platform - 3 images)');
+    expect(buildPerfSitePrompt({ ...perfSiteData, pageUrls })).toContain('slowest page example.com:8443/platform 3.4s');
   });
 
   it('validates audited model finding URLs and page counts across hosts', () => {
