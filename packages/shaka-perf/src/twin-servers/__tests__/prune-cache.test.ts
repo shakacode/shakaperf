@@ -19,7 +19,13 @@ const mockExec = shell.exec as jest.MockedFunction<typeof shell.exec>;
 const mockRequireCommand = shell.requireCommand as jest.MockedFunction<typeof shell.requireCommand>;
 
 describe('pruneBuildCache', () => {
-  const config = { projectSlug: 'code--shaka--shop' } as ResolvedConfig;
+  const config = {
+    projectSlug: 'code--shaka--shop',
+    images: {
+      control: 'shop:control',
+      experiment: 'shop:experiment',
+    },
+  } as ResolvedConfig;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -56,6 +62,74 @@ describe('pruneBuildCache', () => {
     await pruneBuildCache(config);
 
     expect(mockExec).toHaveBeenCalledTimes(1);
+  });
+
+  it('also removes existing control and experiment images when requested', async () => {
+    mockExec
+      .mockResolvedValueOnce({ stdout: 'Driver: docker-container\n', stderr: '', code: 0 })
+      .mockResolvedValueOnce({ stdout: '', stderr: '', code: 0 })
+      .mockResolvedValueOnce({ stdout: 'Total: 12GB', stderr: '', code: 0 })
+      .mockResolvedValueOnce({ stdout: '[]', stderr: '', code: 0 })
+      .mockResolvedValueOnce({ stdout: '[]', stderr: '', code: 0 })
+      .mockResolvedValueOnce({ stdout: '', stderr: '', code: 0 });
+
+    await pruneBuildCache(config, { images: true });
+
+    expect(mockExec).toHaveBeenNthCalledWith(
+      4,
+      'docker',
+      ['image', 'inspect', 'shop:control'],
+      { silent: true },
+    );
+    expect(mockExec).toHaveBeenNthCalledWith(
+      5,
+      'docker',
+      ['image', 'inspect', 'shop:experiment'],
+      { silent: true },
+    );
+    expect(mockExec).toHaveBeenNthCalledWith(
+      6,
+      'docker',
+      ['image', 'rm', 'shop:control', 'shop:experiment'],
+    );
+  });
+
+  it('removes images even when the project builder does not exist', async () => {
+    mockExec
+      .mockResolvedValueOnce({ stdout: '', stderr: '', code: 1 })
+      .mockResolvedValueOnce({ stdout: '[]', stderr: '', code: 0 })
+      .mockResolvedValueOnce({ stdout: '', stderr: '', code: 1 })
+      .mockResolvedValueOnce({ stdout: '', stderr: '', code: 0 });
+
+    await pruneBuildCache(config, { images: true });
+
+    expect(mockExec).toHaveBeenLastCalledWith(
+      'docker',
+      ['image', 'rm', 'shop:control'],
+    );
+  });
+
+  it('does not fail when the configured images are already absent', async () => {
+    mockExec
+      .mockResolvedValueOnce({ stdout: '', stderr: '', code: 1 })
+      .mockResolvedValueOnce({ stdout: '', stderr: '', code: 1 })
+      .mockResolvedValueOnce({ stdout: '', stderr: '', code: 1 });
+
+    await pruneBuildCache(config, { images: true });
+
+    expect(mockExec).toHaveBeenCalledTimes(3);
+  });
+
+  it('explains how to release images referenced by containers', async () => {
+    mockExec
+      .mockResolvedValueOnce({ stdout: '', stderr: '', code: 1 })
+      .mockResolvedValueOnce({ stdout: '[]', stderr: '', code: 0 })
+      .mockResolvedValueOnce({ stdout: '[]', stderr: '', code: 0 })
+      .mockResolvedValueOnce({ stdout: '', stderr: 'image is being used', code: 1 });
+
+    await expect(pruneBuildCache(config, { images: true })).rejects.toThrow(
+      /servers stop-containers/,
+    );
   });
 
   it('refuses to prune a same-named global docker builder', async () => {

@@ -64,7 +64,7 @@ export function createDispatcher(
         // control/experiment build in the interactive session.
         await requireController().runOneOff(
           'prune-cache',
-          () => pruneBuildCache(config),
+          () => pruneBuildCache(config, { images: req.images }),
         );
         return;
       case 'start-servers':

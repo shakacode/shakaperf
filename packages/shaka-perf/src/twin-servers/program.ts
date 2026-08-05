@@ -254,15 +254,17 @@ function stopContainersSub(): Command {
 function pruneCacheSub(): Command {
   return addCommonOptions(
     new Command('prune-cache')
-      .description('Prune only this project\'s isolated Buildx cache')
-      .action(wrapAction(async function(this: Command) {
+      .description('Prune this project\'s isolated Buildx cache')
+      .option('--images', 'Also remove the configured control and experiment images')
+      .action(wrapAction(async function(this: Command, opts: { images?: boolean }) {
         const { resolvedConfig } = await getResolvedConfig(this);
         const verbose = inheritedOpts(this).verbose ?? false;
+        const images = opts.images === true;
         await proxyOrRun(
           resolvedConfig,
           verbose,
-          { cmd: 'prune-cache' },
-          () => pruneBuildCache(resolvedConfig),
+          { cmd: 'prune-cache', images },
+          () => pruneBuildCache(resolvedConfig, { images }),
         );
       }))
   );

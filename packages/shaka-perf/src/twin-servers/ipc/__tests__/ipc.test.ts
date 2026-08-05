@@ -327,7 +327,7 @@ describe('ipc dispatcher', () => {
       noCache: false,
     });
     await dispatch({ v: PROTOCOL_VERSION, cmd: 'bisect-end', sessionId: 't1' });
-    await dispatch({ v: PROTOCOL_VERSION, cmd: 'prune-cache' });
+    await dispatch({ v: PROTOCOL_VERSION, cmd: 'prune-cache', images: true });
 
     expect(calls).toEqual([
       `begin:t1:${process.pid}`,
@@ -336,5 +336,10 @@ describe('ipc dispatcher', () => {
       'run-one-off',
     ]);
     expect(result).toEqual({ mode: 'container', usedFallback: true });
+    const { pruneBuildCache } = require('../../commands/prune-cache');
+    expect(pruneBuildCache).toHaveBeenCalledWith(
+      expect.objectContaining({ projectSlug: 'bisect-dispatch' }),
+      { images: true },
+    );
   });
 });
