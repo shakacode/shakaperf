@@ -258,14 +258,33 @@ async function runUpdate(
   const registry = new BisectPatchRegistry({ ...context });
   const current = registry.get(id);
   const prompt = deps.prompt ?? new ReadlinePatchPrompt();
-  output({ message: 'Patch contents are unchanged. Use `patch edit <id>` to replace them.' }, false, deps);
+  output({
+    message: 'Patch contents are unchanged. Use `patch edit <id>` to replace them.',
+    source: current.entry.source,
+    artifact: current.artifactPath,
+    sha256: current.entry.sha256,
+  }, false, deps);
   const metadata = await promptMetadata(prompt, current.entry);
+  output({
+    current: metadataView(current.entry),
+    proposed: metadataView(metadata),
+  }, false, deps);
   if (!await prompt.confirm('Update this patch metadata?', true)) {
     output({ id, canceled: true }, false, deps);
     return;
   }
   if (options.dryRun) return output({ dryRun: true, id, metadata }, false, deps);
   outputRegistered('updated', registry.updateMetadata(id, metadata), false, deps);
+}
+
+function metadataView(metadata: PatchMetadata): PatchMetadata {
+  return {
+    kind: metadata.kind,
+    ...(metadata.purpose?.trim() ? { purpose: metadata.purpose.trim() } : {}),
+    appliesTo: metadata.appliesTo,
+    prepareCommands: metadata.prepareCommands ?? [],
+    cleanupCommands: metadata.cleanupCommands ?? [],
+  };
 }
 
 async function runRemove(
