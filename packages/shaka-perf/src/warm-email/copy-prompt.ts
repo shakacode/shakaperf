@@ -67,7 +67,7 @@ export interface A11ySitePromptFinding {
   defectCount: number;
   /** Number of audited pages where the family appears. */
   pageCount: number;
-  /** Audited page URLs for named finding examples; they may span hosts. */
+  /** Named finding examples; each URL must match an audited page URL. */
   pageUrls?: readonly string[];
   /** Deliberately ignored because page titles are site-provided text. */
   pageNames?: readonly string[];
@@ -89,6 +89,7 @@ export interface A11ySitePromptData {
   /** Reconciled distinct high-impact defect count. */
   highImpactCount: number;
   worstPage: { url: string; highImpactCount: number };
+  /** Page URLs the caller has already confirmed were audited; they may span origins. */
   pageUrls: readonly string[];
   findings: readonly A11ySitePromptFinding[];
   lowerImpactFindings?: readonly A11ySitePromptFinding[];
@@ -105,7 +106,7 @@ export interface PerfSitePromptData {
   pageCount: number;
   homepage: PerfFactPage;
   pages: readonly PerfFactPage[];
-  /** Audited page URLs in the same order as pages; they may span hosts. */
+  /** Page URLs the caller has already confirmed were audited, in the same order as pages. */
   pageUrls: readonly string[];
 }
 
@@ -358,7 +359,7 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
   const completePageUrls = pageUrls as string[];
   const auditedPageUrls = new Set(completePageUrls.map(canonicalUrl));
   if (!auditedPageUrls.has(canonicalUrl(worstPageUrl))) return undefined;
-  const findings = input.findings.map((finding) => siteFinding(finding, auditedPageUrls, true));
+  const findings = input.findings.map((finding) => siteFinding(finding, url, auditedPageUrls, true));
   if (findings.some((finding) => !finding)) return undefined;
   const completeFindings = findings as SitePromptFinding[];
   if (
@@ -367,14 +368,14 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
     || completeFindings.reduce((total, finding) => total + finding.defectCount, 0) !== highImpactCount
   ) return undefined;
 
-  const worstPageName = pageRouteLabel(worstPageUrl);
+  const worstPageName = pageRouteLabel(worstPageUrl, url);
   const date = slot(input.date, 48, 5);
   const host = structuralSlot(input.host, 120, 3);
   const orderedFindings = [...completeFindings].sort((a, b) => b.defectCount - a.defectCount || b.pageCount - a.pageCount || a.familyId.localeCompare(b.familyId));
   const findingLines = orderedFindings.map((finding) => siteFindingLine(finding, pageCount));
   const rawExtras = input.lowerImpactFindings;
   if (rawExtras !== undefined && !Array.isArray(rawExtras)) return undefined;
-  const extras = (rawExtras ?? []).map((finding) => siteFinding(finding, auditedPageUrls));
+  const extras = (rawExtras ?? []).map((finding) => siteFinding(finding, url, auditedPageUrls));
   if (extras.some((finding) => !finding)) return undefined;
   const completeExtras = extras as SitePromptFinding[];
   if (completeExtras.some((finding) => finding.pageCount > pageCount)) return undefined;
@@ -485,7 +486,7 @@ export function buildPerfSitePrompt(data: PerfSitePromptData): string | undefine
     `The site's first content is slow on phones: ${slowestRoute} shows nothing for the first ${secondsWord(slowest.page.fcpMs)} on a ${throttle} mid-range phone profile (Google's Lighthouse good line is 1.8 seconds).`,
     '',
     `Measured on ${url} (${date}, ${viewport}, ${throttle}, Lighthouse lab profile):`,
-    `- First content: homepage ${seconds(homepage.fcpMs)}; slowest page ${pageRouteLabel(slowest.url)} ${seconds(slowest.page.fcpMs)}; site average ${seconds(averageFcp)} across ${pageCount} pages.`,
+    `- First content: homepage ${seconds(homepage.fcpMs)}; slowest page ${pageRouteLabel(slowest.url, url)} ${seconds(slowest.page.fcpMs)}; site average ${seconds(averageFcp)} across ${pageCount} pages.`,
     beforeContentLine,
     `- JavaScript weight is ${megabyteRange(minJs, maxJs)} per page; the heaviest measured page moves ${megabytes(heaviest.page.downloadsKb)} in total.${jsNote}`,
     '',
@@ -799,6 +800,7 @@ const A11Y_FAMILIES: Readonly<Record<string, { label: string; priority: string; 
 
 function siteFinding(
   finding: unknown,
+  auditedUrl: string,
   auditedPageUrls: ReadonlySet<string>,
   requireHighImpact = false,
 ): SitePromptFinding | undefined {
@@ -843,7 +845,7 @@ function siteFinding(
     impact,
     defectCount,
     pageCount,
-    pageNames: (pageUrls as string[]).map(pageRouteLabel),
+    pageNames: (pageUrls as string[]).map((pageUrl) => pageRouteLabel(pageUrl, auditedUrl)),
     verificationRuleIds,
     ...(nodeCount && nodeCount > 0 ? { nodeCount } : {}),
     ...(sharedSelector ? {
@@ -925,18 +927,29 @@ function verificationRuleIdsFor(rawRuleIds: unknown): string[] | undefined {
 function canonicalUrl(url: string): string {
   const parsed = new URL(url);
   parsed.hash = '';
+  parsed.hostname = parsed.hostname.replace(/\.+$/, '').toLowerCase();
   return parsed.href;
 }
 
-function pageRouteLabel(url: string): string {
-  const path = new URL(url).pathname;
+function pageRouteLabel(url: string, auditedUrl?: string): string {
+  const parsed = new URL(canonicalUrl(url));
+  const path = parsed.pathname;
+  if (auditedUrl) {
+    const audited = new URL(canonicalUrl(auditedUrl));
+    if (parsed.host !== audited.host) {
+      return redactFrameworkWords(path === '/' ? parsed.host : `${parsed.host}${path}`);
+    }
+    if (parsed.protocol !== audited.protocol) {
+      return redactFrameworkWords(`${parsed.protocol}//${parsed.host}${path}`);
+    }
+  }
   return redactFrameworkWords(path === '/' ? 'homepage' : path);
 }
 
 function pageFocusLabel(pageUrl: string, auditedUrl: string): string {
   return canonicalUrl(pageUrl) === canonicalUrl(auditedUrl)
     ? 'the homepage'
-    : `the ${pageRouteLabel(pageUrl)} route`;
+    : `the ${pageRouteLabel(pageUrl, auditedUrl)} route`;
 }
 
 function cleanIdentifier(raw: unknown): string | undefined {

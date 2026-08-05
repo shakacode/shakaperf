@@ -573,6 +573,25 @@ describe('site-wide copy prompts', () => {
     expect(buildPerfSitePrompt({ ...perfSiteData, pageUrls: multiHostPageUrls })).toContain('Re-run PageSpeed Insights for https://m.example.com/platform');
   });
 
+  it('qualifies same-path page labels with their audited hosts', () => {
+    const mobileHomepage = 'https://m.example.com/';
+    const pageUrls = [a11ySiteData.url, mobileHomepage, ...a11ySiteData.pageUrls.slice(2)];
+    const a11yPrompt = buildA11ySitePrompt({
+      ...a11ySiteData,
+      worstPage: { url: mobileHomepage, highImpactCount: 4 },
+      pageUrls,
+      findings: a11ySiteData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageUrls: [a11ySiteData.url, mobileHomepage] }
+        : finding),
+    });
+    const perfPrompt = buildPerfSitePrompt({ ...perfSiteData, pageUrls });
+
+    expect(a11yPrompt).toContain('worst page: the m.example.com with 4');
+    expect(a11yPrompt).toContain('(homepage, m.example.com - 3 images)');
+    expect(perfPrompt).toContain('slowest page m.example.com 3.4s');
+    expect(perfPrompt).toContain('starting with the m.example.com route');
+  });
+
   it('does not apply fetch-oriented host restrictions to audited page URLs', () => {
     const auditedPageUrl = 'http://localhost:3000/platform';
     const pageUrls = [a11ySiteData.url, auditedPageUrl, ...a11ySiteData.pageUrls.slice(2)];
@@ -586,10 +605,9 @@ describe('site-wide copy prompts', () => {
     });
 
     expect(prompt).toContain("'http://localhost:3000/platform'");
-    expect(buildPerfSitePrompt({ ...perfSiteData, pageUrls })).toContain('Re-run PageSpeed Insights for http://localhost:3000/platform');
   });
 
-  it('accepts only audited model finding URLs across hosts', () => {
+  it('validates audited model finding URLs and page counts across hosts', () => {
     const multiHostPageUrls = [
       a11ySiteData.url,
       'https://m.example.com/platform',
@@ -635,6 +653,16 @@ describe('site-wide copy prompts', () => {
         ? { ...finding, pageCount: 2, pageUrls: [a11ySiteData.url, 'https://m2.example.com/platform'] }
         : finding),
     })).toBeUndefined();
+  });
+
+  it('rejects audited page duplicates that differ only by a trailing host dot', () => {
+    const pageUrls = [
+      ...a11ySiteData.pageUrls.slice(0, -1),
+      'https://example.com./audience',
+    ];
+
+    expect(buildA11ySitePrompt({ ...a11ySiteData, pageUrls })).toBeUndefined();
+    expect(buildPerfSitePrompt({ ...perfSiteData, pageUrls })).toBeUndefined();
   });
 
   it('orders site priorities by reach and keeps node nouns specific to their family', () => {
