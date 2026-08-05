@@ -12,9 +12,13 @@ import { execFileSync } from 'child_process';
 import {
   checkoutDetached,
   inspectBisectRepositories,
+  markNativeBisect,
+  nativeBisectLog,
   prepareChildGitRange,
   prepareGitRange,
+  resetNativeBisect,
   restoreCheckout,
+  startNativeBisect,
 } from '../git';
 
 function git(cwd: string, args: string[]): string {
@@ -374,5 +378,48 @@ describe('bisect Git helpers', () => {
 
     expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[3]);
     expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe('');
+  });
+
+  it('lets native Git select candidates and report the first bad commit', async () => {
+    const started = await startNativeBisect({
+      repoDir: fixture.experimentDir,
+      goodSha: fixture.commits[0],
+      badSha: fixture.commits[4],
+    });
+
+    expect(started).toMatchObject({
+      candidateSha: fixture.commits[2],
+      complete: false,
+      firstBadSha: null,
+    });
+    const next = await markNativeBisect(fixture.experimentDir, 'bad');
+    expect(next.candidateSha).toBe(fixture.commits[1]);
+    const completed = await markNativeBisect(fixture.experimentDir, 'good');
+    expect(completed).toMatchObject({
+      candidateSha: null,
+      complete: true,
+      firstBadSha: fixture.commits[2],
+    });
+    expect(await nativeBisectLog(fixture.experimentDir)).toContain('# first bad commit:');
+
+    await resetNativeBisect(fixture.experimentDir);
+    expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe(fixture.experimentBranch);
+    expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[4]);
+  });
+
+  it('previews the native candidate without checking out a commit', async () => {
+    const started = await startNativeBisect({
+      repoDir: fixture.experimentDir,
+      goodSha: fixture.commits[0],
+      badSha: fixture.commits[4],
+      noCheckout: true,
+    });
+
+    expect(started.candidateSha).toBe(fixture.commits[2]);
+    expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe(fixture.experimentBranch);
+    expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[4]);
+
+    await resetNativeBisect(fixture.experimentDir);
+    expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe(fixture.experimentBranch);
   });
 });

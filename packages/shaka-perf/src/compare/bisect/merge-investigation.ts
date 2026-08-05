@@ -7,7 +7,7 @@
 
 import type { PreparedChildGitRange } from './git';
 import { runCheckpointedAttempt } from './attempt';
-import { runSearchPhase } from './phase';
+import { runNativeSearchPhase, type NativeBisectPhaseDriver } from './phase';
 import type { CandidateResult, ExperimentReloadMode } from './run-candidate';
 import { testsForTargets, type CandidateMeasurementPlan } from './search';
 import type {
@@ -56,12 +56,18 @@ export interface RunMergeInvestigationsOptions {
   session: BisectSession;
   preferredExperimentReloadMode: ExperimentReloadMode;
   nextAttemptId(): string;
+  nextGroupId(): string;
   now(): string;
   commitRuns(): Record<string, CommitRun>;
   checkpoint(session: BisectSession): void;
   afterCheckpoint?(session: BisectSession): void;
   prepareRange(investigation: MergeInvestigation): Promise<PreparedChildGitRange>;
-  measure(work: CandidateMeasurementPlan, targets: readonly BisectTarget[]): Promise<CandidateResult>;
+  nativeBisect: NativeBisectPhaseDriver;
+  measure(
+    work: CandidateMeasurementPlan,
+    targets: readonly BisectTarget[],
+    checkout: boolean,
+  ): Promise<CandidateResult>;
 }
 
 export async function runMergeInvestigations(
@@ -145,8 +151,6 @@ export async function runMergeInvestigations(
             reproducing.push({
               ...target,
               status: 'active',
-              goodIndex: 0,
-              badIndex: range.orderedCommits.length - 1,
               firstBadSha: undefined,
               invalidReason: undefined,
               recordedTargetEvaluations: { [range.secondParent]: evaluation },
@@ -174,15 +178,15 @@ export async function runMergeInvestigations(
         afterCheckpoint() {
           options.afterCheckpoint?.(session);
         },
-        measure: () => options.measure(validationWork, primaryTargets),
+        measure: () => options.measure(validationWork, primaryTargets, true),
       });
     }
 
     if (!phase) throw new Error(`Merge investigation ${mergeSha} has no child phase`);
 
-    const invalidTarget = phase.targets.find((target) => (
-      target.status === 'active' && target.goodIndex >= target.badIndex
-    ));
+    const invalidTarget = range.mergeBase === range.secondParent
+      ? phase.targets.find((target) => target.status === 'active')
+      : undefined;
     if (invalidTarget) {
       const failure = `Cannot investigate merge source for ${mergeSha}: target `
         + `${invalidTarget.id} has no distinct good and bad commits`;
@@ -199,10 +203,12 @@ export async function runMergeInvestigations(
     }
 
     if (phase.targets.length > 0 && phase.status !== 'complete') {
-      const completedPhase = await runSearchPhase({
+      const completedPhase = await runNativeSearchPhase({
         phase,
         preferredExperimentReloadMode: options.preferredExperimentReloadMode,
         nextAttemptId: options.nextAttemptId,
+        nextGroupId: options.nextGroupId,
+        nativeBisect: options.nativeBisect,
         now: options.now,
         commitRuns: options.commitRuns,
         checkpoint(updatedPhase) {
@@ -220,6 +226,7 @@ export async function runMergeInvestigations(
         measure: (work) => options.measure(
           work,
           phase!.targets.filter((target) => work.targetIds.includes(target.id)),
+          false,
         ),
       });
       phase = completedPhase;

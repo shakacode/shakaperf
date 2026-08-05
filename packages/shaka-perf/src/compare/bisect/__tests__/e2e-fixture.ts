@@ -13,7 +13,13 @@ import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import type { AbTestsConfig } from '../../../config';
 import type { TestResult } from '../../../pipeline/report';
 import type { ResolvedConfig } from '../../../twin-servers/types';
-import { checkoutDetached, restoreCheckout } from '../git';
+import {
+  checkoutDetached,
+  markNativeBisect,
+  resetNativeBisect,
+  restoreCheckout,
+  startNativeBisect,
+} from '../git';
 import { writeSessionAtomic, writeSummary } from '../persistence';
 import type {
   CompareRunRequest,
@@ -217,8 +223,26 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
       },
       async beginSession() {},
       async endSession() {},
+      startNativeBisect: (group) => startNativeBisect({
+        repoDir: fixture.experimentDir,
+        goodSha: group.goodSha,
+        badSha: group.badSha,
+      }),
+      markNativeBisect: (verdict) => markNativeBisect(fixture.experimentDir, verdict),
+      resetNativeBisect: () => resetNativeBisect(fixture.experimentDir),
+      previewNativeBisect: async (group) => {
+        try {
+          return await startNativeBisect({
+            repoDir: fixture.experimentDir,
+            goodSha: group.goodSha,
+            badSha: group.badSha,
+            noCheckout: true,
+          });
+        } finally {
+          await resetNativeBisect(fixture.experimentDir);
+        }
+      },
       checkout: (sha) => checkoutDetached(fixture.experimentDir, sha),
-      async syncCandidateFilesToExperimentVolume() {},
       async reloadExperiment(request) {
         experimentReloadCalls.push({ ...request });
         if (request.sha === options.containerFallbackAtSha) {
@@ -517,6 +541,8 @@ export function assertExperimentRestored(fixture: E2eRepositoryFixture): void {
     .toBe(fixture.experimentBranch);
   expect(git(fixture.experimentDir, ['rev-parse', 'HEAD']))
     .toBe(fixture.originalExperimentSha);
+  const bisectStartPath = git(fixture.experimentDir, ['rev-parse', '--git-path', 'BISECT_START']);
+  expect(fs.existsSync(path.resolve(fixture.experimentDir, bisectStartPath))).toBe(false);
 }
 
 export function expectBinarySearchTraversal(

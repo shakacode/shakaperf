@@ -82,8 +82,6 @@ function savedSession(): BisectSession {
     viewport: 'desktop',
     subject: 'document',
     status: 'found' as const,
-    goodIndex: 0,
-    badIndex: 1,
     firstBadSha: 'middle',
     recordedTargetEvaluations: {},
   }];

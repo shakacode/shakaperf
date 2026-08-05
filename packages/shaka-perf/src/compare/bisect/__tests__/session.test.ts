@@ -152,13 +152,13 @@ interface HarnessOptions {
   signal?: NodeJS.Signals;
   beginSessionError?: Error;
   checkoutErrorBySha?: Record<string, Error>;
-  syncCandidateFilesErrorBySha?: Record<string, Error>;
   compareErrorBySha?: Record<string, Error>;
   refreshBySha?: Record<string, { mode: 'commands' | 'container'; usedFallback: boolean }>;
   restoreError?: Error;
   disposeError?: Error;
   terminalWriteSessionErrors?: Error[];
   clearPriorReportOutput?: () => void;
+  nativeHistory?: string[];
 }
 
 function deps(
@@ -169,7 +169,6 @@ function deps(
   emitSignal(signal: NodeJS.Signals): void;
   calls: {
     checkouts: string[];
-    syncedCandidateFiles: Array<[string | null, string]>;
     refreshes: string[];
     compares: Array<{
       sha: string;
@@ -181,7 +180,7 @@ function deps(
     sessions: BisectSession[];
     summaries: BisectSession[];
     summaryMetadata: BisectSummaryMetadata[];
-    restored: Array<[string | null, string]>;
+    restored: string[];
     events: string[];
     progress: string[];
     decisions: BisectDecisionLogEntry[];
@@ -196,7 +195,6 @@ function deps(
 } {
   const calls = {
     checkouts: [] as string[],
-    syncedCandidateFiles: [] as Array<[string | null, string]>,
     refreshes: [] as string[],
     compares: [] as Array<{
       sha: string;
@@ -208,7 +206,7 @@ function deps(
     sessions: [] as BisectSession[],
     summaries: [] as BisectSession[],
     summaryMetadata: [] as BisectSummaryMetadata[],
-    restored: [] as Array<[string | null, string]>,
+    restored: [] as string[],
     events: [] as string[],
     progress: [] as string[],
     decisions: [] as BisectDecisionLogEntry[],
@@ -219,6 +217,29 @@ function deps(
     checkpoints: [] as Array<{ afterEvent: string | undefined; session: BisectSession }>,
     summaryAfterEvents: [] as string[][],
     signalHandlers: new Set<(signal: NodeJS.Signals) => void>(),
+  };
+  const primaryNativeHistory = options.nativeHistory ?? ['good', 'a', 'b', 'bad'];
+  const nativeHistories = [primaryNativeHistory, ['base', 'source', 'topic']];
+  let nativeHistory = primaryNativeHistory;
+  let nativeGood = 'good';
+  let nativeBad = 'bad';
+  let nativeCandidate: string | null = null;
+  const nativeStep = (): Awaited<ReturnType<NonNullable<ExecuteBisectDependencies['startNativeBisect']>>> => {
+    const goodIndex = nativeHistory.indexOf(nativeGood);
+    const badIndex = nativeHistory.indexOf(nativeBad);
+    if (goodIndex === -1 || badIndex === -1 || goodIndex >= badIndex) {
+      throw new Error(`Invalid stubbed native bisect range ${nativeGood}..${nativeBad}`);
+    }
+    if (badIndex - goodIndex === 1) {
+      nativeCandidate = null;
+      return { candidateSha: null, firstBadSha: nativeBad, complete: true, output: '' };
+    }
+    nativeCandidate = nativeHistory[Math.floor((goodIndex + badIndex) / 2)]!;
+    calls.checkouts.push(nativeCandidate);
+    calls.events.push(`checkout:${nativeCandidate}`);
+    const checkoutError = options.checkoutErrorBySha?.[nativeCandidate];
+    if (checkoutError) throw checkoutError;
+    return { candidateSha: nativeCandidate, firstBadSha: null, complete: false, output: '' };
   };
   return {
     calls,
@@ -241,6 +262,37 @@ function deps(
       async endSession() {
         calls.events.push('lease:end');
       },
+      async startNativeBisect(group) {
+        nativeHistory = nativeHistories.find((history) => (
+          history.includes(group.goodSha) && history.includes(group.badSha)
+        )) ?? primaryNativeHistory;
+        nativeGood = group.goodSha;
+        nativeBad = group.badSha;
+        return nativeStep();
+      },
+      async markNativeBisect(verdict) {
+        if (!nativeCandidate) throw new Error('Stubbed native bisect has no candidate to mark');
+        if (verdict === 'good') nativeGood = nativeCandidate;
+        else nativeBad = nativeCandidate;
+        return nativeStep();
+      },
+      async resetNativeBisect() {},
+      async previewNativeBisect(group) {
+        const previewHistory = nativeHistories.find((history) => (
+          history.includes(group.goodSha) && history.includes(group.badSha)
+        )) ?? primaryNativeHistory;
+        const goodIndex = previewHistory.indexOf(group.goodSha);
+        const badIndex = previewHistory.indexOf(group.badSha);
+        if (badIndex - goodIndex === 1) {
+          return { candidateSha: null, firstBadSha: group.badSha, complete: true, output: '' };
+        }
+        return {
+          candidateSha: previewHistory[Math.floor((goodIndex + badIndex) / 2)]!,
+          firstBadSha: null,
+          complete: false,
+          output: '',
+        };
+      },
       async checkout(sha) {
         calls.checkouts.push(sha);
         calls.events.push(`checkout:${sha}`);
@@ -248,21 +300,14 @@ function deps(
         if (checkoutError) throw checkoutError;
       },
       async restore(request) {
-        calls.restored.push([request.previouslySyncedSha, request.originalSha]);
+        calls.restored.push(request.originalSha);
         calls.events.push('checkout:original');
-        calls.events.push('sync:original');
         calls.events.push('reload-experiment:original');
         if (options.restoreError) throw options.restoreError;
       },
       clearSummary() {},
       clearPriorReportOutput() {
         options.clearPriorReportOutput?.();
-      },
-      async syncCandidateFilesToExperimentVolume(request) {
-        calls.syncedCandidateFiles.push([request.previouslySyncedSha, request.candidateSha]);
-        calls.events.push(`sync-candidate-files:${request.candidateSha}`);
-        const syncCandidateFilesError = options.syncCandidateFilesErrorBySha?.[request.candidateSha];
-        if (syncCandidateFilesError) throw syncCandidateFilesError;
       },
       async reloadExperiment(request) {
         calls.refreshes.push(request.sha);
@@ -387,11 +432,6 @@ describe('compare bisect session orchestration', () => {
       },
     }]);
     expect(harness.calls.checkouts).toEqual(['bad', 'a', 'b']);
-    expect(harness.calls.syncedCandidateFiles).toEqual([
-      [null, 'bad'],
-      ['bad', 'a'],
-      ['a', 'b'],
-    ]);
     expect(harness.calls.compares).toEqual([
       { sha: 'bad', categories: ['visreg'], tests: [] },
       {
@@ -424,19 +464,18 @@ describe('compare bisect session orchestration', () => {
       testNames: ['Homepage'],
     });
     expect(harness.calls.reports.at(-1)?.session.status).toBe('complete');
-    expect(harness.calls.restored).toEqual([['b', 'bad']]);
+    expect(harness.calls.restored).toEqual(['bad']);
     expect(harness.calls.events.at(0)).toBe('lease:begin');
-    expect(harness.calls.events.slice(-4)).toEqual([
+    expect(harness.calls.events.slice(-3)).toEqual([
       'checkout:original',
-      'sync:original',
       'reload-experiment:original',
       'lease:end',
     ]);
     expect(harness.calls.progress).toEqual(expect.arrayContaining([
       'Starting compare bisect session',
       'Measuring bad ref bad to discover regression targets',
-      'Selected midpoint a for 1 active target(s)',
-      'Selected midpoint b for 1 active target(s)',
+      'Selected Git candidate a for 1 active target(s)',
+      'Selected Git candidate b for 1 active target(s)',
       'Compare bisect session completed',
     ]));
     expect(harness.calls.decisions.map((entry) => entry.event)).toEqual(expect.arrayContaining([
@@ -452,10 +491,9 @@ describe('compare bisect session orchestration', () => {
       sha: 'b',
       tests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
       targets: [expect.objectContaining({
-        interval: {
-          goodIndex: 1,
+        group: {
+          id: 'primary-group-1',
           goodSha: 'a',
-          badIndex: 3,
           badSha: 'bad',
         },
       })],
@@ -504,11 +542,10 @@ describe('compare bisect session orchestration', () => {
     expect(resumed.primary?.status).toBe('complete');
     expect(resumeHarness.calls.events).not.toContain('lease:begin');
     expect(resumeHarness.calls.checkouts).toEqual([]);
-    expect(resumeHarness.calls.syncedCandidateFiles).toEqual([]);
     expect(resumeHarness.calls.compares).toEqual([]);
   });
 
-  it('retries incomplete work with a full first reconciliation', async () => {
+  it('retries incomplete work through the normal reload path', async () => {
     const bisectInput = input(rootDir);
     const failedHarness = deps({ bad: [resultWithVisualDiff('diff.png')] }, {
       compareErrorBySha: { a: new Error('compare stopped') },
@@ -528,10 +565,6 @@ describe('compare bisect session orchestration', () => {
 
     expect(resumed.status).toBe('complete');
     expect(resumeHarness.calls.events[0]).toBe('lease:begin');
-    expect(resumeHarness.calls.syncedCandidateFiles).toEqual([
-      [null, 'a'],
-      ['a', 'b'],
-    ]);
     expect(resumeHarness.calls.compares.map((run) => run.sha)).toEqual(['a', 'b']);
     expect(resumed.primary?.attempts.map(({ sha, status }) => ({ sha, status }))).toEqual([
       { sha: 'a', status: 'incomplete' },
@@ -739,7 +772,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.compares).toEqual([
       { sha: 'bad', categories: ['visreg'], tests: [] },
     ]);
-    expect(harness.calls.restored).toEqual([['bad', 'bad']]);
+    expect(harness.calls.restored).toEqual(['bad']);
     expect(harness.calls.decisions.map((entry) => entry.event)).not.toContain('good-ref-start');
   });
 
@@ -781,10 +814,9 @@ describe('compare bisect session orchestration', () => {
       invalidReason: 'regression is already detected at the good ref',
     }]);
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'good']);
-    expect(harness.calls.restored).toEqual([['good', 'bad']]);
-    expect(harness.calls.events.slice(-4)).toEqual([
+    expect(harness.calls.restored).toEqual(['bad']);
+    expect(harness.calls.events.slice(-3)).toEqual([
       'checkout:original',
-      'sync:original',
       'reload-experiment:original',
       'lease:end',
     ]);
@@ -832,10 +864,9 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.sessions.at(-1)?.commitRuns.a).toMatchObject({
       infrastructureError: expect.stringMatching(/missing visreg measurement/i),
     });
-    expect(harness.calls.restored).toEqual([['a', 'bad']]);
-    expect(harness.calls.events.slice(-4)).toEqual([
+    expect(harness.calls.restored).toEqual(['bad']);
+    expect(harness.calls.events.slice(-3)).toEqual([
       'checkout:original',
-      'sync:original',
       'reload-experiment:original',
       'lease:end',
     ]);
@@ -946,29 +977,12 @@ describe('compare bisect session orchestration', () => {
 
     await expect(executeBisect(input(rootDir), harness.deps)).rejects.toThrow(/checkout mutated then exploded/i);
 
-    expect(harness.calls.restored).toEqual([[null, 'bad']]);
-    expect(harness.calls.events.slice(-4)).toEqual([
+    expect(harness.calls.restored).toEqual(['bad']);
+    expect(harness.calls.events.slice(-3)).toEqual([
       'checkout:original',
-      'sync:original',
       'reload-experiment:original',
       'lease:end',
     ]);
-  });
-
-  it('forces a full restore reconcile after candidate file synchronization partially fails', async () => {
-    const harness = deps({
-      good: [resultWithVisualDiff(null)],
-      bad: [resultWithVisualDiff('diff.png')],
-    }, {
-      syncCandidateFilesErrorBySha: {
-        a: new Error('candidate file sync partially copied then exploded'),
-      },
-    });
-
-    await expect(executeBisect(input(rootDir), harness.deps))
-      .rejects.toThrow(/candidate file sync partially copied then exploded/i);
-
-    expect(harness.calls.restored).toEqual([[null, 'bad']]);
   });
 
   it('rejects mixed valid and error outcomes without advancing boundaries', async () => {
@@ -983,13 +997,13 @@ describe('compare bisect session orchestration', () => {
 
     expect(harness.calls.sessions.at(-1)).toMatchObject({
       status: 'failed',
-      primary: { targets: [{ goodIndex: 0, badIndex: 3 }] },
+      primary: { targets: [{ status: 'active' }] },
     });
     expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.recordedTargetEvaluations.a).toBeUndefined();
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a']);
   });
 
-  it('persists checkout, file sync, experiment reload, comparisons, and boundary checkpoints', async () => {
+  it('persists checkout, experiment reload, comparisons, and boundary checkpoints', async () => {
     const harness = deps({
       good: [resultWithVisualDiff(null)],
       a: [resultWithVisualDiff(null)],
@@ -999,7 +1013,7 @@ describe('compare bisect session orchestration', () => {
 
     await executeBisect(input(rootDir), harness.deps);
 
-    for (const event of ['checkout:bad', 'sync-candidate-files:bad', 'reload-experiment:bad', 'run-candidate-comparisons:bad']) {
+    for (const event of ['checkout:bad', 'reload-experiment:bad', 'run-candidate-comparisons:bad']) {
       expect(harness.calls.checkpoints.some((checkpoint) => checkpoint.afterEvent === event)).toBe(true);
     }
     expect(harness.calls.checkpoints.some((checkpoint) => (
@@ -1061,9 +1075,8 @@ describe('compare bisect session orchestration', () => {
       status: 'interrupted',
     });
     expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.recordedTargetEvaluations.a).toBeUndefined();
-    expect(harness.calls.events.slice(-4)).toEqual([
+    expect(harness.calls.events.slice(-3)).toEqual([
       'checkout:original',
-      'sync:original',
       'reload-experiment:original',
       'lease:end',
     ]);
@@ -1100,9 +1113,8 @@ describe('compare bisect session orchestration', () => {
       checkpoint.session.status === 'complete'
     ));
     expect(completeCheckpoint?.afterEvent).toBe('lease:end');
-    expect(harness.calls.summaryAfterEvents[0]?.slice(-4)).toEqual([
+    expect(harness.calls.summaryAfterEvents[0]?.slice(-3)).toEqual([
       'checkout:original',
-      'sync:original',
       'reload-experiment:original',
       'lease:end',
     ]);
@@ -1164,7 +1176,7 @@ describe('compare bisect session orchestration', () => {
       b: [account('account-diff.png'), admin(null)],
       c: [admin('admin-diff.png')],
       bad: [account('account-diff.png'), admin('admin-diff.png')],
-    });
+    }, { nativeHistory: ['good', 'a', 'b', 'c', 'bad'] });
 
     const divergingInput = input(rootDir);
     divergingInput.gitRange = {
@@ -1274,26 +1286,19 @@ describe('frozen bisect test selection', () => {
 });
 
 describe('experiment restoration', () => {
-  it.each([
-    ['checkout', ['checkout', 'refresh']],
-    ['sync', ['checkout', 'sync', 'refresh']],
-  ] as const)('attempts an experiment reload after %s restoration fails', async (failure, expectedEvents) => {
+  it('attempts an experiment reload after checkout restoration fails', async () => {
     const events: string[] = [];
 
     await expect(restoreExperimentState({
       async restoreCheckout() {
         events.push('checkout');
-        if (failure === 'checkout') throw new Error('checkout restore failed');
-      },
-      async syncVolume() {
-        events.push('sync');
-        if (failure === 'sync') throw new Error('volume restore failed');
+        throw new Error('checkout restore failed');
       },
       async reloadExperiment() {
         events.push('refresh');
       },
-    })).rejects.toThrow(new RegExp(failure === 'checkout' ? 'checkout restore' : 'volume restore'));
+    })).rejects.toThrow(/checkout restore/i);
 
-    expect(events).toEqual(expectedEvents);
+    expect(events).toEqual(['checkout', 'refresh']);
   });
 });

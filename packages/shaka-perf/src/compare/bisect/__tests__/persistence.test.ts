@@ -24,8 +24,6 @@ function target(
     viewport: 'desktop',
     subject: id,
     status: 'found',
-    goodIndex: 0,
-    badIndex: 1,
     firstBadSha,
     recordedTargetEvaluations: {},
   };

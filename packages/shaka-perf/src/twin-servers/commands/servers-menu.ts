@@ -95,7 +95,7 @@ export interface MenuController {
    * (75) exit on the client side.
    */
   runOneOff<T>(verb: string, runner: () => Promise<T>): Promise<T>;
-  /** Pause auto-sync and reject unrelated lifecycle actions while compare bisect owns the session. */
+  /** Reject unrelated lifecycle actions while compare bisect owns the session. */
   beginBisectSession(sessionId: string, ownerPid: number): Promise<void>;
   /** Reload the experiment side for the currently active compare bisect session. */
   reloadBisectExperiment(request: {
@@ -701,7 +701,7 @@ export async function runServersMenu(
       } else if (state.activity.verb === verb) {
         state.activity = previousActivity;
       }
-      if (state.bisectSession.activeSessionId === null) performAutoSync();
+      performAutoSync();
       repaint();
       release();
     }
@@ -723,13 +723,14 @@ export async function runServersMenu(
       'beginning compare bisect session',
       async () => {
         state.bisectSession.beginSession(sessionId, ownerPid);
-        state.lastMessage = 'Compare bisect owns experiment reload; auto-sync is paused.';
+        state.lastMessage = 'Compare bisect owns experiment reload; auto-sync remains active.';
       },
       { allowDuringBisect: true },
     ),
     reloadBisectExperiment: (request) => runProxiedAction(
       `reloading compare bisect experiment (${request.mode})`,
       async () => {
+        await settleExperimentAutoSync();
         const result = await state.bisectSession.reloadExperiment(request.sessionId, request);
         state.lastMessage = result.usedFallback
           ? 'Compare bisect command reload failed; rebuilt experiment container.'
@@ -924,8 +925,9 @@ export async function runServersMenu(
   const liveIgnore = loadDockerignore(experimentBuildDir, dockerfileAbsForSide(config, 'experiment'));
   const pendingSync = new Set<string>();
   let syncTimer: NodeJS.Timeout | null = null;
-  const performAutoSync = (): void => {
-    if (state.busy || stopping || state.bisectSession.activeSessionId !== null || pendingSync.size === 0) return;
+  let syncGeneration = 0;
+  const performAutoSync = (options: { allowBusy?: boolean; strict?: boolean } = {}): void => {
+    if ((!options.allowBusy && state.busy) || stopping || pendingSync.size === 0) return;
     // Re-read per batch so a fresh rebuild's manifest is picked up immediately.
     // Without a manifest (never built, or older shaka-perf), fall back to the
     // live dockerignore and skip deletion handling — we can't safely unlink
@@ -939,6 +941,7 @@ export async function runServersMenu(
     pendingSync.clear();
     let copied = 0;
     let deleted = 0;
+    const errors: Error[] = [];
     for (const rel of batch) {
       const src = path.join(experimentBuildDir, rel);
       const dst = path.join(config.volumes.experiment, rel);
@@ -957,6 +960,7 @@ export async function runServersMenu(
         } catch (err) {
           if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
             state.logLines = state.logLines.concat(`[auto-sync] ${rel} (delete): ${(err as Error).message}`);
+            errors.push(err as Error);
           }
         }
         continue;
@@ -973,6 +977,7 @@ export async function runServersMenu(
         copied++;
       } catch (err) {
         state.logLines = state.logLines.concat(`[auto-sync] ${rel}: ${(err as Error).message}`);
+        errors.push(err as Error);
       }
     }
     if (copied > 0 || deleted > 0) {
@@ -981,6 +986,17 @@ export async function runServersMenu(
       state.lastMessage = `Auto-sync: ${n} file${n === 1 ? '' : 's'} updated since last build`;
       repaint();
     }
+    if (options.strict && errors.length > 0) {
+      throw new AggregateError(errors, 'Failed to auto-sync experiment checkout');
+    }
+  };
+  const settleExperimentAutoSync = async (): Promise<void> => {
+    let observedGeneration: number;
+    do {
+      observedGeneration = syncGeneration;
+      await new Promise<void>((resolve) => setTimeout(resolve, 500));
+      performAutoSync({ allowBusy: true, strict: true });
+    } while (observedGeneration !== syncGeneration || pendingSync.size > 0);
   };
   // Guard against stacked refreshes: `refreshDecision` walks the build
   // context, which on big monorepos can take longer than the debounce window.
@@ -1016,8 +1032,12 @@ export async function runServersMenu(
     watcher = fs.watch(experimentBuildDir, { recursive: true }, (_event, filename) => {
       if (!filename) return;
       pendingSync.add(filename.toString());
+      syncGeneration++;
       if (syncTimer) clearTimeout(syncTimer);
-      syncTimer = setTimeout(() => { void refreshFromWatcher(); }, 500);
+      syncTimer = setTimeout(() => {
+        syncTimer = null;
+        void refreshFromWatcher();
+      }, 500);
     });
     // The recursive watcher scans subdirectories lazily; if one disappears
     // between an event firing and the scan (a build, a git operation, or a
