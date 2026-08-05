@@ -332,58 +332,9 @@ export const AgentReadinessConfigSchema = z
   })
   .strict();
 
-const BisectRepairCommandSchema = z.object({
-  description: z.string().trim().min(1, 'description is required'),
-  command: z.string().trim().min(1, 'command is required'),
-}).strict();
-
-const BisectRepairCommitSelectorSchema = z.object({
-  commits: z.array(z.string().trim().min(1)).nonempty(),
-}).strict();
-
-const BisectRepairIntervalSelectorSchema = z.object({
-  from: z.string().trim().min(1).optional(),
-  through: z.string().trim().min(1),
-}).strict();
-
-const BisectRepairAllSelectorSchema = z.object({
-  all: z.literal(true),
-}).strict();
-
-export const BisectRepairConfigSchema = z.object({
-  id: z.string().regex(
-    /^[A-Za-z0-9][A-Za-z0-9._-]*$/,
-    'repair id must be a filesystem-safe identifier',
-  ),
-  kind: z.enum(['test-harness', 'build', 'data', 'other']).default('other'),
-  purpose: z.string().trim().min(1, 'purpose is required'),
-  patch: z.string().trim().min(1, 'patch is required'),
-  appliesTo: z.union([
-    BisectRepairCommitSelectorSchema,
-    BisectRepairIntervalSelectorSchema,
-    BisectRepairAllSelectorSchema,
-  ]),
-  prepareCommands: z.array(BisectRepairCommandSchema).default([]),
-  cleanupCommands: z.array(BisectRepairCommandSchema).default([]),
-}).strict();
-
 export const BisectConfigSchema = z.object({
   rebuildContainer: z.boolean().default(false),
-  repairs: z.array(BisectRepairConfigSchema)
-    .superRefine((repairs, ctx) => {
-      const seen = new Set<string>();
-      for (const [index, repair] of repairs.entries()) {
-        if (seen.has(repair.id)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: [index, 'id'],
-            message: `duplicate repair id "${repair.id}"`,
-          });
-        }
-        seen.add(repair.id);
-      }
-    })
-    .default([]),
+  patchesManifest: z.string().trim().min(1, 'patchesManifest cannot be empty').optional(),
 }).strict();
 
 export const AbTestsConfigSchema = z
@@ -509,7 +460,6 @@ export function viewportsForCategory(
   );
 }
 
-export type BisectRepairConfig = z.infer<typeof BisectRepairConfigSchema>;
 export interface AbTestsConfig {
   shared: SharedConfig;
   visreg: VisregConfig;
