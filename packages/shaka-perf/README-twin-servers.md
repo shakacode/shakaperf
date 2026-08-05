@@ -127,7 +127,13 @@ when it runs.
 yarn shaka-perf servers build                          # Build both images in parallel
 yarn shaka-perf servers build --target experiment      # Build only one
 yarn shaka-perf servers build --no-cache               # Build without Docker layer cache
+yarn shaka-perf servers prune-cache                    # Prune only this project's build cache
 ```
+
+Twin-server builds use an auto-created `docker-container` Buildx builder named
+from the project slug. Control and experiment share that cache with each other,
+but not with other projects. `prune-cache` clears the isolated builder cache
+without touching other Docker build caches or the project's tagged images.
 
 ### Containers and Servers
 

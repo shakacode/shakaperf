@@ -64,6 +64,7 @@ Cold start:
 
 ```bash
 yarn shaka-perf servers build              # build both Docker images (control + experiment)
+yarn shaka-perf servers prune-cache        # prune only this project's isolated Buildx cache
 yarn shaka-perf servers start-containers   # clears both bind-mount volumes, recreates containers, runs setupCommands
 yarn shaka-perf servers start-servers      # launch the app via Overmind — blocks; run in background
 ```
