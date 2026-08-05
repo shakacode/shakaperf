@@ -200,7 +200,7 @@ describe('bisect config', () => {
   it('rejects the removed bisect.repairs configuration', () => {
     expect(() => buildAbTestsConfig(baseConfig({
       bisect: { repairs: [] },
-    }))).toThrow(/Unrecognized key.*repairs/);
+    }))).toThrow(/bisect\.repairs is not supported.*patch create <id>/s);
   });
 });
 

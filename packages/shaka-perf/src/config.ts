@@ -519,10 +519,19 @@ function rejectHeadlessInConfig(parsed: Record<string, unknown>, at: string): vo
  */
 export function buildAbTestsConfig(raw: unknown, origin?: string): AbTestsConfig {
   const at = origin ? `${origin}: ` : '';
-  // No per-key migration guards: every section is `.strict()`, so a removed or
-  // misspelled key is rejected by name on its own. Renames are documented in
-  // BREAKING_CHANGES.md rather than restated here — one list to maintain, and
-  // no risk of a future rename shipping without its guard.
+  const rawBisect = raw && typeof raw === 'object'
+    ? (raw as { bisect?: unknown }).bisect
+    : undefined;
+  if (
+    rawBisect && typeof rawBisect === 'object'
+    && Object.prototype.hasOwnProperty.call(rawBisect, 'repairs')
+  ) {
+    throw new Error(
+      at + 'bisect.repairs is not supported. Manage patches with:\n\n' +
+      '  shaka-perf compare bisect patch create <id>\n\n' +
+      'Patch registrations are stored in bisect-repairs/manifest.json.',
+    );
+  }
   const result = AbTestsConfigSchema.safeParse(raw ?? {});
   if (!result.success) {
     const first = result.error.errors[0];
