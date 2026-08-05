@@ -573,6 +573,22 @@ describe('site-wide copy prompts', () => {
     expect(buildPerfSitePrompt({ ...perfSiteData, pageUrls: multiHostPageUrls })).toContain('Re-run PageSpeed Insights for https://m.example.com/platform');
   });
 
+  it('does not apply fetch-oriented host restrictions to audited page URLs', () => {
+    const auditedPageUrl = 'http://localhost:3000/platform';
+    const pageUrls = [a11ySiteData.url, auditedPageUrl, ...a11ySiteData.pageUrls.slice(2)];
+    const prompt = buildA11ySitePrompt({
+      ...a11ySiteData,
+      worstPage: { url: auditedPageUrl, highImpactCount: 4 },
+      pageUrls,
+      findings: a11ySiteData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageUrls: [a11ySiteData.url, auditedPageUrl] }
+        : finding),
+    });
+
+    expect(prompt).toContain("'http://localhost:3000/platform'");
+    expect(buildPerfSitePrompt({ ...perfSiteData, pageUrls })).toContain('Re-run PageSpeed Insights for http://localhost:3000/platform');
+  });
+
   it('accepts only audited model finding URLs across hosts', () => {
     const multiHostPageUrls = [
       a11ySiteData.url,
@@ -748,18 +764,10 @@ describe('site-wide copy prompts', () => {
     }
   });
 
-  it('rejects malformed, off-origin, duplicate, or hostile site-derived inputs', () => {
-    expect(buildA11ySitePrompt({
-      ...a11ySiteData,
-      pageUrls: [...a11ySiteData.pageUrls.slice(0, -1), 'http://169.254.169.254/latest/meta-data/'],
-    })).toBeUndefined();
+  it('rejects malformed, duplicate, or hostile site-derived inputs', () => {
     expect(buildA11ySitePrompt({
       ...a11ySiteData,
       pageUrls: [...a11ySiteData.pageUrls.slice(0, -1), 'not a URL'],
-    })).toBeUndefined();
-    expect(buildPerfSitePrompt({
-      ...perfSiteData,
-      pageUrls: [...perfSiteData.pageUrls.slice(0, -1), 'http://169.254.169.254/latest/meta-data/'],
     })).toBeUndefined();
     expect(buildA11ySitePrompt({
       ...a11ySiteData,
