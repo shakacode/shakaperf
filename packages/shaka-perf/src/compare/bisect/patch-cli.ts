@@ -15,6 +15,8 @@ import { Command, Option } from 'commander';
 import { findAbTestsConfig, loadAbTestsConfig } from '../../config-loader';
 import { buildAbTestsConfig } from '../../config';
 import { resolveConfig } from '../../twin-servers/config';
+import { tryProxy } from '../../twin-servers/ipc/client';
+import { PROTOCOL_VERSION } from '../../twin-servers/ipc/protocol';
 import {
   captureSourceCommitPatch,
   captureWorkingTreePatch,
@@ -28,6 +30,7 @@ export interface PatchCliContext {
   configDirectory: string;
   configuredManifestPath?: string;
   repoDir: string;
+  projectSlug?: string;
 }
 
 export interface PatchPrompt {
@@ -41,6 +44,7 @@ export interface BisectPatchCliDependencies {
   prompt?: PatchPrompt;
   print?: (message: string) => void;
   isInteractive?: () => boolean;
+  assertMutable?: (context: PatchCliContext) => Promise<void>;
 }
 
 interface SharedOptions {
@@ -131,7 +135,9 @@ export function createBisectPatchCommand(deps: BisectPatchCliDependencies = {}):
     .option('-R, --reverse', 'Reverse the registered patch', false)
     .action(async function (this: Command, id: string) {
       const options = this.optsWithGlobals();
-      const registry = await registryFor(options, deps);
+      const context = await resolveContext(options.config, deps);
+      await assertMutable(context, deps);
+      const registry = new BisectPatchRegistry({ ...context });
       const outcome = registry.apply(id, {
         check: options.check === true || options.dryRun === true,
         reverse: options.reverse === true,
@@ -204,6 +210,7 @@ async function runCreate(
   deps: BisectPatchCliDependencies,
 ): Promise<void> {
   const context = await resolveContext(rawOptions.config, deps);
+  await assertMutable(context, deps);
   const interactive = shouldPrompt(rawOptions, deps);
   const answers = interactive
     ? await completeCreateAnswers(rawOptions, paths, deps.prompt ?? new ReadlinePatchPrompt())
@@ -227,6 +234,7 @@ async function runEdit(
   deps: BisectPatchCliDependencies,
 ): Promise<void> {
   const context = await resolveContext(options.config, deps);
+  await assertMutable(context, deps);
   if (sourceCount(options) !== 1) throw sourceChoiceError();
   const captured = capture(context.repoDir, paths, options);
   if (options.dryRun) {
@@ -246,6 +254,7 @@ async function runUpdate(
     throw new Error('patch update requires an interactive TTY; it does not accept --json or --no-interactive');
   }
   const context = await resolveContext(options.config, deps);
+  await assertMutable(context, deps);
   const registry = new BisectPatchRegistry({ ...context });
   const current = registry.get(id);
   const prompt = deps.prompt ?? new ReadlinePatchPrompt();
@@ -265,6 +274,7 @@ async function runRemove(
   deps: BisectPatchCliDependencies,
 ): Promise<void> {
   const context = await resolveContext(options.config, deps);
+  await assertMutable(context, deps);
   const registry = new BisectPatchRegistry({ ...context });
   const registered = registry.get(id);
   if (!options.yes) {
@@ -380,8 +390,20 @@ async function completeCreateAnswers(
     if (selector === 'commits') options.at = splitValues(await prompt.input('Exact refs (comma-separated)'));
   }
   if (options.purpose === undefined) options.purpose = await prompt.input('Purpose (optional)');
-  options.prepareCommand ??= [];
-  options.cleanupCommand ??= [];
+  const prepareCommands = await promptCommandList(
+    prompt,
+    'preparation',
+    pairCommands(options.prepareCommand, options.prepareDescription, 'prepare'),
+  );
+  options.prepareCommand = prepareCommands.map((command) => command.command);
+  options.prepareDescription = prepareCommands.map((command) => command.description);
+  const cleanupCommands = await promptCommandList(
+    prompt,
+    'cleanup',
+    pairCommands(options.cleanupCommand, options.cleanupDescription, 'cleanup'),
+  );
+  options.cleanupCommand = cleanupCommands.map((command) => command.command);
+  options.cleanupDescription = cleanupCommands.map((command) => command.description);
   return { options, paths };
 }
 
@@ -412,13 +434,38 @@ async function promptMetadata(
     const through = await prompt.input('Inclusive upper SHA', interval.through);
     appliesTo = { ...(from ? { from } : {}), through };
   }
+  const prepareCommands = await promptCommandList(prompt, 'preparation', current.prepareCommands);
+  const cleanupCommands = await promptCommandList(prompt, 'cleanup', current.cleanupCommands);
   return {
     kind,
     purpose,
     appliesTo,
-    prepareCommands: current.prepareCommands,
-    cleanupCommands: current.cleanupCommands,
+    prepareCommands,
+    cleanupCommands,
   };
+}
+
+async function promptCommandList(
+  prompt: PatchPrompt,
+  phase: 'preparation' | 'cleanup',
+  current: BisectPatchManifestEntry['prepareCommands'],
+): Promise<BisectPatchManifestEntry['prepareCommands']> {
+  const commands = [];
+  for (const [index, existing] of current.entries()) {
+    const command = await prompt.input(`${phase} command ${index + 1}`, existing.command);
+    if (!command) continue;
+    const description = await prompt.input(
+      `${phase} command ${index + 1} description (optional)`, existing.description,
+    );
+    commands.push({ command, description: description || command });
+  }
+  while (await prompt.confirm(`Add ${phase} command?`, false)) {
+    const command = await prompt.input(`${phase} command`);
+    if (!command) throw new Error(`${phase} command cannot be empty`);
+    const description = await prompt.input(`${phase} command description (optional)`);
+    commands.push({ command, description: description || command });
+  }
+  return commands;
 }
 
 async function registryFor(options: SharedOptions, deps: BisectPatchCliDependencies) {
@@ -442,7 +489,31 @@ async function resolveContext(
     configDirectory: path.dirname(resolvedConfigPath),
     configuredManifestPath: config.bisect.patchesManifest,
     repoDir: twinServers.experimentDir,
+    projectSlug: twinServers.projectSlug,
   };
+}
+
+async function assertMutable(
+  context: PatchCliContext,
+  deps: BisectPatchCliDependencies,
+): Promise<void> {
+  if (deps.assertMutable) return deps.assertMutable(context);
+  if (!context.projectSlug) return;
+  const outcome = await tryProxy({
+    slug: context.projectSlug,
+    request: { v: PROTOCOL_VERSION, cmd: 'bisect-status' },
+  });
+  if (outcome.proxied && outcome.code !== 0) {
+    throw new Error(outcome.error ?? 'Cannot query compare-bisect lease status');
+  }
+  const activeSessionId = outcome.proxied
+    ? (outcome.data as { activeSessionId?: string | null } | undefined)?.activeSessionId
+    : null;
+  if (activeSessionId) {
+    throw new Error(
+      `Cannot modify compare-bisect patches while session "${activeSessionId}" owns the project`,
+    );
+  }
 }
 
 function printPatchList(
