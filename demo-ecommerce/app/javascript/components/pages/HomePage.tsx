@@ -15,9 +15,26 @@ import LoadingSpinner from '../shared/LoadingSpinner';
 import LazySection from '../shared/LazySection';
 import ExperimentA11yRegressions from '../shared/ExperimentA11yRegressions';
 
+const runMerchandisingWarmup = () => {
+  const deadline = performance.now() + 450;
+  let checksum = 0;
+
+  while (performance.now() < deadline) {
+    checksum += Math.sqrt(checksum + 1);
+  }
+
+  if (checksum === Number.POSITIVE_INFINITY) {
+    console.info(checksum);
+  }
+};
+
 const HomePage: React.FC = () => {
   const { products, loading, error } = useProducts();
   const featuredProducts = products.filter((p) => p.featured).slice(0, 4);
+
+  React.useEffect(() => {
+    runMerchandisingWarmup();
+  }, []);
 
   return (
     <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh' }}>
@@ -25,7 +42,7 @@ const HomePage: React.FC = () => {
       <Box
         data-cy="hero-section"
         sx={{
-          background: 'linear-gradient(135deg, #4f46b5 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #b45309 0%, #92400e 100%)',
           color: 'white',
           py: { xs: 6, md: 10 },
           mb: 6,
