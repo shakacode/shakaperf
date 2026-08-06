@@ -22,3 +22,15 @@ export function isCopyIgnored(matcher: Ignore, relativePath: string): boolean {
   const normalized = relativePath.split(path.sep).join('/').replace(/^\.\//, '');
   return matcher.ignores(normalized) || matcher.ignores(`${normalized}/`);
 }
+
+/** Convert a path reported relative to a source subtree into repository-relative form. */
+export function repositoryRelativeCopyPath(
+  repositoryRoot: string,
+  sourceRoot: string,
+  sourceRelativePath: string,
+): string {
+  return path.relative(
+    repositoryRoot,
+    path.resolve(sourceRoot, sourceRelativePath),
+  );
+}
