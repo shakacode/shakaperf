@@ -69,7 +69,6 @@ interface StartNativeBisectOptions {
   repoDir: string;
   goodSha: string;
   badSha: string;
-  firstParent?: boolean;
   noCheckout?: boolean;
   allowedPaths?: readonly string[];
 }
@@ -93,7 +92,6 @@ export class NativeGitBisectDriver {
       repoDir: this.options.repoDir,
       goodSha: group.goodSha,
       badSha: group.badSha,
-      firstParent: true,
       allowedPaths: this.options.allowedPaths,
     });
   }
@@ -110,7 +108,7 @@ export class NativeGitBisectDriver {
     return resolveCommit(this.options.repoDir, 'HEAD');
   }
 
-  async assertAtCandidate(expectedSha: string): Promise<void> {
+  async assertAt(expectedSha: string): Promise<void> {
     const actualSha = await this.currentCandidate();
     if (actualSha !== expectedSha) {
       throw new Error(`Native Git bisect selected ${actualSha}; expected ${expectedSha}`);
@@ -123,7 +121,6 @@ export class NativeGitBisectDriver {
         repoDir: this.options.repoDir,
         goodSha: group.goodSha,
         badSha: group.badSha,
-        firstParent: true,
         noCheckout: true,
         allowedPaths: this.options.allowedPaths,
       });
@@ -202,7 +199,7 @@ async function startNativeBisect(
   await requireClean(options.repoDir, 'Experiment', { allowedPaths: options.allowedPaths });
   const args = ['bisect', 'start'];
   if (options.noCheckout) args.push('--no-checkout');
-  if (options.firstParent !== false) args.push('--first-parent');
+  args.push('--first-parent');
   args.push(options.badSha, options.goodSha);
   const output = await git(options.repoDir, args);
   return nativeBisectStep(options.repoDir, output, options.noCheckout === true);

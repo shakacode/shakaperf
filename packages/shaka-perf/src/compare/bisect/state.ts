@@ -84,7 +84,7 @@ const phaseSchema = z.object({
     }).strict()),
     firstBadSha: z.string().optional(),
     previewCandidateSha: z.string().optional(),
-  }).strict()).optional(),
+  }).strict()),
   activeGroupId: z.string().optional(),
   attempts: z.array(attemptSchema),
   startedAt: z.string().optional(),
@@ -133,10 +133,9 @@ const mergeInvestigationSchema = z.object({
 
 const commitRunSchema = z.object({
   sha: z.string(),
-  compareCompleted: z.boolean().optional(),
+  compareCompleted: z.boolean(),
   requestedCategories: z.array(z.enum(['visreg', 'perf', 'accessibility'])),
-  requestedTests: z.array(testSelectionSchema).optional(),
-  requestedTestFiles: z.array(z.string()).optional(),
+  requestedTests: z.array(testSelectionSchema),
   experimentReloadMode: z.enum(['commands', 'container']),
   usedFallback: z.boolean(),
   compareResultsPath: z.string().optional(),

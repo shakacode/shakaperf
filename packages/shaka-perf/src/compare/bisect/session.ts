@@ -73,7 +73,6 @@ import {
   type ExperimentReloadResult,
 } from './run-candidate';
 import {
-  EndpointMeasurementRunner,
   EndpointRestoreError,
   EndpointValidator,
 } from './endpoint-validator';
@@ -444,7 +443,8 @@ class CompareBisectOrchestrator {
     });
     const endpointValidator = new EndpointValidator(
       deps.exactCheckout,
-      new EndpointMeasurementRunner(
+      new CandidateEvaluator(
+        deps.exactCheckout,
         deps.server,
         deps.comparison,
         environment,
@@ -805,7 +805,7 @@ function recordPhaseDecision(
   session: BisectSession,
 ): void {
   const sha = typeof transition.details?.sha === 'string' ? transition.details.sha : undefined;
-  const activeGroup = transition.phase.groups?.find((group) => (
+  const activeGroup = transition.phase.groups.find((group) => (
     group.id === transition.phase.activeGroupId
   ));
   const event = transition.event === 'attempt-started'
@@ -907,7 +907,7 @@ async function runMergeBisectWorkflow(context: BisectExecutionContext): Promise<
   const { input, deps, state } = context;
   state.session = buildMergeQueue(state.session);
   await context.save();
-  if (!input.investigateMerges || (state.session.mergeQueue?.length ?? 0) === 0) return;
+  if (!input.investigateMerges || state.session.mergeQueue.length === 0) return;
   if (state.badRefTests) deps.artifacts.writeSummary(state.session);
   state.session = { ...state.session, mode: 'merge-investigation' };
   state.requiresExperimentRestore = true;
@@ -1138,6 +1138,7 @@ function initialSession(input: ExecuteBisectInput, startedAt: string): BisectSes
       commitSubjects: input.gitRange.commitSubjects,
       commitParents: input.gitRange.commitParents,
       targets: [],
+      groups: [],
       attempts: [],
     },
     mergeQueue: [],
@@ -1360,13 +1361,9 @@ function printBisectSummary(
         `for ${nextAction.targetIds.length} target(s)`,
       );
       console.log(`Categories: ${nextAction.categories.join(', ')}`);
-      if (nextAction.tests) {
-        console.log(`Tests: ${nextAction.tests
-          .map((test) => `${test.testFile} :: ${test.testName}`)
-          .join(', ')}`);
-      } else if (nextAction.testFiles) {
-        console.log(`Test files: ${nextAction.testFiles.join(', ')}`);
-      }
+      console.log(`Tests: ${nextAction.tests
+        .map((test) => `${test.testFile} :: ${test.testName}`)
+        .join(', ')}`);
     } else {
       console.log('Next: no bisect action because no regression targets were discovered.');
     }
@@ -1480,7 +1477,7 @@ function dryRunNextAction(
       targetIds: targets.map((target) => target.id),
     };
   }
-  const group = session.primary.groups?.find((candidate) => candidate.previewCandidateSha);
+  const group = session.primary.groups.find((candidate) => candidate.previewCandidateSha);
   if (!group?.previewCandidateSha) return undefined;
   return {
     kind: 'measure-candidate',

@@ -115,6 +115,7 @@ describe('buildBisectReportModel', () => {
         good: [], visual: ['good', 'topic'], clean: ['visual'], bad: ['clean'],
       },
       targets,
+      groups: [],
       attempts: [],
     };
     session.mergeQueue = ['visual'];
@@ -227,6 +228,7 @@ describe('buildBisectReportModel', () => {
         commitSubjects: { 'main-base': 'main baseline', merge: 'merge topic' },
         commitParents: { 'main-base': [], merge: ['main-base', 'source-tip'] },
         targets: [sourceTarget, nestedTarget, introducedTarget],
+        groups: [],
         attempts: [],
       },
       mergeQueue: ['merge'],

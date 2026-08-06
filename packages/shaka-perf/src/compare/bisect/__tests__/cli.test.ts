@@ -441,7 +441,7 @@ function completedSession(): BisectSession {
     primary: {
       id: 'primary', status: 'complete', goodSha: 'good', badSha: 'bad',
       orderedCommits: ['good', 'bad'], commitSubjects: { good: 'good', bad: 'bad' },
-      commitParents: { good: [], bad: ['good'] }, targets: [], attempts: [],
+      commitParents: { good: [], bad: ['good'] }, targets: [], groups: [], attempts: [],
     },
     mergeQueue: [],
     mergeInvestigations: {},

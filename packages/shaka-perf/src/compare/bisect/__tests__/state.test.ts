@@ -51,6 +51,7 @@ function session(): BisectSession {
       commitSubjects: { good: 'good', mid: 'mid', bad: 'bad' },
       commitParents: { good: [], mid: ['good'], bad: ['mid'] },
       targets: [],
+      groups: [],
       attempts: [{
         id: 'attempt-1',
         sha: 'mid',
@@ -87,6 +88,38 @@ describe('resumable bisect state', () => {
 
   it('rejects unknown persisted fields', () => {
     expect(() => parseBisectSession({ ...session(), unexpected: true })).toThrow(/unrecognized/i);
+  });
+
+  it('rejects legacy commit-run fields and missing current fields', () => {
+    const value = session();
+    const currentRun = {
+      sha: 'mid',
+      compareCompleted: true,
+      requestedCategories: ['visreg'] as const,
+      requestedTests: [{ testFile: 'tests/home.abtest.ts', testName: 'Homepage' }],
+      experimentReloadMode: 'commands' as const,
+      usedFallback: false,
+      startedAt: '2026-07-13T00:01:00.000Z',
+    };
+
+    expect(() => parseBisectSession({
+      ...value,
+      commitRuns: { mid: { ...currentRun, requestedTestFiles: ['tests/home.abtest.ts'] } },
+    })).toThrow(/unrecognized/i);
+    expect(() => parseBisectSession({
+      ...value,
+      commitRuns: { mid: { ...currentRun, compareCompleted: undefined } },
+    })).toThrow();
+    expect(() => parseBisectSession({
+      ...value,
+      commitRuns: { mid: { ...currentRun, requestedTests: undefined } },
+    })).toThrow();
+  });
+
+  it('rejects sessions without canonical target groups', () => {
+    const value = session();
+    const { groups: _legacyMissingGroups, ...legacyPrimary } = value.primary;
+    expect(() => parseBisectSession({ ...value, primary: legacyPrimary })).toThrow();
   });
 
   it('fingerprints objects independently of object key order', () => {
