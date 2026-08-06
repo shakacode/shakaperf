@@ -81,7 +81,7 @@ interface MetadataOptions {
 
 export function createBisectPatchCommand(deps: BisectPatchCliDependencies = {}): Command {
   const patch = new Command('patch')
-    .description('Create and manage compare-bisect compatibility patches')
+    .description('Create and manage bisect compatibility patches')
     .option('--json', 'Emit machine-readable JSON', false)
     .option('--dry-run', 'Show intended changes without writing files', false)
     .option('--no-interactive', 'Fail instead of prompting for missing values')
@@ -532,14 +532,14 @@ async function assertMutable(
     request: { v: PROTOCOL_VERSION, cmd: 'bisect-status' },
   });
   if (outcome.proxied && outcome.code !== 0) {
-    throw new Error(outcome.error ?? 'Cannot query compare-bisect lease status');
+    throw new Error(outcome.error ?? 'Cannot query bisect lease status');
   }
   const activeSessionId = outcome.proxied
     ? (outcome.data as { activeSessionId?: string | null } | undefined)?.activeSessionId
     : null;
   if (activeSessionId) {
     throw new Error(
-      `Cannot modify compare-bisect patches while session "${activeSessionId}" owns the project`,
+      `Cannot modify bisect patches while session "${activeSessionId}" owns the project`,
     );
   }
 }
@@ -551,7 +551,7 @@ function printPatchList(
   deps: BisectPatchCliDependencies,
 ): void {
   if (json) return output(patches.map((patch) => ({ ...patch.entry, hashValid: patch.hashValid, files: patch.files })), true, deps);
-  if (patches.length === 0) return output('No compare-bisect patches registered.', false, deps);
+  if (patches.length === 0) return output('No bisect patches registered.', false, deps);
   for (const patch of patches) {
     output(`${patch.entry.id}\t${patch.entry.kind}\t${formatSelector(patch.entry.appliesTo)}\t${patch.entry.sha256.slice(0, 12)}\t${patch.hashValid ? 'verified' : 'HASH MISMATCH'}`, false, deps);
     if (verbose) output(JSON.stringify({ purpose: patch.entry.purpose, source: patch.entry.source, files: patch.files, prepareCommands: patch.entry.prepareCommands, cleanupCommands: patch.entry.cleanupCommands }), false, deps);

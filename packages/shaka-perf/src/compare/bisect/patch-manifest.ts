@@ -127,7 +127,7 @@ export function loadBisectPatchManifest(options: {
   const manifestPath = resolveBisectPatchManifestPath(options);
   if (!fs.existsSync(manifestPath)) {
     if (options.configuredPath) {
-      throw new Error(`Cannot read compare-bisect patch manifest at ${manifestPath}`);
+      throw new Error(`Cannot read bisect patch manifest at ${manifestPath}`);
     }
     return {
       path: manifestPath,
@@ -140,7 +140,7 @@ export function loadBisectPatchManifest(options: {
   try {
     raw = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   } catch (error) {
-    throw new Error(`Cannot parse compare-bisect patch manifest at ${manifestPath}`, {
+    throw new Error(`Cannot parse bisect patch manifest at ${manifestPath}`, {
       cause: error,
     });
   }
@@ -150,7 +150,7 @@ export function loadBisectPatchManifest(options: {
     const first = parsed.error.errors[0];
     const location = first.path.length > 0 ? ` at ${first.path.join('.')}` : '';
     throw new Error(
-      `Invalid compare-bisect patch manifest ${manifestPath}${location}: ${first.message}`,
+      `Invalid bisect patch manifest ${manifestPath}${location}: ${first.message}`,
     );
   }
   return {

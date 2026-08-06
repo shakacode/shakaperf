@@ -14,7 +14,7 @@ import * as path from 'node:path';
 import { createBisectCommand } from '../cli';
 import { createBisectPatchCommand, type PatchPrompt } from '../patch-cli';
 
-describe('compare bisect patch CLI', () => {
+describe('bisect patch CLI', () => {
   let rootDir: string;
   let repoDir: string;
   let output: string[];
@@ -111,17 +111,17 @@ describe('compare bisect patch CLI', () => {
     expect(fs.existsSync(path.join(rootDir, 'bisect-repairs', 'compat.patch'))).toBe(false);
   });
 
-  it('refuses mutations while compare bisect owns the project', async () => {
+  it('refuses mutations while bisect owns the project', async () => {
     const busy = createBisectPatchCommand({
       resolveContext: async () => ({ configDirectory: rootDir, repoDir }),
       isInteractive: () => false,
-      assertMutable: async () => { throw new Error('active compare-bisect lease'); },
+      assertMutable: async () => { throw new Error('active bisect lease'); },
       print: (message) => output.push(message),
     }).exitOverride();
     await expect(busy.parseAsync([
       'create', 'compat', '--working-tree', '--kind', 'build', '--all',
       '--all-files', '--no-interactive',
-    ], { from: 'user' })).rejects.toThrow(/active compare-bisect lease/i);
+    ], { from: 'user' })).rejects.toThrow(/active bisect lease/i);
   });
 
   function command(interactive: boolean, prompt?: PatchPrompt) {

@@ -528,7 +528,7 @@ export function buildAbTestsConfig(raw: unknown, origin?: string): AbTestsConfig
   ) {
     throw new Error(
       at + 'bisect.repairs is not supported. Manage patches with:\n\n' +
-      '  shaka-perf compare bisect patch create <id>\n\n' +
+      '  shaka-perf bisect patch create <id>\n\n' +
       'Patch registrations are stored in bisect-repairs/manifest.json.',
     );
   }

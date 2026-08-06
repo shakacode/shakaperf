@@ -15,7 +15,7 @@ import {
 
 const HASH = 'a'.repeat(64);
 
-describe('compare-bisect patch manifest', () => {
+describe('bisect patch manifest', () => {
   let rootDir: string;
 
   beforeEach(() => {
@@ -37,7 +37,7 @@ describe('compare-bisect patch manifest', () => {
     expect(() => loadBisectPatchManifest({
       configDirectory: rootDir,
       configuredPath: './custom/patches.json',
-    })).toThrow(/Cannot read compare-bisect patch manifest.*custom\/patches\.json/);
+    })).toThrow(/Cannot read bisect patch manifest.*custom\/patches\.json/);
   });
 
   it('parses all patch sources and optional purpose', () => {
@@ -97,7 +97,7 @@ describe('compare-bisect patch manifest', () => {
     fs.writeFileSync(manifestPath, '{');
 
     expect(() => loadBisectPatchManifest({ configDirectory: rootDir }))
-      .toThrow(/Cannot parse compare-bisect patch manifest/);
+      .toThrow(/Cannot parse bisect patch manifest/);
   });
 
   function writeManifest(value: unknown): void {
