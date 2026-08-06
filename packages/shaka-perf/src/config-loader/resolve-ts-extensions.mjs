@@ -7,7 +7,7 @@
 
 // ESM `resolve` loader hook. Node's ESM resolver requires explicit file
 // extensions on relative imports, and tsx does not add them for the external
-// `.ts` config / `.abtest.ts` files we load via `tsImport`. That makes a
+// `.ts` config / `.abtest.ts` files we load via `tsxImport`. That makes a
 // perfectly normal `import './foo'` (or the TS "NodeNext" `import './foo.js'`)
 // in a user's `abtests.config.ts` fail with ERR_MODULE_NOT_FOUND — most
 // painfully inside the forked Lighthouse worker, which re-loads the config and

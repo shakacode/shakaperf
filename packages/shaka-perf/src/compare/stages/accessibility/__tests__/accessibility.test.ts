@@ -493,6 +493,7 @@ function fakeBrowser(options: {
           .mockResolvedValue(page),
         newCDPSession: jest.fn(async () => cdpSession),
         clearCookies: jest.fn(async () => {}),
+        addInitScript: jest.fn(async () => {}),
         close: jest.fn(async () => {}),
       };
     }),

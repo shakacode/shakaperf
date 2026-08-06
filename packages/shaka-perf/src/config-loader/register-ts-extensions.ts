@@ -18,7 +18,7 @@ let registered = false;
  * so an `import './helper'` in `abtests.config.ts` would otherwise fail —
  * silently degrading the forked Lighthouse worker (no `beforeNavigate`).
  *
- * Must run BEFORE the first `tsImport` so the hook is in the resolver chain.
+ * Must run BEFORE the first `tsxImport` so the hook is in the resolver chain.
  * Idempotent.
  */
 export function registerTsExtensionResolver(): void {

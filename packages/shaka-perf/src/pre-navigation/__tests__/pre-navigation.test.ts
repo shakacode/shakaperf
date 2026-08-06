@@ -13,12 +13,17 @@ const VIEWPORT: Viewport = { label: 'phone', width: 375, height: 667, formFactor
 
 function fakeContext() {
   const calls: string[] = [];
+  const initScripts: string[] = [];
   // No `newCDPSession` → clearBrowserData early-returns (cache clear is CDP-only),
   // which keeps this fake free of page plumbing; we're asserting order here.
   const context = {
     clearCookies: jest.fn(async () => { calls.push('clearCookies'); }),
+    addInitScript: jest.fn(async (script: string) => {
+      calls.push('addInitScript');
+      initScripts.push(script);
+    }),
   } as unknown as BrowserContext;
-  return { context, calls };
+  return { context, calls, initScripts };
 }
 
 describe('setUpContextForNavigation', () => {
@@ -35,10 +40,10 @@ describe('setUpContextForNavigation', () => {
       beforeNavigate: hook,
     });
 
-    expect(calls).toEqual(['clearCookies', 'hook']);
+    expect(calls).toEqual(['clearCookies', 'addInitScript', 'hook']);
   });
 
-  it('with no hook, only clears', async () => {
+  it('with no hook, still clears and installs the shim', async () => {
     const { context, calls } = fakeContext();
     await setUpContextForNavigation({
       context,
@@ -47,6 +52,52 @@ describe('setUpContextForNavigation', () => {
       isControl: false,
       testType: 'perf',
     });
-    expect(calls).toEqual(['clearCookies']);
+    expect(calls).toEqual(['clearCookies', 'addInitScript']);
+  });
+
+  // A function serialized into the page by addInitScript/evaluate carries
+  // esbuild's `keepNames` helper with it; without this the script dies on
+  // `__name is not defined` and the run stays green with wrong screenshots.
+  it('defines __name in the page, deferring to a bundle that ships its own', async () => {
+    const { context, initScripts } = fakeContext();
+    await setUpContextForNavigation({
+      context,
+      url: 'https://x.com/',
+      viewport: VIEWPORT,
+      isControl: true,
+      testType: 'visreg',
+    });
+
+    expect(initScripts).toHaveLength(1);
+    expect(initScripts[0]).toContain('globalThis.__name ||=');
+
+    // Behavioural check: evaluating it must make `__name` a name-preserving
+    // pass-through, which is all the transpiled call site needs.
+    const scope: { __name?: (fn: unknown, name: string) => unknown } = {};
+    new Function('globalThis', initScripts[0])(scope);
+    const fn = () => 'ok';
+    expect(scope.__name?.(fn, 'attach')).toBe(fn);
+    expect(fn.name).toBe('attach');
+  });
+
+  // Perf reuses one context for every sample, and Playwright can neither dedupe
+  // nor remove an init script — so a per-navigation install would stack a copy
+  // per sample on the measured page.
+  it('installs the shim once per context, however many navigations it sees', async () => {
+    const { context, calls, initScripts } = fakeContext();
+    const navigate = () => setUpContextForNavigation({
+      context,
+      url: 'https://x.com/',
+      viewport: VIEWPORT,
+      isControl: true,
+      testType: 'perf',
+    });
+
+    await navigate();
+    await navigate();
+    await navigate();
+
+    expect(initScripts).toHaveLength(1);
+    expect(calls).toEqual(['clearCookies', 'addInitScript', 'clearCookies', 'clearCookies']);
   });
 });

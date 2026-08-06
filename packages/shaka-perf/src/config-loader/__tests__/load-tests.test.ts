@@ -8,8 +8,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
-import { loadTests } from '../load-tests';
-import { abTest, clearRegistry, getRegisteredTests, restoreRegistry, TestType } from 'shaka-shared';
+import { loadTests, normalizeTestFile } from '../load-tests';
+import { abTest, clearRegistry, getRegisteredTests, restoreRegistry } from 'shaka-shared';
+import type { AbTestDefinition } from 'shaka-shared';
 
 describe('loadTests', () => {
   const tmpDir = path.join(__dirname, 'tmp-load-tests');
@@ -79,76 +80,70 @@ describe('loadTests', () => {
     expect(b.map(t => t.name)).toEqual(['Concurrent B']);
   });
 
-  it('keeps prior registrations for files that do not re-register in a repeated load', async () => {
-    const relPath = 'cached.abtest.js';
-    const absPath = path.join(tmpDir, relPath);
-    mkfile(relPath, '// already loaded in this process');
-    restoreRegistry([{
-      name: 'Cached test',
-      startingPath: '/cached',
-      file: absPath,
-      line: 1,
-      testTypes: null,
-      testFn: async () => {},
-    }]);
+  it('returns a file\'s tests on every load, though its body runs only once', async () => {
+    // No loader can be made to re-evaluate a module (see loadModule), so the
+    // second load imports nothing and finds an empty registry — the remembered
+    // registrations are the only source. The counter proves the body really
+    // did not re-run, which is what makes this test about the memo and not
+    // about a cache-bust quietly re-executing the file.
+    mkfile('repeat.abtest.js', `
+      const { abTest } = require('${sharedModulePath}');
+      global.__repeatEvaluations = (global.__repeatEvaluations ?? 0) + 1;
+      abTest('Repeated test', { startingPath: '/repeat' }, async () => {});
+    `);
+    const absPath = path.join(tmpDir, 'repeat.abtest.js');
 
-    const origCwd = process.cwd();
-    process.chdir(tmpDir);
-    try {
-      const tests = await loadTests();
-      expect(tests.map(t => t.name)).toEqual(['Cached test']);
-    } finally {
-      process.chdir(origCwd);
-    }
-  });
+    const first = await loadTests({ filter: absPath });
+    const second = await loadTests({ filter: absPath });
 
-  it('normalizes file URL registrations to absolute filesystem paths', async () => {
-    const relPath = 'file-url-cached.abtest.js';
-    const absPath = path.join(tmpDir, relPath);
-    mkfile(relPath, '// already loaded through an ESM loader');
-    restoreRegistry([{
-      name: 'File URL test',
-      startingPath: '/file-url',
-      file: pathToFileURL(absPath).href,
-      line: 1,
-      testTypes: null,
-      testFn: async () => {},
-    }]);
-
-    const tests = await loadTests({ filter: absPath });
-
-    expect(tests).toHaveLength(1);
-    expect(tests[0]?.file).toBe(absPath);
+    expect(first.map(t => t.name)).toEqual(['Repeated test']);
+    expect(second.map(t => t.name)).toEqual(['Repeated test']);
+    expect((global as unknown as { __repeatEvaluations: number }).__repeatEvaluations).toBe(1);
   });
 
   it('remembers a file\'s registrations across interleaved loads of other files', async () => {
-    // Simulates the compare pipeline's per-unit pattern (file A, then B, then
-    // A again) when re-imports are no-ops: file A's tests must come back on
-    // the third load even though the registry held only B's tests by then.
-    const noopRelPath = 'interleaved-noop.abtest.js';
-    const noopAbsPath = path.join(tmpDir, noopRelPath);
-    mkfile(noopRelPath, '// already loaded in this process — registers nothing');
-    mkfile('interleaved-other.abtest.js', `
+    // The compare pipeline's per-unit pattern: file A, then B, then A again.
+    // Loading B clears the registry, and A's body never runs a second time, so
+    // the third load can only come back from what was remembered for A.
+    mkfile('interleaved-a.abtest.js', `
       const { abTest } = require('${sharedModulePath}');
-      abTest('Other test', { startingPath: '/other' }, async () => {});
+      abTest('Interleaved A', { startingPath: '/a' }, async () => {});
     `);
-    restoreRegistry([{
-      name: 'Interleaved test',
-      startingPath: '/interleaved',
-      file: noopAbsPath,
+    mkfile('interleaved-b.abtest.js', `
+      const { abTest } = require('${sharedModulePath}');
+      abTest('Interleaved B', { startingPath: '/b' }, async () => {});
+    `);
+    const a = path.join(tmpDir, 'interleaved-a.abtest.js');
+    const b = path.join(tmpDir, 'interleaved-b.abtest.js');
+
+    expect((await loadTests({ filter: a })).map(t => t.name)).toEqual(['Interleaved A']);
+    expect((await loadTests({ filter: b })).map(t => t.name)).toEqual(['Interleaved B']);
+    expect((await loadTests({ filter: a })).map(t => t.name)).toEqual(['Interleaved A']);
+  });
+
+  describe('normalizeTestFile', () => {
+    // `abTest()` reads its call site off a stack frame; under ESM that frame
+    // carries a file:// URL, while everything downstream matches against
+    // filesystem paths. Jest loads these fixtures through `require`, so the
+    // ESM shape never occurs here — assert it on the function directly.
+    const definition = (file: string): AbTestDefinition => ({
+      name: 'From ESM',
+      startingPath: '/',
+      file,
       line: 1,
       testTypes: null,
       testFn: async () => {},
-    }]);
+    });
 
-    const first = await loadTests({ filter: noopAbsPath });
-    expect(first.map(t => t.name)).toEqual(['Interleaved test']);
+    it('rewrites a file:// call site to an absolute filesystem path', () => {
+      const absPath = path.join(tmpDir, 'from-esm.abtest.ts');
+      expect(normalizeTestFile(definition(pathToFileURL(absPath).href)).file).toBe(absPath);
+    });
 
-    const other = await loadTests({ filter: path.join(tmpDir, 'interleaved-other.abtest.js') });
-    expect(other.map(t => t.name)).toEqual(['Other test']);
-
-    const again = await loadTests({ filter: noopAbsPath });
-    expect(again.map(t => t.name)).toEqual(['Interleaved test']);
+    it('leaves an already-absolute path untouched', () => {
+      const absPath = path.join(tmpDir, 'from-cjs.abtest.js');
+      expect(normalizeTestFile(definition(absPath)).file).toBe(absPath);
+    });
   });
 
   it('does not resurrect other files\' tests when the loaded file registers nothing', async () => {

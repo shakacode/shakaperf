@@ -27,36 +27,38 @@ export interface LoadTestsOptions {
 
 const ABTEST_FILE_REGEX = /\.abtest\.(ts|js)$/;
 
-// Every registration ever seen in this process, keyed by the file it came
-// from. Re-importing an already-loaded module is a no-op (Node's ESM cache —
-// and on newer Node even loadTestFile's ?cache-bust query no longer forces
-// re-execution), so after a file's first load this map is the only source of
-// its tests. Keeping ALL files here (not just the previous load's) is what
-// lets interleaved per-test loads (file A, then B, then A again — the
-// compare pipeline's per-unit pattern) keep working.
+// What each test file registered, captured the one time this process imported
+// it. Every loader evaluates a module once and serves the cache afterwards, and
+// none can be talked out of it (see loadModule) — so a second import registers
+// nothing and THIS map, not the global registry, is the durable record. It is
+// also what lets the compare pipeline's interleaved per-unit loads (file A,
+// then B, then A again) keep returning A's tests.
 const registrationsByFile = new Map<string, AbTestDefinition[]>();
 
-function normalizeTestFile(test: AbTestDefinition): AbTestDefinition {
+/**
+ * `abTest()` captures its call site from a stack frame, which under ESM is a
+ * `file://` URL. Everything downstream compares `test.file` against filesystem
+ * paths, so normalize once, here, at the boundary.
+ */
+export function normalizeTestFile(test: AbTestDefinition): AbTestDefinition {
   if (!test.file?.startsWith('file:')) return test;
   return { ...test, file: fileURLToPath(test.file) };
 }
 
-function rememberRegistrations(tests: AbTestDefinition[]): void {
-  const byFile = new Map<string, AbTestDefinition[]>();
-  for (const candidate of tests) {
-    const test = normalizeTestFile(candidate);
-    if (test.file == null) continue;
-    const key = path.resolve(test.file);
-    const list = byFile.get(key);
-    if (list) {
-      list.push(test);
-    } else {
-      byFile.set(key, [test]);
-    }
-  }
-  for (const [file, list] of byFile) {
-    registrationsByFile.set(file, list);
-  }
+/**
+ * Everything `absolutePath` registers, imported at most once per process.
+ * Includes registrations a module it imports makes transitively — the registry
+ * is cleared first, so whatever lands during the import is this file's.
+ */
+async function registrationsFor(absolutePath: string): Promise<AbTestDefinition[]> {
+  const remembered = registrationsByFile.get(absolutePath);
+  if (remembered) return remembered;
+
+  clearRegistry();
+  await loadTestFile(absolutePath);
+  const registered = getRegisteredTests().map(normalizeTestFile);
+  registrationsByFile.set(absolutePath, registered);
+  return registered;
 }
 
 function resolveFilterAsTestFile(filter: string): string | null {
@@ -70,16 +72,18 @@ function resolveFilterAsTestFile(filter: string): string | null {
   return null;
 }
 
-// loadTests mutates the process-global abTest registry (clear → import →
+// A first load mutates the process-global abTest registry (clear → import →
 // read). Concurrent callers — the compare pipeline runs one visreg engine
-// invocation per unit on a parallel pool, each calling loadTests — interleave
-// inside the awaited import and every caller reads the union of everyone's
-// registrations, duplicating each test (and its comparisons, report entries,
-// and thumbnails). Serialize the whole critical section instead.
+// invocation per unit on a parallel pool, each calling loadTests — would
+// interleave inside the awaited import, and every caller's read would pick up
+// the union of everyone's registrations, duplicating each test (and its
+// comparisons, report entries, and thumbnails). Serialize the critical section
+// instead. Only first loads contend; once a file is remembered, the call is a
+// map lookup.
 let loadTestsLock: Promise<unknown> = Promise.resolve();
 
 /**
- * Clears the registry, discovers or loads test files, and returns the registered tests.
+ * Discovers or loads test files and returns the tests they registered.
  * Throws if no files are found or no tests are registered.
  * Safe to call concurrently: calls are serialized (see loadTestsLock).
  */
@@ -94,17 +98,9 @@ async function loadTestsExclusive(options: LoadTestsOptions): Promise<AbTestDefi
 
   const filterAsFile = filter ? resolveFilterAsTestFile(filter) : null;
 
-  // Remember what's already registered (a prior loadTests() call, or direct
-  // abTest() calls outside any test file) before clearing — if re-import is
-  // a no-op, the remembered registrations are all we have.
-  const priorRegistry = getRegisteredTests().map(normalizeTestFile);
-  rememberRegistrations(priorRegistry);
-  clearRegistry();
-
   let loadedFiles: string[];
   if (filterAsFile) {
     loadedFiles = [filterAsFile];
-    await loadTestFile(filterAsFile);
   } else {
     const discovered = findTestFiles({ testPathPattern });
     if (discovered.length === 0) {
@@ -120,33 +116,19 @@ async function loadTestsExclusive(options: LoadTestsOptions): Promise<AbTestDefi
       }
     }
     loadedFiles = discovered;
-    for (const testFile of discovered) {
-      await loadTestFile(testFile);
-    }
   }
 
-  // A file that actually re-executed just overwrote its map entry with fresh
-  // registrations; a file whose re-import was a no-op contributes whatever
-  // was remembered from its first load. Only the LOADED files' tests are
-  // returned — restoring tests from other files would turn an accurate
-  // "No tests registered" error into a baffling downstream one ("No tests
-  // matched filter"), or worse, silently run the wrong tests.
-  const fresh = getRegisteredTests().map(normalizeTestFile);
-  rememberRegistrations(fresh);
-  const loadedFileSet = new Set(loadedFiles.map((file) => path.resolve(file)));
-  let tests = [
-    ...loadedFiles.flatMap((file) => registrationsByFile.get(path.resolve(file)) ?? []),
-    // Fresh registrations not attributable to a loaded file: tests whose
-    // call-site capture failed (file == null) or that a loaded file
-    // registered transitively from another module.
-    ...fresh.filter((test) => test.file == null || !loadedFileSet.has(path.resolve(test.file))),
-  ];
-  // Prior registrations without a file (call-site capture failed) can't be
-  // attributed to any loaded file — salvage those when the load produced
-  // nothing.
-  if (tests.length === 0) {
-    tests = priorRegistry.filter((test) => test.file == null);
+  // Only the LOADED files' tests are returned. Returning tests from files this
+  // call didn't ask for would turn an accurate "No tests registered" error into
+  // a baffling downstream one ("No tests matched filter"), or worse, silently
+  // run the wrong tests.
+  let tests: AbTestDefinition[] = [];
+  for (const testFile of loadedFiles) {
+    tests.push(...await registrationsFor(path.resolve(testFile)));
   }
+
+  // Leave the registry holding exactly what this call selected, so anything
+  // reading it directly sees the same set the caller got.
   restoreRegistry(tests);
   if (tests.length === 0) {
     const source = filterAsFile ?? 'discovered files';

@@ -95,6 +95,55 @@ test('run shaka-perf compare --categories visreg on twin servers @visreg', async
     ).toBe(true);
   }
 
+  // The demo config's `beforeNavigate` registers an init script built around a
+  // NAMED inner function, on purpose. Playwright serializes it with toString(),
+  // so a transform that injects a Node-scope helper (esbuild's `keepNames` ->
+  // `__name`) leaves it referencing something the page has never heard of. That
+  // used to fail silently — `addInitScript` still resolves and the throw only
+  // reaches `pageerror` — producing green runs with unhidden chrome in the
+  // screenshots. Uncaught page errors now fail the unit, so pin their absence.
+  const allErrors = machineReport.tests
+    .flatMap((t) => t.outcomes)
+    .filter((o) => o.kind === 'error')
+    .map((o) => `${o.error?.message ?? ''}\n${o.error?.stack ?? ''}`);
+  expect(
+    allErrors.filter((e) => e.includes('is not defined')),
+    'a function serialized into the page must not reference Node-only transpiler helpers',
+  ).toEqual([]);
+
+  // On a Node that strips TypeScript natively, every config and test file has to
+  // load that way; tsx is a fallback, not a destination. Taking it is not an
+  // error — the run still completes — so it degrades silently, announced only by
+  // this line, and it drags back everything native loading avoids: esbuild's
+  // `__name` in serialized functions, source-map-dependent `file:line`, and ESM
+  // rewritten to `require()`. `abtests.config.ts` imports
+  // `./ab-tests/serialization-check` relative and EXTENSIONLESS precisely so
+  // this covers that specifier shape; nothing else in the repo used one.
+  //
+  // Only meaningful where native loading exists. On older Node the fallback is
+  // the only path and the line is never printed, so this would pass vacuously.
+  expect(
+    stripAnsi(compareOutput)
+      .split('\n')
+      .filter((l) => l.includes('native load failed for')),
+    'every config and test file must load natively, without falling back to tsx',
+  ).toEqual([]);
+
+  // `abTest()` derives each test's file:line from a stack frame, so the log
+  // prefix stays truthful only while the loader emits usable source maps.
+  // Without them every prefix silently points at a line in the COMPILED output
+  // instead of the user's TypeScript — wrong line, no error, nobody notices.
+  const homepageSource = fs.readFileSync(
+    path.join(DEMO_CWD, 'ab-tests', 'homepage.abtest.ts'), 'utf-8',
+  );
+  const homepageLine = homepageSource.split('\n')
+    .findIndex((l) => l.startsWith("abTest('Homepage'")) + 1;
+  expect(homepageLine, "fixture must still declare abTest('Homepage')").toBeGreaterThan(0);
+  expect(
+    stripAnsi(compareOutput),
+    `log prefixes must resolve to the TypeScript source line (${homepageLine})`,
+  ).toContain(`homepage.abtest.ts:${homepageLine}`);
+
   // Snapshots receive ONLY the deep-click report screenshots below. The results
   // tree itself (report JSON/HTML, raw captures with per-run ids in their
   // filenames) is transient and never copied — the report is driven in place,

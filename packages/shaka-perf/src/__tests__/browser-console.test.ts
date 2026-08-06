@@ -10,18 +10,34 @@ import { assertConsoleClean, installConsoleCapture, type BrowserConsolePolicy } 
 
 const BOTH: BrowserConsolePolicy = { failOn: ['error', 'warn'], allowList: [] };
 
-/** A context armed with `policy` that has already logged `emitted`. */
-function armed(policy: BrowserConsolePolicy, ...emitted: { type: string; text: string; url?: string }[]) {
-  let onConsole: ((m: unknown) => void) | undefined;
+type Handlers = Record<string, ((arg: never) => void) | undefined>;
+
+/** A mock context that records the handlers `installConsoleCapture` attaches. */
+function mockContext(policy: BrowserConsolePolicy) {
+  const handlers: Handlers = {};
   const context = {
-    on: (event: string, handler: (m: unknown) => void) => {
-      if (event === 'console') onConsole = handler;
-    },
+    on: (event: string, handler: (arg: never) => void) => { handlers[event] = handler; },
+    pages: () => [],
   } as unknown as BrowserContext;
   installConsoleCapture(context, policy, 'experiment [phone]');
+  return { context, handlers };
+}
+
+/** A context armed with `policy` that has already logged `emitted`. */
+function armed(policy: BrowserConsolePolicy, ...emitted: { type: string; text: string; url?: string }[]) {
+  const { context, handlers } = mockContext(policy);
   for (const e of emitted) {
-    onConsole?.({ type: () => e.type, text: () => e.text, location: () => ({ url: e.url ?? '' }) });
+    (handlers.console as ((m: unknown) => void) | undefined)?.(
+      { type: () => e.type, text: () => e.text, location: () => ({ url: e.url ?? '' }) },
+    );
   }
+  return context;
+}
+
+/** A context armed with `policy` that has since thrown `error` in the page. */
+function threw(policy: BrowserConsolePolicy, error: Error) {
+  const { context, handlers } = mockContext(policy);
+  (handlers.weberror as ((w: unknown) => void) | undefined)?.({ error: () => error });
   return context;
 }
 
@@ -56,6 +72,22 @@ it('reports the first message the allowList does not cover', () => {
     { failOn: ['error'], allowList: ['known'] },
     { type: 'error', text: 'known' }, { type: 'error', text: 'fresh' },
   ))).toThrow('console.error on experiment [phone]: fresh');
+});
+
+it('reports an uncaught page error, which never reaches the console channel', () => {
+  expect(() => assertConsoleClean(threw(BOTH, new Error('kaboom'))))
+    .toThrow('uncaught page error on experiment [phone]: kaboom');
+});
+
+it('gates page errors on failOn error, and silences them by allowList', () => {
+  expect(() => assertConsoleClean(threw({ failOn: [], allowList: [] }, new Error('kaboom')))).not.toThrow();
+  expect(() => assertConsoleClean(threw({ failOn: ['warn'], allowList: [] }, new Error('kaboom')))).not.toThrow();
+  expect(() => assertConsoleClean(threw({ failOn: ['error'], allowList: ['kab'] }, new Error('kaboom')))).not.toThrow();
+});
+
+it('explains __name, the transpiler helper that cannot exist in the page', () => {
+  expect(() => assertConsoleClean(threw(BOTH, new Error('__name is not defined'))))
+    .toThrow(/keepNames.*Pass the script as a string/s);
 });
 
 it('re-arming resets, and an unarmed context reports nothing', () => {
