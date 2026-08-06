@@ -13,8 +13,10 @@ import { BisectInterruptedError } from './run-candidate';
 export class BisectRunEnvironment {
   private cancellationSignal: NodeJS.Signals | null = null;
 
+  constructor(private readonly clock: () => string = () => new Date().toISOString()) {}
+
   now(): string {
-    return new Date().toISOString();
+    return this.clock();
   }
 
   cancel(signal: NodeJS.Signals): void {

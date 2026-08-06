@@ -14,11 +14,9 @@ import type { AbTestsConfig } from '../../../config';
 import type { TestResult } from '../../../pipeline/report';
 import type { ResolvedConfig } from '../../../twin-servers/types';
 import {
-  checkoutDetached,
-  markNativeBisect,
-  resetNativeBisect,
+  ExactCheckout,
   restoreCheckout,
-  startNativeBisect,
+  NativeGitBisectDriver,
 } from '../git';
 import { writeSessionAtomic, writeSummary } from '../persistence';
 import type {
@@ -29,6 +27,7 @@ import type {
 } from '../session';
 import { parseBisectSession, writeBadRefTestsAtomic } from '../state';
 import type { BisectCategory, BisectSession } from '../types';
+import { GitMergeRangeSource } from '../merge-investigation';
 
 export interface E2eRepositoryFixture {
   rootDir: string;
@@ -212,93 +211,89 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
   const { fixture } = options;
   const candidateComparisonCalls: CompareRunRequest[] = [];
   const experimentReloadCalls: ExperimentReloadRequest[] = [];
+  const nativeGit = new NativeGitBisectDriver({ repoDir: fixture.experimentDir });
+  const exactCheckout = new ExactCheckout({ repoDir: fixture.experimentDir });
   let tick = 0;
 
   return {
     candidateComparisonCalls,
     experimentReloadCalls,
     dependencies: {
-      installSignalHandlers() {
-        return () => undefined;
+      nativeGit,
+      exactCheckout,
+      mergeRangeSource: new GitMergeRangeSource(fixture.experimentDir),
+      clock: {
+        now: () => new Date(Date.UTC(2026, 6, 19, 0, 0, tick++)).toISOString(),
       },
-      async beginSession() {},
-      async endSession() {},
-      startNativeBisect: (group) => startNativeBisect({
-        repoDir: fixture.experimentDir,
-        goodSha: group.goodSha,
-        badSha: group.badSha,
-      }),
-      markNativeBisect: (verdict) => markNativeBisect(fixture.experimentDir, verdict),
-      resetNativeBisect: () => resetNativeBisect(fixture.experimentDir),
-      previewNativeBisect: async (group) => {
-        try {
-          return await startNativeBisect({
-            repoDir: fixture.experimentDir,
-            goodSha: group.goodSha,
-            badSha: group.badSha,
-            noCheckout: true,
+      signals: {
+        install() { return () => undefined; },
+      },
+      server: {
+        async begin() {},
+        async end() {},
+        async refreshExperiment(request) {
+          experimentReloadCalls.push({ ...request });
+          if (request.sha === options.containerFallbackAtSha) {
+            return { mode: 'container', usedFallback: true };
+          }
+          return { mode: request.preferredExperimentReloadMode, usedFallback: false };
+        },
+      },
+      comparison: {
+        async run(request) {
+          candidateComparisonCalls.push({
+            ...request,
+            categories: [...request.categories],
+            tests: [...request.tests],
           });
-        } finally {
-          await resetNativeBisect(fixture.experimentDir);
-        }
+          if (request.sha === options.failAtSha) {
+            throw new Error(`Stubbed compare failure at ${request.sha}`);
+          }
+          const results = options.resultsBySha[request.sha];
+          if (!results) {
+            throw new Error(`No stubbed compare results for ${request.sha}`);
+          }
+          return { testResults: filterCompareResults(results, request) };
+        },
       },
-      checkout: (sha) => checkoutDetached(fixture.experimentDir, sha),
-      async reloadExperiment(request) {
-        experimentReloadCalls.push({ ...request });
-        if (request.sha === options.containerFallbackAtSha) {
-          return { mode: 'container', usedFallback: true };
-        }
-        return { mode: request.preferredExperimentReloadMode, usedFallback: false };
+      restoration: {
+        async restore() {
+          await restoreCheckout(fixture.experimentDir, {
+            branch: fixture.experimentBranch,
+            sha: fixture.originalExperimentSha,
+          });
+        },
       },
-      async runCandidateComparisons(request) {
-        candidateComparisonCalls.push({
-          ...request,
-          categories: [...request.categories],
-          tests: [...request.tests],
-        });
-        if (request.sha === options.failAtSha) {
-          throw new Error(`Stubbed compare failure at ${request.sha}`);
-        }
-        const results = options.resultsBySha[request.sha];
-        if (!results) {
-          throw new Error(`No stubbed compare results for ${request.sha}`);
-        }
-        return { testResults: filterCompareResults(results, request) };
+      artifacts: {
+        clearPrevious() {
+          fs.rmSync(path.join(fixture.resultsDirectory, 'summary.json'), { force: true });
+        },
+        writeSession(session) {
+          writeSessionAtomic(path.join(fixture.resultsDirectory, 'session.json'), session);
+        },
+        writeReport() {},
+        writeSummary(session, metadata) {
+          writeSummary(path.join(fixture.resultsDirectory, 'summary.json'), session, metadata);
+        },
+        writeBadRefTests(tests) {
+          return writeBadRefTestsAtomic(
+            path.join(fixture.resultsDirectory, 'bad-ref-tests.json'),
+            tests,
+          );
+        },
       },
-      async restore() {
-        await restoreCheckout(fixture.experimentDir, {
-          branch: fixture.experimentBranch,
-          sha: fixture.originalExperimentSha,
-        });
+      decisions: {
+        record() {},
+        progress() {},
       },
-      clearSummary() {
-        fs.rmSync(path.join(fixture.resultsDirectory, 'summary.json'), { force: true });
-      },
-      clearPriorReportOutput() {},
-      writeSession(session) {
-        writeSessionAtomic(path.join(fixture.resultsDirectory, 'session.json'), session);
-      },
-      writeReport() {},
-      writeSummary(session, metadata) {
-        writeSummary(path.join(fixture.resultsDirectory, 'summary.json'), session, metadata);
-      },
-      writeBadRefTests(tests) {
-        return writeBadRefTestsAtomic(
-          path.join(fixture.resultsDirectory, 'bad-ref-tests.json'),
-          tests,
-        );
-      },
-      recordDecision() {},
-      logProgress() {},
-      now() {
-        return new Date(Date.UTC(2026, 6, 19, 0, 0, tick++)).toISOString();
-      },
-      async reuseCurrentResults(request) {
-        const results = options.resultsBySha[request.sha];
-        if (!results) {
-          throw new Error(`No reusable compare results for ${request.sha}`);
-        }
-        return { testResults: results };
+      reusableResults: {
+        async load(request) {
+          const results = options.resultsBySha[request.sha];
+          if (!results) {
+            throw new Error(`No reusable compare results for ${request.sha}`);
+          }
+          return { testResults: results };
+        },
       },
     },
   };

@@ -11,6 +11,7 @@ import { NativeGitBisectDriver } from './git';
 import type { PhaseTransitionEvent } from './phase-transition';
 import { PhaseStore } from './phase-store';
 import {
+  BisectInterruptedError,
   CandidateEvaluationError,
   CandidateEvaluator,
   type CandidateEvaluationPlan,
@@ -102,6 +103,10 @@ export class NativeBisectPhaseRunner {
           await this.git.reset();
         } catch (resetError) {
           if (primaryError === undefined) throw resetError;
+          throw new AggregateError(
+            [primaryError, resetError],
+            `Native bisect phase ${phase.id} failed and Git bisect reset also failed`,
+          );
         }
       }
     }
@@ -115,12 +120,12 @@ export class NativeBisectPhaseRunner {
     const group = currentGroup(phase, groupId);
     const work = candidatePlanForGroup(group, phase.targets, candidateSha);
     if (work.targetIds.length === 0) {
-      const partition = partitionTargetGroup({
+      const partition = this.partitionTargetGroup({
+        phaseId: phase.id,
         group,
         targets: phase.targets,
         sha: candidateSha,
         evaluations: [],
-        nextGroupId: () => this.nextGroupId(phase.id),
       });
       const classified = applyPartition(phase, groupId, partition);
       await this.commit(transitionForPartition(partition.queuedGroups.length), classified, {
@@ -136,6 +141,14 @@ export class NativeBisectPhaseRunner {
     await this.commit('attempt-started', runningPhase, {
       attemptId: attempt.id,
       sha: candidateSha,
+      categories: work.categories,
+      tests: work.tests,
+      targetIds: work.targetIds,
+      group: {
+        id: group.id,
+        goodSha: group.goodSha,
+        badSha: group.badSha,
+      },
     });
 
     let result: CandidateResult;
@@ -149,12 +162,12 @@ export class NativeBisectPhaseRunner {
           `Cannot classify ${candidateSha}: ${result.commitRun.infrastructureError}`,
         );
       }
-      partition = partitionTargetGroup({
+      partition = this.partitionTargetGroup({
+        phaseId: phase.id,
         group: currentGroup(runningPhase, groupId),
         targets: runningPhase.targets,
         sha: candidateSha,
         evaluations: result.targetEvaluations,
-        nextGroupId: () => this.nextGroupId(phase.id),
       });
     } catch (error) {
       const evaluationError = error instanceof CandidateEvaluationError ? error : undefined;
@@ -169,7 +182,10 @@ export class NativeBisectPhaseRunner {
         { attemptId: attempt.id, sha: candidateSha, error: errorMessage(error) },
         evaluationError?.commitRun,
       );
-      throw evaluationError?.originalError ?? error;
+      if (evaluationError?.originalError instanceof BisectInterruptedError) {
+        throw evaluationError.originalError;
+      }
+      throw evaluationError ?? error;
     }
 
     const completed = this.completedAttempt(attempt, result);
@@ -195,9 +211,8 @@ export class NativeBisectPhaseRunner {
     phase: BisectSearchPhase,
     plan: Pick<CandidateEvaluationPlan, 'sha' | 'categories' | 'tests'>,
   ): CommitAttempt {
-    const prefix = phase.id === 'primary' ? 'primary' : 'merge';
     return {
-      id: `${prefix}-${++this.attemptNumber}`,
+      id: `${phase.id}-attempt-${++this.attemptNumber}`,
       sha: plan.sha,
       status: 'running',
       requestedCategories: [...plan.categories],
@@ -230,8 +245,18 @@ export class NativeBisectPhaseRunner {
     };
   }
 
-  private nextGroupId(phaseId: string): string {
-    return `${phaseId}-group-${++this.groupNumber}`;
+  private partitionTargetGroup(
+    options: Omit<Parameters<typeof partitionTargetGroup>[0], 'queuedGroupId'> & {
+      phaseId: string;
+    },
+  ): ReturnType<typeof partitionTargetGroup> {
+    const { phaseId, ...partitionOptions } = options;
+    const partition = partitionTargetGroup({
+      ...partitionOptions,
+      queuedGroupId: `${phaseId}-group-${this.groupNumber + 1}`,
+    });
+    if (partition.queuedGroups.length > 0) this.groupNumber += 1;
+    return partition;
   }
 
   private initializeIds(phase: BisectSearchPhase): void {

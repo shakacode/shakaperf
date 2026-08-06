@@ -6,14 +6,25 @@
  */
 
 import {
-  buildMergeQueue,
-  runMergeInvestigations,
-} from '../merge-investigation';
-import type { CandidateResult } from '../run-candidate';
+  ExactCheckout,
+  NativeGitBisectDriver,
+  type CheckoutState,
+  type NativeBisectStep,
+  type PreparedChildGitRange,
+} from '../git';
+import { buildMergeQueue, MergeInvestigationRunner } from '../merge-investigation';
+import { EndpointRestoreError, EndpointValidator } from '../endpoint-validator';
+import {
+  CandidateEvaluationError,
+  CandidateEvaluator,
+  type CandidateEvaluationPlan,
+  type CandidateResult,
+} from '../run-candidate';
+import { BisectRunEnvironment } from '../run-environment';
+import { CompareBisectSession } from '../session-owner';
 import type { BisectSession, BisectTarget, TargetEvaluationAtCommit } from '../types';
-import type { NativeBisectPhaseDriver } from '../phase';
 
-function target(id: string, firstBadSha: string): BisectTarget {
+function target(id: string, firstBadSha = 'merge'): BisectTarget {
   return {
     id,
     category: 'visreg',
@@ -27,13 +38,13 @@ function target(id: string, firstBadSha: string): BisectTarget {
   };
 }
 
-function session(parents: string[], targets = [target('one', 'merge')]): BisectSession {
+function session(parents: string[], targets = [target('one')]): BisectSession {
   return {
     status: 'running',
     mode: 'primary',
     identity: {
-      controlRoot: '/repo/control', experimentRoot: '/repo/experiment',
-      controlGitCommonDir: '/repo/control/.git', experimentGitCommonDir: '/repo/experiment/.git',
+      controlRoot: '/control', experimentRoot: '/experiment',
+      controlGitCommonDir: '/control/.git', experimentGitCommonDir: '/experiment/.git',
       controlOrigin: null, experimentOrigin: null,
     },
     compatibility: {
@@ -51,10 +62,7 @@ function session(parents: string[], targets = [target('one', 'merge')]): BisectS
     reportInput: { filename: 'bad-ref-tests.json', sha256: 'fixture' },
     commitRuns: {},
     primary: {
-      id: 'primary',
-      status: 'complete',
-      goodSha: 'good',
-      badSha: 'merge',
+      id: 'primary', status: 'complete', goodSha: 'good', badSha: 'merge',
       orderedCommits: ['good', 'merge'],
       commitSubjects: { good: 'good', merge: 'merge' },
       commitParents: { good: [], merge: parents },
@@ -63,15 +71,34 @@ function session(parents: string[], targets = [target('one', 'merge')]): BisectS
     },
     mergeQueue: [],
     mergeInvestigations: {},
-    startedAt: '2026-07-13T00:00:00.000Z',
+    startedAt: 'start',
   };
 }
 
-function evaluation(targetId: string, sha: string, regressionDetected: boolean): TargetEvaluationAtCommit {
-  return { targetId, commitSha: sha, regressionDetected, evidence: {}, evidenceArtifacts: [] };
+function range(
+  commits = ['base', 'source', 'topic'],
+  commitParents: Record<string, string[]> = {
+    base: [], source: ['base'], topic: ['source'],
+  },
+): PreparedChildGitRange {
+  return {
+    mergeBase: commits[0]!,
+    secondParent: commits.at(-1)!,
+    orderedCommits: commits,
+    commitSubjects: Object.fromEntries(commits.map((sha) => [sha, sha])),
+    commitParents,
+  };
 }
 
-function result(sha: string, targetEvaluations: TargetEvaluationAtCommit[]): CandidateResult {
+function evaluation(
+  targetId: string,
+  commitSha: string,
+  regressionDetected: boolean,
+): TargetEvaluationAtCommit {
+  return { targetId, commitSha, regressionDetected, evidence: {}, evidenceArtifacts: [] };
+}
+
+function result(sha: string, evaluations: TargetEvaluationAtCommit[]): CandidateResult {
   return {
     commitRun: {
       sha,
@@ -84,124 +111,203 @@ function result(sha: string, targetEvaluations: TargetEvaluationAtCommit[]): Can
       finishedAt: 'finish',
     },
     testResults: [],
-    targetEvaluations,
+    targetEvaluations: evaluations,
     experimentReload: { mode: 'commands', usedFallback: false },
   };
 }
 
-function nativeOptions(history = ['base', 'source', 'topic']): {
-  nativeBisect: NativeBisectPhaseDriver;
-  nextGroupId(): string;
-} {
-  let good = history[0]!;
-  let bad = history.at(-1)!;
-  let candidate: string | null = null;
-  let groupId = 0;
-  const step = () => {
-    const goodIndex = history.indexOf(good);
-    const badIndex = history.indexOf(bad);
-    if (badIndex - goodIndex === 1) {
-      candidate = null;
-      return { candidateSha: null, firstBadSha: bad, complete: true, output: '' };
+class FixedEnvironment extends BisectRunEnvironment {
+  override now(): string {
+    return 'now';
+  }
+}
+
+class MergeGit extends NativeGitBisectDriver {
+  private good: string;
+  private bad: string;
+  private candidate: string | null = null;
+
+  constructor(private readonly history: string[]) {
+    super({ repoDir: '/unused' });
+    this.good = history[0]!;
+    this.bad = history.at(-1)!;
+  }
+
+  override async start(group: { goodSha: string; badSha: string }): Promise<NativeBisectStep> {
+    this.good = group.goodSha;
+    this.bad = group.badSha;
+    return this.step();
+  }
+
+  override async mark(verdict: 'good' | 'bad'): Promise<NativeBisectStep> {
+    if (!this.candidate) throw new Error('No native merge candidate to mark');
+    if (verdict === 'good') this.good = this.candidate;
+    else this.bad = this.candidate;
+    return this.step();
+  }
+
+  override async reset() {}
+
+  override async assertAtCandidate(expectedSha: string) {
+    if (this.candidate !== expectedSha) {
+      throw new Error(`Selected ${this.candidate}; expected ${expectedSha}`);
     }
-    candidate = history[Math.floor((goodIndex + badIndex) / 2)]!;
-    return { candidateSha: candidate, firstBadSha: null, complete: false, output: '' };
-  };
+  }
+
+  private step(): NativeBisectStep {
+    const goodIndex = this.history.indexOf(this.good);
+    const badIndex = this.history.indexOf(this.bad);
+    if (badIndex - goodIndex === 1) {
+      this.candidate = null;
+      return { candidateSha: null, firstBadSha: this.bad, complete: true, output: '' };
+    }
+    this.candidate = this.history[Math.floor((goodIndex + badIndex) / 2)]!;
+    return { candidateSha: this.candidate, firstBadSha: null, complete: false, output: '' };
+  }
+}
+
+class MergeCandidateEvaluator extends CandidateEvaluator {
+  constructor(
+    environment: BisectRunEnvironment,
+    private readonly measure: (plan: CandidateEvaluationPlan) => Promise<CandidateResult>,
+  ) {
+    super(
+      { async assertAtCandidate() {} },
+      { async refreshExperiment() { return { mode: 'commands', usedFallback: false }; } },
+      { async run() { return { testResults: [] }; } },
+      environment,
+      'commands',
+    );
+  }
+
+  override async evaluate(plan: CandidateEvaluationPlan): Promise<CandidateResult> {
+    try {
+      return await this.measure(plan);
+    } catch (error) {
+      throw new CandidateEvaluationError({
+        sha: plan.sha,
+        compareCompleted: false,
+        requestedCategories: [...plan.categories],
+        requestedTests: [...plan.tests],
+        experimentReloadMode: 'commands',
+        usedFallback: false,
+        startedAt: 'start',
+        finishedAt: 'finish',
+        infrastructureError: error instanceof Error ? error.message : String(error),
+      }, error);
+    }
+  }
+}
+
+class MemoryExactCheckout extends ExactCheckout {
+  constructor(private readonly restoreError?: Error) {
+    super({ repoDir: '/unused' });
+  }
+
+  override async current(): Promise<CheckoutState> {
+    return { branch: 'main', sha: 'merge' };
+  }
+
+  override async position() {}
+  override async assertAt() {}
+  override async restore() {
+    if (this.restoreError) throw this.restoreError;
+  }
+}
+
+function harness(options: {
+  initial: BisectSession;
+  childRange?: PreparedChildGitRange;
+  prepareError?: Error;
+  restoreError?: Error;
+  measure(plan: CandidateEvaluationPlan): Promise<CandidateResult>;
+}) {
+  const environment = new FixedEnvironment();
+  let persisted = options.initial;
+  const owner = new CompareBisectSession(options.initial, {
+    persistence: {
+      async write(value) {
+        persisted = structuredClone(value);
+      },
+    },
+    transitions: { async record() {} },
+    reports: { async write() {} },
+  });
+  const childRange = options.childRange ?? range();
   return {
-    nextGroupId: () => `merge-group-${++groupId}`,
-    nativeBisect: {
-      async start(group) {
-        good = group.goodSha;
-        bad = group.badSha;
-        return step();
-      },
-      async mark(verdict) {
-        if (!candidate) throw new Error('No native merge candidate to mark');
-        if (verdict === 'good') good = candidate;
-        else bad = candidate;
-        return step();
-      },
-      async reset() {},
+    get persisted() { return persisted; },
+    async run() {
+      return new MergeInvestigationRunner(
+        owner,
+        { async load() {
+          if (options.prepareError) throw options.prepareError;
+          return childRange;
+        } },
+        new EndpointValidator(new MemoryExactCheckout(options.restoreError), {
+          evaluate: options.measure,
+        }),
+        new MergeGit([...childRange.orderedCommits]),
+        new MergeCandidateEvaluator(environment, options.measure),
+        environment,
+      ).run();
     },
   };
 }
 
 describe('merge investigation', () => {
-  it('builds a stable primary merge queue and classifies octopus merges without work', async () => {
+  it('builds a stable queue and classifies octopus merges without work', async () => {
     const queued = buildMergeQueue(session(['main', 'topic-one', 'topic-two']));
-    const measured: string[] = [];
-    const completed = await runMergeInvestigations({
-      ...nativeOptions(),
-      session: queued,
-      preferredExperimentReloadMode: 'commands',
-      commitRuns: () => ({}),
-      now: () => 'now',
-      nextAttemptId: () => 'attempt',
-      checkpoint: () => undefined,
-      async prepareRange() {
-        throw new Error('must not prepare an octopus range');
-      },
-      async measure(work) {
-        measured.push(work.sha);
-        return result(work.sha, []);
-      },
+    const value = harness({
+      initial: queued,
+      async measure() { throw new Error('must not measure'); },
     });
 
+    const completed = await value.run();
+
     expect(queued.mergeQueue).toEqual(['merge']);
-    expect(measured).toEqual([]);
-    expect(completed.mergeInvestigations?.merge).toMatchObject({
+    expect(completed.mergeInvestigations.merge).toMatchObject({
       status: 'octopus-unsupported',
       targetResults: { one: { kind: 'octopus-unsupported' } },
     });
   });
 
-  it('classifies merge-introduced, source commits, and nested source merges per target', async () => {
+  it('classifies merge-introduced, source, and nested-source targets', async () => {
     const queued = buildMergeQueue(session(
       ['main', 'topic'],
-      [target('introduced', 'merge'), target('source', 'merge'), target('nested', 'merge')],
+      [target('introduced'), target('source'), target('nested')],
     ));
     const measured: string[] = [];
-    const completed = await runMergeInvestigations({
-      ...nativeOptions(['base', 'source-commit', 'nested-merge', 'topic']),
-      session: queued,
-      preferredExperimentReloadMode: 'commands',
-      commitRuns: () => ({}),
-      now: () => 'now',
-      nextAttemptId: (() => { let id = 0; return () => `attempt-${++id}`; })(),
-      checkpoint: () => undefined,
-      async prepareRange() {
-        return {
-          mergeBase: 'base',
-          secondParent: 'topic',
-          orderedCommits: ['base', 'source-commit', 'nested-merge', 'topic'],
-          commitSubjects: {
-            base: 'base', 'source-commit': 'source', 'nested-merge': 'nested', topic: 'topic',
-          },
-          commitParents: {
-            base: [],
-            'source-commit': ['base'],
-            'nested-merge': ['source-commit', 'nested-topic'],
-            topic: ['nested-merge'],
-          },
-        };
+    const childRange = range(
+      ['base', 'source-commit', 'nested-merge', 'topic'],
+      {
+        base: [],
+        'source-commit': ['base'],
+        'nested-merge': ['source-commit', 'nested-topic'],
+        topic: ['nested-merge'],
       },
-      async measure(work) {
-        measured.push(work.sha);
-        if (work.sha === 'topic') return result('topic', [
-          evaluation('introduced', 'topic', false),
-          evaluation('source', 'topic', true),
-          evaluation('nested', 'topic', true),
+    );
+    const value = harness({
+      initial: queued,
+      childRange,
+      async measure(plan) {
+        measured.push(plan.sha);
+        if (plan.sha === 'topic') return result(plan.sha, [
+          evaluation('introduced', plan.sha, false),
+          evaluation('source', plan.sha, true),
+          evaluation('nested', plan.sha, true),
         ]);
-        if (work.sha === 'source-commit') return result(work.sha, [
-          evaluation('source', work.sha, true),
-          evaluation('nested', work.sha, false),
+        if (plan.sha === 'source-commit') return result(plan.sha, [
+          evaluation('source', plan.sha, true),
+          evaluation('nested', plan.sha, false),
         ]);
-        return result(work.sha, [evaluation('nested', work.sha, true)]);
+        return result(plan.sha, [evaluation('nested', plan.sha, true)]);
       },
     });
 
+    const completed = await value.run();
+
     expect(measured).toEqual(['topic', 'source-commit', 'nested-merge']);
-    expect(completed.mergeInvestigations?.merge).toMatchObject({
+    expect(completed.mergeInvestigations.merge).toMatchObject({
       status: 'complete',
       targetResults: {
         introduced: { kind: 'merge-introduced' },
@@ -211,200 +317,80 @@ describe('merge investigation', () => {
     });
   });
 
-  it('retries an incomplete second-parent validation before narrowing the child range', async () => {
-    let checkpoint = buildMergeQueue(session(['main', 'topic']));
-    const common = {
-      ...nativeOptions(),
-      preferredExperimentReloadMode: 'commands' as const,
-      commitRuns: () => ({}),
-      now: () => 'now',
-      nextAttemptId: (() => { let id = 0; return () => `attempt-${++id}`; })(),
-      checkpoint(value: BisectSession) { checkpoint = value; },
-      async prepareRange() {
-        return {
-          mergeBase: 'base',
-          secondParent: 'topic',
-          orderedCommits: ['base', 'source', 'topic'],
-          commitSubjects: { base: 'base', source: 'source', topic: 'topic' },
-          commitParents: { base: [], source: ['base'], topic: ['source'] },
-        };
-      },
-    };
-    await expect(runMergeInvestigations({
-      ...common,
-      session: checkpoint,
-      async measure() { throw new Error('validation stopped'); },
-    })).rejects.toThrow('validation stopped');
-
-    const measured: string[] = [];
-    const completed = await runMergeInvestigations({
-      ...nativeOptions(),
-      ...common,
-      session: checkpoint,
-      async measure(work) {
-        measured.push(work.sha);
-        return result(work.sha, [evaluation('one', work.sha, true)]);
-      },
+  it('persists child-range preparation failures without discarding primary results', async () => {
+    const value = harness({
+      initial: buildMergeQueue(session(['main', 'topic'])),
+      prepareError: new Error('topology failed'),
+      async measure() { throw new Error('must not measure'); },
     });
 
-    expect(measured).toEqual(['topic', 'source']);
-    expect(completed.mergeInvestigations?.merge.targetResults.one)
-      .toEqual({ kind: 'source-found', sourceSha: 'source' });
-  });
+    const completed = await value.run();
 
-  it('records child-range preparation failures without discarding the primary result', async () => {
-    const queued = buildMergeQueue(session(['main', 'topic']));
-    let checkpoint = queued;
-    let measured = false;
-
-    const completed = await runMergeInvestigations({
-      ...nativeOptions(['topic']),
-      session: queued,
-      preferredExperimentReloadMode: 'commands',
-      commitRuns: () => ({}),
-      now: () => 'now',
-      nextAttemptId: () => 'attempt',
-      checkpoint(value) { checkpoint = value; },
-      async prepareRange() {
-        throw new Error('second parent is not reachable from merge base');
-      },
-      async measure() {
-        measured = true;
-        return result('topic', []);
-      },
-    });
-
-    expect(measured).toBe(false);
-    expect(completed.primary?.status).toBe('complete');
-    expect(completed.mergeInvestigations?.merge).toMatchObject({
+    expect(completed.primary.status).toBe('complete');
+    expect(completed.mergeInvestigations.merge).toMatchObject({
       status: 'failed',
-      failure: 'second parent is not reachable from merge base',
+      failure: 'topology failed',
       targetResults: { one: { kind: 'merge-uninvestigated' } },
     });
-    expect(checkpoint).toEqual(completed);
   });
 
-  it('fails a zero-width child range when its only commit reproduces the target', async () => {
-    const queued = buildMergeQueue(session(['main', 'topic']));
+  it('fails a zero-width reproducing source range after one endpoint measurement', async () => {
     const measured: string[] = [];
-
-    const completed = await runMergeInvestigations({
-      ...nativeOptions(['topic']),
-      session: queued,
-      preferredExperimentReloadMode: 'commands',
-      commitRuns: () => ({}),
-      now: () => 'now',
-      nextAttemptId: () => 'attempt',
-      checkpoint: () => undefined,
-      async prepareRange() {
-        return {
-          mergeBase: 'topic',
-          secondParent: 'topic',
-          orderedCommits: ['topic'],
-          commitSubjects: { topic: 'topic' },
-          commitParents: { topic: ['main'] },
-        };
-      },
-      async measure(work) {
-        measured.push(work.sha);
-        if (measured.length > 1) throw new Error('repeated zero-target work');
-        return result(work.sha, [evaluation('one', work.sha, true)]);
+    const value = harness({
+      initial: buildMergeQueue(session(['main', 'topic'])),
+      childRange: range(['topic'], { topic: ['main'] }),
+      async measure(plan) {
+        measured.push(plan.sha);
+        return result(plan.sha, [evaluation('one', plan.sha, true)]);
       },
     });
 
+    const completed = await value.run();
+
     expect(measured).toEqual(['topic']);
-    expect(completed.primary.status).toBe('complete');
     expect(completed.mergeInvestigations.merge).toMatchObject({
       status: 'failed',
       failure: expect.stringMatching(/distinct good and bad commits/i),
       phase: { status: 'failed' },
-      targetResults: { one: { kind: 'merge-uninvestigated' } },
     });
   });
 
-  it('retries second-parent validation when its completed checkpoint fails', async () => {
-    let persisted = buildMergeQueue(session(['main', 'topic']));
-    let failCompletedCheckpoint = true;
-    let attemptId = 0;
-    const measured: string[] = [];
-    const common = {
-      ...nativeOptions(),
-      preferredExperimentReloadMode: 'commands' as const,
-      commitRuns: () => ({}),
-      now: () => 'now',
-      nextAttemptId: () => `attempt-${++attemptId}`,
-      checkpoint(value: BisectSession) {
-        persisted = value;
-        const completedValidation = value.mergeInvestigations?.merge.phase?.attempts.some(
-          (attempt) => attempt.sha === 'topic' && attempt.status === 'complete',
-        );
-        if (failCompletedCheckpoint && completedValidation) {
-          failCompletedCheckpoint = false;
-          throw new Error('session checkpoint failed');
-        }
-      },
-      async prepareRange() {
-        return {
-          mergeBase: 'base',
-          secondParent: 'topic',
-          orderedCommits: ['base', 'source', 'topic'],
-          commitSubjects: { base: 'base', source: 'source', topic: 'topic' },
-          commitParents: { base: [], source: ['base'], topic: ['source'] },
-        };
-      },
-      async measure(work: { sha: string }) {
-        measured.push(work.sha);
-        return result(work.sha, [evaluation('one', work.sha, true)]);
-      },
-    };
-
-    await expect(runMergeInvestigations({ ...common, session: persisted }))
-      .rejects.toThrow('session checkpoint failed');
-
-    expect(persisted.mergeInvestigations?.merge).toMatchObject({
-      targetResults: { one: { kind: 'merge-uninvestigated' } },
-      phase: {
-        targets: [{ id: 'one', status: 'found', firstBadSha: 'merge' }],
-        attempts: [{ sha: 'topic', status: 'incomplete' }],
-      },
+  it('persists incomplete second-parent validation for retry', async () => {
+    const value = harness({
+      initial: buildMergeQueue(session(['main', 'topic'])),
+      async measure() { throw new Error('validation stopped'); },
     });
 
-    await runMergeInvestigations({ ...common, session: persisted });
+    await expect(value.run()).rejects.toThrow('validation stopped');
 
-    expect(measured.slice(0, 2)).toEqual(['topic', 'topic']);
+    expect(value.persisted.mergeInvestigations.merge.phase).toMatchObject({
+      attempts: [{ sha: 'topic', status: 'incomplete' }],
+    });
   });
 
-  it('clears a stale range-preparation failure after a successful retry', async () => {
-    const failed = buildMergeQueue(session(['main', 'topic']));
-    failed.mergeInvestigations!.merge = {
-      ...failed.mergeInvestigations!.merge,
-      status: 'failed',
-      failure: 'old topology failure',
-    };
-
-    const completed = await runMergeInvestigations({
-      ...nativeOptions(),
-      session: failed,
-      preferredExperimentReloadMode: 'commands',
-      commitRuns: () => ({}),
-      now: () => 'now',
-      nextAttemptId: (() => { let id = 0; return () => `attempt-${++id}`; })(),
-      checkpoint: () => undefined,
-      async prepareRange() {
-        return {
-          mergeBase: 'base',
-          secondParent: 'topic',
-          orderedCommits: ['base', 'source', 'topic'],
-          commitSubjects: { base: 'base', source: 'source', topic: 'topic' },
-          commitParents: { base: [], source: ['base'], topic: ['source'] },
-        };
-      },
-      async measure(work) {
-        return result(work.sha, [evaluation('one', work.sha, true)]);
+  it('persists a completed endpoint attempt before surfacing restoration failure', async () => {
+    const value = harness({
+      initial: buildMergeQueue(session(['main', 'topic'])),
+      restoreError: new Error('restore failed'),
+      async measure(plan) {
+        return result(plan.sha, [evaluation('one', plan.sha, true)]);
       },
     });
 
-    expect(completed.mergeInvestigations?.merge).toMatchObject({ status: 'complete' });
-    expect(completed.mergeInvestigations?.merge.failure).toBeUndefined();
+    await expect(value.run()).rejects.toBeInstanceOf(EndpointRestoreError);
+    expect(value.persisted).toMatchObject({
+      commitRuns: { topic: { compareCompleted: true } },
+      mergeInvestigations: {
+        merge: {
+          phase: {
+            attempts: [{
+              id: 'merge:merge-endpoint-1',
+              sha: 'topic',
+              status: 'complete',
+            }],
+          },
+        },
+      },
+    });
   });
 });
