@@ -19,7 +19,7 @@ export const CopyIgnoreConfigSchema = z.object({
   folders: z.array(z.string().min(1)).optional(),
   /** Repository-relative file patterns excluded from change copying. */
   files: z.array(z.string().min(1)).optional(),
-});
+}).strict();
 
 export const TwinServersConfigSchema = z.object({
   /**
