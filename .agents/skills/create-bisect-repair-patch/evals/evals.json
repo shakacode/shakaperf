@@ -1,0 +1,53 @@
+{
+  "skill_name": "create-bisect-repair-patch",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "The checkout AB test exists at the bad ref but older commits fail because its shared helper had a different API. Create a test-harness repair from the helper migration commit for the inclusive first-parent range from v2.4.0 through that commit, and verify it without modifying my active experiment checkout.",
+      "expected_output": "A packaged CLI invocation that creates a source-commit patch, registers an inclusive selector in the manifest, and verifies it in disposable worktrees.",
+      "files": [],
+      "expectations": [
+        "Uses shaka-perf compare bisect patch create with --source-commit rather than a repository-local helper.",
+        "Uses --from and --through for the inclusive first-parent selector.",
+        "Uses patch verify and does not modify the active checkout.",
+        "Does not add bisect.repairs to abtests.config.ts."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Bisecting a Rails regression stops on pre-migration commits because the experiment database lacks a legacy seed record. Capture my current uncommitted seed hook as a data repair with prepare and cleanup commands. It should apply only to commits 12ab34 and 56cd78.",
+      "expected_output": "A working-tree CLI capture with a data kind, paired commands, repeated exact-commit selectors, and manifest-managed output.",
+      "files": [],
+      "expectations": [
+        "Uses --working-tree with selected pathspecs or an explicit --all-files choice.",
+        "Pairs data preparation with deterministic cleanup.",
+        "Uses repeated --at selectors for the disjoint commits.",
+        "Keeps the compatibility repair separate from the product fix."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I already have ./repairs/package-manager.patch. Register it as a build repair for every primary and merge-investigation candidate, then show me how to inspect, apply-check, and later replace its bytes from another patch file.",
+      "expected_output": "Patch-file create, list/show, apply --check, and patch-file edit commands using an all-commit selector.",
+      "files": [],
+      "expectations": [
+        "Imports with --patch-file and --all through the packaged CLI.",
+        "Uses show or list for inspection and apply --check for the current experiment checkout.",
+        "Uses patch edit --patch-file to replace bytes while retaining metadata.",
+        "Does not introduce merge-specific runtime or duplicate file-copy behavior."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "We need to change why and where repair old-build-shim runs, but keep its patch exactly byte-for-byte. Walk me through updating it, then explain the separate command I would use if the contents later need to come from current uncommitted work.",
+      "expected_output": "Interactive update with prefilled metadata and a distinct working-tree edit command for later byte replacement.",
+      "files": [],
+      "expectations": [
+        "Uses patch update for metadata and states that update preserves patch bytes.",
+        "Explains that previous metadata values are prefilled in the interactive workflow.",
+        "Uses patch edit --working-tree for content replacement.",
+        "Does not suggest a managed historical checkout or editor workflow."
+      ]
+    }
+  ]
+}
