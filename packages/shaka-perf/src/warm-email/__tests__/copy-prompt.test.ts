@@ -554,6 +554,150 @@ describe('site-wide copy prompts', () => {
     expect(prompt).toContain('Goal: all 40 high-impact issues pass');
   });
 
+  it('builds site prompts from valid audited pages on multiple hosts', () => {
+    const multiHostPageUrls = [
+      a11ySiteData.url,
+      'https://m.example.com/platform',
+      ...a11ySiteData.pageUrls.slice(2),
+    ];
+    const multiHostA11yData: A11ySitePromptData = {
+      ...a11ySiteData,
+      worstPage: { url: 'https://m.example.com/platform', highImpactCount: 4 },
+      pageUrls: multiHostPageUrls,
+      findings: a11ySiteData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageUrls: [a11ySiteData.url, 'https://m.example.com/platform'] }
+        : finding),
+    };
+
+    expect(buildA11ySitePrompt(multiHostA11yData)).toContain("'https://m.example.com/platform'");
+    expect(buildPerfSitePrompt({ ...perfSiteData, pageUrls: multiHostPageUrls })).toContain('Re-run PageSpeed Insights for https://m.example.com/platform');
+  });
+
+  it('qualifies same-path page labels with their audited hosts', () => {
+    const mobileHomepage = 'https://m.example.com/';
+    const pageUrls = [a11ySiteData.url, mobileHomepage, ...a11ySiteData.pageUrls.slice(2)];
+    const a11yPrompt = buildA11ySitePrompt({
+      ...a11ySiteData,
+      worstPage: { url: mobileHomepage, highImpactCount: 4 },
+      pageUrls,
+      findings: a11ySiteData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageUrls: [a11ySiteData.url, mobileHomepage] }
+        : finding),
+    });
+    const perfPrompt = buildPerfSitePrompt({ ...perfSiteData, pageUrls });
+
+    expect(a11yPrompt).toContain('worst page: the m.example.com with 4');
+    expect(a11yPrompt).toContain('(homepage, m.example.com - 3 images)');
+    expect(perfPrompt).toContain('slowest page m.example.com 3.4s');
+    expect(perfPrompt).toContain('starting with the m.example.com route');
+  });
+
+  it('distinguishes protocol twins on a secondary audited host', () => {
+    const httpPage = 'http://m.example.com/platform';
+    const httpsPage = 'https://m.example.com/platform';
+    const pageUrls = [a11ySiteData.url, httpPage, httpsPage, ...a11ySiteData.pageUrls.slice(3)];
+    const prompt = buildA11ySitePrompt({
+      ...a11ySiteData,
+      worstPage: { url: httpPage, highImpactCount: 4 },
+      pageUrls,
+      findings: a11ySiteData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageUrls: [httpPage, httpsPage] }
+        : finding),
+    });
+
+    expect(prompt).toContain('(http://m.example.com/platform, m.example.com/platform - 3 images)');
+  });
+
+  it('does not apply fetch-oriented host restrictions to audited page URLs', () => {
+    const auditedPageUrl = 'http://localhost:3000/platform';
+    const pageUrls = [a11ySiteData.url, auditedPageUrl, ...a11ySiteData.pageUrls.slice(2)];
+    const prompt = buildA11ySitePrompt({
+      ...a11ySiteData,
+      worstPage: { url: auditedPageUrl, highImpactCount: 4 },
+      pageUrls,
+      findings: a11ySiteData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageUrls: [a11ySiteData.url, auditedPageUrl] }
+        : finding),
+    });
+
+    expect(prompt).toContain("'http://localhost:3000/platform'");
+    expect(buildPerfSitePrompt({ ...perfSiteData, pageUrls })).toContain('slowest page http://localhost:3000/platform 3.4s');
+  });
+
+  it('accepts audited pages on non-default ports', () => {
+    const auditedPageUrl = 'https://example.com:8443/platform';
+    const pageUrls = [a11ySiteData.url, auditedPageUrl, ...a11ySiteData.pageUrls.slice(2)];
+    const prompt = buildA11ySitePrompt({
+      ...a11ySiteData,
+      worstPage: { url: auditedPageUrl, highImpactCount: 4 },
+      pageUrls,
+      findings: a11ySiteData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageUrls: [a11ySiteData.url, auditedPageUrl] }
+        : finding),
+    });
+
+    expect(prompt).toContain('(homepage, example.com:8443/platform - 3 images)');
+    expect(buildPerfSitePrompt({ ...perfSiteData, pageUrls })).toContain('slowest page example.com:8443/platform 3.4s');
+  });
+
+  it('validates audited model finding URLs and page counts across hosts', () => {
+    const multiHostPageUrls = [
+      a11ySiteData.url,
+      'https://m.example.com/platform',
+      ...a11ySiteData.pageUrls.slice(2),
+    ];
+    const multiHostA11yData: A11ySitePromptData = {
+      ...a11ySiteData,
+      worstPage: { url: 'https://m.example.com/platform', highImpactCount: 4 },
+      pageUrls: multiHostPageUrls,
+      findings: a11ySiteData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageUrls: [a11ySiteData.url, 'https://m.example.com/platform'] }
+        : finding),
+    };
+
+    expect(buildA11ySitePrompt(multiHostA11yData)).toBeDefined();
+    expect(buildA11ySitePrompt({
+      ...multiHostA11yData,
+      findings: multiHostA11yData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageCount: 1, pageUrls: ['https://example.com/not-audited'] }
+        : finding),
+    })).toBeUndefined();
+    expect(buildA11ySitePrompt({
+      ...multiHostA11yData,
+      findings: multiHostA11yData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageCount: 1, pageUrls: ['not a URL'] }
+        : finding),
+    })).toBeUndefined();
+    expect(buildA11ySitePrompt({
+      ...multiHostA11yData,
+      findings: multiHostA11yData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageUrls: [a11ySiteData.url, a11ySiteData.url] }
+        : finding),
+    })).toBeUndefined();
+    expect(buildA11ySitePrompt({
+      ...multiHostA11yData,
+      findings: multiHostA11yData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageCount: 1, pageUrls: [a11ySiteData.url, 'https://m.example.com/platform'] }
+        : finding),
+    })).toBeUndefined();
+    expect(buildA11ySitePrompt({
+      ...multiHostA11yData,
+      findings: multiHostA11yData.findings.map((finding) => finding.familyId === 'image-alt'
+        ? { ...finding, pageCount: 2, pageUrls: [a11ySiteData.url, 'https://m2.example.com/platform'] }
+        : finding),
+    })).toBeUndefined();
+  });
+
+  it('rejects audited page duplicates that differ only by a trailing host dot', () => {
+    const pageUrls = [
+      ...a11ySiteData.pageUrls.slice(0, -1),
+      'https://example.com./audience',
+    ];
+
+    expect(buildA11ySitePrompt({ ...a11ySiteData, pageUrls })).toBeUndefined();
+    expect(buildPerfSitePrompt({ ...perfSiteData, pageUrls })).toBeUndefined();
+  });
+
   it('orders site priorities by reach and keeps node nouns specific to their family', () => {
     const prompt = buildA11ySitePrompt({
       ...a11ySiteData,
@@ -681,10 +825,10 @@ describe('site-wide copy prompts', () => {
     }
   });
 
-  it('rejects malformed, off-origin, duplicate, or hostile site-derived inputs', () => {
+  it('rejects malformed, duplicate, or hostile site-derived inputs', () => {
     expect(buildA11ySitePrompt({
       ...a11ySiteData,
-      pageUrls: [...a11ySiteData.pageUrls.slice(0, -1), 'http://169.254.169.254/latest/meta-data/'],
+      pageUrls: [...a11ySiteData.pageUrls.slice(0, -1), 'not a URL'],
     })).toBeUndefined();
     expect(buildA11ySitePrompt({
       ...a11ySiteData,
