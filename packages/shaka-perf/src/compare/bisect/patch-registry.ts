@@ -61,7 +61,7 @@ export class BisectPatchRegistry {
   get(id: string): RegisteredPatch {
     const loaded = this.load();
     const entry = loaded.manifest.patches.find((patch) => patch.id === id);
-    if (!entry) throw new Error(`Unknown compare-bisect patch "${id}"`);
+    if (!entry) throw new Error(`Unknown bisect patch "${id}"`);
     return this.describe(entry, loaded.directory);
   }
 
@@ -69,11 +69,11 @@ export class BisectPatchRegistry {
     validatePatchId(id);
     const loaded = this.load();
     if (loaded.manifest.patches.some((patch) => patch.id === id)) {
-      throw new Error(`Compare-bisect patch "${id}" already exists`);
+      throw new Error(`Bisect patch "${id}" already exists`);
     }
     const filename = `${id}.patch`;
     if (loaded.manifest.patches.some((patch) => patch.filename === filename)) {
-      throw new Error(`Compare-bisect patch artifact "${filename}" is already registered`);
+      throw new Error(`Bisect patch artifact "${filename}" is already registered`);
     }
     const entry = normalizeEntry({
       id,
@@ -94,7 +94,7 @@ export class BisectPatchRegistry {
   updateMetadata(id: string, metadata: PatchMetadata): RegisteredPatch {
     const loaded = this.load();
     const index = loaded.manifest.patches.findIndex((patch) => patch.id === id);
-    if (index < 0) throw new Error(`Unknown compare-bisect patch "${id}"`);
+    if (index < 0) throw new Error(`Unknown bisect patch "${id}"`);
     const entry = normalizeEntry({ ...loaded.manifest.patches[index]!, ...metadata });
     const patches = [...loaded.manifest.patches];
     patches[index] = entry;
@@ -111,7 +111,7 @@ export class BisectPatchRegistry {
   edit(id: string, captured: CapturedPatch): RegisteredPatch {
     const loaded = this.load();
     const index = loaded.manifest.patches.findIndex((patch) => patch.id === id);
-    if (index < 0) throw new Error(`Unknown compare-bisect patch "${id}"`);
+    if (index < 0) throw new Error(`Unknown bisect patch "${id}"`);
     const current = loaded.manifest.patches[index]!;
     const entry = normalizeEntry({
       ...current,
@@ -129,7 +129,7 @@ export class BisectPatchRegistry {
   remove(id: string, keepFile = false): void {
     const loaded = this.load();
     const entry = loaded.manifest.patches.find((patch) => patch.id === id);
-    if (!entry) throw new Error(`Unknown compare-bisect patch "${id}"`);
+    if (!entry) throw new Error(`Unknown bisect patch "${id}"`);
     const patches = loaded.manifest.patches.filter((patch) => patch.id !== id);
     if (!keepFile && patches.some((patch) => patch.filename === entry.filename)) {
       throw new Error(`Cannot remove shared patch artifact "${entry.filename}"`);
@@ -141,7 +141,7 @@ export class BisectPatchRegistry {
   apply(id: string, options: { check?: boolean; reverse?: boolean } = {}): PatchApplyOutcome {
     const patch = this.get(id);
     if (!patch.hashValid) {
-      throw new Error(`Compare-bisect patch "${id}" artifact hash does not match the manifest`);
+      throw new Error(`Bisect patch "${id}" artifact hash does not match the manifest`);
     }
     const repoDir = gitRoot(this.options.repoDir);
     const bytes = fs.readFileSync(patch.artifactPath);
@@ -171,7 +171,7 @@ export class BisectPatchRegistry {
   } = {}): PatchVerificationResult[] {
     const patch = this.get(id);
     if (!patch.hashValid) {
-      throw new Error(`Compare-bisect patch "${id}" artifact hash does not match the manifest`);
+      throw new Error(`Bisect patch "${id}" artifact hash does not match the manifest`);
     }
     if ((options.goodRef && !options.badRef) || (!options.goodRef && options.badRef)) {
       throw new Error('Patch verification requires both good-ref and bad-ref when either is supplied');
@@ -194,7 +194,7 @@ export class BisectPatchRegistry {
     try {
       bytes = fs.readFileSync(artifactPath);
     } catch (error) {
-      throw new Error(`Cannot read compare-bisect patch "${entry.id}" at ${artifactPath}`, {
+      throw new Error(`Cannot read bisect patch "${entry.id}" at ${artifactPath}`, {
         cause: error,
       });
     }
@@ -232,7 +232,7 @@ function validatePatchId(id: string): void {
 
 function parseManifest(value: unknown): BisectPatchManifest {
   const result = BisectPatchManifestSchema.safeParse(value);
-  if (!result.success) throw new Error(`Invalid compare-bisect patch: ${result.error.errors[0]!.message}`);
+  if (!result.success) throw new Error(`Invalid bisect patch: ${result.error.errors[0]!.message}`);
   return result.data;
 }
 
