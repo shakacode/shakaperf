@@ -18,7 +18,7 @@ import {
 } from '../repair-runtime';
 import type { BisectRepair } from '../types';
 
-describe('configured compare-bisect repair runtime', () => {
+describe('configured bisect repair runtime', () => {
   let rootDir: string;
   let repoDir: string;
   let resultsDirectory: string;

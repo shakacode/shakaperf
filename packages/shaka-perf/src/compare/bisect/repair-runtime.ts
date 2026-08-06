@@ -105,7 +105,7 @@ export class ConfiguredBisectRepairRuntime {
 
       value = await options.run({
         prepare: async () => {
-          if (prepareCalled) throw new Error('Compare-bisect repair preparation ran more than once');
+          if (prepareCalled) throw new Error('Bisect repair preparation ran more than once');
           prepareCalled = true;
           for (const repair of repairs) {
             const application = applicationFor(evidence, repair.id);
@@ -125,7 +125,7 @@ export class ConfiguredBisectRepairRuntime {
         },
       });
       if (!prepareCalled) {
-        throw new Error('Candidate evaluation did not run compare-bisect repair preparation');
+        throw new Error('Candidate evaluation did not run bisect repair preparation');
       }
     } catch (error) {
       primaryError = error;

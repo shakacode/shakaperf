@@ -20,7 +20,7 @@ import {
   writePreparedRepairArtifacts,
 } from '../repair-artifacts';
 
-describe('compare-bisect repair artifacts', () => {
+describe('bisect repair artifacts', () => {
   let rootDir: string;
   let repoDir: string;
   let configDirectory: string;

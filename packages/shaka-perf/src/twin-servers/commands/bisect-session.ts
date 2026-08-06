@@ -105,7 +105,7 @@ export class BisectSessionController {
         await this.dependencies.runExperimentCommand(this.config, command);
       } catch (error) {
         throw new Error(
-          `Compare-bisect repair ${phase} command ${index + 1} failed: ${command}`,
+          `Bisect repair ${phase} command ${index + 1} failed: ${command}`,
           { cause: error },
         );
       }

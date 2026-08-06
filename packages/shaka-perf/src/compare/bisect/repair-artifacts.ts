@@ -42,12 +42,12 @@ export async function prepareConfiguredRepairs(options: {
     try {
       contents = fs.readFileSync(sourcePath);
     } catch (error) {
-      throw new Error(`Cannot read compare-bisect repair "${configured.id}" at ${sourcePath}`, {
+      throw new Error(`Cannot read bisect repair "${configured.id}" at ${sourcePath}`, {
         cause: error,
       });
     }
     if (contents.length === 0) {
-      throw new Error(`Compare-bisect repair "${configured.id}" patch is empty`);
+      throw new Error(`Bisect repair "${configured.id}" patch is empty`);
     }
     const filename = `patches/${configured.id}.patch`;
     repairs.push({
@@ -100,13 +100,13 @@ export function verifyPersistedRepairArtifacts(
       contents = fs.readFileSync(artifactPath);
     } catch (error) {
       throw new Error(
-        `Cannot resume compare bisect: repair artifact "${repair.id}" is missing at ${artifactPath}`,
+        `Cannot resume bisect: repair artifact "${repair.id}" is missing at ${artifactPath}`,
         { cause: error },
       );
     }
     if (hash(contents) !== repair.sha256) {
       throw new Error(
-        `Cannot resume compare bisect: repair artifact "${repair.id}" changed`,
+        `Cannot resume bisect: repair artifact "${repair.id}" changed`,
       );
     }
   }
@@ -116,7 +116,7 @@ export function repairArtifactPath(resultsDirectory: string, filename: string): 
   const patchesDirectory = path.resolve(resultsDirectory, 'patches');
   const artifactPath = path.resolve(resultsDirectory, filename);
   if (path.dirname(artifactPath) !== patchesDirectory || !artifactPath.endsWith('.patch')) {
-    throw new Error(`Invalid compare-bisect repair artifact path: ${filename}`);
+    throw new Error(`Invalid bisect repair artifact path: ${filename}`);
   }
   return artifactPath;
 }
@@ -141,17 +141,17 @@ async function resolveApplicableShas(
   const throughIndex = range.orderedCommits.indexOf(throughSha);
   if (fromIndex < 0) {
     throw new Error(
-      `Compare-bisect repair "${configured.id}" from commit ${fromSha} is outside the primary range`,
+      `Bisect repair "${configured.id}" from commit ${fromSha} is outside the primary range`,
     );
   }
   if (throughIndex < 0) {
     throw new Error(
-      `Compare-bisect repair "${configured.id}" through commit ${throughSha} is outside the primary range`,
+      `Bisect repair "${configured.id}" through commit ${throughSha} is outside the primary range`,
     );
   }
   if (fromIndex > throughIndex) {
     throw new Error(
-      `Compare-bisect repair "${configured.id}" interval is reversed (${fromSha} after ${throughSha})`,
+      `Bisect repair "${configured.id}" interval is reversed (${fromSha} after ${throughSha})`,
     );
   }
   return range.orderedCommits.slice(fromIndex, throughIndex + 1);
