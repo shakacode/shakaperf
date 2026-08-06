@@ -289,7 +289,7 @@ another repository; it is not tied to the demo app.
   compare, then cleanup commands run and patches are reversed before Git can
   receive a verdict or advance to another candidate.
 - `prepareCommands` and `cleanupCommands` run inside the experiment container
-  under the active compare-bisect lease. A `data` repair with preparation
+  under the active bisect lease. A `data` repair with preparation
   commands requires cleanup commands unless every candidate rebuilds its
   container.
 - A patch, preparation, comparison, cleanup, reversal, or final clean-check
@@ -298,7 +298,7 @@ another repository; it is not tied to the demo app.
 
 When a repair applies to the bad ref, `--reuse-current-results` is rejected
 because ordinary compare artifacts do not carry the repair-set fingerprint.
-Run bad-ref discovery through compare bisect so it can apply and record the
+Run bad-ref discovery through bisect so it can apply and record the
 repair.
 
 Repair kinds currently do not select behavior, and there are no CLI repair
