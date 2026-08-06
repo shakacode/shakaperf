@@ -17,7 +17,7 @@ import {
   importPatchFile,
 } from '../patch-capture';
 
-describe('compare-bisect patch capture', () => {
+describe('bisect patch capture', () => {
   let repoDir: string;
 
   beforeEach(() => {

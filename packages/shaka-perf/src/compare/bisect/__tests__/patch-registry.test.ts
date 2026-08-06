@@ -14,7 +14,7 @@ import * as path from 'node:path';
 import { captureWorkingTreePatch, importPatchFile } from '../patch-capture';
 import { BisectPatchRegistry } from '../patch-registry';
 
-describe('compare-bisect patch registry', () => {
+describe('bisect patch registry', () => {
   let rootDir: string;
   let repoDir: string;
   let registry: BisectPatchRegistry;
