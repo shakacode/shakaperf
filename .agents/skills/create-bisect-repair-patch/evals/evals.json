@@ -7,7 +7,7 @@
       "expected_output": "A packaged CLI invocation that creates a source-commit patch, registers an inclusive selector in the manifest, and verifies it in disposable worktrees.",
       "files": [],
       "expectations": [
-        "Uses shaka-perf compare bisect patch create with --source-commit rather than a repository-local helper.",
+        "Uses shaka-perf bisect patch create with --source-commit rather than a repository-local helper.",
         "Uses --from and --through for the inclusive first-parent selector.",
         "Uses patch verify and does not modify the active checkout.",
         "Does not add bisect.repairs to abtests.config.ts."
