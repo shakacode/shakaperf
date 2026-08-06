@@ -6,7 +6,10 @@
  */
 
 import { Command } from 'commander';
-import { comparePipelineMetadata } from '../compare-pipeline';
+import {
+  addCompareMeasurementOptions,
+  type CompareMeasurementOptionDefaults,
+} from '../cli/shared-options';
 import { runCompareBisectFromCli, type BisectCliOptions } from './session';
 
 export interface BisectCliDependencies {
@@ -15,26 +18,14 @@ export interface BisectCliDependencies {
     badRef: string | undefined,
     options: BisectCliOptions,
   ) => Promise<unknown>;
+  optionDefaults?: CompareMeasurementOptionDefaults;
 }
 
 export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
-  return new Command('bisect')
+  const command = new Command('bisect')
     .description('Find the first commit for each compare regression')
     .argument('[good-ref]', 'Known-good commit; defaults to control HEAD')
     .argument('[bad-ref]', 'Known-bad commit; defaults to experiment HEAD')
-    .option(
-      '--categories <list>',
-      `Comma-separated categories to bisect (${comparePipelineMetadata.categories.join(', ')})`,
-    )
-    .option('-c, --config <path>', 'Path to abtests.config.ts (default: cwd lookup)')
-    .option(
-      '--filter <value>',
-      'Regex/substring to filter tests by name (comma-separated for multiple), OR a path to a single .abtest.ts/.abtest.js file',
-    )
-    .option('--testPathPattern <regex>', 'Regex pattern to filter discovered .abtest.ts/.abtest.js files (like Jest)')
-    .option('--headed', 'Launch the measurement browser headed (visible window) instead of headless. Off by default.', false)
-    .option('--controlURL <url>', 'Control server URL')
-    .option('--experimentURL <url>', 'Experiment server URL')
     .option(
       '--reuse-current-results',
       'Use cwd/compare-results for bad-ref discovery instead of measuring the bad ref again',
@@ -95,4 +86,5 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
         investigateMerges: local.investigateMerges === true,
       });
     });
+  return addCompareMeasurementOptions(command, { defaults: deps.optionDefaults });
 }

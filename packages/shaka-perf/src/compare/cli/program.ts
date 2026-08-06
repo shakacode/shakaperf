@@ -17,22 +17,18 @@ import {
   createComparePipeline,
   comparePipelineMetadata,
 } from '../compare-pipeline';
-import { getCLIDefaultsFromConfig } from '../../cli-defaults';
+import {
+  addCompareMeasurementOptions,
+  type CompareMeasurementOptionDefaults,
+} from './shared-options';
 
-export async function createCompareCommand(): Promise<Command> {
+export function createCompareCommand(
+  optionDefaults?: CompareMeasurementOptionDefaults,
+): Command {
   const validCategories = comparePipelineMetadata.categories;
   const validStages = comparePipelineMetadata.stages;
-  const defaults = await getCLIDefaultsFromConfig(process.argv, (c) => ({
-    controlURL: c.shared.controlURL,
-    experimentURL: c.shared.experimentURL,
-  }));
   const compare = new Command('compare')
     .description(comparePipelineMetadata.description)
-    .option(
-      '--categories <list>',
-      `Comma-separated list of categories to run (${validCategories.join(', ')})`,
-      validCategories.join(','),
-    )
     .option(
       '--skip-stages <list>',
       `Comma-separated list of exact stages to skip (${validStages.join(', ')})`,
@@ -41,20 +37,11 @@ export async function createCompareCommand(): Promise<Command> {
       '--restart-from-stage <stage>',
       `Restart from this stage: discard its results and all later stages' results, then re-run them; earlier stages' results are preserved (${validStages.join(', ')})`,
     )
-    .option('-c, --config <path>', 'Path to abtests.config.ts (default: cwd lookup)')
     .option('--report-only', 'Re-render the HTML report from existing compare-results/ stage outcomes without re-running engines. Complements --skip-report for sharded CI assembly.', false)
     .option('--skip-report', 'Run the engines but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
     .option('--keep-old-results', 'Do not wipe compare-results/ before running. Engines still overwrite the files they produce, but unrelated artifacts from a prior run survive instead of being cleared.', false)
     .option('--full-report-zip', 'After the run, bundle the full report and all its artifacts into full-report.zip. Off by default — the archive can be large.', false)
-    .option('--headed', 'Launch the measurement browser headed (visible window) instead of headless. Off by default.', false)
     .option('--burn <number>', BURN_OPTION_DESCRIPTION)
-    .option('--testPathPattern <regex>', 'Regex pattern to filter discovered .abtest.ts/.abtest.js files (like Jest)')
-    .option(
-      '--filter <value>',
-      'Regex/substring to filter tests by name (comma-separated for multiple), OR a path to a single .abtest.ts/.abtest.js file',
-    )
-    .option('--controlURL <url>', 'Control server URL', defaults?.controlURL)
-    .option('--experimentURL <url>', 'Experiment server URL', defaults?.experimentURL)
     .action(async function (this: Command) {
       const opts = this.opts();
       const configPath = opts.config ?? findAbTestsConfig();
@@ -98,5 +85,9 @@ export async function createCompareCommand(): Promise<Command> {
         reportPipelineFailure(result);
       });
     });
+  addCompareMeasurementOptions(compare, {
+    defaults: optionDefaults,
+    categoriesDefault: validCategories.join(','),
+  });
   return compare;
 }

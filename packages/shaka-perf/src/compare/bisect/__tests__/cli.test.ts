@@ -41,9 +41,14 @@ describe('bisect command', () => {
       .rejects.toThrow(/too many arguments|unknown command/i);
   });
 
-  it('shows the top-level invocation and standalone options in help', () => {
+  it('shows the top-level invocation and config-derived endpoint defaults in help', () => {
     const program = new Command().name('shaka-perf');
-    const bisect = createBisectCommand();
+    const bisect = createBisectCommand({
+      optionDefaults: {
+        controlURL: 'http://control.config',
+        experimentURL: 'http://experiment.config',
+      },
+    });
     program.addCommand(bisect);
 
     const help = bisect.helpInformation();
@@ -53,6 +58,40 @@ describe('bisect command', () => {
     expect(help).toContain('--testPathPattern <regex>');
     expect(help).toContain('--controlURL <url>');
     expect(help).toContain('--experimentURL <url>');
+    expect(help).toMatch(/Control server URL \(default:\s+"http:\/\/control\.config"\)/);
+    expect(help).toMatch(/Experiment server URL \(default:\s+"http:\/\/experiment\.config"\)/);
+  });
+
+  it('shares measurement option definitions with compare', async () => {
+    const defaults = {
+      controlURL: 'http://control.config',
+      experimentURL: 'http://experiment.config',
+    };
+    const compare = await createCompareCommand(defaults);
+    const bisect = createBisectCommand({ optionDefaults: defaults });
+    const sharedFlags = [
+      '--categories <list>',
+      '-c, --config <path>',
+      '--filter <value>',
+      '--testPathPattern <regex>',
+      '--headed',
+      '--controlURL <url>',
+      '--experimentURL <url>',
+    ];
+
+    for (const flags of sharedFlags) {
+      const compareOption = compare.options.find((option) => option.flags === flags);
+      const bisectOption = bisect.options.find((option) => option.flags === flags);
+      expect(compareOption).toBeDefined();
+      expect(bisectOption).toBeDefined();
+      expect(bisectOption?.description).toBe(compareOption?.description);
+      if (flags !== '--categories <list>') {
+        expect(bisectOption?.defaultValue).toBe(compareOption?.defaultValue);
+      }
+    }
+
+    expect(compare.opts().categories).toBe('visreg,perf,accessibility');
+    expect(bisect.opts().categories).toBeUndefined();
   });
 
   it('passes standalone options including endpoint overrides', async () => {
