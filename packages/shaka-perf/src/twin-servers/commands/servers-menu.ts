@@ -45,6 +45,12 @@ import {
   type ServerLogStatus,
 } from '../helpers/server-log';
 import { dockerBuildDirForSide, dockerfileAbsForSide } from '../helpers/project-paths';
+import {
+  createCopyIgnoreMatcher,
+  isCopyIgnored,
+  repositoryRelativeCopyPath,
+} from '../helpers/copy-ignore';
+import { getGitRootDirectory } from '../helpers/git';
 import { BisectSessionController, type BisectExperimentReloadResult } from './bisect-session';
 import {
   experimentRebuildMenuDefinition,
@@ -922,6 +928,7 @@ export async function runServersMenu(
   // ---------- Auto-sync ----------
 
   const experimentBuildDir = dockerBuildDirForSide(config, 'experiment');
+  const experimentGitRoot = getGitRootDirectory(experimentBuildDir) || experimentBuildDir;
   const liveIgnore = loadDockerignore(experimentBuildDir, dockerfileAbsForSide(config, 'experiment'));
   const pendingSync = new Set<string>();
   let syncTimer: NodeJS.Timeout | null = null;
@@ -935,6 +942,7 @@ export async function runServersMenu(
     // image in the first place.
     const manifest = readBuildManifest(config.volumes.experiment);
     const ig = manifest ? ignoreFromManifest(manifest) : liveIgnore;
+    const copyIgnore = createCopyIgnoreMatcher(config.copyIgnore);
     const manifestSet = manifest ? new Set(manifest.files) : null;
 
     const batch = Array.from(pendingSync);
@@ -943,6 +951,12 @@ export async function runServersMenu(
     let deleted = 0;
     const errors: Error[] = [];
     for (const rel of batch) {
+      const copyIgnorePath = repositoryRelativeCopyPath(
+        experimentGitRoot,
+        experimentBuildDir,
+        rel,
+      );
+      if (isCopyIgnored(copyIgnore, copyIgnorePath)) continue;
       const src = path.join(experimentBuildDir, rel);
       const dst = path.join(config.volumes.experiment, rel);
       let srcStat: fs.Stats | null = null;

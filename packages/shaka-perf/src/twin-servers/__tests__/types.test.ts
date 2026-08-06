@@ -73,6 +73,22 @@ describe('TwinServersConfigSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('rejects unknown copy-ignore keys instead of silently dropping them', () => {
+    const result = TwinServersConfigSchema.safeParse({
+      ...validConfig,
+      copyIgnore: { folder: ['tmp/traces'] },
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(expect.objectContaining({
+        code: 'unrecognized_keys',
+        path: ['copyIgnore'],
+        keys: ['folder'],
+      }));
+    }
+  });
+
   it('rejects empty experimentDir', () => {
     const result = TwinServersConfigSchema.safeParse({
       ...validConfig,
