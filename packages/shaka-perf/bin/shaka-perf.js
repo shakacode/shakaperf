@@ -44,7 +44,9 @@ if (!fs.existsSync(nodeBin)) {
 // PROCESS_MARKER_ENV_VAR in src/processes/program.ts.
 process.env.IS_SHAKA_PERF_PROCESS = 'true';
 
-const result = spawnSync(nodeBin, [cliEntry, ...process.argv.slice(2)], {
+const nodeArgs = ['--enable-source-maps'];
+
+const result = spawnSync(nodeBin, [...nodeArgs, cliEntry, ...process.argv.slice(2)], {
   stdio: 'inherit',
   env: { ...process.env, NODE_PATH: nodePathEnv },
 });
