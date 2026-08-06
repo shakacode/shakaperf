@@ -11,6 +11,7 @@ import type { CopyIgnoreConfig } from './types';
 
 /** Host-only directories excluded from change copying unless config overrides them. */
 export const DEFAULT_COPY_IGNORE_FOLDERS = [
+  'audit-results',
   'compare-results',
   'compare-bisect-results',
 ] as const;

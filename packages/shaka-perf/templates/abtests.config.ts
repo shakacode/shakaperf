@@ -168,10 +168,16 @@ export default defineConfig({
       control: CONTROL_PORT,
       experiment: EXPERIMENT_PORT,
     },
-    // Change copying leaves compare-results/ and compare-bisect-results/ on
-    // the host by default. Override either list for project-specific paths:
+    // Change copying leaves audit-results/, compare-results/, and
+    // compare-bisect-results/ on the host by default. Override either list for
+    // project-specific paths:
     // copyIgnore: {
-    //   folders: ['compare-results', 'compare-bisect-results', 'tmp/traces'],
+    //   folders: [
+    //     'audit-results',
+    //     'compare-results',
+    //     'compare-bisect-results',
+    //     'tmp/traces',
+    //   ],
     //   files: ['debug.log'],
     // },
     // No `setupCommands` by default: do all setup (install, build, migrate,

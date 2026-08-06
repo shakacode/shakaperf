@@ -66,7 +66,7 @@ function createMockConfig(tmpDir: string): ResolvedConfig {
     setupCommands: [],
     rebuildCommands: [],
     copyIgnore: {
-      folders: ['compare-results', 'compare-bisect-results'],
+      folders: ['audit-results', 'compare-results', 'compare-bisect-results'],
       files: [],
     },
     projectSlug: 'test-slug',

@@ -199,10 +199,10 @@ describe('resolveConfig', () => {
     expect(resolved.rebuildCommands).toEqual([]);
   });
 
-  it('defaults copy-ignore folders to compare result directories', () => {
+  it('defaults copy-ignore folders to generated report directories', () => {
     const resolved = resolveConfig(makeConfig(), tmpDir);
     expect(resolved.copyIgnore).toEqual({
-      folders: ['compare-results', 'compare-bisect-results'],
+      folders: ['audit-results', 'compare-results', 'compare-bisect-results'],
       files: [],
     });
   });
@@ -227,7 +227,7 @@ describe('resolveConfig', () => {
     }), tmpDir);
 
     expect(resolved.copyIgnore).toEqual({
-      folders: ['compare-results', 'compare-bisect-results'],
+      folders: ['audit-results', 'compare-results', 'compare-bisect-results'],
       files: ['debug.log'],
     });
   });

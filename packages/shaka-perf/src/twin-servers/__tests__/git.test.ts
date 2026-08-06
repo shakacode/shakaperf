@@ -96,6 +96,7 @@ describe('getChangedFiles', () => {
     mockExecSync
       .mockReturnValueOnce([
         'src/app.ts',
+        'audit-results/report.json',
         'compare-results/report.json',
         'packages/app/compare-bisect-results/session.json',
       ].join('\n'))
