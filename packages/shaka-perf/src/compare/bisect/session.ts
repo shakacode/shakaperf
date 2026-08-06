@@ -199,7 +199,7 @@ export async function runCompareBisectFromCli(
     const config = (runtime.parseConfig ?? buildAbTestsConfig)(raw);
     if (cliOptions.reportOnly) {
       if (goodRef || badRef) {
-        throw new Error('compare bisect --report-only does not accept good-ref or bad-ref');
+        throw new Error('bisect --report-only does not accept good-ref or bad-ref');
       }
       const pipeline = createComparePipeline(comparePipelineConfigFromAbTests(config));
       const result = (runtime.regenerateReport ?? regenerateBisectReport)({
@@ -210,7 +210,7 @@ export async function runCompareBisectFromCli(
       return result.session;
     }
     if (!config.twinServers) {
-      throw new Error('compare bisect requires a twinServers section in abtests.config.ts');
+      throw new Error('bisect requires a twinServers section in abtests.config.ts');
     }
     const twinServers = (runtime.resolveTwinServers ?? resolveConfig)(config.twinServers, cwd);
     const frozenTests = await (runtime.loadFrozenTests ?? loadTests)({
@@ -370,7 +370,7 @@ function prepareCompatibleResume(options: {
 }) {
   if (!options.preliminaryResume) return null;
   if (!options.repositorySnapshot) {
-    throw new Error('Cannot resume compare bisect without configured control and experiment repositories');
+    throw new Error('Cannot resume bisect without configured control and experiment repositories');
   }
   return prepareResume({
     sessionPath: path.join(options.resultsDirectory, 'session.json'),
@@ -410,7 +410,7 @@ interface BisectExecutionState {
   nextAction: BisectNextAction | undefined;
 }
 
-/** Owns the complete compare-bisect command lifecycle and its live object graph. */
+/** Owns the complete bisect command lifecycle and its live object graph. */
 class CompareBisectOrchestrator {
   readonly state: BisectExecutionState;
 
@@ -556,7 +556,7 @@ async function startBisectExecution(context: BisectExecutionContext): Promise<vo
     state.environment.cancel(signal);
   });
   await context.save();
-  context.logDecision('session-start', 'Starting compare bisect session', {
+  context.logDecision('session-start', 'Starting bisect session', {
     goodSha: input.gitRange.goodSha,
     badSha: input.gitRange.badSha,
     commits: input.gitRange.orderedCommits.length,
@@ -604,7 +604,7 @@ async function initializeBisectTargets(context: BisectExecutionContext): Promise
 
 function logBisectResume(context: BisectExecutionContext): void {
   const { session } = context.state;
-  context.logDecision('session-resume', 'Resuming compatible compare bisect state', {
+  context.logDecision('session-resume', 'Resuming compatible bisect state', {
     phaseStatus: session.primary?.status,
     attempts: session.primary?.attempts.length ?? 0,
   });
@@ -1001,7 +1001,7 @@ function logTerminalBisectStatus(context: BisectExecutionContext): void {
   const loggedStatus = state.session.status;
   try {
     if (loggedStatus === 'complete' && input.dryRun) {
-      context.logDecision('session-dry-run-complete', 'Compare bisect dry run completed', {
+      context.logDecision('session-dry-run-complete', 'Bisect dry run completed', {
         targets: state.session.primary.targets.map((target) => targetLogData(target)),
         nextAction: state.nextAction,
         summaryPath: path.join(input.resultsDirectory, 'summary.json'),
@@ -1011,7 +1011,7 @@ function logTerminalBisectStatus(context: BisectExecutionContext): void {
         'session-complete',
         state.session.primary.targets.length === 0
           ? 'No regression targets were detected at the bad ref'
-          : 'Compare bisect session completed',
+          : 'Bisect session completed',
         {
           foundTargets: state.session.primary.targets
             .filter((target) => target.status === 'found')
@@ -1028,7 +1028,7 @@ function logTerminalBisectStatus(context: BisectExecutionContext): void {
     } else {
       context.logDecision(
         'session-failed',
-        `Compare bisect ${loggedStatus}: ${state.session.failure}`,
+        `Bisect ${loggedStatus}: ${state.session.failure}`,
       );
     }
   } catch (error) {
@@ -1324,7 +1324,7 @@ function parseCategories(input: string | string[] | undefined): BisectCategory[]
   const valid = new Set<string>(comparePipelineMetadata.categories);
   for (const category of categories) {
     if (!valid.has(category)) {
-      throw new Error(`Unknown compare bisect category "${category}"`);
+      throw new Error(`Unknown bisect category "${category}"`);
     }
   }
   return categories as BisectCategory[];
@@ -1344,7 +1344,7 @@ function printBisectSummary(
   if (fs.existsSync(reportPath)) console.log(`Report: ${reportPath}`);
   if (options.dryRun) {
     const nextAction = dryRunNextAction(session, options.validateGoodRef);
-    console.log('Compare bisect dry run complete.');
+    console.log('Bisect dry run complete.');
     console.log(`Range: ${session.primary.goodSha}..${session.primary.badSha}`);
     console.log(`Summary: ${path.join(resultsDirectory, 'summary.json')}`);
     console.log(`Decision log: ${path.join(resultsDirectory, 'decision-log.md')}`);
@@ -1369,7 +1369,7 @@ function printBisectSummary(
     }
     return;
   }
-  console.log(`Compare bisect ${session.status}.`);
+  console.log(`Bisect ${session.status}.`);
   console.log(`Summary: ${path.join(resultsDirectory, 'summary.json')}`);
   console.log(`Decision log: ${path.join(resultsDirectory, 'decision-log.md')}`);
   console.log(`Targets: ${found.length} found, ${invalid.length} invalid, ${unresolved.length} unresolved`);
@@ -1383,7 +1383,7 @@ function printBisectSummary(
     .some((investigation) => investigation.status === 'merge-uninvestigated');
   if (hasUninvestigatedMerge) {
     console.log(
-      `shaka-perf compare bisect --categories ` +
+      `shaka-perf bisect --categories ` +
       `${session.compatibility.effective.categories.join(',')} --resume --investigate-merges`,
     );
   }

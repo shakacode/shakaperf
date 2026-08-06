@@ -237,7 +237,7 @@ export function assertCompatible(
 ): void {
   for (const field of compatibilityFields) {
     if (saved[field.key] !== current[field.key]) {
-      throw new Error(`Cannot resume compare bisect: ${field.message}. Start a fresh run.`);
+      throw new Error(`Cannot resume bisect: ${field.message}. Start a fresh run.`);
     }
   }
 }
@@ -259,15 +259,15 @@ export function assertRepositoryCompatible(
   ];
   for (const field of identityFields) {
     if (saved.identity[field.key] !== current.identity[field.key]) {
-      throw new Error(`Cannot resume compare bisect: ${field.message}. Start a fresh run.`);
+      throw new Error(`Cannot resume bisect: ${field.message}. Start a fresh run.`);
     }
   }
   if (saved.control.sha !== current.control.sha || saved.control.branch !== current.control.branch) {
-    throw new Error('Cannot resume compare bisect: control checkout changed. Restore it and retry.');
+    throw new Error('Cannot resume bisect: control checkout changed. Restore it and retry.');
   }
   if (saved.originalExperiment.sha !== current.experiment.sha
     || saved.originalExperiment.branch !== current.experiment.branch) {
-    throw new Error('Cannot resume compare bisect: experiment checkout changed. Restore it and retry.');
+    throw new Error('Cannot resume bisect: experiment checkout changed. Restore it and retry.');
   }
 }
 
@@ -303,7 +303,7 @@ export function parseBisectSession(value: unknown): BisectSession {
 
 export function readBisectSession(filePath: string): BisectSession {
   if (!fs.existsSync(filePath)) {
-    throw new Error(`Cannot resume compare bisect: saved session is missing at ${filePath}`);
+    throw new Error(`Cannot resume bisect: saved session is missing at ${filePath}`);
   }
   return parseBisectSession(JSON.parse(fs.readFileSync(filePath, 'utf8')) as unknown);
 }
@@ -326,11 +326,11 @@ export function writeBadRefTestsAtomic(
 
 export function readBadRefTests(filePath: string, expectedSha256: string): TestResult[] {
   if (!fs.existsSync(filePath)) {
-    throw new Error(`Cannot resume compare bisect: persisted bad-ref report input is missing at ${filePath}`);
+    throw new Error(`Cannot resume bisect: persisted bad-ref report input is missing at ${filePath}`);
   }
   const contents = fs.readFileSync(filePath, 'utf8');
   if (sha256(contents) !== expectedSha256) {
-    throw new Error('Cannot resume compare bisect: persisted bad-ref report input changed');
+    throw new Error('Cannot resume bisect: persisted bad-ref report input changed');
   }
   return z.array(reportTestSchema).parse(JSON.parse(contents)) as unknown as TestResult[];
 }

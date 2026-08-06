@@ -1,6 +1,6 @@
-# Compare Bisect
+# Bisect
 
-`shaka-perf compare bisect [good-ref] [bad-ref]` repeatedly runs the unified
+`shaka-perf bisect [good-ref] [bad-ref]` repeatedly runs the unified
 compare pipeline against candidate experiment commits and reports the first
 commit that introduced each regression observed at the bad ref.
 
@@ -12,7 +12,7 @@ top of a stable twin-server setup.
 
 ## When to Use It
 
-Use compare bisect when:
+Use bisect when:
 
 - You have an A/B twin-server setup with control and experiment checkouts.
 - A known good ref and known bad ref can bracket the regression.
@@ -23,7 +23,7 @@ Use compare bisect when:
 
 ## Basic Flow
 
-Compare bisect requires clean control and experiment worktrees and an active
+Bisect requires clean control and experiment worktrees and an active
 twin-server menu. Start the menu with:
 
 ```bash
@@ -47,7 +47,7 @@ initial clean-container step above.
 Then run bisect from the invocation checkout:
 
 ```bash
-yarn shaka-perf compare bisect
+yarn shaka-perf bisect
 ```
 
 With no refs, `good-ref` defaults to the configured control checkout's `HEAD`
@@ -58,7 +58,7 @@ must remain at the resolved good SHA for the whole run.
 Explicit refs and optional category narrowing work the same way as `compare`:
 
 ```bash
-yarn shaka-perf compare bisect <good-ref> <bad-ref> --categories visreg,perf
+yarn shaka-perf bisect <good-ref> <bad-ref> --categories visreg,perf
 ```
 
 The primary range follows Git first-parent history. A merge commit is one atomic
@@ -67,7 +67,7 @@ mainline here." Complete the primary search first, then optionally investigate
 the source side of eligible two-parent merges:
 
 ```bash
-yarn shaka-perf compare bisect --resume --investigate-merges
+yarn shaka-perf bisect --resume --investigate-merges
 ```
 
 You can also pass `--investigate-merges` on the initial command. The primary
@@ -80,7 +80,7 @@ To iterate without repeating the initial bad-ref comparison, reuse the current
 `compare-results/` tree:
 
 ```bash
-yarn shaka-perf compare bisect <good-ref> <bad-ref> \
+yarn shaka-perf bisect <good-ref> <bad-ref> \
   --categories accessibility \
   --reuse-current-results
 ```
@@ -96,7 +96,7 @@ select the first candidate. To additionally rebuild the experiment at `good-ref`
 and compare both sides before the search, opt in with:
 
 ```bash
-yarn shaka-perf compare bisect <good-ref> <bad-ref> --validate-good-ref
+yarn shaka-perf bisect <good-ref> <bad-ref> --validate-good-ref
 ```
 
 This extra validation can detect control/experiment environment asymmetry, but
@@ -113,7 +113,7 @@ To preview discovery and the next action without starting the search, add
 `--dry-run`:
 
 ```bash
-yarn shaka-perf compare bisect <good-ref> <bad-ref> \
+yarn shaka-perf bisect <good-ref> <bad-ref> \
   --categories accessibility \
   --reuse-current-results \
   --dry-run
@@ -142,7 +142,7 @@ To render the latest bisect report again with the currently installed report
 shell, run:
 
 ```bash
-yarn shaka-perf compare bisect --report-only
+yarn shaka-perf bisect --report-only
 ```
 
 Report-only reads `compare-bisect-results/session.json` and
@@ -237,7 +237,7 @@ export default defineConfig({
 
 ## Algorithm
 
-Compare bisect treats the bad-ref comparison as a collection of independent
+Bisect treats the bad-ref comparison as a collection of independent
 regression targets.
 
 1. **Prepare the range.** The command validates clean control and experiment
@@ -287,7 +287,7 @@ regression targets.
 Resume always uses the latest `compare-bisect-results/session.json`:
 
 ```bash
-yarn shaka-perf compare bisect --resume
+yarn shaka-perf bisect --resume
 ```
 
 `--resume` rejects positional refs and fresh-only flags such as
@@ -388,7 +388,7 @@ attempt.
 
 Native Git bisect asks one question: "is this commit good or bad?" Compare output
 can contain several unrelated regressions introduced by different commits.
-Compare bisect therefore shares one native run while targets agree, then splits
+Bisect therefore shares one native run while targets agree, then splits
 and queues divergent target groups. It can return different first-bad SHAs for
 visual, performance, and accessibility issues without starting one full search
 per target up front.

@@ -95,7 +95,7 @@ describe('ipc proxy', () => {
     });
   });
 
-  it('requires a running proxy for compare bisect actions', async () => {
+  it('requires a running proxy for bisect actions', async () => {
     await withHome(async () => {
       await expect(requireBisectProxy({
         slug: 'missing-bisect-server',
@@ -280,7 +280,7 @@ describe('ipc proxy', () => {
 });
 
 describe('ipc dispatcher', () => {
-  it('routes compare bisect lease and reload requests through the menu controller', async () => {
+  it('routes bisect lease and reload requests through the menu controller', async () => {
     const calls: string[] = [];
     const controller: MenuController = {
       async rebuildAndRestart() {

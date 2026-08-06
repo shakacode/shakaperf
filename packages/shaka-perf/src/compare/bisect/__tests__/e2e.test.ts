@@ -26,7 +26,7 @@ import {
 
 jest.setTimeout(30_000);
 
-describe('compare bisect black-box E2E', () => {
+describe('bisect black-box E2E', () => {
   /*
    * known-good -> visual-regression-introduced -> performance-regression-introduced
    *                 ^ first visual
