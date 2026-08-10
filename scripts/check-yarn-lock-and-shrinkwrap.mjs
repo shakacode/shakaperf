@@ -6,28 +6,29 @@
  * License in LICENSE.md.
  */
 
-// Asserts yarn.lock (development) and packages/shaka-perf/npm-shrinkwrap.json
+// Asserts yarn.lock (development) and packages/shaka-perf/package-lock.json
 // (what ships to npm consumers) agree on every version. Run from pre-commit
 // and CI; offline, ~50ms.
 //
-// Regenerate both together — resolved at the same moment under the same age
-// gate the two package managers agree almost exactly (measured: 1 version in
-// 490); rebuild only one and it drifts against the other (81 versions):
+// After changing a dependency, update it the same way you would yarn.lock:
 //
-//   yarn install --mode=update-lockfile
-//   cd packages/shaka-perf && npm install --package-lock-only --ignore-scripts && npm shrinkwrap
+//   cd packages/shaka-perf && npm install --package-lock-only --ignore-scripts
 //
-// That writes devDependencies into the file too (866 entries rather than 533;
-// `--omit=dev` does not prevent it). They are flagged `dev: true` and npm never
-// installs them for a consumer, so they are noise rather than a problem — both
-// checks here skip them.
+// npm keeps the existing resolutions and only touches what changed (measured: 4
+// versions), so the two lockfiles stay in step without regenerating either from
+// scratch. Building this file from an empty directory instead re-resolves every
+// range to whatever is newest today and drifts by 81 versions — don't.
+//
+// npm records devDependencies here too, flagged `dev: true` (`--omit=dev` only
+// affects installs, not what is written). npm never installs them for a
+// consumer; both checks skip them, and so must `npm audit`.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SHRINKWRAP = path.join(ROOT, 'packages', 'shaka-perf', 'npm-shrinkwrap.json');
+const SHRINKWRAP = path.join(ROOT, 'packages', 'shaka-perf', 'package-lock.json');
 const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 
 /** Every name@version yarn.lock resolved, plus this repo's own workspaces. */
@@ -77,7 +78,7 @@ if (!drifted.length) {
   process.exit(0);
 }
 process.stderr.write(
-  `${drifted.length} version(s) in npm-shrinkwrap.json that yarn.lock does not resolve:\n\n` +
+  `${drifted.length} version(s) in package-lock.json that yarn.lock does not resolve:\n\n` +
     drifted.map((s) => `  ${s}\n`).join('') +
     '\nRegenerate both together (see the header of this file), or `yarn up <pkg>` to\nmove yarn.lock onto the published versions.\n',
 );

@@ -1,5 +1,9 @@
 # Dependencies
 node_modules/
+# Copy of the committed package-lock.json under the only name npm publishes.
+# Written by prepack and left in place; a local `npm audit` prefers it, so re-run
+# prepack (or delete it) if package-lock.json changed since your last pack.
+packages/shaka-perf/npm-shrinkwrap.json
 
 # Build output
 dist/

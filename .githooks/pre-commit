@@ -3,7 +3,7 @@
 staged=$(git diff --cached --name-only --diff-filter=d)
 [ -z "$staged" ] && exit 0
 
-# yarn.lock and the published npm-shrinkwrap.json must agree on every version.
+# yarn.lock and the published package-lock.json must agree on every version.
 if echo "$staged" | grep -qE '^(yarn\.lock|packages/shaka-perf/npm-shrinkwrap\.json)$'; then
   node scripts/check-yarn-lock-and-shrinkwrap.mjs || exit 1
 fi

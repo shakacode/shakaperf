@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 
-const lock = readJson(path.join(ROOT, 'packages', 'shaka-perf', 'npm-shrinkwrap.json'));
+const lock = readJson(path.join(ROOT, 'packages', 'shaka-perf', 'package-lock.json'));
 const allowed = new Set(readJson(path.join(ROOT, 'scripts', 'install-scripts-allowlist.json')).allowed.map((e) => e.package));
 
 const found = Object.entries(lock.packages)

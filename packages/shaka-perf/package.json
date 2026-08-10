@@ -84,7 +84,7 @@
     "dev-report-shell": "vite --config report-shell/vite.config.ts",
     "typecheck": "tsc -p tsconfig.test.json",
     "test": "jest",
-    "prepack": "yarn build && node ../../scripts/sync-license.mjs",
+    "prepack": "yarn build && node ../../scripts/sync-license.mjs && cp package-lock.json npm-shrinkwrap.json",
     "install-global": "yarn workspaces foreach -Apt --include 'packages/*' run build && node scripts/install-global.mjs"
   },
   "keywords": [
