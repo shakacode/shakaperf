@@ -123,12 +123,20 @@ function delegateCompareScenarios (
         scenarioViews[i]._playwrightBrowser = browser;
       }
 
+      // The browser outlives the run on BOTH branches — the error branch above
+      // all, since a failed unit is the whole reason a window was wanted. The
+      // contexts are kept and titled by runCompareAttempts; keeping the browser
+      // handle alive stops Playwright taking those windows down with it.
+      const finish = config.keepBrowserOpen
+        ? function () { return Promise.resolve(); }
+        : function () { return disposePlaywrightBrowser(browser); };
+
       pMap(scenarioViews as Required<ScenarioView>[], function (view: Required<ScenarioView>) {
         return runCompareScenario.playwright(view, runtime);
       }, { concurrency: asyncCaptureLimit }).then(function (out: unknown) {
-        disposePlaywrightBrowser(browser).then(function () { resolve(out); });
+        finish().then(function () { resolve(out); });
       }, function (e: unknown) {
-        disposePlaywrightBrowser(browser).then(function () { reject(e); });
+        finish().then(function () { reject(e); });
       });
     }, function (e: unknown) { reject(e); });
   });

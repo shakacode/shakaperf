@@ -20,6 +20,7 @@ yarn build      # Build all packages (tsc)
 
 ```bash
 shaka-perf compare              # Unified visreg + perf comparison + single-file HTML report
+shaka-perf troubleshoot         # Debug ONE test at ONE viewport: browsers stay open on any error, attachable over CDP
 shaka-perf servers              # Docker A/B testing infrastructure (auto build+start)
 shaka-perf client-report        # Client-facing mobile-speed report from a saved audit-results dir
 shaka-perf warm-email           # Warm outreach email draft + client report from a saved audit
@@ -35,6 +36,12 @@ The unified `compare` command reads `abtests.config.ts` (sections: `shared`,
 what runs. Output is a single self-contained `compare-results/report.html`
 the React shell lives at `packages/shaka-perf/report-shell/` (Vite +
 vite-plugin-singlefile, all assets inlined as base64).
+
+`troubleshoot` is `compare` narrowed to one test at one viewport, leaving the
+browsers open for inspection over CDP (it never finishes and yields no numbers —
+use `compare` to measure). To run it and attach to the browsers, use the
+`troubleshoot-abtest` skill / `shaka-perf troubleshoot --help`; details in
+@packages/shaka-perf/README-troubleshoot.md.
 
 ### Auditing bot-protected sites (real-Chrome mode)
 

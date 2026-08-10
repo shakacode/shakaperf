@@ -36,6 +36,7 @@ const DEFAULT_DIRS = [
   'integration-tests/snapshots/bench-results',
   'integration-tests/snapshots/visreg-results',
   'integration-tests/snapshots/audit-results',
+  'integration-tests/snapshots/troubleshoot-results',
 ];
 const SNAPSHOTS_ROOT = 'integration-tests/snapshots';
 const REPORT_PATH = path.join(SNAPSHOTS_ROOT, 'screenshot-diff-report.html');

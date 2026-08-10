@@ -21,6 +21,9 @@ import {
 } from '../../../bench/core';
 import { lhConfigForViewport } from '../../../bench/core/lighthouse-config';
 import { resolvePlaywrightOptions } from '../../../config';
+import type { Group } from '../../../pipeline/log-prefix-format';
+import { formatWindowLabel, windowPlacementFor } from '../../../troubleshoot/window-placement';
+import { perfCdpSlot } from '../../../troubleshoot/debug-session';
 import { ensureLighthousePatchRegistered } from '../../../bench/core/patched-lighthouse/register-patch';
 import { durationInSec, secondsToTime, timestamp, chalkScheme } from '../../../bench/cli/helpers/utils';
 import { runAnalyze } from '../../../bench/cli/commands/compare/analyze';
@@ -63,18 +66,33 @@ export async function runPerfEngineStage(
     resultsFolder: artifactsDir,
     lhConfig,
     saveArtifacts: config.saveArtifacts,
-    headed: ctx.runtime.headed,
     // Effective launch options (shared.playwrightOptions ← perf override ←
-    // per-test config); the fork maps args/headless onto chrome flags.
-    playwrightOptions: resolvePlaywrightOptions(ctx.config, 'perf'),
+    // per-test config), with keep-open riding along.
+    headed: ctx.runtime.headed,
+    playwrightOptions: {
+      ...resolvePlaywrightOptions(ctx.config, 'perf'),
+      ...(ctx.runtime.keepBrowserOpen ? { keepBrowserOpen: true } : {}),
+    },
   };
+  // Built in the parent, from the same helpers visreg uses, so all four windows match.
+  const sideOptions = (group: Group): Partial<LighthouseBenchmarkOptions> =>
+    ctx.runtime.keepBrowserOpen
+      ? {
+        windowLabel: formatWindowLabel('perf', ctx.test.name, ctx.viewport.label),
+        windowPlacement: windowPlacementFor('perf', group, ctx.viewport),
+        // This side's own Chrome, so its own endpoint.
+        cdpPort: ctx.runtime.cdpPorts?.[perfCdpSlot(group)],
+      }
+      : {};
   const benchmarks = [
     createLighthouseBenchmark('control', ctx.test, {
       ...benchmarkOptions,
+      ...sideOptions('control'),
       targetUrl: ctx.controlURL,
     }),
     createLighthouseBenchmark('experiment', ctx.test, {
       ...benchmarkOptions,
+      ...sideOptions('experiment'),
       targetUrl: ctx.experimentURL,
     }),
   ];
@@ -83,6 +101,9 @@ export async function runPerfEngineStage(
   } catch (err) {
     const message = (err as Error).message || String(err);
     console.error(chalk.red(`perf engine error: ${message}`));
+    // Freeze on the failure path too: the normal freeze is the held gather, so
+    // anything throwing BEFORE the hold would exit and take the browsers.
+    if (ctx.runtime.keepBrowserOpen) await new Promise<never>(() => {});
     const mediaName = findFailureMediaName(err);
     if (mediaName) {
       // The Lighthouse worker wrote the media (a screenshot on the perf path)

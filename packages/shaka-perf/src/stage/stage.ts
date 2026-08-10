@@ -12,6 +12,7 @@ import type { AbTestsConfig, Viewport } from '../config';
 import type { ArtifactScope } from '../pipeline/artifact-store';
 import type { Outcome } from '../pipeline/outcome';
 import type { WorkerPool } from '../pipeline/worker-pool';
+import type { CdpPorts } from '../troubleshoot/debug-session';
 
 export type StageCategory = TestType;
 export type StageName = string;
@@ -43,6 +44,14 @@ export interface StageRuntime {
    * browsers.
    */
   readonly headed?: boolean;
+  /**
+   * `shaka-perf troubleshoot`: never tear a measurement browser down, not even
+   * on error. A kept browser need not be a visible one — under `--headed=false`
+   * it lives on as a CDP endpoint rather than a window.
+   */
+  readonly keepBrowserOpen?: boolean;
+  /** Debug port per kept browser, chosen by the CLI so it can publish the endpoints. */
+  readonly cdpPorts?: CdpPorts;
   /**
    * `--burn <n>` instance count when burning, else null/undefined. Burn
    * replaces retries everywhere — the runner zeroes pool retries, and stages

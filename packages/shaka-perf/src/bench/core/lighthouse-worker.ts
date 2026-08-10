@@ -29,6 +29,11 @@ import { assertConsoleClean } from '../../browser-console';
 import { reconstructEffectiveConfig } from '../../effective-config';
 import { installBeforePageNavigateBarrier } from './barrier-synchronization';
 import {
+  chromeWindowFlags,
+  labelWindow,
+  type WindowPlacement,
+} from '../../troubleshoot/window-placement';
+import {
   DEFAULT_LH_CONFIG,
   DEFAULT_MARKERS,
   getCpuSlowdownMultiplier,
@@ -95,7 +100,6 @@ export const FAILURE_SCREENSHOT_FILENAME = 'failure-screenshot.png';
 
 interface SetupMessage {
   type: 'setup';
-  /** Launch Chrome headed (no `--headless`): `--headed` CLI flag or resolved `playwrightOptions.headless: false`. */
   headed?: boolean;
   /** Extra chrome flags from the resolved `playwrightOptions.args`. */
   chromeArgs?: string[];
@@ -105,6 +109,10 @@ interface SetupMessage {
    * this is explicitly false.
    */
   ignoreHTTPSErrors?: boolean;
+  /** Survives every sample, error and `dispose`; only the process exiting takes it down. */
+  keepBrowserOpen?: boolean;
+  windowPlacement?: WindowPlacement;
+  cdpPort?: number;
 }
 
 interface SampleMessage {
@@ -140,8 +148,17 @@ let abortCurrentSample: ((reason: Error) => void) | null = null;
 class LighthouseWorkerSampler {
   private chrome: LaunchedChrome | null = null;
   private userDataDir: string | null = null;
+  private keepBrowserOpen = false;
 
-  async setupBrowser(options: { headed?: boolean; chromeArgs?: string[]; ignoreHTTPSErrors?: boolean } = {}): Promise<void> {
+  async setupBrowser(options: {
+    headed?: boolean;
+    chromeArgs?: string[];
+    ignoreHTTPSErrors?: boolean;
+    keepBrowserOpen?: boolean;
+    windowPlacement?: WindowPlacement;
+    cdpPort?: number;
+  } = {}): Promise<void> {
+    this.keepBrowserOpen = options.keepBrowserOpen === true;
     const chromeFlags = [
       '--enable-unsafe-swiftshader',
       '--disable-dev-shm-usage',
@@ -151,9 +168,6 @@ class LighthouseWorkerSampler {
     if (options.ignoreHTTPSErrors !== false) {
       chromeFlags.unshift('--ignore-certificate-errors');
     }
-    // Headless unless the run opted into headed (the setup IPC message, set
-    // from LighthouseBenchmarkOptions.headed / the resolved
-    // playwrightOptions.headless).
     if (!options.headed) {
       chromeFlags.unshift('--headless');
     }
@@ -176,6 +190,13 @@ class LighthouseWorkerSampler {
       }
     }
 
+    // Launch flags rather than a post-hoc move: this side owns its own Chrome.
+    // The size is not optional here — Lighthouse only emulates the page, so an
+    // unsized window opens at Chrome's fresh-profile default.
+    if (options.windowPlacement) {
+      chromeFlags.push(...chromeWindowFlags(options.windowPlacement));
+    }
+
     // Extra flags from the resolved shared/perf playwrightOptions.args.
     chromeFlags.push(...(options.chromeArgs ?? []));
 
@@ -185,7 +206,13 @@ class LighthouseWorkerSampler {
 
     this.userDataDir = await mkdtemp(join(tmpdir(), 'lighthouse-'));
     try {
-      this.chrome = await launch({ chromeFlags, userDataDir: this.userDataDir });
+      // `port`, not a flag: chrome-launcher writes `--remote-debugging-port`
+      // itself, so passing one too would duplicate it.
+      this.chrome = await launch({
+        chromeFlags,
+        userDataDir: this.userDataDir,
+        ...(options.cdpPort != null ? { port: options.cdpPort } : {}),
+      });
     } catch (err) {
       const userDataDir = this.userDataDir;
       this.userDataDir = null;
@@ -201,6 +228,11 @@ class LighthouseWorkerSampler {
     }
   }
 
+  /**
+   * NOT gated by `keepBrowserOpen`: what reaches here is SIGINT/SIGTERM,
+   * IPC disconnect, or a fatal error. Those must reap Chrome — chrome-launcher
+   * may put it in its own process group, so skipping the kill leaks it.
+   */
   async dispose(): Promise<void> {
     const chrome = this.chrome;
     const userDataDir = this.userDataDir;
@@ -441,8 +473,14 @@ class LighthouseWorkerSampler {
         // window actually ends (releaseTracking only lifts one of LH's
         // load-gate conditions; LH then still waits for CPU-idle and keeps the
         // trace running). The encode happens once the run resolves.
-        .finally(() => {
-          releaseTracking();
+        .finally(async () => {
+          if (this.keepBrowserOpen && options.windowLabel) {
+            await labelWindow(page, options.windowLabel);
+          }
+          // Never released under keep-open: LH stays in its gather, so it never
+          // reaches `_cleanup` and never closes the page or clears its storage.
+          // Costs the LHR, which only exists after the gather ends.
+          if (!this.keepBrowserOpen) releaseTracking();
         });
 
       // Abandon (don't await) the underlying work if abort wins the race;
@@ -517,7 +555,9 @@ class LighthouseWorkerSampler {
       throw error;
     } finally {
       abortCurrentSample = null;
-      await browser.close();
+      // Closing would take the window with it. Labelling already happened when
+      // testFn settled; this path only runs if the sample failed before that.
+      if (!this.keepBrowserOpen) await browser.close();
     }
   }
 

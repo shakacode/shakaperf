@@ -12,6 +12,12 @@ import defaultPreparePage from './preparePage';
 import createLogger from './logger';
 import { withLogPrefix } from './testContext';
 import { formatLogPrefix } from '../../../pipeline/log-prefix-format';
+import {
+  formatWindowLabel,
+  labelWindow,
+  placeWindow,
+  windowPlacementFor,
+} from '../../../troubleshoot/window-placement';
 import { createComparisonSide as defaultCreateComparisonSide, type ComparisonSide } from './createComparisonSide';
 import { ScreenshotPool, crossMatch, type PoolFrame, type CrossMatchResult } from './screenshotPool';
 import { setUpContextForNavigation } from '../../../pre-navigation';
@@ -122,6 +128,7 @@ async function captureComparisonSide(
     captureFailure,
   } = params;
   let side: ComparisonSide | undefined;
+  const group = isControl ? 'control' : 'experiment';
 
   return runWithFreshTestAnnotationContext(async () => {
     try {
@@ -140,6 +147,10 @@ async function captureComparisonSide(
         }),
       );
       activeSides.add(side);
+      if (config.keepBrowserOpen) {
+        // One browser, two contexts — so the window is moved, not launched placed.
+        await placeWindow(side.page, windowPlacementFor('visreg', group, viewport));
+      }
 
       await preparePage(
         side.page,
@@ -172,11 +183,17 @@ async function captureComparisonSide(
       const failure = side && activeSides.has(side) && captureFailure
         ? await captureFailure(err, side.page, isControl)
         : err;
-      disposeActiveSidesOnNextTask(activeSides);
+      // The sibling window is evidence too; Promise.all already rejects without help.
+      if (!config.keepBrowserOpen) disposeActiveSidesOnNextTask(activeSides);
       throw failure;
     } finally {
       if (side && activeSides.delete(side)) {
-        await side.dispose();
+        if (config.keepBrowserOpen) {
+          // Last point the side's identity is in scope, first at which writing is harmless.
+          await labelWindow(side.page, formatWindowLabel('visreg', scenario.label, viewport.label));
+        } else {
+          await side.dispose();
+        }
       }
     }
   });

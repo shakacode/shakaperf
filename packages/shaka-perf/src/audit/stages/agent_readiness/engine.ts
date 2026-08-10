@@ -60,7 +60,7 @@ export async function runAgentReadinessStage(
     if (!slot.agentReadinessBrowser) {
       slot.agentReadinessBrowser = await launchStageBrowser(
         resolved.engineOptions.playwrightOptions,
-        ctx.runtime.headed,
+        ctx.runtime.headed === true,
       );
     }
     return scanAgentReadiness(ctx, slot.agentReadinessBrowser, resolved.engineOptions);

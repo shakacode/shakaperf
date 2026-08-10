@@ -17,6 +17,7 @@ import type { LighthouseBenchmarkOptions, NavigationSample } from './lighthouse-
 import type { AbTestDefinition } from './ab-test-registry';
 import { withLogPrefix } from '../../visreg/core/util/testContext';
 import { formatLogPrefix, type Group } from '../../pipeline/log-prefix-format';
+import type { WindowPlacement } from '../../troubleshoot/window-placement';
 import type { LogFrame, WorkerLogFrame } from './worker-log';
 
 // stdio slots 0-3 are stdin, stdout, stderr, and Node's IPC channel.
@@ -40,22 +41,36 @@ export function lighthouseWorkerEnvironment(
 }
 
 export function lighthouseWorkerSetupOptions(
-  options: Pick<LighthouseBenchmarkOptions, 'headed' | 'playwrightOptions' | 'realChrome'>,
-): { headed: boolean; chromeArgs: string[]; ignoreHTTPSErrors: boolean } {
+  options: Pick<
+    LighthouseBenchmarkOptions,
+    'headed' | 'playwrightOptions' | 'realChrome' | 'windowPlacement' | 'cdpPort'
+  >,
+): {
+  headed: boolean;
+  chromeArgs: string[];
+  ignoreHTTPSErrors: boolean;
+  keepBrowserOpen: boolean;
+  windowPlacement?: WindowPlacement;
+  cdpPort?: number;
+} {
   const playwrightOptions = options.playwrightOptions ?? {};
   return {
     headed: options.realChrome
       ? options.realChrome.headless !== true
-      : (options.headed === true || playwrightOptions.headless === false),
+      : options.headed === true,
     chromeArgs: playwrightOptions.args ?? [],
     ignoreHTTPSErrors: playwrightOptions.ignoreHTTPSErrors !== false,
+    keepBrowserOpen: playwrightOptions.keepBrowserOpen === true,
+    ...(options.windowPlacement ? { windowPlacement: options.windowPlacement } : {}),
+    ...(options.cdpPort != null ? { cdpPort: options.cdpPort } : {}),
   };
 }
 
 export function warnIfRealChromeHeadlessOverridesHeaded(
   options: Pick<LighthouseBenchmarkOptions, 'headed' | 'realChrome'>,
 ): void {
-  if (options.headed && options.realChrome?.headless && !realChromeHeadlessWarningEmitted) {
+  const headed = options.headed === true;
+  if (headed && options.realChrome?.headless && !realChromeHeadlessWarningEmitted) {
     realChromeHeadlessWarningEmitted = true;
     console.warn(
       'SHAKAPERF_REAL_CHROME_HEADLESS=1 overrides --headed for the audit browsers',
@@ -231,7 +246,10 @@ async function disposeWorkerSubprocess(worker: ChildProcess): Promise<void> {
 
 
 class OOPLighthouseSampler implements BenchmarkSampler<NavigationSample> {
-  constructor(private worker: ChildProcess) {}
+  constructor(
+    private worker: ChildProcess,
+    private readonly options: LighthouseBenchmarkOptions,
+  ) {}
 
   async sample(
     sampleState: unknown,
@@ -281,6 +299,8 @@ class OOPLighthouseSampler implements BenchmarkSampler<NavigationSample> {
   }
 
   async dispose(): Promise<void> {
+    // The one choke point: every route that would kill this side's Chrome ends here.
+    if (this.options.playwrightOptions?.keepBrowserOpen) return;
     await disposeWorkerSubprocess(this.worker);
   }
 }
@@ -363,9 +383,10 @@ export default function createLighthouseBenchmark(
             err.stack = ready.stack;
             throw err;
           }
-          return new OOPLighthouseSampler(worker);
+          return new OOPLighthouseSampler(worker, options);
         } catch (err) {
-          await disposeWorkerSubprocess(worker);
+          // A setup that launched Chrome then failed leaves the window to look at.
+          if (!options.playwrightOptions?.keepBrowserOpen) await disposeWorkerSubprocess(worker);
           throw err;
         } finally {
           detach();

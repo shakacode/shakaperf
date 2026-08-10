@@ -62,6 +62,7 @@ const assets = [
   ['../../.claude/skills/setup-docker-servers-for-ab-tests', 'dist/skills/setup-docker-servers-for-ab-tests'],
   ['../../.claude/skills/assess-abtest-quality', 'dist/skills/assess-abtest-quality'],
   ['../../.claude/skills/ab-servers', 'dist/skills/ab-servers'],
+  ['../../.claude/skills/troubleshoot-abtest', 'dist/skills/troubleshoot-abtest'],
 ];
 
 for (const [src, dest] of assets) {
