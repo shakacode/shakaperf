@@ -15,7 +15,8 @@
     "test": "yarn workspaces foreach -Ap --include 'packages/*' run test",
     "test:integration": "yarn playwright test -c playwright.integration.config.ts",
     "license:headers": "ruby scripts/update-license-headers.rb",
-    "install-global-script": "yarn workspace shaka-perf install-global"
+    "install-global-script": "yarn workspace shaka-perf install-global",
+    "check-supply-chain": "node scripts/check-yarn-lock-and-shrinkwrap.mjs && node scripts/check-install-scripts.mjs && npm audit --package-lock-only --audit-level=high --prefix packages/shaka-perf"
   },
   "repository": {
     "type": "git",

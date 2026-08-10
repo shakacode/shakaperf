@@ -11971,7 +11971,7 @@ __metadata:
     race-cancellation: "npm:^0.4.1"
     react: "npm:^19.0.0"
     react-dom: "npm:^19.0.0"
-    shaka-shared: "workspace:^"
+    shaka-shared: "npm:^0.2.1"
     sharp: "npm:^0.35.0"
     temp: "npm:^0.9.4"
     tesseract.js: "npm:^7.0.0"
@@ -11987,7 +11987,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"shaka-shared@workspace:^, shaka-shared@workspace:packages/shaka-shared":
+"shaka-shared@npm:^0.2.1, shaka-shared@workspace:^, shaka-shared@workspace:packages/shaka-shared":
   version: 0.0.0-use.local
   resolution: "shaka-shared@workspace:packages/shaka-shared"
   dependencies:

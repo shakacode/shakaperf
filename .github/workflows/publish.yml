@@ -34,6 +34,9 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      # A tag push skips CI, so this is the last gate before the tarball is public.
+      - run: yarn check-supply-chain
+
       - name: Build shaka-shared
         run: yarn workspace shaka-shared run build
 
