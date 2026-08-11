@@ -7,7 +7,6 @@
     "": {
       "name": "shaka-perf",
       "version": "0.2.3",
-      "hasInstallScript": true,
       "license": "SEE LICENSE IN LICENSE.md",
       "dependencies": {
         "@axe-core/playwright": "^4.11.3",

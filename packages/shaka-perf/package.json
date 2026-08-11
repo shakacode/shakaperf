@@ -77,8 +77,6 @@
     }
   },
   "scripts": {
-    "install": "node-gyp rebuild",
-    "postinstall": "node scripts/save-node-path.js",
     "build": "yarn build-report-shell && tsc && node scripts/copy-assets.mjs",
     "build-report-shell": "vite build --config report-shell/vite.config.ts",
     "dev-report-shell": "vite --config report-shell/vite.config.ts",

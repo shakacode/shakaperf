@@ -4,9 +4,6 @@
 # TypeScript build output
 dist/
 
-# Written by scripts/save-node-path.js during install
-bin/.node-path
-
 # node-gyp output for the in-tree native socketpair binding (sources in native/)
 build/
 
