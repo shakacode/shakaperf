@@ -9,4 +9,4 @@ description: Debug ONE failing shaka-perf test at ONE viewport by attaching to i
 frozen open on the failing page. Attach and inspect with its own subcommands over CDP — no MCP.
 
 **Run `shaka-perf troubleshoot --help`** — it documents the whole loop (launch → `session` →
-`tabs` / `eval` / `html` / `shot` / `console` → kill) and the per-command flags. Follow it.
+`eval` / `html` / `shot` / `console` → kill) and the per-command flags. Follow it.
