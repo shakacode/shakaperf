@@ -42,6 +42,11 @@ jobs:
 
       # A tag push skips CI, so this is the last gate before the tarball is public.
       - name: Check supply chain
+        # Only shaka-perf ships npm-shrinkwrap.json, and it can only name a
+        # shaka-shared version that is already on npm — so this gate cannot
+        # run on the shaka-shared tag that publishes it. Install hooks are
+        # still checked for every tag by the step above.
+        if: steps.package.outputs.name == 'shaka-perf'
         run: yarn security-checks
 
       - name: Build shaka-shared
