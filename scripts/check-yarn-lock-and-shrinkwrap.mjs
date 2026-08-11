@@ -26,6 +26,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import chalk from 'chalk';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SHRINKWRAP = path.join(ROOT, 'packages', 'shaka-perf', 'npm-shrinkwrap.json');
@@ -107,7 +108,7 @@ const [wName, wYarn, wNpm] = [width('name', 'package'), width('yarn', 'yarn.lock
 const line = (a, b, c) => `  ${a.padEnd(wName)}  ${b.padEnd(wYarn)}  ${c}\n`;
 
 process.stderr.write(
-  `\nyarn.lock and npm-shrinkwrap.json resolve ${rows.length} package(s) to different versions.\n\n` +
+  `\n${chalk.red(`yarn.lock and npm-shrinkwrap.json resolve ${rows.length} package(s) to different versions.`)}\n\n` +
     'That is a security problem, not just untidiness. yarn.lock decides what you build\n' +
     'and test against; npm-shrinkwrap.json decides what everyone installing shaka-perf\n' +
     'from npm actually receives. While they disagree, consumers run code that was never\n' +
@@ -116,8 +117,4 @@ process.stderr.write(
 process.stderr.write(line('package', 'yarn.lock', 'npm-shrinkwrap.json'));
 process.stderr.write(line('-'.repeat(wName), '-'.repeat(wYarn), '-'.repeat(wNpm)));
 for (const row of rows) process.stderr.write(line(row.name, row.yarn, row.npm));
-process.stderr.write(
-  '\nDid you run `yarn install`? It refreshes both lockfiles together.\n' +
-    'If they still differ, edit the versions above by hand until the two agree.\n\n',
-);
 process.exit(1);
