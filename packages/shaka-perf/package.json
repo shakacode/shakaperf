@@ -78,8 +78,8 @@
   },
   "scripts": {
     "install": "node-gyp rebuild",
-    "//postinstall": "Keeps npm-shrinkwrap.json in step with yarn.lock; Yarn runs it exactly when the dependency tree changed. sync-npm-lock.mjs lives at the repo root and is NOT published, so the -f test is what makes this a no-op for consumers — they run this same postinstall. Absence is success; a real failure still aborts the install.",
-    "postinstall": "node scripts/save-node-path.js && if [ -f ../../scripts/sync-npm-lock.mjs ]; then node ../../scripts/sync-npm-lock.mjs; fi",
+    "//postinstall": "Keeps npm-shrinkwrap.json in step with yarn.lock; Yarn runs it exactly when the dependency tree changed. The script ships (Yarn’s shell has no `if`, so the path must always resolve) and no-ops outside this repo via its own guard.",
+    "postinstall": "node scripts/save-node-path.js && node scripts/sync-npm-lock.mjs",
     "build": "yarn build-report-shell && tsc && node scripts/copy-assets.mjs",
     "build-report-shell": "vite build --config report-shell/vite.config.ts",
     "dev-report-shell": "vite --config report-shell/vite.config.ts",

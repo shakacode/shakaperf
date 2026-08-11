@@ -6,8 +6,8 @@
  * License in LICENSE.md.
  */
 
-// Updates packages/shaka-perf/npm-shrinkwrap.json so it stays in step with
-// yarn.lock. Run from that workspace's `postinstall`, which Yarn triggers
+// Updates npm-shrinkwrap.json so it stays in step with yarn.lock. Run from this
+// package's `postinstall`, which Yarn triggers
 // exactly when it rebuilds the workspace — i.e. when the dependency tree
 // changed, which is when the lockfile needs updating.
 //
@@ -15,14 +15,20 @@
 // silent failure here means the two lockfiles have drifted and nobody knows
 // until the pre-commit check catches it much later. Set SHAKAPERF_SKIP_NPM_LOCK=1
 // to skip deliberately (offline work); the pre-commit check still refuses drift.
+//
+// It lives inside the package, and therefore ships, because Yarn's built-in shell
+// has no `if` — so the postinstall cannot test for an unpublished path, and a
+// missing file would fail every consumer install. The guard below is what makes
+// it a no-op there instead.
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SHRINKWRAP = path.join(ROOT, 'packages', 'shaka-perf', 'npm-shrinkwrap.json');
+const PKG_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = path.resolve(PKG_DIR, '..', '..');
+const SHRINKWRAP = path.join(PKG_DIR, 'npm-shrinkwrap.json');
 
 // shaka-perf's postinstall also runs on a consumer's machine. Unguarded, npm
 // would rewrite the shrinkwrap sitting in their node_modules — the very file it
@@ -41,7 +47,7 @@ execFileSync(
     'install', '--package-lock-only', '--ignore-scripts', '--no-workspaces',
     '--no-audit', '--no-fund', '--fetch-retries=1', '--fetch-timeout=30000',
   ],
-  { cwd: path.dirname(SHRINKWRAP), stdio: 'inherit', timeout: Number(process.env.SHAKAPERF_NPM_LOCK_TIMEOUT_MS || 180_000) },
+  { cwd: PKG_DIR, stdio: 'inherit', timeout: Number(process.env.SHAKAPERF_NPM_LOCK_TIMEOUT_MS || 180_000) },
 );
 
 // npm records devDependencies whatever you pass (`--omit=dev` only affects
