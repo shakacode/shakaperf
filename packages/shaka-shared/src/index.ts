@@ -61,3 +61,6 @@ export type { WaitForNetworkSettleOptions } from './page-helpers/waitForNetworkS
 export { waitForFontsReady } from './page-helpers/waitForFontsReady';
 export type { WaitForFontsReadyOptions } from './page-helpers/waitForFontsReady';
 export { installRequestBlocking } from './page-helpers/installRequestBlocking';
+export { hideBeforeFirstPaint } from './page-helpers/hideBeforeFirstPaint';
+export { waitForStableElementSize } from './page-helpers/waitForStableElementSize';
+export type { WaitForStableElementSizeOptions } from './page-helpers/waitForStableElementSize';
