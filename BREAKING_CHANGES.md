@@ -12,7 +12,7 @@ version being released and updates the "Current version" line at the bottom.
 
 ---
 
-## Unreleased
+## 0.2.4 — 2026-08-11
 
 ### `SHAKA_PERF_NODE` removed, and the CLI no longer pins a Node version
 
@@ -508,5 +508,5 @@ Notes:
 ---
 
 <!-- deploy: keep this line last; /deploy updates the version on publish -->
-Current version: shaka-perf 0.2.3, shaka-shared 0.2.1 (breaking changes under
+Current version: shaka-perf 0.2.4, shaka-shared 0.2.4 (breaking changes under
 **Unreleased** ship in the next release).
