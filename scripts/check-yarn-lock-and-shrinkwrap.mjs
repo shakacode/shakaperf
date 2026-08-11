@@ -31,13 +31,17 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SHRINKWRAP = path.join(ROOT, 'packages', 'shaka-perf', 'npm-shrinkwrap.json');
 const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 
-/** Every name@version yarn.lock resolved, plus this repo's own workspaces. */
+/** name -> Set(version) for everything yarn.lock resolved, plus our workspaces. */
 const yarnVersions = () => {
-  const set = new Set();
+  const byName = new Map();
+  const add = (name, version) => {
+    if (!byName.has(name)) byName.set(name, new Set());
+    byName.get(name).add(version);
+  };
   for (const [, spec] of fs.readFileSync(path.join(ROOT, 'yarn.lock'), 'utf8').matchAll(/^ {2}resolution: "(.+)"$/gm)) {
     const at = spec.indexOf('@npm:', 1);
     const version = at === -1 ? '' : spec.slice(at + 5);
-    if (/^\d/.test(version)) set.add(`${spec.slice(0, at)}@${version}`);
+    if (/^\d/.test(version)) add(spec.slice(0, at), version);
   }
   // shaka-shared is a workspace here but a registry tarball in the shrinkwrap —
   // correct, since consumers install it from npm. Compare to its own version.
@@ -45,10 +49,10 @@ const yarnVersions = () => {
     const manifest = path.join(ROOT, 'packages', dir, 'package.json');
     if (fs.existsSync(manifest)) {
       const ws = readJson(manifest);
-      set.add(`${ws.name}@${ws.version}`);
+      add(ws.name, ws.version);
     }
   }
-  return set;
+  return byName;
 };
 
 /**
@@ -67,28 +71,53 @@ const shrinkwrapVersions = () => {
   const devOnly = new Set(
     Object.keys(manifest.devDependencies ?? {}).filter((n) => !manifest.dependencies?.[n]),
   );
-  const set = new Set();
+  const byName = new Map();
   for (const [key, entry] of Object.entries(readJson(SHRINKWRAP).packages ?? {})) {
     const at = key.lastIndexOf('node_modules/');
     if (at === -1 || !entry?.version || entry.dev) continue;
     const url = entry.resolved?.includes('/-/') ? new URL(entry.resolved) : null;
-    if (devOnly.has(url ? decodeURIComponent(url.pathname.slice(1).split('/-/')[0]) : key.slice(at + 13))) continue;
-    set.add(`${url ? decodeURIComponent(url.pathname.slice(1).split('/-/')[0]) : key.slice(at + 13)}@${entry.version}`);
+    const name = url ? decodeURIComponent(url.pathname.slice(1).split('/-/')[0]) : key.slice(at + 13);
+    if (devOnly.has(name)) continue;
+    if (!byName.has(name)) byName.set(name, new Set());
+    byName.get(name).add(entry.version);
   }
-  return set;
+  return byName;
 };
 
 const yarn = yarnVersions();
 const npm = shrinkwrapVersions();
-const drifted = [...npm].filter((spec) => !yarn.has(spec)).sort();
+const pinned = [...npm.values()].reduce((n, versions) => n + versions.size, 0);
 
-if (!drifted.length) {
-  process.stdout.write(`lockfiles agree on all ${npm.size} versions\n`);
+const rows = [];
+for (const [name, versions] of npm) {
+  for (const version of versions) {
+    if (yarn.get(name)?.has(version)) continue;
+    rows.push({ name, yarn: [...(yarn.get(name) ?? [])].sort().join(', ') || '(absent)', npm: version });
+  }
+}
+rows.sort((a, b) => a.name.localeCompare(b.name));
+
+if (!rows.length) {
+  process.stdout.write(`lockfiles agree on all ${pinned} versions\n`);
   process.exit(0);
 }
+
+const width = (key, heading) => Math.max(heading.length, ...rows.map((r) => r[key].length));
+const [wName, wYarn, wNpm] = [width('name', 'package'), width('yarn', 'yarn.lock'), width('npm', 'npm-shrinkwrap.json')];
+const line = (a, b, c) => `  ${a.padEnd(wName)}  ${b.padEnd(wYarn)}  ${c}\n`;
+
 process.stderr.write(
-  `${drifted.length} version(s) in npm-shrinkwrap.json that yarn.lock does not resolve:\n\n` +
-    drifted.map((s) => `  ${s}\n`).join('') +
-    '\nRegenerate both together (see the header of this file), or `yarn up <pkg>` to\nmove yarn.lock onto the published versions.\n',
+  `\nyarn.lock and npm-shrinkwrap.json resolve ${rows.length} package(s) to different versions.\n\n` +
+    'That is a security problem, not just untidiness. yarn.lock decides what you build\n' +
+    'and test against; npm-shrinkwrap.json decides what everyone installing shaka-perf\n' +
+    'from npm actually receives. While they disagree, consumers run code that was never\n' +
+    'built or tested here, and a version nobody reviewed can reach them.\n\n',
+);
+process.stderr.write(line('package', 'yarn.lock', 'npm-shrinkwrap.json'));
+process.stderr.write(line('-'.repeat(wName), '-'.repeat(wYarn), '-'.repeat(wNpm)));
+for (const row of rows) process.stderr.write(line(row.name, row.yarn, row.npm));
+process.stderr.write(
+  '\nDid you run `yarn install`? It refreshes both lockfiles together.\n' +
+    'If they still differ, edit the versions above by hand until the two agree.\n\n',
 );
 process.exit(1);
