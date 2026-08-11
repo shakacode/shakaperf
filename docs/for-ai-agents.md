@@ -95,6 +95,12 @@ Commit an experiment change only after measuring it. `sync-changes` sees uncommi
 
 `--filter` accepts a test-name regex, a comma-separated list, or a path to a single `.abtest.ts` file. `--categories` takes any subset of `visreg,perf,accessibility` (default: all three). `compare` clears the artifact directory for each test and viewport it will run, not `compare-results/` as a whole. Artifacts for tests excluded by `--filter` remain. `--keep-old-results` also preserves the per-test artifact directories.
 
+**`shaka-perf troubleshoot` is for looking at a failure, not for measuring it.** One test, one viewport, and it **never finishes** — every stage freezes once its browser is up, which is what keeps them alive. No `report.json` and no perf numbers. For a verdict use `compare`. What it gives you is the live page the failure happened on.
+
+**Always `--headed=false`, always backgrounded.** It never exits, so a foreground call hangs your turn.
+
+Attach to the frozen browsers with `troubleshoot`'s own subcommands (`session`, `eval`, `html`, `shot`, `console`) — no MCP. `<target>` is a side: `visreg:control`, `visreg:experiment`, `perf:control`, `perf:experiment`. Run `shaka-perf troubleshoot --help` for the full loop; the `troubleshoot-abtest` skill (shipped by `shaka-perf init`) points agents at it. See also [README-troubleshoot.md](../packages/shaka-perf/README-troubleshoot.md).
+
 ## Reading results — the machine contract
 
 **Exit code:** `0` = clean. A completed pipeline run with failures prints `FAILED: <summary>` to stderr and exits `1`, where the summary counts failure classes, e.g. `2 errors, 1 perf regression, 3 visreg mismatches`. A non-zero exit without `FAILED:` is a harness or configuration error, not a test verdict. Differentiated codes and a `verdict` command are tracked in [#70](https://github.com/shakacode/shakaperf/issues/70).

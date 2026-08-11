@@ -20,6 +20,7 @@ import { createProcessesCommand, markCurrentProcess } from './processes/program'
 import { createWarmEmailCommand } from './warm-email/program';
 import { createColdEmailCommand } from './cold-email/program';
 import { createClientReportCommand } from './warm-email/client-report-program';
+import { createTroubleshootCommand } from './troubleshoot/program';
 
 const { version } = require('../package.json');
 
@@ -38,11 +39,13 @@ async function main(): Promise<void> {
   );
   const compareOptionDefaults = await getCompareMeasurementOptionDefaults(process.argv);
   const compareCmd = createCompareCommand(compareOptionDefaults);
+  const troubleshootCmd = await createTroubleshootCommand();
   const auditCmd = createAuditCommand({ urlDefault: auditURLDefault });
 
   for (const cmd of [
     createInitCommand(),
     compareCmd,
+    troubleshootCmd,
     createBisectCommand({ optionDefaults: compareOptionDefaults }),
     auditCmd,
     createDiscoverAbtestsCommand(),

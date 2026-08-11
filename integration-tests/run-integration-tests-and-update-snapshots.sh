@@ -4,7 +4,7 @@
 #
 # Usage:
 #   ./integration-tests/run-integration-tests-and-update-snapshots.sh \
-#       [--perf] [--visreg] [--twin-servers] [--audit]
+#       [--perf] [--visreg] [--twin-servers] [--audit] [--troubleshoot]
 #
 # Snapshots contain ONLY reviewable, STABLE-NAMED artifacts — the normalized
 # per-suite logs and the deep-click report screenshots. Their diffs
@@ -19,7 +19,7 @@
 # control/experiment/failed_diff captures with per-run ids in their
 # filenames — until the next run for debugging. Layout under
 # integration-tests/snapshots/:
-#   - baseline-{perf,visreg,twin-servers,audit}.log
+#   - baseline-{perf,visreg,twin-servers,audit,troubleshoot}.log
 #                       — the normalized Playwright log per suite
 #   - bench-results/*.png    — @perf deep-click screenshots
 #   - visreg-results/*.png   — @visreg deep-click screenshots
@@ -31,6 +31,10 @@
 #       full-page render of the report — separate per-HTML screenshots would
 #       only duplicate these dialog/overview shots (and the self-contained
 #       report variant always duplicates the full report).
+#   - troubleshoot-results/01-sides.png — @troubleshoot
+#       Not a report shot: the four frozen troubleshoot browsers (visreg +
+#       perf, each control and experiment) screenshotted over CDP straight
+#       from the live pages, merged into one labeled strip.
 #
 # The log output is automatically normalized to replace run-variable values
 # (timestamps, home directory paths, docker ages, and most timings) with
@@ -41,6 +45,10 @@
 #   - Webpack hashes (e.g. -fa6c2b68881f0c7d1717)
 #   - Git SHAs and visreg run-ids quoted inside the baseline logs
 #   - Ordering of [CONTROL] vs [EXPERIMENT] lines (parallel execution)
+#   - Where the @troubleshoot log's `[session out]` / `[session err]` lines fall.
+#     They are the parked troubleshoot run's own output, streamed live while the
+#     subcommands drive it, so they interleave differently every run. Their
+#     CONTENT is signal; their position between the `▸ CHECK` blocks is not.
 #   - Asset sizes (e.g. "806 KiB") and module counts
 #   - Byte-level noise in *.png — sub-pixel anti-aliasing and lazy-image
 #     timing drift between runs; only care about gross layout breakage
@@ -76,6 +84,7 @@ PERF=false
 VISREG=false
 TWIN_SERVERS=false
 AUDIT=false
+TROUBLESHOOT=false
 EXTRA_ARGS=()
 for arg in "$@"; do
   case "$arg" in
@@ -83,13 +92,14 @@ for arg in "$@"; do
     --visreg)       VISREG=true ;;
     --twin-servers) TWIN_SERVERS=true ;;
     --audit)        AUDIT=true ;;
+    --troubleshoot) TROUBLESHOOT=true ;;
     *) EXTRA_ARGS+=("$arg") ;;
   esac
 done
 
 # If no flags specified, run everything
-if ! $PERF && ! $VISREG && ! $TWIN_SERVERS && ! $AUDIT; then
-  PERF=true; VISREG=true; TWIN_SERVERS=true; AUDIT=true
+if ! $PERF && ! $VISREG && ! $TWIN_SERVERS && ! $AUDIT && ! $TROUBLESHOOT; then
+  PERF=true; VISREG=true; TWIN_SERVERS=true; AUDIT=true; TROUBLESHOOT=true
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -111,6 +121,9 @@ normalize_log() {
     -e 's/in [0-9]*\.[0-9]*s (/in <TIMING>s (/g' \
     -e 's/([0-9]*\.[0-9]*s)/(<TIMING>s)/g' \
     -e 's/([0-9]*\.[0-9]*m)/(<TIMING>m)/g' \
+    -e 's|127\.0\.0\.1:9[0-9][0-9][0-9]|127.0.0.1:<CDP_PORT>|g' \
+    -e 's/pid [0-9][0-9]*/pid <PID>/g' \
+    -e 's/"pid": [0-9][0-9]*/"pid": <PID>/g' \
     -e 's/[0-9]* seconds ago/<DOCKER_AGE>/g' \
     -e 's/About a minute ago/<DOCKER_AGE>/g' \
     -e 's/Up [0-9]* seconds/Up <DOCKER_UPTIME>/g' \
@@ -180,6 +193,7 @@ SETUP_FAILED=false
 ! $SETUP_FAILED && $VISREG       && run_suite "@visreg"       "$SNAPSHOTS/baseline-visreg.log"
 ! $SETUP_FAILED && $PERF         && run_suite "@perf"         "$SNAPSHOTS/baseline-perf.log"
 ! $SETUP_FAILED && $AUDIT        && run_suite "@audit"        "$SNAPSHOTS/baseline-audit.log"
+! $SETUP_FAILED && $TROUBLESHOOT && run_suite "@troubleshoot" "$SNAPSHOTS/baseline-troubleshoot.log"
 
 # Stop containers after all suites
 echo "=== Stopping containers ==="

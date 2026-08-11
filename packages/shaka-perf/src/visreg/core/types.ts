@@ -58,7 +58,6 @@ export interface Scenario {
 // `PlaywrightOptions` in `src/config.ts` — same field, different types.
 export interface EnginePlaywrightOptions {
   browser?: 'chromium' | 'firefox' | 'webkit';
-  headless?: boolean;
   ignoreDefaultArgs?: string[];
   args?: string[];
   ignoreHTTPSErrors?: boolean;
@@ -116,6 +115,11 @@ export interface VisregConfig {
 
   // compare
   comparePixelmatchThreshold?: number;
+
+  /** Leave the browser and both contexts open when the unit ends, however it ends. */
+  keepBrowserOpen?: boolean;
+  /** Browser visibility from `--headed`; the engine's only source for it. */
+  headed?: boolean;
 }
 
 // ── Runtime Config (internal, after makeConfig + extendConfig) ───────
@@ -224,4 +228,8 @@ export type VisregEngineInputConfig = Omit<Partial<_VisregConfigSlice>, 'viewpor
   paths?: VisregPaths;
   asyncCaptureLimit?: number;
   asyncCompareLimit?: number;
+  // Engine plumbing, deliberately absent from `abtests.config.ts`: a config
+  // that leaks browsers, or that sets visibility, is not committable.
+  keepBrowserOpen?: boolean;
+  headed?: boolean;
 };

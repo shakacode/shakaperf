@@ -12,6 +12,7 @@ import * as crypto from 'node:crypto';
 import chalk from 'chalk';
 import visregRunner from '../../../visreg/core/runner';
 import { resolvePlaywrightOptions } from '../../../config';
+import { withCdpPort } from '../../../troubleshoot/debug-session';
 import type { VisregConfig, Viewport } from '../../../config';
 import type { TestContext } from '../../../stage/stage';
 import {
@@ -46,19 +47,20 @@ export async function runVisregUnit(
     comparePixelmatchThreshold: ctx.config.visreg.comparePixelmatchThreshold,
     resembleOutputOptions: ctx.config.visreg.resembleOutputOptions,
     // Best-of-N is per-unit work, so the per-test effective values apply —
-    // except under --burn, which replaces retries everywhere: a burn
-    // instance's raw outcome IS the measurement, so best-of-N is zeroed.
-    compareRetries: ctx.runtime.burn != null ? 0 : ctx.config.visreg.compareRetries,
+    // except under --burn, which replaces retries everywhere (a burn instance's
+    // raw outcome IS the measurement), and under keep-open, where each attempt
+    // builds a context pair that never closes: 2N windows instead of 2.
+    compareRetries: ctx.runtime.burn != null || ctx.runtime.keepBrowserOpen ? 0 : ctx.config.visreg.compareRetries,
     compareRetryDelay: ctx.config.visreg.compareRetryDelay,
+    keepBrowserOpen: ctx.runtime.keepBrowserOpen === true,
     viewports: [ctx.viewport],
     // Effective launch options (shared.playwrightOptions ← visreg override ←
     // per-test config), resolved here so the engine reads them straight.
-    // `--headed` overrides headless on top so the Playwright browser is
-    // visible too — matching the Lighthouse stages.
-    playwrightOptions: {
-      ...resolvePlaywrightOptions(ctx.config, 'visreg'),
-      ...(ctx.runtime.headed ? { headless: false } : {}),
-    },
+    headed: ctx.runtime.headed === true,
+    playwrightOptions: withCdpPort(
+      resolvePlaywrightOptions(ctx.config, 'visreg'),
+      ctx.runtime.cdpPorts?.visreg,
+    ),
   };
 
   // Where this unit's artifacts go, straight from the framework — it already
@@ -93,10 +95,15 @@ export async function runVisregUnit(
     if (!artifactSet) {
       throw new Error(`visreg did not produce artifacts for ${ctx.viewport.label}`);
     }
+    // Never finishing is what keeps the browser — and so the run — alive.
+    // AFTER the artifacts are read, so screenshots and diffs are still written.
+    if (ctx.runtime.keepBrowserOpen) await new Promise<never>(() => {});
     return artifactSet.artifacts;
   } catch (err) {
     const message = (err as Error).message || String(err);
     console.error(chalk.red(`visreg engine error: ${message}`));
+    // Freeze on the failure path too — a failing unit is the case this exists for.
+    if (ctx.runtime.keepBrowserOpen) await new Promise<never>(() => {});
     throw err;
   } finally {
     try { fs.rmSync(configPath, { force: true }); } catch { /* noop */ }

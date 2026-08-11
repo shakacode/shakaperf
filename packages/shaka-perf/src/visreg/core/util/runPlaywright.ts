@@ -42,7 +42,6 @@ export async function createPlaywrightBrowser (config: DecoratedCompareConfig) {
 
   const { playwrightOptions: sanitizedPlaywrightOptions } = JSON.parse(JSON.stringify(config));
   let { browser: browserChoice } = sanitizedPlaywrightOptions;
-  const { headless } = sanitizedPlaywrightOptions;
 
   if (!browserChoice) {
     console.warn(chalk.yellow('No Playwright browser specified, assuming Chromium.'));
@@ -57,10 +56,12 @@ export async function createPlaywrightBrowser (config: DecoratedCompareConfig) {
     throw new Error(`Unsupported Playwright browser "${browserChoice}" — use chromium, firefox, or webkit.`);
   }
 
+  // Visibility comes from `--headed` alone — `playwrightOptions.headless` is
+  // rejected by the config schema, so there is nothing here to reconcile.
   const playwrightArgs = Object.assign(
     {},
     sanitizedPlaywrightOptions,
-    { headless: typeof headless === 'boolean' ? headless : true }
+    { headless: !config.headed }
   );
   try {
     return await playwright[browserChoice as PlaywrightBrowserType].launch(playwrightArgs);

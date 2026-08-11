@@ -33,6 +33,7 @@ import {
   stackWithLatestTestAnnotation,
 } from '../test-annotation';
 import { loadTests } from '../config-loader';
+import type { CdpPorts } from '../troubleshoot/debug-session';
 import {
   writeMachineReport,
   writeReport,
@@ -349,6 +350,19 @@ export interface RuntimeOptions {
    */
   readonly headed?: boolean | undefined;
   /**
+   * Run only these viewport labels, dropping every other unit — including one a
+   * test pinned itself. Matching nothing is an error, not an empty run.
+   */
+  readonly viewportsFilter?: readonly string[] | undefined;
+  /**
+   * `shaka-perf troubleshoot`: suppress every measurement-browser teardown, so
+   * the browsers survive the run — including a failing one. The caller must
+   * then keep the process alive; once it exits, the browsers go with it.
+   */
+  readonly keepBrowserOpen?: boolean | undefined;
+  /** Debug port per kept browser; no port is opened without it. */
+  readonly cdpPorts?: CdpPorts | undefined;
+  /**
    * Bundle the full report + all its artifacts into `full-report.zip` after a
    * run that produced a report. Opt-in (the archive can be large) — off by
    * default; driven by the `--full-report-zip` CLI flag on both pipelines.
@@ -374,7 +388,7 @@ export interface RuntimeOptions {
    * Per-task wall-clock cap, applied uniformly to every worker pool.
    * Driven by `shared.timeoutMs`; stages never see this value — the pool
    * itself races each `job.run` against the timer and fires its
-   * race-cancellation so cooperative subsystems exit on time.
+   * race-cancellation so cooperative subsystems exit on time. `0` disables it.
    */
   readonly timeoutMs: number;
 }
@@ -512,6 +526,8 @@ async function runConfiguredPipelineWithSelection(
     config: runtime.config,
     debugShowAllFrames: runtime.debugShowAllFrames ?? false,
     headed: runtime.headed ?? false,
+    keepBrowserOpen: runtime.keepBrowserOpen ?? false,
+    ...(runtime.cdpPorts ? { cdpPorts: runtime.cdpPorts } : {}),
     burn: runtime.burn ?? null,
   };
   const units = expandWorkUnits(
@@ -523,6 +539,7 @@ async function runConfiguredPipelineWithSelection(
       hydratePriorStages: stageSelection.skippedStages
         .filter((entry) => !entry.persistOutcome)
         .map((entry) => entry.stage),
+      ...(runtime.viewportsFilter ? { viewportsFilter: runtime.viewportsFilter } : {}),
     },
   );
 
@@ -1139,6 +1156,8 @@ function leanPriorOutcome(outcome: Outcome): Outcome {
 interface ExpandWorkUnitsOptions {
   store?: ArtifactStore;
   hydratePriorStages?: readonly Stage[];
+  /** Viewport labels to keep; every other viewport's units are dropped. */
+  viewportsFilter?: readonly string[];
 }
 
 function expandWorkUnits(
@@ -1148,8 +1167,11 @@ function expandWorkUnits(
   options: ExpandWorkUnitsOptions = {},
 ): WorkUnit[] {
   const units: WorkUnit[] = [];
+  const declared = new Set<string>();
   for (const test of tests) {
     for (const viewport of viewportsForTestAcrossStages(test, stages, config)) {
+      declared.add(viewport.label);
+      if (options.viewportsFilter && !options.viewportsFilter.includes(viewport.label)) continue;
       const priorOutcomes = new Map<StageName, Outcome>();
       for (const stage of options.hydratePriorStages ?? []) {
         const outcome = options.store?.readOutcome(test, viewport.label, stage.name);
@@ -1157,6 +1179,13 @@ function expandWorkUnits(
       }
       units.push({ test, viewport, priorOutcomes });
     }
+  }
+  // Otherwise the run does nothing and exits 0, which reads as success.
+  if (units.length === 0 && options.viewportsFilter && declared.size > 0) {
+    throw new Error(
+      `--viewport ${options.viewportsFilter.join(', ')} matched no work; `
+      + `the selected tests declare: ${[...declared].sort().join(', ')}.`,
+    );
   }
   return units;
 }

@@ -289,31 +289,52 @@ describe('playwrightOptions', () => {
         controlURL: 'http://localhost:3020',
         experimentURL: 'http://localhost:3030',
         parallelism: 1,
-        playwrightOptions: { browser: 'chromium', args: ['--no-sandbox'], headless: true, waitTimeout: 60_000 },
+        playwrightOptions: { browser: 'chromium', args: ['--no-sandbox'], waitTimeout: 60_000 },
       },
-      visreg: { playwrightOptions: { headless: false } },
+      visreg: { playwrightOptions: { ignoreHTTPSErrors: false } },
       perf: { playwrightOptions: { args: ['--disable-gpu'] } },
     }));
 
     expect(resolvePlaywrightOptions(config, 'visreg')).toEqual({
       browser: 'chromium',
       args: ['--no-sandbox'],
-      headless: false,
+      ignoreHTTPSErrors: false,
       waitTimeout: 60_000,
     });
     expect(resolvePlaywrightOptions(config, 'perf')).toEqual({
       browser: 'chromium',
       args: ['--disable-gpu'],
-      headless: true,
       waitTimeout: 60_000,
     });
     // audit / accessibility have no category override — pure shared.
     expect(resolvePlaywrightOptions(config, 'audit')).toEqual({
       browser: 'chromium',
       args: ['--no-sandbox'],
-      headless: true,
       waitTimeout: 60_000,
     });
+  });
+
+  // Visibility is the framework's, from `--headed`. A committed config used to
+  // be able to beat the command line; now it can't set it at all.
+  it('rejects headless in any section, naming the section', () => {
+    for (const section of ['shared', 'visreg', 'perf'] as const) {
+      const base = baseConfig() as Record<string, unknown>;
+      base[section] = {
+        ...(base[section] as object | undefined),
+        playwrightOptions: { browser: 'chromium', headless: false },
+      };
+      expect(() => buildAbTestsConfig(base)).toThrow(
+        new RegExp(`${section}\\.playwrightOptions\\.headless is not settable`),
+      );
+    }
+  });
+
+  // Visibility never reaches the resolved options at all — every launcher takes
+  // `headed` as its own argument.
+  it('never puts headless on the resolved options', () => {
+    const config = buildAbTestsConfig(baseConfig());
+
+    expect(resolvePlaywrightOptions(config, 'visreg')).not.toHaveProperty('headless');
   });
 
   it('fails loudly on the legacy engineOptions key in any section', () => {

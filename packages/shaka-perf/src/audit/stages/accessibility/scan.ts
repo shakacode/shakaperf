@@ -87,7 +87,7 @@ export async function scanAccessibilityPage(
   let page: Page | undefined;
   try {
     // The shared per-worker browser is LAUNCHED with the file-level options
-    // (browser/args/headless can't vary once it's up), but every context here is
+    // (browser/args can't vary once it's up), but every context here is
     // fresh per scan — so the context/navigation/timeout options honour the
     // per-test effective config, consistent with beforeNavigate below. A test
     // that raises `shared.playwrightOptions.waitTimeout` or flips

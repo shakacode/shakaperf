@@ -21,7 +21,7 @@ import { applyRealChrome } from './real-chrome';
 // over CDP, so it cannot go through here.
 export function launchStageBrowser(
   options: PlaywrightOptions,
-  headed = false,
+  headed: boolean,
 ): Promise<Browser> {
   // Strip the keys that are NOT Playwright launch options: `browser` selects
   // the engine, and `waitTimeout` / `ignoreHTTPSErrors` / `gotoParameters`
@@ -36,7 +36,7 @@ export function launchStageBrowser(
   } = options;
   const launchOptions: LaunchOptions = {
     ...passthrough,
-    headless: headed ? false : options.headless ?? true,
+    headless: !headed,
   };
   if (browser === 'firefox') return firefox.launch(launchOptions);
   if (browser === 'webkit') return webkit.launch(launchOptions);
