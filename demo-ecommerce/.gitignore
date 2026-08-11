@@ -55,3 +55,4 @@ bundle-size-diffs/*
 # shaka-perf compare output
 compare-results/
 audit-results/
+troubleshoot-results/

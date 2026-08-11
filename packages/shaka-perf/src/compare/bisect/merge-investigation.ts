@@ -5,16 +5,25 @@
  * License in LICENSE.md.
  */
 
-import type { PreparedChildGitRange } from './git';
-import { runCheckpointedAttempt } from './attempt';
-import { runNativeSearchPhase, type NativeBisectPhaseDriver } from './phase';
-import type { CandidateResult, ExperimentReloadMode } from './run-candidate';
-import { testsForTargets, type CandidateMeasurementPlan } from './search';
+import { NativeGitBisectDriver, prepareChildGitRange, type PreparedChildGitRange } from './git';
+import { NativeBisectPhaseRunner } from './native-phase-runner';
+import { MergePhaseStore } from './phase-store';
+import { CompareBisectSession } from './session-owner';
+import { BisectRunEnvironment } from './run-environment';
+import {
+  BisectInterruptedError,
+  CandidateEvaluator,
+  findCandidateEvaluationError,
+  type CandidateEvaluationPlan,
+} from './run-candidate';
+import { EndpointRestoreError, EndpointValidator } from './endpoint-validator';
+import { testsForTargets } from './search';
 import type {
   BisectCategory,
   BisectSearchPhase,
   BisectSession,
   BisectTarget,
+  CommitAttempt,
   CommitRun,
   MergeInvestigation,
   MergeTargetResult,
@@ -52,200 +61,222 @@ export function buildMergeQueue(session: BisectSession): BisectSession {
   return { ...session, mergeQueue, mergeInvestigations };
 }
 
-export interface RunMergeInvestigationsOptions {
-  session: BisectSession;
-  preferredExperimentReloadMode: ExperimentReloadMode;
-  nextAttemptId(): string;
-  nextGroupId(): string;
-  now(): string;
-  commitRuns(): Record<string, CommitRun>;
-  checkpoint(session: BisectSession): void;
-  afterCheckpoint?(session: BisectSession): void;
-  prepareRange(investigation: MergeInvestigation): Promise<PreparedChildGitRange>;
-  nativeBisect: NativeBisectPhaseDriver;
-  measure(
-    work: CandidateMeasurementPlan,
-    targets: readonly BisectTarget[],
-    checkout: boolean,
-  ): Promise<CandidateResult>;
+export interface MergeRangeSource {
+  load(investigation: MergeInvestigation): Promise<PreparedChildGitRange>;
 }
 
-export async function runMergeInvestigations(
-  options: RunMergeInvestigationsOptions,
-): Promise<BisectSession> {
-  let session = options.session;
-  for (const mergeSha of session.mergeQueue ?? []) {
-    let investigation = session.mergeInvestigations?.[mergeSha];
-    if (!investigation || investigation.status === 'complete'
-      || investigation.status === 'octopus-unsupported') continue;
+/** Owns loading and validating child topology from one experiment repository. */
+export class GitMergeRangeSource implements MergeRangeSource {
+  constructor(private readonly experimentDir: string) {}
 
-    const primaryTargets = session.primary?.targets.filter((target) => (
-      investigation!.targetIds.includes(target.id)
-    )) ?? [];
-    let range: PreparedChildGitRange;
-    try {
-      range = await options.prepareRange(investigation);
-    } catch (error) {
-      investigation = {
-        ...investigation,
-        status: 'failed',
-        failure: error instanceof Error ? error.message : String(error),
-      };
-      session = updateInvestigation(session, investigation);
-      options.checkpoint(session);
-      options.afterCheckpoint?.(session);
-      continue;
-    }
-    investigation = { ...investigation, status: 'running', failure: undefined };
-    session = updateInvestigation(session, investigation);
-    options.checkpoint(session);
-    options.afterCheckpoint?.(session);
-
-    let phase = investigation.phase;
-    const validationComplete = phase?.attempts.some((attempt) => (
-      attempt.sha === range.secondParent && attempt.status === 'complete'
-    )) === true;
-    if (!validationComplete) {
-      const validationWork = workForTargets(range.secondParent, primaryTargets);
-      const phaseBeforeValidation: BisectSearchPhase = phase
-        ? {
-          ...phase,
-          status: 'pending',
-          targets: [...primaryTargets],
-        }
-        : childPhase(investigation, range, primaryTargets);
-      let preValidationPhase = phaseBeforeValidation;
-      let preValidationInvestigation = investigation;
-      let preValidationSession = session;
-
-      await runCheckpointedAttempt({
-        attempts: phaseBeforeValidation.attempts,
-        work: validationWork,
-        preferredExperimentReloadMode: options.preferredExperimentReloadMode,
-        nextAttemptId: options.nextAttemptId,
-        now: options.now,
-        checkpointRunning(attempts) {
-          preValidationPhase = { ...phaseBeforeValidation, attempts };
-          preValidationInvestigation = {
-            ...investigation!,
-            phase: preValidationPhase,
-          };
-          preValidationSession = updateInvestigation(session, preValidationInvestigation);
-          phase = preValidationPhase;
-          investigation = preValidationInvestigation;
-          session = preValidationSession;
-          options.checkpoint(session);
-        },
-        checkpointComplete(attempts, validation) {
-          const targetEvaluations = new Map(
-            validation.targetEvaluations.map((value) => [value.targetId, value]),
-          );
-          const reproducing: BisectTarget[] = [];
-          const targetResults = { ...preValidationInvestigation.targetResults };
-          for (const target of primaryTargets) {
-            const evaluation = targetEvaluations.get(target.id);
-            if (!evaluation?.regressionDetected) {
-              targetResults[target.id] = { kind: 'merge-introduced' };
-              continue;
-            }
-            reproducing.push({
-              ...target,
-              status: 'active',
-              firstBadSha: undefined,
-              invalidReason: undefined,
-              recordedTargetEvaluations: { [range.secondParent]: evaluation },
-            });
-          }
-          phase = {
-            ...preValidationPhase,
-            targets: reproducing,
-            attempts,
-          };
-          investigation = {
-            ...preValidationInvestigation,
-            phase,
-            targetResults,
-          };
-          session = updateInvestigation(preValidationSession, investigation);
-          options.checkpoint(session);
-        },
-        checkpointIncomplete(attempts) {
-          phase = { ...preValidationPhase, attempts };
-          investigation = { ...preValidationInvestigation, phase };
-          session = updateInvestigation(preValidationSession, investigation);
-          options.checkpoint(session);
-        },
-        afterCheckpoint() {
-          options.afterCheckpoint?.(session);
-        },
-        measure: () => options.measure(validationWork, primaryTargets, true),
-      });
-    }
-
-    if (!phase) throw new Error(`Merge investigation ${mergeSha} has no child phase`);
-
-    const invalidTarget = range.mergeBase === range.secondParent
-      ? phase.targets.find((target) => target.status === 'active')
-      : undefined;
-    if (invalidTarget) {
-      const failure = `Cannot investigate merge source for ${mergeSha}: target `
-        + `${invalidTarget.id} has no distinct good and bad commits`;
-      phase = {
-        ...phase,
-        status: 'failed',
-        finishedAt: options.now(),
-      };
-      investigation = { ...investigation, phase, status: 'failed', failure };
-      session = updateInvestigation(session, investigation);
-      options.checkpoint(session);
-      options.afterCheckpoint?.(session);
-      continue;
-    }
-
-    if (phase.targets.length > 0 && phase.status !== 'complete') {
-      const completedPhase = await runNativeSearchPhase({
-        phase,
-        preferredExperimentReloadMode: options.preferredExperimentReloadMode,
-        nextAttemptId: options.nextAttemptId,
-        nextGroupId: options.nextGroupId,
-        nativeBisect: options.nativeBisect,
-        now: options.now,
-        commitRuns: options.commitRuns,
-        checkpoint(updatedPhase) {
-          phase = updatedPhase;
-          investigation = { ...investigation!, phase: updatedPhase };
-          session = updateInvestigation(session, investigation);
-          options.checkpoint(session);
-        },
-        afterCheckpoint(updatedPhase) {
-          phase = updatedPhase;
-          investigation = { ...investigation!, phase: updatedPhase };
-          session = updateInvestigation(session, investigation);
-          options.afterCheckpoint?.(session);
-        },
-        measure: (work) => options.measure(
-          work,
-          phase!.targets.filter((target) => work.targetIds.includes(target.id)),
-          false,
-        ),
-      });
-      phase = completedPhase;
-    }
-
-    const targetResults = { ...investigation.targetResults };
-    for (const target of phase.targets) {
-      if (!target.firstBadSha) continue;
-      const nested = (phase.commitParents[target.firstBadSha] ?? []).length > 1;
-      targetResults[target.id] = nested
-        ? { kind: 'nested-merge', sourceSha: target.firstBadSha }
-        : { kind: 'source-found', sourceSha: target.firstBadSha };
-    }
-    investigation = { ...investigation, phase, status: 'complete', targetResults };
-    session = updateInvestigation(session, investigation);
-    options.checkpoint(session);
-    options.afterCheckpoint?.(session);
+  load(investigation: MergeInvestigation): Promise<PreparedChildGitRange> {
+    return prepareChildGitRange({
+      experimentDir: this.experimentDir,
+      firstParent: investigation.parents[0],
+      secondParent: investigation.parents[1],
+    });
   }
-  return session;
+}
+
+/** Owns the queue, endpoint-attempt, and native child-phase lifecycle. */
+export class MergeInvestigationRunner {
+  constructor(
+    private readonly owner: CompareBisectSession,
+    private readonly ranges: MergeRangeSource,
+    private readonly endpoints: EndpointValidator,
+    private readonly nativeGit: NativeGitBisectDriver,
+    private readonly candidates: CandidateEvaluator,
+    private readonly environment: BisectRunEnvironment,
+  ) {}
+
+  async run(): Promise<BisectSession> {
+    for (const mergeSha of this.owner.current().mergeQueue) {
+      let investigation = this.owner.current().mergeInvestigations[mergeSha];
+      if (!investigation || investigation.status === 'complete'
+        || investigation.status === 'octopus-unsupported') continue;
+
+      const primaryTargets = this.owner.current().primary.targets.filter((target) => (
+        investigation!.targetIds.includes(target.id)
+      ));
+      let range: PreparedChildGitRange;
+      try {
+        range = await this.ranges.load(investigation);
+      } catch (error) {
+        await this.save({
+          ...investigation,
+          status: 'failed',
+          failure: errorMessage(error),
+        });
+        continue;
+      }
+
+      investigation = await this.save({
+        ...investigation,
+        status: 'running',
+        failure: undefined,
+      });
+      let phase = investigation.phase;
+      const validationComplete = phase?.attempts.some((attempt) => (
+        attempt.sha === range.secondParent && attempt.status === 'complete'
+      )) === true;
+      if (!validationComplete) {
+        investigation = await this.validateSecondParent(investigation, range, primaryTargets);
+        phase = investigation.phase;
+      }
+      if (!phase) throw new Error(`Merge investigation ${mergeSha} has no child phase`);
+
+      const invalidTarget = range.mergeBase === range.secondParent
+        ? phase.targets.find((target) => target.status === 'active')
+        : undefined;
+      if (invalidTarget) {
+        const failure = `Cannot investigate merge source for ${mergeSha}: target `
+          + `${invalidTarget.id} has no distinct good and bad commits`;
+        await this.save({
+          ...investigation,
+          phase: { ...phase, status: 'failed', finishedAt: this.environment.now() },
+          status: 'failed',
+          failure,
+        });
+        continue;
+      }
+
+      if (phase.targets.length > 0 && phase.status !== 'complete') {
+        phase = await new NativeBisectPhaseRunner(
+          new MergePhaseStore(mergeSha, this.owner),
+          this.nativeGit,
+          this.candidates,
+          this.environment,
+        ).run();
+        investigation = this.investigation(mergeSha);
+      }
+
+      const targetResults = { ...investigation.targetResults };
+      for (const target of phase.targets) {
+        if (!target.firstBadSha) continue;
+        const nested = (phase.commitParents[target.firstBadSha] ?? []).length > 1;
+        targetResults[target.id] = nested
+          ? { kind: 'nested-merge', sourceSha: target.firstBadSha }
+          : { kind: 'source-found', sourceSha: target.firstBadSha };
+      }
+      await this.save({ ...investigation, phase, status: 'complete', targetResults });
+    }
+    return this.owner.current();
+  }
+
+  private async validateSecondParent(
+    investigation: MergeInvestigation,
+    range: PreparedChildGitRange,
+    primaryTargets: readonly BisectTarget[],
+  ): Promise<MergeInvestigation> {
+    const plan = workForTargets(range.secondParent, primaryTargets);
+    const phase = investigation.phase
+      ? { ...investigation.phase, status: 'pending' as const, targets: [...primaryTargets] }
+      : childPhase(investigation, range, primaryTargets);
+    const attempt: CommitAttempt = {
+      id: `${phase.id}-endpoint-${phase.attempts.length + 1}`,
+      sha: plan.sha,
+      status: 'running',
+      requestedCategories: [...plan.categories],
+      requestedTests: [...plan.tests],
+      experimentReloadMode: this.candidates.preferredReloadMode(),
+      usedFallback: false,
+      startedAt: this.environment.now(),
+    };
+    const runningPhase = { ...phase, attempts: [...phase.attempts, attempt] };
+    investigation = await this.save({ ...investigation, phase: runningPhase });
+
+    let validation: Awaited<ReturnType<EndpointValidator['validate']>>;
+    let restorationFailure: EndpointRestoreError | undefined;
+    try {
+      validation = await this.endpoints.validate(plan);
+    } catch (error) {
+      if (error instanceof EndpointRestoreError) {
+        validation = error.result;
+        restorationFailure = error;
+      } else {
+        const evaluationError = findCandidateEvaluationError(error);
+        const incomplete: CommitAttempt = {
+          ...attempt,
+          status: 'incomplete',
+          finishedAt: this.environment.now(),
+          error: errorMessage(error),
+        };
+        await this.save({
+          ...investigation,
+          phase: {
+            ...runningPhase,
+            attempts: replaceAttempt(runningPhase.attempts, incomplete),
+          },
+        }, evaluationError?.commitRun);
+        if (evaluationError?.originalError instanceof BisectInterruptedError) {
+          throw evaluationError.originalError;
+        }
+        throw error;
+      }
+    }
+
+    const completed: CommitAttempt = {
+      ...attempt,
+      status: 'complete',
+      experimentReloadMode: validation.experimentReload.mode,
+      usedFallback: validation.experimentReload.usedFallback,
+      finishedAt: validation.commitRun.finishedAt ?? this.environment.now(),
+      ...(validation.commitRun.compareResultsPath
+        ? { compareResultsPath: validation.commitRun.compareResultsPath }
+        : {}),
+    };
+    const evaluations = new Map(
+      validation.targetEvaluations.map((value) => [value.targetId, value]),
+    );
+    const reproducing: BisectTarget[] = [];
+    const targetResults = { ...investigation.targetResults };
+    for (const target of primaryTargets) {
+      const evaluation = evaluations.get(target.id);
+      if (!evaluation?.regressionDetected) {
+        targetResults[target.id] = { kind: 'merge-introduced' };
+        continue;
+      }
+      reproducing.push({
+        ...target,
+        status: 'active',
+        firstBadSha: undefined,
+        invalidReason: undefined,
+        recordedTargetEvaluations: { [range.secondParent]: evaluation },
+      });
+    }
+    const saved = await this.save({
+      ...investigation,
+      phase: {
+        ...runningPhase,
+        targets: reproducing,
+        attempts: replaceAttempt(runningPhase.attempts, completed),
+      },
+      targetResults,
+    }, validation.commitRun);
+    if (restorationFailure) throw restorationFailure;
+    return saved;
+  }
+
+  private async save(
+    investigation: MergeInvestigation,
+    commitRun?: CommitRun,
+  ): Promise<MergeInvestigation> {
+    let next = updateInvestigation(this.owner.current(), investigation);
+    if (commitRun) {
+      next = {
+        ...next,
+        commitRuns: { ...next.commitRuns, [commitRun.sha]: commitRun },
+      };
+    }
+    await this.owner.save(next);
+    return this.investigation(investigation.mergeSha);
+  }
+
+  private investigation(mergeSha: string): MergeInvestigation {
+    const investigation = this.owner.current().mergeInvestigations[mergeSha];
+    if (!investigation) throw new Error(`Unknown merge investigation: ${mergeSha}`);
+    return investigation;
+  }
 }
 
 function childPhase(
@@ -262,16 +293,18 @@ function childPhase(
     commitSubjects: range.commitSubjects,
     commitParents: range.commitParents,
     targets: [...targets],
+    groups: [],
     attempts: [],
   };
 }
 
-function workForTargets(sha: string, targets: readonly BisectTarget[]): CandidateMeasurementPlan {
+function workForTargets(sha: string, targets: readonly BisectTarget[]): CandidateEvaluationPlan {
   return {
     sha,
     targetIds: targets.map((target) => target.id),
     categories: unique(targets.map((target) => target.category)),
     tests: testsForTargets(targets),
+    targets: [...targets],
   };
 }
 
@@ -286,6 +319,17 @@ function updateInvestigation(
       [investigation.mergeSha]: investigation,
     },
   };
+}
+
+function replaceAttempt(
+  attempts: readonly CommitAttempt[],
+  replacement: CommitAttempt,
+): CommitAttempt[] {
+  return attempts.map((attempt) => attempt.id === replacement.id ? replacement : attempt);
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function unique(values: BisectCategory[]): BisectCategory[] {

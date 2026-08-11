@@ -72,7 +72,7 @@ export interface WorkerPoolOptions {
    * Hard cap on every task's wall-clock. If a task exceeds this, the pool
    * fires its race-cancellation (cooperative subsystems exit promptly) and
    * counts the attempt as a failure — so it flows through the same
-   * retry/poison path as a regular crash.
+   * retry/poison path as a regular crash. `0` disables it.
    */
   timeoutMs?: number;
 }

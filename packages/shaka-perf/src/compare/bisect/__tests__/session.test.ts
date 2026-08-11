@@ -12,20 +12,20 @@ import * as path from 'node:path';
 import {
   executeBisect,
   filterFrozenTests,
-  restoreExperimentState,
   runBisect,
   type BisectDecisionLogEntry,
   type ExecuteBisectDependencies,
   type ExecuteBisectInput,
 } from '../session';
 import * as bisectGit from '../git';
-import { BisectInterruptedError, runCandidate } from '../run-candidate';
+import { BisectInterruptedError } from '../run-candidate';
 import type { AbTestsConfig } from '../../../config';
 import type { TestResult } from '../../../pipeline/report';
 import type { BisectSession } from '../types';
 import { BISECT_REPORT_FILENAME } from '../report';
 import { parseBisectSession } from '../state';
 import type { BisectSummaryMetadata } from '../persistence';
+import { createFileBisectDecisionLogger } from '../execution-services';
 
 function config(): AbTestsConfig {
   return {
@@ -154,9 +154,12 @@ interface HarnessOptions {
   checkoutErrorBySha?: Record<string, Error>;
   compareErrorBySha?: Record<string, Error>;
   refreshBySha?: Record<string, { mode: 'commands' | 'container'; usedFallback: boolean }>;
+  endpointRestoreError?: Error;
   restoreError?: Error;
   disposeError?: Error;
   terminalWriteSessionErrors?: Error[];
+  reportErrors?: Array<Error | undefined>;
+  previewResetError?: Error;
   clearPriorReportOutput?: () => void;
   nativeHistory?: string[];
 }
@@ -185,6 +188,7 @@ function deps(
     progress: string[];
     decisions: BisectDecisionLogEntry[];
     disposeAttempts: number;
+    nativeResetAttempts: number;
     sessionAttempts: BisectSession[];
     summaryWriteHandlerCounts: number[];
     terminalWriteHandlerCounts: number[];
@@ -211,6 +215,7 @@ function deps(
     progress: [] as string[],
     decisions: [] as BisectDecisionLogEntry[],
     disposeAttempts: 0,
+    nativeResetAttempts: 0,
     sessionAttempts: [] as BisectSession[],
     summaryWriteHandlerCounts: [] as number[],
     terminalWriteHandlerCounts: [] as number[],
@@ -224,7 +229,7 @@ function deps(
   let nativeGood = 'good';
   let nativeBad = 'bad';
   let nativeCandidate: string | null = null;
-  const nativeStep = (): Awaited<ReturnType<NonNullable<ExecuteBisectDependencies['startNativeBisect']>>> => {
+  const nativeStep = (): bisectGit.NativeBisectStep => {
     const goodIndex = nativeHistory.indexOf(nativeGood);
     const badIndex = nativeHistory.indexOf(nativeBad);
     if (goodIndex === -1 || badIndex === -1 || goodIndex >= badIndex) {
@@ -241,153 +246,215 @@ function deps(
     if (checkoutError) throw checkoutError;
     return { candidateSha: nativeCandidate, firstBadSha: null, complete: false, output: '' };
   };
+  const nativeGit = new class extends bisectGit.NativeGitBisectDriver {
+    constructor() {
+      super({ repoDir: '/unused' });
+    }
+
+    override async start(group: import('../types').BisectTargetGroup) {
+      nativeHistory = nativeHistories.find((history) => (
+        history.includes(group.goodSha) && history.includes(group.badSha)
+      )) ?? primaryNativeHistory;
+      nativeGood = group.goodSha;
+      nativeBad = group.badSha;
+      return nativeStep();
+    }
+
+    override async mark(verdict: import('../git').NativeBisectVerdict) {
+      if (!nativeCandidate) throw new Error('Stubbed native bisect has no candidate to mark');
+      if (verdict === 'good') nativeGood = nativeCandidate;
+      else nativeBad = nativeCandidate;
+      return nativeStep();
+    }
+
+    override async reset() {
+      calls.nativeResetAttempts += 1;
+    }
+
+    override async assertAt(expectedSha: string) {
+      if (nativeCandidate !== expectedSha) {
+        throw new Error(`Stubbed native bisect selected ${nativeCandidate}; expected ${expectedSha}`);
+      }
+    }
+
+    override async preview(group: import('../types').BisectTargetGroup) {
+      if (options.previewResetError) {
+        const error = options.previewResetError;
+        options.previewResetError = undefined;
+        calls.nativeResetAttempts += 1;
+        throw error;
+      }
+      const previewHistory = nativeHistories.find((history) => (
+        history.includes(group.goodSha) && history.includes(group.badSha)
+      )) ?? primaryNativeHistory;
+      const goodIndex = previewHistory.indexOf(group.goodSha);
+      const badIndex = previewHistory.indexOf(group.badSha);
+      if (badIndex - goodIndex === 1) {
+        return { candidateSha: null, firstBadSha: group.badSha, complete: true, output: '' };
+      }
+      return {
+        candidateSha: previewHistory[Math.floor((goodIndex + badIndex) / 2)]!,
+        firstBadSha: null,
+        complete: false,
+        output: '',
+      };
+    }
+  }();
+  const exactCheckout = new class extends bisectGit.ExactCheckout {
+    constructor() {
+      super({ repoDir: '/unused' });
+    }
+
+    override async current() {
+      return { branch: 'feature', sha: 'bad' };
+    }
+
+    override async position(sha: string) {
+      calls.checkouts.push(sha);
+      calls.events.push(`checkout:${sha}`);
+      const checkoutError = options.checkoutErrorBySha?.[sha];
+      if (checkoutError) throw checkoutError;
+    }
+
+    override async assertAt() {}
+
+    override async restore() {
+      if (options.endpointRestoreError) throw options.endpointRestoreError;
+    }
+  }();
   return {
     calls,
     emitSignal(signal) {
       for (const handler of calls.signalHandlers) handler(signal);
     },
     deps: {
-      installSignalHandlers(handler) {
-        calls.signalHandlers.add(handler);
-        return () => {
-          calls.disposeAttempts += 1;
-          calls.signalHandlers.delete(handler);
-          if (options.disposeError) throw options.disposeError;
-        };
+      nativeGit,
+      exactCheckout,
+      mergeRangeSource: {
+        async load() {
+          throw new Error('Unexpected merge range load');
+        },
       },
-      async beginSession() {
-        calls.events.push('lease:begin');
-        if (options.beginSessionError) throw options.beginSessionError;
+      clock: { now: () => '2026-07-12T00:00:00.000Z' },
+      signals: {
+        install(handler) {
+          calls.signalHandlers.add(handler);
+          return () => {
+            calls.disposeAttempts += 1;
+            calls.signalHandlers.delete(handler);
+            if (options.disposeError) throw options.disposeError;
+          };
+        },
       },
-      async endSession() {
-        calls.events.push('lease:end');
+      server: {
+        async begin() {
+          calls.events.push('lease:begin');
+          if (options.beginSessionError) throw options.beginSessionError;
+        },
+        async end() {
+          calls.events.push('lease:end');
+        },
+        async refreshExperiment(request) {
+          calls.refreshes.push(request.sha);
+          calls.events.push(`reload-experiment:${request.sha}`);
+          return options.refreshBySha?.[request.sha]
+            ?? { mode: request.preferredExperimentReloadMode, usedFallback: false };
+        },
       },
-      async startNativeBisect(group) {
-        nativeHistory = nativeHistories.find((history) => (
-          history.includes(group.goodSha) && history.includes(group.badSha)
-        )) ?? primaryNativeHistory;
-        nativeGood = group.goodSha;
-        nativeBad = group.badSha;
-        return nativeStep();
+      restoration: {
+        async restore() {
+          calls.restored.push('bad');
+          calls.events.push('checkout:original');
+          calls.events.push('reload-experiment:original');
+          if (options.restoreError) throw options.restoreError;
+        },
       },
-      async markNativeBisect(verdict) {
-        if (!nativeCandidate) throw new Error('Stubbed native bisect has no candidate to mark');
-        if (verdict === 'good') nativeGood = nativeCandidate;
-        else nativeBad = nativeCandidate;
-        return nativeStep();
+      comparison: {
+        async run(request) {
+          calls.events.push(`run-candidate-comparisons:${request.sha}`);
+          calls.compares.push({
+            sha: request.sha,
+            categories: [...request.categories],
+            tests: [...request.tests],
+          });
+          if (options.signalOnCompare === request.sha) {
+            for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
+          }
+          const compareError = options.compareErrorBySha?.[request.sha];
+          if (compareError) throw compareError;
+          return {
+            testResults: resultsBySha[request.sha] ?? [],
+            compareResultsPath: `/repo/compare-bisect-results/commits/${request.sha}/compare-results`,
+          };
+        },
       },
-      async resetNativeBisect() {},
-      async previewNativeBisect(group) {
-        const previewHistory = nativeHistories.find((history) => (
-          history.includes(group.goodSha) && history.includes(group.badSha)
-        )) ?? primaryNativeHistory;
-        const goodIndex = previewHistory.indexOf(group.goodSha);
-        const badIndex = previewHistory.indexOf(group.badSha);
-        if (badIndex - goodIndex === 1) {
-          return { candidateSha: null, firstBadSha: group.badSha, complete: true, output: '' };
-        }
-        return {
-          candidateSha: previewHistory[Math.floor((goodIndex + badIndex) / 2)]!,
-          firstBadSha: null,
-          complete: false,
-          output: '',
-        };
+      reusableResults: {
+        async load(request) {
+          calls.events.push(`reuse:${request.sha}`);
+          calls.reusedResults.push({
+            sha: request.sha,
+            categories: [...request.categories],
+          });
+          return {
+            testResults: resultsBySha[request.sha] ?? [],
+            compareResultsPath: '/repo/compare-results',
+          };
+        },
       },
-      async checkout(sha) {
-        calls.checkouts.push(sha);
-        calls.events.push(`checkout:${sha}`);
-        const checkoutError = options.checkoutErrorBySha?.[sha];
-        if (checkoutError) throw checkoutError;
+      artifacts: {
+        clearPrevious() {
+          options.clearPriorReportOutput?.();
+        },
+        writeSession(session) {
+          const snapshot = JSON.parse(JSON.stringify(session)) as BisectSession;
+          calls.sessionAttempts.push(snapshot);
+          if (session.status !== 'running') {
+            calls.terminalWriteHandlerCounts.push(calls.signalHandlers.size);
+          }
+          if (session.status === options.signalOnTerminalWriteStatus) {
+            for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
+          }
+          if (session.status !== 'running') {
+            const writeError = options.terminalWriteSessionErrors?.shift();
+            if (writeError) throw writeError;
+          }
+          calls.sessions.push(snapshot);
+          calls.checkpoints.push({ afterEvent: calls.events.at(-1), session: snapshot });
+        },
+        writeReport(session, badRefTests) {
+          calls.reports.push({
+            session: JSON.parse(JSON.stringify(session)) as BisectSession,
+            testNames: badRefTests.map((test) => test.name),
+          });
+          const reportError = options.reportErrors?.shift();
+          if (reportError) throw reportError;
+        },
+        writeSummary(session, metadata = {}) {
+          calls.summaryWriteHandlerCounts.push(calls.signalHandlers.size);
+          if (options.signalOnSummary) {
+            for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
+          }
+          calls.summaries.push(JSON.parse(JSON.stringify(session)) as BisectSession);
+          calls.summaryMetadata.push(JSON.parse(JSON.stringify(metadata)) as BisectSummaryMetadata);
+          calls.summaryAfterEvents.push([...calls.events]);
+        },
+        writeBadRefTests() {
+          return 'fixture';
+        },
       },
-      async restore(request) {
-        calls.restored.push(request.originalSha);
-        calls.events.push('checkout:original');
-        calls.events.push('reload-experiment:original');
-        if (options.restoreError) throw options.restoreError;
-      },
-      clearSummary() {},
-      clearPriorReportOutput() {
-        options.clearPriorReportOutput?.();
-      },
-      async reloadExperiment(request) {
-        calls.refreshes.push(request.sha);
-        calls.events.push(`reload-experiment:${request.sha}`);
-        return options.refreshBySha?.[request.sha]
-          ?? { mode: request.preferredExperimentReloadMode, usedFallback: false };
-      },
-      async runCandidateComparisons(request) {
-        calls.events.push(`run-candidate-comparisons:${request.sha}`);
-        calls.compares.push({
-          sha: request.sha,
-          categories: [...request.categories],
-          tests: [...request.tests],
-        });
-        if (options.signalOnCompare === request.sha) {
-          for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
-        }
-        const compareError = options.compareErrorBySha?.[request.sha];
-        if (compareError) throw compareError;
-        return {
-          testResults: resultsBySha[request.sha] ?? [],
-          compareResultsPath: `/repo/compare-bisect-results/commits/${request.sha}/compare-results`,
-        };
-      },
-      async reuseCurrentResults(request) {
-        calls.events.push(`reuse:${request.sha}`);
-        calls.reusedResults.push({
-          sha: request.sha,
-          categories: [...request.categories],
-        });
-        return {
-          testResults: resultsBySha[request.sha] ?? [],
-          compareResultsPath: '/repo/compare-results',
-        };
-      },
-      writeSession(session) {
-        const snapshot = JSON.parse(JSON.stringify(session)) as BisectSession;
-        calls.sessionAttempts.push(snapshot);
-        if (session.status !== 'running') {
-          calls.terminalWriteHandlerCounts.push(calls.signalHandlers.size);
-        }
-        if (session.status === options.signalOnTerminalWriteStatus) {
-          for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
-        }
-        if (session.status !== 'running') {
-          const writeError = options.terminalWriteSessionErrors?.shift();
-          if (writeError) throw writeError;
-        }
-        calls.sessions.push(snapshot);
-        calls.checkpoints.push({ afterEvent: calls.events.at(-1), session: snapshot });
-      },
-      writeReport(session, badRefTests) {
-        calls.reports.push({
-          session: JSON.parse(JSON.stringify(session)) as BisectSession,
-          testNames: badRefTests.map((test) => test.name),
-        });
-      },
-      writeSummary(session, metadata = {}) {
-        calls.summaryWriteHandlerCounts.push(calls.signalHandlers.size);
-        if (options.signalOnSummary) {
-          for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
-        }
-        calls.summaries.push(JSON.parse(JSON.stringify(session)) as BisectSession);
-        calls.summaryMetadata.push(JSON.parse(JSON.stringify(metadata)) as BisectSummaryMetadata);
-        calls.summaryAfterEvents.push([...calls.events]);
-      },
-      recordDecision(entry) {
-        calls.decisions.push(JSON.parse(JSON.stringify(entry)) as BisectDecisionLogEntry);
-      },
-      logProgress(message) {
-        calls.progress.push(message);
-      },
-      now() {
-        return '2026-07-12T00:00:00.000Z';
+      decisions: {
+        record(entry) {
+          calls.decisions.push(JSON.parse(JSON.stringify(entry)) as BisectDecisionLogEntry);
+        },
+        progress(message) {
+          calls.progress.push(message);
+        },
       },
     },
   };
 }
 
-describe('compare bisect session orchestration', () => {
+describe('bisect session orchestration', () => {
   let rootDir: string;
 
   beforeEach(() => {
@@ -472,11 +539,11 @@ describe('compare bisect session orchestration', () => {
       'lease:end',
     ]);
     expect(harness.calls.progress).toEqual(expect.arrayContaining([
-      'Starting compare bisect session',
+      'Starting bisect session',
       'Measuring bad ref bad to discover regression targets',
       'Selected Git candidate a for 1 active target(s)',
       'Selected Git candidate b for 1 active target(s)',
-      'Compare bisect session completed',
+      'Bisect session completed',
     ]));
     expect(harness.calls.decisions.map((entry) => entry.event)).toEqual(expect.arrayContaining([
       'session-start',
@@ -585,20 +652,22 @@ describe('compare bisect session orchestration', () => {
       source: [resultWithVisualDiff('diff.png')],
     });
     const order: string[] = [];
-    const writeReport = harness.deps.writeReport;
-    harness.deps.writeReport = (session, tests) => {
+    const writeReport = harness.deps.artifacts.writeReport;
+    harness.deps.artifacts.writeReport = (session, tests) => {
       if (session.primary?.status === 'complete') order.push('primary-report');
       writeReport(session, tests);
     };
-    harness.deps.prepareChildRange = async () => {
-      order.push('prepare-child');
-      return {
-        mergeBase: 'base',
-        secondParent: 'topic',
-        orderedCommits: ['base', 'source', 'topic'],
-        commitSubjects: { base: 'base', source: 'source', topic: 'topic' },
-        commitParents: { base: [], source: ['base'], topic: ['source'] },
-      };
+    harness.deps.mergeRangeSource = {
+      async load() {
+        order.push('prepare-child');
+        return {
+          mergeBase: 'base',
+          secondParent: 'topic',
+          orderedCommits: ['base', 'source', 'topic'],
+          commitSubjects: { base: 'base', source: 'source', topic: 'topic' },
+          commitParents: { base: [], source: ['base'], topic: ['source'] },
+        };
+      },
     };
 
     const session = await executeBisect(bisectInput, harness.deps);
@@ -644,6 +713,42 @@ describe('compare bisect session orchestration', () => {
 
     expect(clearPriorReportOutput).toHaveBeenCalledTimes(1);
     expect(fs.existsSync(priorReportPath)).toBe(false);
+  });
+
+  it('resumes after a bad-ref report failure without repeating endpoint comparison', async () => {
+    const bisectInput = input(rootDir);
+    const failedHarness = deps({
+      bad: [resultWithVisualDiff('diff.png')],
+    }, {
+      reportErrors: [new Error('report rendering failed')],
+    });
+
+    await expect(executeBisect(bisectInput, failedHarness.deps))
+      .rejects.toThrow(/report rendering failed/i);
+    const saved = parseBisectSession(failedHarness.calls.sessions.at(-1));
+    expect(saved).toMatchObject({
+      commitRuns: { bad: { compareCompleted: true } },
+      primary: {
+        targets: [expect.objectContaining({
+          recordedTargetEvaluations: {
+            bad: expect.objectContaining({ regressionDetected: true }),
+          },
+        })],
+      },
+    });
+
+    const resumeHarness = deps({
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+    });
+    const resumed = await executeBisect({
+      ...bisectInput,
+      resumeSession: saved,
+      resumeBadRefTests: [resultWithVisualDiff('diff.png')],
+    }, resumeHarness.deps);
+
+    expect(resumed.status).toBe('complete');
+    expect(resumeHarness.calls.compares.map(({ sha }) => sha)).toEqual(['a', 'b']);
   });
 
   it('reuses current results for bad-ref discovery without rebuilding the bad ref', async () => {
@@ -703,6 +808,69 @@ describe('compare bisect session orchestration', () => {
       });
   });
 
+  it('reuses durable good-ref validation after report failure', async () => {
+    const bisectInput = {
+      ...input(rootDir),
+      reuseCurrentResults: true,
+      validateGoodRef: true,
+    };
+    const failedHarness = deps({
+      good: [resultWithVisualDiff(null)],
+      bad: [resultWithVisualDiff('diff.png')],
+    }, {
+      reportErrors: [undefined, new Error('good-ref report failed')],
+    });
+
+    await expect(executeBisect(bisectInput, failedHarness.deps))
+      .rejects.toThrow(/good-ref report failed/i);
+    const saved = parseBisectSession(failedHarness.calls.sessions.at(-1));
+    expect(saved.commitRuns.good).toMatchObject({ compareCompleted: true });
+    expect(saved.primary.targets[0]?.recordedTargetEvaluations.good)
+      .toMatchObject({ regressionDetected: false });
+
+    const resumeHarness = deps({
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+    });
+    const resumed = await executeBisect({
+      ...bisectInput,
+      reuseCurrentResults: false,
+      resumeSession: saved,
+      resumeBadRefTests: [resultWithVisualDiff('diff.png')],
+    }, resumeHarness.deps);
+
+    expect(resumed.status).toBe('complete');
+    expect(resumeHarness.calls.compares.map(({ sha }) => sha)).toEqual(['a', 'b']);
+    expect(resumeHarness.calls.decisions.map(({ event }) => event))
+      .toContain('good-ref-validation-reused');
+
+    const failedRunHarness = deps({
+      good: [resultWithVisualDiff(null)],
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+    });
+    const sessionWithFailedGoodRun = {
+      ...saved,
+      commitRuns: {
+        ...saved.commitRuns,
+        good: {
+          ...saved.commitRuns.good!,
+          infrastructureError: 'stale good-ref analysis failure',
+        },
+      },
+    };
+    await executeBisect({
+      ...bisectInput,
+      reuseCurrentResults: false,
+      resumeSession: sessionWithFailedGoodRun,
+      resumeBadRefTests: [resultWithVisualDiff('diff.png')],
+    }, failedRunHarness.deps);
+
+    expect(failedRunHarness.calls.compares.map(({ sha }) => sha)).toEqual(['good', 'a', 'b']);
+    expect(failedRunHarness.calls.decisions.map(({ event }) => event))
+      .not.toContain('good-ref-validation-reused');
+  });
+
   it('dry runs through target discovery and records the first midpoint by default', async () => {
     const harness = deps({
       bad: [resultWithVisualDiff('diff.png')],
@@ -746,6 +914,23 @@ describe('compare bisect session orchestration', () => {
     ]));
     expect(harness.calls.decisions.map((entry) => entry.event)).not.toContain('good-ref-start');
     expect(harness.calls.decisions.map((entry) => entry.event)).not.toContain('candidate-selected');
+  });
+
+  it('retries native reset during final cleanup when dry-run preview reset fails', async () => {
+    const harness = deps({
+      bad: [resultWithVisualDiff('diff.png')],
+    }, {
+      previewResetError: new Error('preview reset failed'),
+    });
+
+    await expect(executeBisect({
+      ...input(rootDir),
+      reuseCurrentResults: true,
+      dryRun: true,
+    }, harness.deps)).rejects.toThrow(/preview reset failed/i);
+
+    expect(harness.calls.nativeResetAttempts).toBe(2);
+    expect(harness.calls.sessions.at(-1)).toMatchObject({ status: 'failed' });
   });
 
   it('dry runs by measuring only the bad ref when current results are not reused', async () => {
@@ -915,7 +1100,7 @@ describe('compare bisect session orchestration', () => {
       ],
     });
     let visibleSummary: BisectSession | null = { status: 'complete' } as BisectSession;
-    harness.deps.clearSummary = () => {
+    harness.deps.artifacts.clearPrevious = () => {
       visibleSummary = null;
       harness.calls.events.push('summary:cleared');
     };
@@ -1003,7 +1188,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a']);
   });
 
-  it('persists checkout, experiment reload, comparisons, and boundary checkpoints', async () => {
+  it('persists endpoint results and candidate classifications after comparison', async () => {
     const harness = deps({
       good: [resultWithVisualDiff(null)],
       a: [resultWithVisualDiff(null)],
@@ -1013,9 +1198,14 @@ describe('compare bisect session orchestration', () => {
 
     await executeBisect(input(rootDir), harness.deps);
 
-    for (const event of ['checkout:bad', 'reload-experiment:bad', 'run-candidate-comparisons:bad']) {
-      expect(harness.calls.checkpoints.some((checkpoint) => checkpoint.afterEvent === event)).toBe(true);
-    }
+    expect(harness.calls.checkpoints.some((checkpoint) => (
+      checkpoint.afterEvent === 'run-candidate-comparisons:bad'
+      && checkpoint.session.commitRuns.bad?.compareCompleted === true
+    ))).toBe(true);
+    expect(harness.calls.checkpoints.some((checkpoint) => (
+      checkpoint.afterEvent === 'checkout:bad'
+      || checkpoint.afterEvent === 'reload-experiment:bad'
+    ))).toBe(false);
     expect(harness.calls.checkpoints.some((checkpoint) => (
       checkpoint.afterEvent === 'run-candidate-comparisons:a'
       && checkpoint.session.primary.targets[0]?.recordedTargetEvaluations.a?.regressionDetected === false
@@ -1083,6 +1273,51 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.signalHandlers.size).toBe(0);
     },
   );
+
+  it('uses fresh cancellation state when the same services resume an interrupted run', async () => {
+    const harnessOptions: HarnessOptions = { signalOnCompare: 'a', signal: 'SIGINT' };
+    const harness = deps({
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+      bad: [resultWithVisualDiff('diff.png')],
+    }, harnessOptions);
+
+    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toBeInstanceOf(
+      BisectInterruptedError,
+    );
+    const interrupted = parseBisectSession(harness.calls.sessions.at(-1));
+    delete harnessOptions.signalOnCompare;
+
+    const resumed = await executeBisect({
+      ...input(rootDir),
+      resumeSession: interrupted,
+      resumeBadRefTests: [resultWithVisualDiff('diff.png')],
+    }, harness.deps);
+
+    expect(resumed.status).toBe('complete');
+    expect(resumed.primary.attempts.map(({ sha, status }) => ({ sha, status }))).toEqual([
+      { sha: 'a', status: 'incomplete' },
+      { sha: 'a', status: 'complete' },
+      { sha: 'b', status: 'complete' },
+    ]);
+    expect(harness.calls.signalHandlers.size).toBe(0);
+  });
+
+  it('persists interrupted endpoint metadata when endpoint restoration also fails', async () => {
+    const harness = deps({ bad: [resultWithVisualDiff('diff.png')] }, {
+      signalOnCompare: 'bad',
+      signal: 'SIGINT',
+      endpointRestoreError: new Error('endpoint restore failed'),
+    });
+
+    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toMatchObject({
+      name: 'AggregateError',
+    });
+    expect(harness.calls.sessions.at(-1)).toMatchObject({
+      status: 'interrupted',
+      commitRuns: { bad: { sha: 'bad', compareCompleted: true } },
+    });
+  });
 
   it('leaves failed durable state and no summary when restoration fails', async () => {
     const harness = deps({
@@ -1209,7 +1444,7 @@ describe('compare bisect session orchestration', () => {
     ]);
   });
 
-  it('exposes one-object runBisect and runCandidate contracts', async () => {
+  it('exposes the one-object runBisect contract', async () => {
     const harness = deps({ bad: [] });
     const bisectInput = input(rootDir);
     const inspectRepositories = jest.spyOn(bisectGit, 'inspectBisectRepositories')
@@ -1247,7 +1482,6 @@ describe('compare bisect session orchestration', () => {
     } finally {
       inspectRepositories.mockRestore();
     }
-    expect(runCandidate).toEqual(expect.any(Function));
   });
 });
 
@@ -1285,20 +1519,33 @@ describe('frozen bisect test selection', () => {
   });
 });
 
-describe('experiment restoration', () => {
-  it('attempts an experiment reload after checkout restoration fails', async () => {
-    const events: string[] = [];
+describe('bisect decision log', () => {
+  let resultsDirectory: string;
 
-    await expect(restoreExperimentState({
-      async restoreCheckout() {
-        events.push('checkout');
-        throw new Error('checkout restore failed');
-      },
-      async reloadExperiment() {
-        events.push('refresh');
-      },
-    })).rejects.toThrow(/checkout restore/i);
+  beforeEach(() => {
+    resultsDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-bisect-decisions-'));
+  });
 
-    expect(events).toEqual(['checkout', 'refresh']);
+  afterEach(() => {
+    fs.rmSync(resultsDirectory, { recursive: true, force: true });
+  });
+
+  it('appends resumed-run decisions instead of truncating prior history', () => {
+    createFileBisectDecisionLogger(resultsDirectory).record({
+      timestamp: '2026-07-12T00:00:00.000Z',
+      event: 'session-start',
+      message: 'Initial run',
+    });
+    createFileBisectDecisionLogger(resultsDirectory).record({
+      timestamp: '2026-07-12T01:00:00.000Z',
+      event: 'session-start',
+      message: 'Resumed run',
+    });
+
+    const entries = fs.readFileSync(
+      path.join(resultsDirectory, 'decision-log.jsonl'),
+      'utf8',
+    ).trim().split('\n').map((line) => JSON.parse(line) as BisectDecisionLogEntry);
+    expect(entries.map(({ message }) => message)).toEqual(['Initial run', 'Resumed run']);
   });
 });

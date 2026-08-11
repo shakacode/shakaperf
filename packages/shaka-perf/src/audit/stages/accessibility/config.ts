@@ -14,7 +14,7 @@ export interface AccessibilityStageConfig extends Omit<AccessibilityConfig, 'vie
    * 'accessibility')` (i.e. `shared.playwrightOptions`; accessibility has no
    * category override), handed in by the pipeline builder. Launch-only: the
    * browser is launched once per worker slot and reused, so `browser`/`args`/
-   * `headless` can't vary per-test. The per-scan context/navigation/timeout
+   * `browser`/`args` can't vary per-test. The per-scan context/navigation/timeout
    * options (`ignoreHTTPSErrors`, `waitTimeout`, `gotoParameters`) are re-resolved
    * from the PER-TEST effective config in `scanAccessibilityPage`, consistent
    * with `beforeNavigate`.

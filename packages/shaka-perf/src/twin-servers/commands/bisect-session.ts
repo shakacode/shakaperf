@@ -63,11 +63,11 @@ export class BisectSessionController {
 
   beginSession(sessionId: string, ownerPid: number): void {
     if (!Number.isSafeInteger(ownerPid) || ownerPid <= 0) {
-      throw new Error('compare bisect requires a positive owner PID');
+      throw new Error('bisect requires a positive owner PID');
     }
     this.reapAbandonedSession();
     if (this.activeSession && this.activeSession.sessionId !== sessionId) {
-      throw new Error('another compare bisect session is already active');
+      throw new Error('another bisect session is already active');
     }
     this.activeSession = { sessionId, ownerPid };
   }
@@ -102,7 +102,7 @@ export class BisectSessionController {
   private requireSession(sessionId: string): void {
     this.reapAbandonedSession();
     if (this.activeSession?.sessionId !== sessionId) {
-      throw new Error('compare bisect session ID does not match the active lease');
+      throw new Error('bisect session ID does not match the active lease');
     }
   }
 

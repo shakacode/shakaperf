@@ -144,15 +144,30 @@ describe('lighthouseWorkerEnvironment', () => {
 describe('lighthouseWorkerSetupOptions', () => {
   it('defaults real Chrome to headed and lets its explicit headless mode override all other inputs', () => {
     expect(lighthouseWorkerSetupOptions({
-      headed: false,
       playwrightOptions: {},
       realChrome: { headless: false },
     })).toMatchObject({ headed: true });
     expect(lighthouseWorkerSetupOptions({
-      headed: true,
       playwrightOptions: { headless: false },
       realChrome: { headless: true },
     })).toMatchObject({ headed: false });
+  });
+
+  // Visibility has ONE source now: `headless` on the resolved launch options,
+  // which the caller has already folded `--headed` into.
+  // Visibility has one source: the `headed` option, from the `--headed` flag.
+  // `playwrightOptions` carries no `headless` — the config schema rejects it.
+  it('reads visibility only from headed', () => {
+    expect(lighthouseWorkerSetupOptions({ headed: true })).toMatchObject({ headed: true });
+    expect(lighthouseWorkerSetupOptions({ headed: false })).toMatchObject({ headed: false });
+    expect(lighthouseWorkerSetupOptions({})).toMatchObject({ headed: false });
+  });
+
+  it('carries keep-open on those same options rather than a parallel field', () => {
+    expect(lighthouseWorkerSetupOptions({ playwrightOptions: { keepBrowserOpen: true } }))
+      .toMatchObject({ keepBrowserOpen: true });
+    expect(lighthouseWorkerSetupOptions({ playwrightOptions: {} }))
+      .toMatchObject({ keepBrowserOpen: false });
   });
 });
 

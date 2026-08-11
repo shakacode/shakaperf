@@ -27,9 +27,23 @@ process.env.IS_SHAKA_PERF_PROCESS = 'true';
 
 const nodeArgs = ['--enable-source-maps'];
 
-// Re-exec under this same Node purely to get a fresh startup: NODE_PATH is read
-// once at process start, and --enable-source-maps is a startup flag.
-const result = spawnSync(process.execPath, [...nodeArgs, cliEntry, ...process.argv.slice(2)], {
+// Node raises MODULE_TYPELESS_PACKAGE_JSON for every `.ts` file it strips types
+// from whose nearest package.json declares no `"type"` — i.e. for the
+// `abtests.config.ts` / `.abtest.ts` files the config loader imports natively,
+// in most consumers: a Rails/webpack project's package.json is CommonJS, and
+// taking the warning's advice ("add `"type": "module"`") would break it.
+// Loading their files that way is our decision, not their mistake, and the
+// warning lands on the stderr of EVERY invocation — including the
+// `shaka-perf troubleshoot` subcommands, whose whole contract is printing a
+// value and nothing else. It is raised on Node's loader thread, so no
+// in-process filter can intercept it; this flag is the only lever. Probed
+// rather than assumed because `engines` still allows Node 20.6, and
+// `--disable-warning` landed in 20.11 — an unknown flag would abort the spawn.
+if (process.allowedNodeEnvironmentFlags.has('--disable-warning')) {
+  nodeArgs.push('--disable-warning=MODULE_TYPELESS_PACKAGE_JSON');
+}
+
+const result = spawnSync(nodeBin, [...nodeArgs, cliEntry, ...process.argv.slice(2)], {
   stdio: 'inherit',
   env: { ...process.env, NODE_PATH: nodePathEnv },
 });

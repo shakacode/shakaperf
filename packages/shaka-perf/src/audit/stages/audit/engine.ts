@@ -127,7 +127,6 @@ export async function runAuditStage(
     captureAuditArtifacts: true,
     captureCoverage: true,
     targetUrl: ctx.experimentURL,
-    headed: ctx.runtime.headed,
     ...(realChrome
       ? {
         realChrome: {
@@ -137,6 +136,7 @@ export async function runAuditStage(
       : {}),
     // Effective launch options (shared.playwrightOptions ← per-test config);
     // the fork maps args/headless onto chrome flags.
+    headed: ctx.runtime.headed,
     playwrightOptions: resolvePlaywrightOptions(ctx.config, 'audit'),
   });
   let sampleGroups;

@@ -58,7 +58,7 @@ export async function syncChanges(
   }
 
   // Get git changed files from the source repo
-  const changedFiles = getChangedFiles(sourceDir);
+  const changedFiles = getChangedFiles(sourceDir, config.copyIgnore);
 
   if (changedFiles.length === 0) {
     printInfo('No git changes to sync');

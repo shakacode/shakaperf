@@ -18,6 +18,9 @@ import {
   type TwinServersConfig,
   type TwinServersConfigInput,
 } from './types';
+import {
+  defaultCopyIgnoreConfig,
+} from './copy-ignore-defaults';
 
 // At runtime __dirname is dist/twin-servers/, so go up two levels to package root
 const DEFAULT_COMPOSE_FILE = path.resolve(__dirname, '..', '..', 'templates', 'docker-compose.yml');
@@ -147,6 +150,10 @@ export function resolveConfig(config: unknown, cwd: string = process.cwd()): Res
     ports: validConfig.ports,
     setupCommands: validConfig.setupCommands ?? [],
     rebuildCommands: validConfig.rebuildCommands ?? [],
+    copyIgnore: {
+      ...defaultCopyIgnoreConfig(),
+      ...validConfig.copyIgnore,
+    },
     projectSlug: slug,
   };
 }

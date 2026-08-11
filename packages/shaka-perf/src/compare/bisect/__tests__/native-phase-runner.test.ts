@@ -12,6 +12,7 @@ import { NativeBisectPhaseRunner } from '../native-phase-runner';
 import { PrimaryPhaseStore } from '../phase-store';
 import type { PhaseTransition, PhaseTransitionEvent } from '../phase-transition';
 import {
+  BisectInterruptedError,
   CandidateEvaluationError,
   CandidateEvaluator,
   type CandidateEvaluationPlan,
@@ -42,9 +43,10 @@ class FakeGit extends NativeGitBisectDriver {
     super({ repoDir: '/unused' });
   }
 
-  override async start(group: { targetIds: string[] }): Promise<NativeBisectStep> {
+  override async start(group: { targetIds: string[]; badSha: string }): Promise<NativeBisectStep> {
     this.active = group.targetIds.includes('visual') ? 'visual' : 'perf';
     this.events.push(`start:${group.targetIds.join(',')}`);
+    if (group.badSha === 'b') return step('a');
     return step(this.active === 'visual' ? 'b' : 'c');
   }
 
@@ -72,7 +74,7 @@ class StubEvaluator extends CandidateEvaluator {
     private readonly results: Record<string, CandidateResult | Error>,
   ) {
     super(
-      { async assertAtCandidate() {} },
+      { async assertAt() {} },
       { async refreshExperiment() { return { mode: 'commands', usedFallback: false }; } },
       { async run() { return { testResults: [] }; } },
       environment,
@@ -128,6 +130,7 @@ function phase(): BisectSearchPhase {
     commitSubjects: { good: 'good', a: 'a', b: 'b', c: 'c', bad: 'bad' },
     commitParents: { good: [], a: ['good'], b: ['a'], c: ['b'], bad: ['c'] },
     targets: [target('visual', 'visreg'), target('perf', 'perf')],
+    groups: [],
     attempts: [],
   };
 }
@@ -191,6 +194,7 @@ function result(sha: string, evaluations: TargetEvaluationAtCommit[]): Candidate
 function harness(options: {
   results: Record<string, CandidateResult | Error>;
   failReportAt?: PhaseTransitionEvent;
+  initialSession?: BisectSession;
 }) {
   const environment = new FixedEnvironment();
   const git = new FakeGit();
@@ -198,7 +202,7 @@ function harness(options: {
   const transitions: PhaseTransition[] = [];
   const durable: BisectSession[] = [];
   let lastEvent: PhaseTransitionEvent | undefined;
-  const owner = new CompareBisectSession(session(), {
+  const owner = new CompareBisectSession(options.initialSession ?? session(), {
     persistence: {
       async write(value) {
         durable.push(structuredClone(value));
@@ -241,6 +245,9 @@ describe('NativeBisectPhaseRunner', () => {
     expect(completed.targets).toMatchObject([
       { id: 'visual', status: 'found', firstBadSha: 'b' },
       { id: 'perf', status: 'found', firstBadSha: 'c' },
+    ]);
+    expect(completed.attempts.map(({ id }) => id)).toEqual([
+      'primary-attempt-1', 'primary-attempt-2', 'primary-attempt-3',
     ]);
     const split = value.transitions.find(({ event }) => event === 'group-split')!;
     expect(split).toMatchObject({
@@ -286,5 +293,52 @@ describe('NativeBisectPhaseRunner', () => {
       commitRuns: { b: { compareCompleted: true } },
     });
     expect(value.git.events).toEqual(['start:visual,perf', 'reset']);
+  });
+
+  it('resumes a durable classification after report failure without measuring it again', async () => {
+    const failed = harness({
+      results: {
+        b: result('b', [evaluation('visual', 'b', true), evaluation('perf', 'b', true)]),
+      },
+      failReportAt: 'candidate-classified',
+    });
+    await expect(failed.runner.run()).rejects.toThrow('report failed');
+    const durable = failed.durable.at(-1)!;
+
+    const resumed = harness({
+      initialSession: structuredClone(durable),
+      results: {
+        a: result('a', [evaluation('visual', 'a', false), evaluation('perf', 'a', false)]),
+      },
+    });
+    const completed = await resumed.runner.run();
+
+    expect(resumed.evaluator.measured).toEqual(['a']);
+    expect(completed.targets).toMatchObject([
+      { id: 'visual', status: 'found', firstBadSha: 'b' },
+      { id: 'perf', status: 'found', firstBadSha: 'b' },
+    ]);
+  });
+
+  it('resets native Git when candidate evaluation is interrupted', async () => {
+    const value = harness({
+      results: { b: new BisectInterruptedError('SIGINT') },
+    });
+
+    await expect(value.runner.run()).rejects.toBeInstanceOf(BisectInterruptedError);
+    expect(value.git.events).toEqual(['start:visual,perf', 'reset']);
+  });
+
+  it('retains both candidate and reset failures', async () => {
+    const value = harness({ results: { b: new Error('compare failed') } });
+    jest.spyOn(value.git, 'reset').mockRejectedValueOnce(new Error('reset failed'));
+
+    await expect(value.runner.run()).rejects.toMatchObject({
+      name: 'AggregateError',
+      errors: [
+        expect.objectContaining({ message: expect.stringMatching(/compare failed/i) }),
+        expect.objectContaining({ message: expect.stringMatching(/reset failed/i) }),
+      ],
+    });
   });
 });

@@ -26,7 +26,7 @@ import {
 
 jest.setTimeout(30_000);
 
-describe('compare bisect black-box E2E', () => {
+describe('bisect black-box E2E', () => {
   /*
    * known-good -> visual-regression-introduced -> performance-regression-introduced
    *                 ^ first visual
@@ -100,7 +100,7 @@ describe('compare bisect black-box E2E', () => {
         }),
       ]));
       expect(session.primary.groups).toHaveLength(3);
-      expect(session.primary.groups?.[0]).toMatchObject({
+      expect(session.primary.groups[0]).toMatchObject({
         id: 'primary-group-1',
         targetIds: [targetIdByCategory.visreg],
         decisions: expect.arrayContaining([
@@ -168,8 +168,8 @@ describe('compare bisect black-box E2E', () => {
 
       const interrupted = readPersistedSession(fixture);
       expect(interrupted.primary.targets.filter((target) => target.status === 'found')).toHaveLength(1);
-      expect(interrupted.primary.groups?.filter((group) => group.status === 'complete')).toHaveLength(1);
-      expect(interrupted.primary.groups?.filter((group) => group.status !== 'complete')).toHaveLength(2);
+      expect(interrupted.primary.groups.filter((group) => group.status === 'complete')).toHaveLength(1);
+      expect(interrupted.primary.groups.filter((group) => group.status !== 'complete')).toHaveLength(2);
       assertExperimentRestored(fixture);
 
       const resumeHarness = createE2eDependencies({ fixture, resultsBySha });
@@ -186,7 +186,7 @@ describe('compare bisect black-box E2E', () => {
         { regression: accessibility, commit: 'accessibility-regression-introduced' },
       ]);
       expectBinarySearchTraversal(resumeHarness, fixture, ['accessibility-regression-introduced']);
-      expect(resumed.primary.groups?.every((group) => group.status === 'complete')).toBe(true);
+      expect(resumed.primary.groups.every((group) => group.status === 'complete')).toBe(true);
       assertExperimentRestored(fixture);
     } finally {
       fixture.cleanup();

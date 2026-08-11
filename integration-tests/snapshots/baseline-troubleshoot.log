@@ -1,0 +1,521 @@
+Skipping global setup (SKIP_GLOBAL_SETUP=1)
+
+Running 1 test using 1 worker
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>>>>>>>>>>>>>>>>> TEST: run shaka-perf troubleshoot and drive its frozen browsers over CDP @troubleshoot
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>> PLAN: launch one troubleshoot session, drive all four frozen browsers over CDP, then reap them
+
+  test        "Click Shop Now on the homepage" @ phone
+  sides       visreg:control, visreg:experiment, perf:control, perf:experiment
+  control     http://localhost:3060
+  experiment  http://localhost:3090
+  session     /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/troubleshoot-results/troubleshoot-session.json
+  artifact    /home/<USER>/shaka-perf/integration-tests/snapshots/troubleshoot-results/01-sides.png
+
+>>> Skipping startServers — ports 3060 + 3090 already respond
+
+
+>>> Waiting for ports 3060 + 3090
+
+  ⏱ waitForPort(3060): 0.0s
+  ⏱ waitForPort(3090): 0.0s
+  ⏱ Waiting for ports 3060 + 3090: 0.0s
+  clearing /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/troubleshoot-results so no stale manifest can answer for this run
+
+>>> Launch the troubleshoot session (headless, never exits by design)
+
+
+>>> launch (background, never exits): yarn shaka-perf troubleshoot --viewport phone --filter Click Shop Now on the homepage --headed=false
+
+  cwd /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce
+  spawned pid <PID> (process-group leader)
+  waiting up to 180s for the session manifest at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/troubleshoot-results/troubleshoot-session.json
+  [session out] troubleshooting "Click Shop Now on the homepage" at phone — visreg + perf, headless, browsers stay open.
+  [session out] Session manifest: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/troubleshoot-results/troubleshoot-session.json
+  [session out] ========================================================================================
+  [session out] STAGE: visreg
+  [session out] ========================================================================================
+  [session out] Capture and compare control vs experiment screenshots.
+  [session out] ========================================================================================
+  [session out] ========================================================================================
+  [session out] STAGE: perf
+  [session out] ========================================================================================
+  [session out] Load the page under Lighthouse and leave its browser open.
+  [session out] ========================================================================================
+  manifest on disk:
+    {
+      "pid": <PID>,
+      "test": "Click Shop Now on the homepage",
+      "viewport": "phone",
+      "headless": true,
+      "controlURL": "http://localhost:3060",
+      "experimentURL": "http://localhost:3090",
+      "browsers": [
+        {
+          "slot": "visreg",
+          "endpoint": "http://127.0.0.1:<CDP_PORT>"
+        },
+        {
+          "slot": "perf:control",
+          "endpoint": "http://127.0.0.1:<CDP_PORT>"
+        },
+        {
+          "slot": "perf:experiment",
+          "endpoint": "http://127.0.0.1:<CDP_PORT>"
+        }
+      ]
+    }
+  ⏱ Launch the troubleshoot session (headless, never exits by design): 2.0s
+
+>>> `troubleshoot session` must agree with the manifest
+
+
+>>> run: shaka-perf troubleshoot session
+
+  ← exit 0
+  ← stdout (333 bytes):
+    pid <PID> — "Click Shop Now on the homepage" @ phone (headless)
+      visreg:control     http://127.0.0.1:<CDP_PORT>   http://localhost:3060
+      visreg:experiment  http://127.0.0.1:<CDP_PORT>   http://localhost:3090
+      perf:control       http://127.0.0.1:<CDP_PORT>   http://localhost:3060
+      perf:experiment    http://127.0.0.1:<CDP_PORT>   http://localhost:3090
+  ← stderr (empty)
+  ▸ CHECK session exits 0
+    ✓ ok
+  ▸ CHECK session lists the visreg:control target
+    ✓ ok
+  ▸ CHECK session lists the visreg:experiment target
+    ✓ ok
+  ▸ CHECK session lists the perf:control target
+    ✓ ok
+  ▸ CHECK session lists the perf:experiment target
+    ✓ ok
+  ▸ CHECK the manifest publishes one visreg browser and one Chrome per perf side
+    ✓ ok
+
+>>> run: shaka-perf troubleshoot session --pid
+
+  ← exit 0
+  ← stdout (7 bytes):
+    871573
+  ← stderr (empty)
+  ▸ CHECK session --pid prints the manifest pid and nothing else
+    ✓ ok
+  ⏱ `troubleshoot session` must agree with the manifest: 3.5s
+
+>>> Every side must park on /products (the test body clicks through)
+
+  · visreg:control attempt 1: location.pathname = /products — parked
+  · visreg:experiment attempt 1: location.pathname = /products — parked
+  · perf:control attempt 1: location.pathname = /products — parked
+  · perf:experiment attempt 1: location.pathname = /products — parked
+  ⏱ Every side must park on /products (the test body clicks through): 6.8s
+
+>>> console → eval a console.log → console (replay, then non-destructive re-read)
+
+  1/4 read the buffer before anything is logged into it
+
+>>> run: shaka-perf troubleshoot console visreg:experiment
+
+  ← exit 0
+  ← stdout (1307 bytes):
+    [console.warning] Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace.
+    [console.info] VisregTools have been installed.
+    [console.log] [waitForNoMutations] mutation batch size=4 attr=2 text=0 child=2 :: attr a.MuiButtonBase-root.MuiButton-root class="MuiButtonBase-root MuiButton-root MuiBut" | attr a.MuiButtonBase-root.MuiButton-root class="MuiButtonBase-root MuiButton-root MuiBut" | children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-1egkt5t]
+    [console.log] [waitForNoMutations] mutation batch size=5 attr=3 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-1htz7z9] | attr img src="data:image/svg+xml,%3Csvg xmlns="http://"
+    [console.log] [waitForNoMutations] mutation batch size=17 attr=15 text=0 child=2 :: children div.MuiContainer-root.MuiContainer-maxWidthLg -1[div.MuiBox-root.css-nfgtzt] | attr input.MuiSelect-nativeInput.css-147e5lo name="" | attr input.MuiSelect-nativeInput.css-147e5lo name=""
+    (all buffered messages on http://localhost:3090/products)
+  ← stderr (empty)
+  ▸ CHECK console exits 0
+    ✓ ok
+  ▸ CHECK console names the page it read
+    ✓ ok
+  ▸ CHECK the marker cannot be in the buffer before it is logged
+    ✓ ok
+  2/4 eval a console.log into the live page
+
+>>> run: shaka-perf troubleshoot eval visreg:experiment console.log('shakaperf-troubleshoot-integration-marker', 42)
+
+  ← exit 0
+  ← stdout (10 bytes):
+    undefined
+  ← stderr (empty)
+  ▸ CHECK eval of a console.log exits 0
+    ✓ ok
+  ▸ CHECK console.log evaluates to undefined
+    ✓ ok
+  3/4 read the buffer again — it must now replay what the eval logged
+
+>>> run: shaka-perf troubleshoot console visreg:experiment
+
+  ← exit 0
+  ← stdout (1366 bytes):
+    [console.warning] Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace.
+    [console.info] VisregTools have been installed.
+    [console.log] [waitForNoMutations] mutation batch size=4 attr=2 text=0 child=2 :: attr a.MuiButtonBase-root.MuiButton-root class="MuiButtonBase-root MuiButton-root MuiBut" | attr a.MuiButtonBase-root.MuiButton-root class="MuiButtonBase-root MuiButton-root MuiBut" | children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-1egkt5t]
+    [console.log] [waitForNoMutations] mutation batch size=5 attr=3 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-1htz7z9] | attr img src="data:image/svg+xml,%3Csvg xmlns="http://"
+    [console.log] [waitForNoMutations] mutation batch size=17 attr=15 text=0 child=2 :: children div.MuiContainer-root.MuiContainer-maxWidthLg -1[div.MuiBox-root.css-nfgtzt] | attr input.MuiSelect-nativeInput.css-147e5lo name="" | attr input.MuiSelect-nativeInput.css-147e5lo name=""
+    [console.log] shakaperf-troubleshoot-integration-marker 42
+    (all buffered messages on http://localhost:3090/products)
+  ← stderr (empty)
+  ▸ CHECK console exits 0
+    ✓ ok
+  ▸ CHECK the buffer replays "[console.log] shakaperf-troubleshoot-integration-marker 42"
+    ✓ ok
+  4/4 read a third time — `console` promises it never resets the buffer
+
+>>> run: shaka-perf troubleshoot console visreg:experiment
+
+  ← exit 0
+  ← stdout (1366 bytes):
+    [console.warning] Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace.
+    [console.info] VisregTools have been installed.
+    [console.log] [waitForNoMutations] mutation batch size=4 attr=2 text=0 child=2 :: attr a.MuiButtonBase-root.MuiButton-root class="MuiButtonBase-root MuiButton-root MuiBut" | attr a.MuiButtonBase-root.MuiButton-root class="MuiButtonBase-root MuiButton-root MuiBut" | children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-1egkt5t]
+    [console.log] [waitForNoMutations] mutation batch size=5 attr=3 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-1htz7z9] | attr img src="data:image/svg+xml,%3Csvg xmlns="http://"
+    [console.log] [waitForNoMutations] mutation batch size=17 attr=15 text=0 child=2 :: children div.MuiContainer-root.MuiContainer-maxWidthLg -1[div.MuiBox-root.css-nfgtzt] | attr input.MuiSelect-nativeInput.css-147e5lo name="" | attr input.MuiSelect-nativeInput.css-147e5lo name=""
+    [console.log] shakaperf-troubleshoot-integration-marker 42
+    (all buffered messages on http://localhost:3090/products)
+  ← stderr (empty)
+  ▸ CHECK a repeat read still carries the whole history
+    ✓ ok
+  ⏱ console → eval a console.log → console (replay, then non-destructive re-read): 8.7s
+
+>>> eval the product list on every side — stdout must be the value alone
+
+
+>>> run: shaka-perf troubleshoot eval visreg:control Array.from(document.querySelectorAll('a[href^="/products/"] h2'), (el) => el.textContent.trim())
+
+  ← exit 0
+  ← stdout (227 bytes):
+    [
+      "Wireless Bluetooth Headphones",
+      "Organic Cotton T-Shirt",
+      "Stainless Steel Water Bottle",
+      "Mechanical Keyboard",
+      "Running Shoes",
+      "Leather Wallet",
+      "Smart Watch",
+      "Yoga Mat",
+      "Backpack",
+      "Coffee Maker"
+    ]
+  ← stderr (empty)
+  ▸ CHECK eval on visreg:control exits 0
+    ✓ ok
+  ▸ CHECK eval on visreg:control prints nothing on stderr
+    ✓ ok
+  visreg:control returned 10 product(s)
+  ▸ CHECK visreg:control returns the exact catalogue
+    ✓ ok
+  ▸ CHECK visreg:control prints the JSON value and NOTHING else on stdout
+    ✓ ok
+
+>>> run: shaka-perf troubleshoot eval visreg:experiment Array.from(document.querySelectorAll('a[href^="/products/"] h2'), (el) => el.textContent.trim())
+
+  ← exit 0
+  ← stdout (227 bytes):
+    [
+      "Wireless Bluetooth Headphones",
+      "Organic Cotton T-Shirt",
+      "Stainless Steel Water Bottle",
+      "Mechanical Keyboard",
+      "Running Shoes",
+      "Leather Wallet",
+      "Smart Watch",
+      "Yoga Mat",
+      "Backpack",
+      "Coffee Maker"
+    ]
+  ← stderr (empty)
+  ▸ CHECK eval on visreg:experiment exits 0
+    ✓ ok
+  ▸ CHECK eval on visreg:experiment prints nothing on stderr
+    ✓ ok
+  visreg:experiment returned 10 product(s)
+  ▸ CHECK visreg:experiment returns the exact catalogue
+    ✓ ok
+  ▸ CHECK visreg:experiment prints the JSON value and NOTHING else on stdout
+    ✓ ok
+
+>>> run: shaka-perf troubleshoot eval perf:control Array.from(document.querySelectorAll('a[href^="/products/"] h2'), (el) => el.textContent.trim())
+
+  ← exit 0
+  ← stdout (227 bytes):
+    [
+      "Wireless Bluetooth Headphones",
+      "Organic Cotton T-Shirt",
+      "Stainless Steel Water Bottle",
+      "Mechanical Keyboard",
+      "Running Shoes",
+      "Leather Wallet",
+      "Smart Watch",
+      "Yoga Mat",
+      "Backpack",
+      "Coffee Maker"
+    ]
+  ← stderr (empty)
+  ▸ CHECK eval on perf:control exits 0
+    ✓ ok
+  ▸ CHECK eval on perf:control prints nothing on stderr
+    ✓ ok
+  perf:control returned 10 product(s)
+  ▸ CHECK perf:control returns the exact catalogue
+    ✓ ok
+  ▸ CHECK perf:control prints the JSON value and NOTHING else on stdout
+    ✓ ok
+
+>>> run: shaka-perf troubleshoot eval perf:experiment Array.from(document.querySelectorAll('a[href^="/products/"] h2'), (el) => el.textContent.trim())
+
+  ← exit 0
+  ← stdout (227 bytes):
+    [
+      "Wireless Bluetooth Headphones",
+      "Organic Cotton T-Shirt",
+      "Stainless Steel Water Bottle",
+      "Mechanical Keyboard",
+      "Running Shoes",
+      "Leather Wallet",
+      "Smart Watch",
+      "Yoga Mat",
+      "Backpack",
+      "Coffee Maker"
+    ]
+  ← stderr (empty)
+  ▸ CHECK eval on perf:experiment exits 0
+    ✓ ok
+  ▸ CHECK eval on perf:experiment prints nothing on stderr
+    ✓ ok
+  perf:experiment returned 10 product(s)
+  ▸ CHECK perf:experiment returns the exact catalogue
+    ✓ ok
+  ▸ CHECK perf:experiment prints the JSON value and NOTHING else on stdout
+    ✓ ok
+  ▸ CHECK visreg:experiment sees the same catalogue as visreg:control
+    ✓ ok
+  ▸ CHECK perf:control sees the same catalogue as visreg:control
+    ✓ ok
+  ▸ CHECK perf:experiment sees the same catalogue as visreg:control
+    ✓ ok
+  ⏱ eval the product list on every side — stdout must be the value alone: 6.7s
+
+>>> eval an ASYNC expression — it must be awaited, not returned pending
+
+  expression polls in-page for up to 5s, then resolves the product list
+
+>>> run: shaka-perf troubleshoot eval perf:experiment (async () => {
+  const read = () => Array.from(document.querySelectorAll('a[href^="/products/"] h2'), (el) => el.textContent.trim());
+  const deadline = Date.now() + 5000;
+  while (read().length === 0 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 100));
+  return read();
+})()
+
+  ← exit 0
+  ← stdout (227 bytes):
+    [
+      "Wireless Bluetooth Headphones",
+      "Organic Cotton T-Shirt",
+      "Stainless Steel Water Bottle",
+      "Mechanical Keyboard",
+      "Running Shoes",
+      "Leather Wallet",
+      "Smart Watch",
+      "Yoga Mat",
+      "Backpack",
+      "Coffee Maker"
+    ]
+  ← stderr (empty)
+  ▸ CHECK async eval exits 0
+    ✓ ok
+  ▸ CHECK async eval prints nothing on stderr
+    ✓ ok
+  ▸ CHECK async eval resolves the promise and prints the settled catalogue
+    ✓ ok
+  ⏱ eval an ASYNC expression — it must be awaited, not returned pending: 1.7s
+
+>>> eval an expression that THROWS — the failure must be loud and on stderr
+
+
+>>> run: shaka-perf troubleshoot eval visreg:control (() => { throw new Error('shakaperf-troubleshoot-integration-marker-boom'); })()
+
+  ← exit 1
+  ← stdout (empty)
+  ← stderr (139 bytes):
+    shaka-perf troubleshoot: page threw: Error: shakaperf-troubleshoot-integration-marker-boom
+        at <anonymous>:1:16
+        at <anonymous>:1:79
+  ▸ CHECK a page exception exits non-zero
+    ✓ ok
+  ▸ CHECK nothing reaches stdout when the page threw
+    ✓ ok
+  ▸ CHECK the failure is attributed to the page
+    ✓ ok
+  ▸ CHECK the failure names the thrown error
+    ✓ ok
+  and the session must survive it — the CDP connection is per-command
+
+>>> run: shaka-perf troubleshoot eval visreg:control location.pathname
+
+  ← exit 0
+  ← stdout (10 bytes):
+    /products
+  ← stderr (empty)
+  ▸ CHECK the next eval on the same side still works
+    ✓ ok
+  ▸ CHECK that side is still parked on /products
+    ✓ ok
+  ⏱ eval an expression that THROWS — the failure must be loud and on stderr: 3.3s
+
+>>> Screenshot every side over CDP and merge them into one artifact
+
+  resetting /home/<USER>/shaka-perf/integration-tests/snapshots/troubleshoot-results
+
+>>> run: shaka-perf troubleshoot shot visreg:control /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/troubleshoot-results/visreg-control.png
+
+  ← exit 0
+  ← stdout (159 bytes):
+    wrote /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/troubleshoot-results/visreg-control.png (97389 bytes) from http://localhost:3060/products
+  ← stderr (empty)
+  ▸ CHECK shot visreg:control exits 0
+    ✓ ok
+  ▸ CHECK shot visreg:control writes visreg-control.png
+    ✓ ok
+  visreg:control → 375x667 px, 97389 bytes
+  ▸ CHECK shot visreg:control is not an empty frame
+    ✓ ok
+
+>>> run: shaka-perf troubleshoot shot visreg:experiment /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/troubleshoot-results/visreg-experiment.png
+
+  ← exit 0
+  ← stdout (162 bytes):
+    wrote /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/troubleshoot-results/visreg-experiment.png (97389 bytes) from http://localhost:3090/products
+  ← stderr (empty)
+  ▸ CHECK shot visreg:experiment exits 0
+    ✓ ok
+  ▸ CHECK shot visreg:experiment writes visreg-experiment.png
+    ✓ ok
+  visreg:experiment → 375x667 px, 97389 bytes
+  ▸ CHECK shot visreg:experiment is not an empty frame
+    ✓ ok
+
+>>> run: shaka-perf troubleshoot shot perf:control /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/troubleshoot-results/perf-control.png
+
+  ← exit 0
+  ← stdout (157 bytes):
+    wrote /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/troubleshoot-results/perf-control.png (97423 bytes) from http://localhost:3060/products
+  ← stderr (empty)
+  ▸ CHECK shot perf:control exits 0
+    ✓ ok
+  ▸ CHECK shot perf:control writes perf-control.png
+    ✓ ok
+  perf:control → 375x667 px, 97423 bytes
+  ▸ CHECK shot perf:control is not an empty frame
+    ✓ ok
+
+>>> run: shaka-perf troubleshoot shot perf:experiment /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/troubleshoot-results/perf-experiment.png
+
+  ← exit 0
+  ← stdout (160 bytes):
+    wrote /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/troubleshoot-results/perf-experiment.png (97423 bytes) from http://localhost:3090/products
+  ← stderr (empty)
+  ▸ CHECK shot perf:experiment exits 0
+    ✓ ok
+  ▸ CHECK shot perf:experiment writes perf-experiment.png
+    ✓ ok
+  perf:experiment → 375x667 px, 97423 bytes
+  ▸ CHECK shot perf:experiment is not an empty frame
+    ✓ ok
+  merging 4 shots into /home/<USER>/shaka-perf/integration-tests/snapshots/troubleshoot-results/01-sides.png
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<1.2s> [shaka-perf] lighthouse patched
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.2s> Loading every test page on both the control server and the experiment server, taking a screenshot of each once the page has settled, and comparing the two screenshots pixel-by-pixel. A test fails when the two sides look visibly different. This is how a code change that does not break anything functionally still gets caught when it accidentally moves a button, shifts a layout, or changes a color.
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.3s> compare:<1.3s>Discovered 1 test file(s):
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.3s> compare:<1.3s>  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.3s> compare:<1.3s>Selected 1 of 1 test(s).
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.3s> Creating Browser
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.3s> compare:<1.3s>Browser created
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.3s> LIVE COMPARE: opening reference (http://localhost:3060/) and test (http://localhost:3090/) simultaneously
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.5s>[ experiment ] annotate: Wait for hero section to load
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.5s>[  control   ] annotate: Wait for hero section to load
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.5s>[ experiment ] annotate: Click Shop Now button
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.5s>[  control   ] annotate: Click Shop Now button
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.6s>[  control   ] annotate: Wait for navigation to products page
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.6s>[  control   ] [waitForAllImages] 0 visible images loaded for http://localhost:3060/products (6 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.6s>[  control   ] [waitForFontsReady] fonts ready for http://localhost:3060/products (6 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.6s>[  control   ] [waitForNoMutations] mutation batch size=5 attr=3 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-1htz7z9] | attr img src="data:image/svg+xml,%3Csvg xmlns="http://"
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<1.7s>[  control   ] [waitForNoMutations] mutation batch size=17 attr=15 text=0 child=2 :: children div.MuiContainer-root.MuiContainer-maxWidthLg -1[div.MuiBox-root.css-nfgtzt] | attr input.MuiSelect-nativeInput.css-147e5lo name="" | attr input.MuiSelect-nativeInput.css-147e5lo name=""
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<2.4s>[  control   ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3060/products
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<2.4s>[  control   ] [waitForNetworkSettle] network idle for http://localhost:3060/products (752 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<2.4s>[  control   ] [waitUntilPageSettled] all checks complete for http://localhost:3060/products (754 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<2.4s>sample-0[  control   ] starting {"group":"control","sample":"sample-0"}
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<2.4s>sample-0[ experiment ] starting {"group":"experiment","sample":"sample-0"}
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<2.4s>sample-0[  control   ] [shaka-perf timing] subprocess sample command received at 2026-08-11T10:11:01.136Z (epochMs=1786443061136, pid=871623, sample-0, workerIndex=0)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<2.4s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-08-11T10:11:01.136Z (epochMs=1786443061136, pid=871624, sample-0, workerIndex=0)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<3.6s>[ experiment ] annotate: Wait for navigation to products page
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<3.6s>[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/products (0 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<3.6s>[ experiment ] [waitForAllImages] 5 visible images loaded for http://localhost:3090/products (2 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<3.6s>[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/products (3 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<3.7s>[ experiment ] [waitForNoMutations] mutation batch size=4 attr=2 text=0 child=2 :: attr a.MuiButtonBase-root.MuiButton-root class="MuiButtonBase-root MuiButton-root MuiBut" | attr a.MuiButtonBase-root.MuiButton-root class="MuiButtonBase-root MuiButton-root MuiBut" | children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-1egkt5t]
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<3.7s>[ experiment ] [waitForNoMutations] mutation batch size=5 attr=3 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-1htz7z9] | attr img src="data:image/svg+xml,%3Csvg xmlns="http://"
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<3.7s>sample-0[  control   ] [shaka-perf timing] subprocess Lighthouse start at 2026-08-11T10:11:02.406Z (epochMs=1786443062406, pid=871623, sample-0)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<3.7s>[ experiment ] [waitForNoMutations] mutation batch size=17 attr=15 text=0 child=2 :: children div.MuiContainer-root.MuiContainer-maxWidthLg -1[div.MuiBox-root.css-nfgtzt] | attr input.MuiSelect-nativeInput.css-147e5lo name="" | attr input.MuiSelect-nativeInput.css-147e5lo name=""
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<3.7s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-08-11T10:11:02.432Z (epochMs=1786443062432, pid=871624, sample-0)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<4.4s>[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<4.4s>[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/products (799 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<5.3s>sample-0[  control   ] [shaka-perf timing] Lighthouse Page.navigate at 2026-08-11T10:11:04.028Z (epochMs=1786443064028, pid=871623, url=http://localhost:3060/)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<5.3s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-08-11T10:11:04.029Z (epochMs=1786443064029, pid=871624, url=http://localhost:3090/)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<6.4s>sample-0[  control   ] annotate: Wait for hero section to load
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<6.4s>sample-0[ experiment ] annotate: Wait for hero section to load
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<6.7s>sample-0[ experiment ] annotate: Click Shop Now button
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<6.7s>sample-0[  control   ] annotate: Click Shop Now button
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<6.8s>sample-0[ experiment ] annotate: Wait for navigation to products page
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<6.9s>sample-0[ experiment ] [waitForAllImages] 0 visible images loaded for http://localhost:3090/products (5 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<6.9s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/products (6 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<6.9s>sample-0[  control   ] annotate: Wait for navigation to products page
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<6.9s>sample-0[  control   ] [waitForAllImages] 0 visible images loaded for http://localhost:3060/products (7 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<6.9s>sample-0[  control   ] [waitForFontsReady] fonts ready for http://localhost:3060/products (6 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<7.1s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=5 attr=3 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-1htz7z9] | attr img src="data:image/svg+xml,%3Csvg xmlns="http://"
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<7.2s>sample-0[  control   ] [waitForNoMutations] mutation batch size=5 attr=3 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-1htz7z9] | attr img src="data:image/svg+xml,%3Csvg xmlns="http://"
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<7.4s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=17 attr=15 text=0 child=2 :: children div.MuiContainer-root.MuiContainer-maxWidthLg -1[div.MuiBox-root.css-nfgtzt] | attr input.MuiSelect-nativeInput.css-147e5lo name="" | attr input.MuiSelect-nativeInput.css-147e5lo name=""
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<7.4s>sample-0[  control   ] [waitForNoMutations] mutation batch size=17 attr=15 text=0 child=2 :: children div.MuiContainer-root.MuiContainer-maxWidthLg -1[div.MuiBox-root.css-nfgtzt] | attr input.MuiSelect-nativeInput.css-147e5lo name="" | attr input.MuiSelect-nativeInput.css-147e5lo name=""
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<8.1s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<8.1s>sample-0[  control   ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3060/products
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<10.9s> PASS: "Click Shop Now on the homepage" [document]
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<10.9s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/products (2120 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<10.9s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/products (2122 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<10.9s>sample-0[  control   ] [waitForNetworkSettle] network idle for http://localhost:3060/products (2109 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:perf:<10.9s>sample-0[  control   ] [waitUntilPageSettled] all checks complete for http://localhost:3060/products (2110 ms)
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<12.2s> compare:<12.2s>OK: Click Shop Now on the homepage Click_Shop_Now_on_the_homepage_0_document_0_phone.png
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<12.2s> report:<12.2s>Test completed...
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<12.2s> report:<12.2s>1 Passed
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<12.2s> report:<12.2s>0 Failed
+  [session out] ab-tests/shop-now.abtest.ts:11:phone:visreg:<12.2s> report:<12.2s>Wrote visreg report under /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/troubleshoot-results/click-shop-now-on-the-homepage-phone-e3bb853a/artifacts
+  artifact → 1400x699 px, 110906 bytes
+  ▸ CHECK the merged artifact is on disk for the screenshot-diff review
+    ✓ ok
+  ⏱ Screenshot every side over CDP and merge them into one artifact: 6.7s
+
+>>> Stop the session and reap the browsers it deliberately left open
+
+  1/3 found the browsers on http://127.0.0.1:<CDP_PORT>, http://127.0.0.1:<CDP_PORT>, http://127.0.0.1:<CDP_PORT>
+  2/3 SIGTERM the parked CLI (pid <PID>) — the documented stop
+  3/3 SIGKILL the orphaned browsers and the session process group
+  ▸ CHECK every CDP endpoint stops answering — the run leaks no browser
+  · every endpoint refused: http://127.0.0.1:<CDP_PORT>, http://127.0.0.1:<CDP_PORT>, http://127.0.0.1:<CDP_PORT>
+    ✓ ok
+  ⏱ Stop the session and reap the browsers it deliberately left open: 3.0s
+
+>>> Resetting git changes in temp clone
+
+Updated 0 paths from the index
+  ⏱ git checkout experiment: 0.0s
+Updated 0 paths from the index
+  ⏱ git checkout control: 0.0s
+  ✓  1 integration-tests/troubleshoot.spec.ts:260:5 › run shaka-perf troubleshoot and drive its frozen browsers over CDP @troubleshoot (<TIMING>s)
+Skipping teardown (SKIP_TEARDOWN=1)
+
+  1 passed (<TIMING>s)

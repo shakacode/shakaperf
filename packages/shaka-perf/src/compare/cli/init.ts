@@ -25,11 +25,14 @@ const DEFAULT_DEST_FILENAME = 'abtests.config.ts';
 //     audit-results/ for anti-patterns and false-positive PASSes.
 //   - ab-servers: short reference of which `shaka-perf servers` subcommands
 //     an agent should call (bare `servers` is interactive, for humans only).
+//   - troubleshoot-abtest: attach to a `shaka-perf troubleshoot` session's frozen
+//     browsers over CDP from bash (bundled zero-dep cdp.mjs), no MCP required.
 const SKILL_NAMES = [
   'discover-abtests',
   'setup-docker-servers-for-ab-tests',
   'assess-abtest-quality',
   'ab-servers',
+  'troubleshoot-abtest',
 ];
 
 // At runtime __dirname is dist/compare/cli/, so go up three levels to the

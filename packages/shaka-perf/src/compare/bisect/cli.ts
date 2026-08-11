@@ -6,7 +6,10 @@
  */
 
 import { Command } from 'commander';
-import { comparePipelineMetadata } from '../compare-pipeline';
+import {
+  addCompareMeasurementOptions,
+  type CompareMeasurementOptionDefaults,
+} from '../cli/shared-options';
 import { runCompareBisectFromCli, type BisectCliOptions } from './session';
 
 export interface BisectCliDependencies {
@@ -15,17 +18,14 @@ export interface BisectCliDependencies {
     badRef: string | undefined,
     options: BisectCliOptions,
   ) => Promise<unknown>;
+  optionDefaults?: CompareMeasurementOptionDefaults;
 }
 
 export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
-  return new Command('bisect')
+  const command = new Command('bisect')
     .description('Find the first commit for each compare regression')
     .argument('[good-ref]', 'Known-good commit; defaults to control HEAD')
     .argument('[bad-ref]', 'Known-bad commit; defaults to experiment HEAD')
-    .option(
-      '--categories <list>',
-      `Comma-separated categories to bisect (${comparePipelineMetadata.categories.join(', ')})`,
-    )
     .option(
       '--reuse-current-results',
       'Use cwd/compare-results for bad-ref discovery instead of measuring the bad ref again',
@@ -54,8 +54,7 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
     )
     .action(async function (goodRef?: string, badRef?: string) {
       const local = this.opts();
-      const inherited = this.optsWithGlobals();
-      const reportOnly = local.reportOnly === true || inherited.reportOnly === true;
+      const reportOnly = local.reportOnly === true;
       if (local.resume && (goodRef || badRef)) {
         throw new Error('--resume does not accept positional good-ref or bad-ref values');
       }
@@ -72,13 +71,13 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
         throw new Error('--report-only cannot be combined with resume or merge investigation');
       }
       await (deps.run ?? runCompareBisectFromCli)(goodRef, badRef, {
-        configPath: inherited.config,
-        categories: local.categories ?? inherited.categories,
-        filter: inherited.filter,
-        testPathPattern: inherited.testPathPattern,
-        headed: inherited.headed === true,
-        controlURL: inherited.controlURL,
-        experimentURL: inherited.experimentURL,
+        configPath: local.config,
+        categories: local.categories,
+        filter: local.filter,
+        testPathPattern: local.testPathPattern,
+        headed: local.headed === true,
+        controlURL: local.controlURL,
+        experimentURL: local.experimentURL,
         reuseCurrentResults: local.reuseCurrentResults === true,
         dryRun: local.dryRun === true,
         validateGoodRef: local.validateGoodRef === true,
@@ -87,4 +86,5 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
         investigateMerges: local.investigateMerges === true,
       });
     });
+  return addCompareMeasurementOptions(command, { defaults: deps.optionDefaults });
 }

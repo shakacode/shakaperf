@@ -61,8 +61,10 @@ export interface RunPatchedLighthouseOptions {
    * Omit (or pass `Promise.resolve()`) to let Lighthouse finish on its
    * usual "page fully loaded" heuristics.
    *
-   * The Lighthouse `maxWaitForLoad` setting (default 45 s) still caps
-   * the wait — a never-resolving promise can't wedge the run forever.
+   * `maxWaitForLoad` does NOT cap this — `lighthouse.patch` makes that timer
+   * await the hold too, so a never-resolving promise wedges the run on purpose.
+   * `troubleshoot` relies on that: it stops LH reaching `_cleanup`, at the cost
+   * of the LHR.
    */
   canStopTracking?: Promise<void>;
 }

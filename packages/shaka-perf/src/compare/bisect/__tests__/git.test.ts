@@ -10,15 +10,12 @@ import * as os from 'os';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
 import {
-  checkoutDetached,
+  ExactCheckout,
   inspectBisectRepositories,
-  markNativeBisect,
   nativeBisectLog,
   prepareChildGitRange,
   prepareGitRange,
-  resetNativeBisect,
   restoreCheckout,
-  startNativeBisect,
   NativeGitBisectDriver,
 } from '../git';
 
@@ -288,7 +285,7 @@ describe('bisect Git helpers', () => {
       sha: fixture.commits[4],
     };
 
-    await checkoutDetached(fixture.experimentDir, fixture.commits[2]);
+    await new ExactCheckout({ repoDir: fixture.experimentDir }).position(fixture.commits[2]);
     expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[2]);
     expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe('');
     expect(git(fixture.experimentDir, ['status', '--porcelain', '--untracked-files=all'])).toBe('');
@@ -302,8 +299,7 @@ describe('bisect Git helpers', () => {
   it('rejects an untracked file immediately before detached checkout', async () => {
     fs.writeFileSync(path.join(fixture.experimentDir, 'untracked.txt'), 'dirty', 'utf8');
 
-    await expect(checkoutDetached(
-      fixture.experimentDir,
+    await expect(new ExactCheckout({ repoDir: fixture.experimentDir }).position(
       fixture.commits[2],
     )).rejects.toThrow(/clean/i);
     expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[4]);
@@ -315,9 +311,10 @@ describe('bisect Git helpers', () => {
     fs.mkdirSync(resultsDirectory);
     fs.writeFileSync(path.join(resultsDirectory, 'session.json'), '{}', 'utf8');
 
-    await checkoutDetached(fixture.experimentDir, fixture.commits[2], {
+    await new ExactCheckout({
+      repoDir: fixture.experimentDir,
       allowedPaths: [resultsDirectory],
-    });
+    }).position(fixture.commits[2]);
 
     expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[2]);
     expect(fs.readFileSync(path.join(resultsDirectory, 'session.json'), 'utf8')).toBe('{}');
@@ -329,9 +326,10 @@ describe('bisect Git helpers', () => {
     fs.mkdirSync(resultsDirectory, { recursive: true });
     fs.writeFileSync(path.join(resultsDirectory, 'session.json'), '{}', 'utf8');
 
-    await checkoutDetached(projectDir, fixture.commits[2], {
+    await new ExactCheckout({
+      repoDir: projectDir,
       allowedPaths: [resultsDirectory],
-    });
+    }).position(fixture.commits[2]);
 
     expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[2]);
     expect(fs.readFileSync(path.join(resultsDirectory, 'session.json'), 'utf8')).toBe('{}');
@@ -342,7 +340,7 @@ describe('bisect Git helpers', () => {
       branch: fixture.experimentBranch,
       sha: fixture.commits[4],
     };
-    await checkoutDetached(fixture.experimentDir, fixture.commits[2]);
+    await new ExactCheckout({ repoDir: fixture.experimentDir }).position(fixture.commits[2]);
     fs.writeFileSync(path.join(fixture.experimentDir, 'history.txt'), 'dirty', 'utf8');
 
     await expect(restoreCheckout(fixture.experimentDir, original)).rejects.toThrow(/clean/i);
@@ -357,7 +355,7 @@ describe('bisect Git helpers', () => {
     };
     const resultsDirectory = path.join(fixture.experimentDir, 'compare-bisect-results');
 
-    await checkoutDetached(fixture.experimentDir, fixture.commits[2]);
+    await new ExactCheckout({ repoDir: fixture.experimentDir }).position(fixture.commits[2]);
     fs.mkdirSync(resultsDirectory);
     fs.writeFileSync(path.join(resultsDirectory, 'summary.json'), '{}', 'utf8');
 
@@ -374,7 +372,7 @@ describe('bisect Git helpers', () => {
     git(fixture.experimentDir, ['checkout', '--detach', fixture.commits[3]]);
     const original = { branch: null, sha: fixture.commits[3] };
 
-    await checkoutDetached(fixture.experimentDir, fixture.commits[1]);
+    await new ExactCheckout({ repoDir: fixture.experimentDir }).position(fixture.commits[1]);
     await restoreCheckout(fixture.experimentDir, original);
 
     expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[3]);
@@ -382,10 +380,10 @@ describe('bisect Git helpers', () => {
   });
 
   it('lets native Git select candidates and report the first bad commit', async () => {
-    const started = await startNativeBisect({
-      repoDir: fixture.experimentDir,
-      goodSha: fixture.commits[0],
-      badSha: fixture.commits[4],
+    const driver = new NativeGitBisectDriver({ repoDir: fixture.experimentDir });
+    const started = await driver.start({
+      id: 'group', status: 'pending', goodSha: fixture.commits[0], badSha: fixture.commits[4],
+      targetIds: [], decisions: [],
     });
 
     expect(started).toMatchObject({
@@ -393,9 +391,9 @@ describe('bisect Git helpers', () => {
       complete: false,
       firstBadSha: null,
     });
-    const next = await markNativeBisect(fixture.experimentDir, 'bad');
+    const next = await driver.mark('bad');
     expect(next.candidateSha).toBe(fixture.commits[1]);
-    const completed = await markNativeBisect(fixture.experimentDir, 'good');
+    const completed = await driver.mark('good');
     expect(completed).toMatchObject({
       candidateSha: null,
       complete: true,
@@ -403,24 +401,22 @@ describe('bisect Git helpers', () => {
     });
     expect(await nativeBisectLog(fixture.experimentDir)).toContain('# first bad commit:');
 
-    await resetNativeBisect(fixture.experimentDir);
+    await driver.reset();
     expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe(fixture.experimentBranch);
     expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[4]);
   });
 
   it('previews the native candidate without checking out a commit', async () => {
-    const started = await startNativeBisect({
-      repoDir: fixture.experimentDir,
-      goodSha: fixture.commits[0],
-      badSha: fixture.commits[4],
-      noCheckout: true,
+    const driver = new NativeGitBisectDriver({ repoDir: fixture.experimentDir });
+    const started = await driver.preview({
+      id: 'group', status: 'pending', goodSha: fixture.commits[0], badSha: fixture.commits[4],
+      targetIds: [], decisions: [],
     });
 
     expect(started.candidateSha).toBe(fixture.commits[2]);
     expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe(fixture.experimentBranch);
     expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[4]);
 
-    await resetNativeBisect(fixture.experimentDir);
     expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe(fixture.experimentBranch);
   });
 
@@ -436,11 +432,16 @@ describe('bisect Git helpers', () => {
     };
 
     const started = await driver.start(group);
-    await expect(driver.assertAtCandidate(started.candidateSha!)).resolves.toBeUndefined();
-    await expect(driver.assertAtCandidate(fixture.commits[1]))
+    await expect(driver.assertAt(started.candidateSha!)).resolves.toBeUndefined();
+    await expect(driver.assertAt(fixture.commits[1]))
       .rejects.toThrow(/native git bisect selected .* expected/i);
 
     await driver.reset();
+    expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe(fixture.experimentBranch);
+    expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[4]);
+    expect(fs.existsSync(git(fixture.experimentDir, ['rev-parse', '--git-path', 'BISECT_START'])))
+      .toBe(false);
+    await expect(driver.reset()).resolves.toBeUndefined();
   });
 
   it('previews and resets through the driver without moving HEAD', async () => {

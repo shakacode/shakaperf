@@ -34,6 +34,32 @@ cd project-pinned-to-node-18 && shaka-perf audit --url https://example.com/
 nvm use 22 && shaka-perf audit --url https://example.com/
 ```
 
+### `playwrightOptions.headless` is no longer accepted
+
+Browser visibility is owned by the framework and comes from `--headed` alone, so
+`headless` is now rejected in `shared`/`visreg`/`perf` `playwrightOptions` (and
+in a test's own `config` overrides of those). A config that sets it fails at load.
+
+```ts
+// before
+playwrightOptions: { browser: 'chromium', headless: false },
+// after
+playwrightOptions: { browser: 'chromium' },
+```
+```bash
+shaka-perf compare --headed        # what `headless: false` used to do
+```
+
+Two things to know beyond the edit:
+
+- **It's a workflow change.** If `headless: false` was your local default, you
+  now pass `--headed` on *every* invocation rather than once in the file.
+- **Per-category visibility is gone.** `visreg` and `perf` could previously
+  disagree; `--headed` now applies to the whole run.
+
+Runs are still headless by default. This exists so a committed config can no
+longer silently beat what the command line asked for.
+
 ### Uncaught page errors now fail a test
 
 An uncaught exception in the page now fails that test, on either side. It never

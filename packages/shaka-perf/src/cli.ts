@@ -11,13 +11,16 @@ import { Command } from 'commander';
 import { createAuditCommand } from './audit/program';
 import { createServersCommand } from './twin-servers/program';
 import { createCompareCommand } from './compare/cli/program';
+import { createBisectCommand } from './compare/bisect/cli';
 import { createInitCommand } from './compare/cli/init';
+import { getCompareMeasurementOptionDefaults } from './compare/cli/shared-options';
 import { getCLIDefaultsFromConfig } from './cli-defaults';
 import { createDiscoverAbtestsCommand } from './discover-abtests/cli/program';
 import { createProcessesCommand, markCurrentProcess } from './processes/program';
 import { createWarmEmailCommand } from './warm-email/program';
 import { createColdEmailCommand } from './cold-email/program';
 import { createClientReportCommand } from './warm-email/client-report-program';
+import { createTroubleshootCommand } from './troubleshoot/program';
 
 const { version } = require('../package.json');
 
@@ -34,12 +37,16 @@ async function main(): Promise<void> {
     process.argv,
     (c) => c.shared.experimentURL,
   );
-  const compareCmd = await createCompareCommand();
+  const compareOptionDefaults = await getCompareMeasurementOptionDefaults(process.argv);
+  const compareCmd = createCompareCommand(compareOptionDefaults);
+  const troubleshootCmd = await createTroubleshootCommand();
   const auditCmd = createAuditCommand({ urlDefault: auditURLDefault });
 
   for (const cmd of [
     createInitCommand(),
     compareCmd,
+    troubleshootCmd,
+    createBisectCommand({ optionDefaults: compareOptionDefaults }),
     auditCmd,
     createDiscoverAbtestsCommand(),
     createServersCommand(),

@@ -24,6 +24,7 @@ import type { Flags } from 'lighthouse/types/externs.js';
 import type { Viewport } from 'shaka-shared';
 import { realChromeUserAgentForFormFactor } from '../../browser-user-agent';
 import type { PlaywrightOptions } from '../../config';
+import type { WindowPlacement } from '../../troubleshoot/window-placement';
 
 export type LighthouseConfig = Flags;
 
@@ -192,6 +193,12 @@ export interface LighthouseBenchmarkOptions {
    * `setup` IPC message, which `setupBrowser` reads to drop `--headless`.
    */
   headed?: boolean;
+  /** Title-bar caption; built by the parent so perf and visreg windows match. */
+  windowLabel?: string;
+  /** Where to put this side's Chrome and how big; launch flags, so they apply from the first paint. */
+  windowPlacement?: WindowPlacement;
+  /** Debug port for this side's Chrome. Chosen by the parent, which publishes the endpoints. */
+  cdpPort?: number;
   /**
    * Audit-only real-Chrome mode. Compare deliberately leaves this unset so
    * ambient audit environment variables cannot change its Lighthouse browser.
@@ -201,12 +208,13 @@ export interface LighthouseBenchmarkOptions {
   };
   /**
    * Resolved launch options (`shared.playwrightOptions` ← category override ←
-   * per-test config). Lighthouse drives Chrome via chrome-launcher, so only
-   * `args` and `headless` map — forwarded to the fork in the `setup` IPC
-   * message. `browser` must be chromium; the benchmark warns before forking
-   * and ignores anything else.
+   * per-test config). `troubleshoot` rides `keepBrowserOpen` here rather than
+   * opening a parallel channel. Lighthouse drives Chrome via chrome-launcher, so only
+   * `args`, `headless` and that flag map — all forwarded to the fork in the
+   * `setup` IPC message. `browser` must be chromium; the benchmark warns
+   * before forking and ignores anything else.
    */
-  playwrightOptions?: Partial<PlaywrightOptions>;
+  playwrightOptions?: Partial<PlaywrightOptions> & { keepBrowserOpen?: boolean };
   /**
    * Forwarded to the user's `testFn` so tests can vary behaviour between
    * control and experiment without the worker knowing about groups. The

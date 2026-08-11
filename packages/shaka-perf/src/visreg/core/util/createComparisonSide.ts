@@ -79,6 +79,9 @@ export async function createComparisonSide(
       },
     };
   } catch (err) {
+    // Not gated by keep-open mode, unlike every other close in the visreg path:
+    // everything reachable here throws BEFORE `newPage`, so there is no window
+    // to preserve — only an invisible context that keeping would leak.
     await context.close().catch(() => undefined);
     throw err;
   }

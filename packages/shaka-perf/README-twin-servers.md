@@ -162,6 +162,30 @@ yarn shaka-perf servers sync-changes experiment
 yarn shaka-perf servers sync-changes control
 ```
 
+Manual sync, running-menu auto-sync, and `copy-changes-to-ssh` always leave
+`audit-results/`, `compare-results/`, and `compare-bisect-results/` on the host
+by default. These defaults ship with the `shaka-perf` CLI, so they also apply
+when the CLI is installed in another project. Override either list in
+`abtests.config.ts`:
+
+```ts
+twinServers: {
+  // ...
+  copyIgnore: {
+    folders: [
+      'audit-results',
+      'compare-results',
+      'compare-bisect-results',
+      'tmp/traces',
+    ],
+    files: ['debug.log'],
+  },
+},
+```
+
+Paths use gitignore pattern syntax and are relative to the Git repository root.
+Supplying `folders` or `files` replaces that corresponding default list.
+
 ### CI / SSH Integration
 
 ```bash

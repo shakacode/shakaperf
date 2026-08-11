@@ -17,13 +17,16 @@ import type { AbTestsConfig, PlaywrightOptions } from './config';
  * The effective browser-launch options for a stage category: the category's
  * `playwrightOptions` override (only `visreg` and `perf` have one) spread
  * over `shared.playwrightOptions`. Per-key override — an override that only
- * sets `headless` keeps the shared `browser`/`args`. Pass the per-test
+ * sets `args` keeps the shared `browser`. Pass the per-test
  * EFFECTIVE config (ctx.config / applyPerTestConfigOverrides) so per-test
  * overrides are honoured — the per-unit engines (visreg, perf, audit) do.
  *
+ * Visibility is NOT here: `headless` is not a config field, and every launcher
+ * takes `headed` as its own argument.
+ *
  * The stages that reuse one browser per worker slot (accessibility,
  * agent-readiness) launch that browser from the FILE-level config — launch
- * options (`browser`/`args`/`headless`) can't vary once the browser is up.
+ * options (`browser`/`args`) can't vary once the browser is up.
  * Accessibility runs the per-test `beforeNavigate` + test body on the measured
  * page, so its per-scan context re-resolves this with the per-test `ctx.config`
  * for the context/navigation/timeout options (`ignoreHTTPSErrors`, `waitTimeout`,

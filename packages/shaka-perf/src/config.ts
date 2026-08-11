@@ -107,7 +107,8 @@ export type { Viewport };
  * per-category with a PARTIAL of the same shape (resolved via
  * {@link resolvePlaywrightOptions}). Extra keys pass through to Playwright's
  * `launch()`. The perf (Lighthouse) engine is chromium-only and maps
- * `args`/`headless` onto its chrome-launcher flags.
+ * `args` onto its chrome-launcher flags. Visibility is not a config field —
+ * see `resolvePlaywrightOptions`.
  *
  * `waitTimeout` (ms) is respected by every Playwright engine (visreg,
  * accessibility, agent-readiness) the same way: the default action +
@@ -125,7 +126,6 @@ export const PlaywrightOptionsSchema = z
   .object({
     browser: z.enum(['chromium', 'firefox', 'webkit']),
     args: z.array(z.string()).optional(),
-    headless: z.boolean().optional(),
     waitTimeout: z.number().int().positive().default(60_000),
     ignoreHTTPSErrors: z.boolean().optional(),
   })
@@ -279,7 +279,7 @@ export const PerfConfigSchema = z
     plotTitle: z.string().optional(),
     // Category override of `shared.playwrightOptions` (partial, per-key).
     // Lighthouse is chromium-only: `browser` must stay 'chromium';
-    // `args`/`headless` map onto its chrome-launcher flags.
+    // `args` maps onto its chrome-launcher flags.
     playwrightOptions: PlaywrightOptionsOverrideSchema.optional(),
   })
   .strict();
@@ -486,6 +486,19 @@ export function viewportsByStageCategory(
   };
 }
 
+/** Every place a `playwrightOptions` may be written, checked by the same rule. */
+function rejectHeadlessInConfig(parsed: Record<string, unknown>, at: string): void {
+  for (const section of ['shared', 'visreg', 'perf'] as const) {
+    const options = (parsed[section] as { playwrightOptions?: object } | undefined)
+      ?.playwrightOptions;
+    if (!options || !('headless' in options)) continue;
+    throw new Error(
+      `${at}${section}.playwrightOptions.headless is not settable — the framework `
+      + 'owns browser visibility. Remove it and use `--headed` / `--headed=false`.',
+    );
+  }
+}
+
 /**
  * Build a validated `AbTestsConfig` from a raw config object: check it against
  * the schema, apply defaults, and reject anything unrecognized. No text parsing
@@ -516,6 +529,10 @@ export function buildAbTestsConfig(raw: unknown, origin?: string): AbTestsConfig
     throw new Error(at + (path ? `${path}: ${first.message}` : first.message));
   }
   const parsed = result.data;
+  // Browser visibility belongs to the framework (`--headed`), not the config.
+  // `playwrightOptions` is `.passthrough()`, so an unknown `headless` would ride
+  // straight through to `launch()` and silently win — checked here instead.
+  rejectHeadlessInConfig(parsed, at);
   return {
     shared: parsed.shared,
     visreg: parsed.visreg,
