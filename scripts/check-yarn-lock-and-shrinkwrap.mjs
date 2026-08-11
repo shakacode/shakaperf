@@ -6,13 +6,13 @@
  * License in LICENSE.md.
  */
 
-// Asserts yarn.lock (development) and packages/shaka-perf/package-lock.json
+// Asserts yarn.lock (development) and packages/shaka-perf/npm-shrinkwrap.json
 // (what ships to npm consumers) agree on every version. Run from pre-commit
 // and CI; offline, ~50ms.
 //
 // After changing a dependency, update it the same way you would yarn.lock:
 //
-//   cd packages/shaka-perf && npm install --package-lock-only --ignore-scripts
+//   cd packages/shaka-perf && npm install --package-lock-only --ignore-scripts --no-workspaces
 //
 // npm keeps the existing resolutions and only touches what changed (measured: 4
 // versions), so the two lockfiles stay in step without regenerating either from
@@ -28,7 +28,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SHRINKWRAP = path.join(ROOT, 'packages', 'shaka-perf', 'package-lock.json');
+const SHRINKWRAP = path.join(ROOT, 'packages', 'shaka-perf', 'npm-shrinkwrap.json');
 const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 
 /** Every name@version yarn.lock resolved, plus this repo's own workspaces. */
@@ -55,15 +55,24 @@ const yarnVersions = () => {
  * Every name@version the shrinkwrap pins, under the package's REAL name.
  * `@isaacs/cliui` uses aliases (`string-width-cjs` → `npm:string-width@^4.2.0`)
  * and npm records the alias as the directory name, so the true name comes from
- * the tarball URL — otherwise every alias reads as drift. Dev entries are
- * skipped: npm never installs them for a consumer.
+ * the tarball URL — otherwise every alias reads as drift.
+ *
+ * Skips anything a consumer never receives: entries npm flagged `dev`, plus
+ * shaka-perf's own devDependencies. npm records those in the lockfile and
+ * resolves them from shaka-perf's ranges alone, while Yarn resolves them across
+ * every workspace — so they disagree by design and say nothing about consumers.
  */
 const shrinkwrapVersions = () => {
+  const manifest = readJson(path.join(ROOT, 'packages', 'shaka-perf', 'package.json'));
+  const devOnly = new Set(
+    Object.keys(manifest.devDependencies ?? {}).filter((n) => !manifest.dependencies?.[n]),
+  );
   const set = new Set();
   for (const [key, entry] of Object.entries(readJson(SHRINKWRAP).packages ?? {})) {
     const at = key.lastIndexOf('node_modules/');
     if (at === -1 || !entry?.version || entry.dev) continue;
     const url = entry.resolved?.includes('/-/') ? new URL(entry.resolved) : null;
+    if (devOnly.has(url ? decodeURIComponent(url.pathname.slice(1).split('/-/')[0]) : key.slice(at + 13))) continue;
     set.add(`${url ? decodeURIComponent(url.pathname.slice(1).split('/-/')[0]) : key.slice(at + 13)}@${entry.version}`);
   }
   return set;
@@ -78,7 +87,7 @@ if (!drifted.length) {
   process.exit(0);
 }
 process.stderr.write(
-  `${drifted.length} version(s) in package-lock.json that yarn.lock does not resolve:\n\n` +
+  `${drifted.length} version(s) in npm-shrinkwrap.json that yarn.lock does not resolve:\n\n` +
     drifted.map((s) => `  ${s}\n`).join('') +
     '\nRegenerate both together (see the header of this file), or `yarn up <pkg>` to\nmove yarn.lock onto the published versions.\n',
 );

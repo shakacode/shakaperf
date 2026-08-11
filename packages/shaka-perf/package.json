@@ -78,13 +78,14 @@
   },
   "scripts": {
     "install": "node-gyp rebuild",
-    "postinstall": "node scripts/save-node-path.js",
+    "//postinstall": "Keeps npm-shrinkwrap.json in step with yarn.lock. Yarn runs this exactly when it rebuilds the workspace, i.e. when the dependency tree changed. See scripts/sync-npm-lock.mjs — it is a no-op outside this repo, since a consumer installing shaka-perf runs this same script.",
+    "postinstall": "node scripts/save-node-path.js && node ../../scripts/sync-npm-lock.mjs",
     "build": "yarn build-report-shell && tsc && node scripts/copy-assets.mjs",
     "build-report-shell": "vite build --config report-shell/vite.config.ts",
     "dev-report-shell": "vite --config report-shell/vite.config.ts",
     "typecheck": "tsc -p tsconfig.test.json",
     "test": "jest",
-    "prepack": "yarn build && node ../../scripts/sync-license.mjs && cp package-lock.json npm-shrinkwrap.json",
+    "prepack": "yarn build && node ../../scripts/sync-license.mjs",
     "install-global": "yarn workspaces foreach -Apt --include 'packages/*' run build && node scripts/install-global.mjs"
   },
   "keywords": [
@@ -138,7 +139,7 @@
     "junit-report-builder": "^3.1.0",
     "lighthouse": "13.4.1",
     "lodash": "^4.17.21",
-    "node-gyp": "^12.1.0",
+    "node-gyp": "12.1.0",
     "object-hash": "3.0.0",
     "opn": "^6.0.0",
     "os": "^0.1.2",
@@ -186,5 +187,18 @@
     "typescript": "^5.9.0",
     "vite": "^6.0.0",
     "vite-plugin-singlefile": "^2.1.0"
+  },
+  "//overrides": "Mirrors the root package.json `resolutions`, which are Yarn-only: npm ignores them, so without this the CVE pins there never reach npm-shrinkwrap.json nor the consumers installing from it. Entries that are direct dependencies are pinned in `dependencies` instead, since npm rejects overriding those. Keep the two in step.",
+  "overrides": {
+    "@tracerbench/find-chrome": "2.0.0",
+    "fast-xml-parser": "^5.7.0",
+    "webpack-dev-server": "^5.2.6",
+    "qs": "^6.15.3",
+    "serialize-javascript": "^7.0.5",
+    "uuid": "^11.1.1",
+    "@ungap/structured-clone": "^1.3.1",
+    "diff2html": {
+      "diff": "^8.0.3"
+    }
   }
 }
