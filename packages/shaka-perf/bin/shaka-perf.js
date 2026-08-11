@@ -43,7 +43,7 @@ if (process.allowedNodeEnvironmentFlags.has('--disable-warning')) {
   nodeArgs.push('--disable-warning=MODULE_TYPELESS_PACKAGE_JSON');
 }
 
-const result = spawnSync(nodeBin, [...nodeArgs, cliEntry, ...process.argv.slice(2)], {
+const result = spawnSync(process.execPath, [...nodeArgs, cliEntry, ...process.argv.slice(2)], {
   stdio: 'inherit',
   env: { ...process.env, NODE_PATH: nodePathEnv },
 });
