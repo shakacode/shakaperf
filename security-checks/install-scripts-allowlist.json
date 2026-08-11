@@ -1,0 +1,9 @@
+{
+  "//": "Install hooks in shaka-perf's published npm graph, pinned exactly so every upgrade requires a fresh review. Repository-local Yarn hooks are outside this policy. See security-checks/check-install-scripts.mjs.",
+  "allowed": [
+    { "package": "esbuild@0.28.1", "reason": "`node install.js` validates the platform binary from the matching @esbuild/* package. Reached via tsx, which loads the user's abtests.config.ts." },
+    { "package": "tesseract.js@7.0.0", "reason": "`opencollective-postinstall || true` prints a funding banner. No side effects, cannot fail an install." },
+    { "package": "fsevents@2.3.2", "reason": "`node-gyp rebuild` for the macOS-only file watcher (os: [darwin]), an optional dependency of playwright. Never installed on Linux or Windows." },
+    { "package": "fsevents@2.3.3", "reason": "Same package at the version tsx depends on; both copies appear in the graph." }
+  ]
+}

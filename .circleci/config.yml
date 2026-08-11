@@ -20,8 +20,14 @@ commands:
   setup-yarn:
     description: Install Node packages with Yarn
     steps:
+      - run:
+          name: Check published install hooks before install
+          command: node security-checks/check-install-scripts.mjs
       - node/install-packages:
           pkg-manager: yarn
+      - run:
+          name: Verify dependency locks were not rewritten
+          command: git diff --exit-code -- yarn.lock packages/shaka-perf/npm-shrinkwrap.json
 
   setup-yarn-and-build-packages:
     description: Install Node packages with Yarn and build all packages
@@ -68,6 +74,7 @@ jobs:
     steps:
       - checkout
       - setup-yarn-and-build-packages
+      - run: yarn security-checks
       - run:
           name: Run shaka-bundle-size tests
           command: |

@@ -14,6 +14,26 @@ version being released and updates the "Current version" line at the bottom.
 
 ## Unreleased
 
+### `SHAKA_PERF_NODE` removed, and the CLI no longer pins a Node version
+
+`npm install -g shaka-perf` used to record the installing Node binary (a
+`postinstall` hook wrote it to `bin/.node-path`) and re-exec the CLI under it,
+with `SHAKA_PERF_NODE` as a manual override. Both are gone — the CLI now runs
+under whatever `node` is first on PATH.
+
+This only affects global installs alongside a version manager. If a project
+pins a Node older than shaka-perf's `engines` (`>=20.6.0`), the CLI now fails
+there instead of silently re-execing under the Node it was installed with.
+
+```bash
+# BEFORE — ran under the install-time Node whatever the project pinned
+cd project-pinned-to-node-18 && shaka-perf audit --url https://example.com/
+```
+```bash
+# AFTER — select a supported Node in the shell that runs shaka-perf
+nvm use 22 && shaka-perf audit --url https://example.com/
+```
+
 ### `playwrightOptions.headless` is no longer accepted
 
 Browser visibility is owned by the framework and comes from `--headed` alone, so

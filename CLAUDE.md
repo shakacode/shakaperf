@@ -144,4 +144,4 @@ packages/shaka-perf/src/
 
 ## Publishing
 
-Git tags trigger npm publish: `git tag package-name@version && git push origin --tags`
+See @.claude/commands/deploy.md

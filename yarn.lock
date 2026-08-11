@@ -6257,6 +6257,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"chalk@npm:^6.0.0":
+  version: 6.0.0
+  resolution: "chalk@npm:6.0.0"
+  checksum: 10c0/47fd9028aa66fa532295525fe3ac5aec5e467e0d86847d4b5f6e01f9c9bb70b6fd1edca79cddc78a0f31a357baa65cc752d30c6557d025904207d113c82d8962
+  languageName: node
+  linkType: hard
+
 "char-regex@npm:^1.0.2":
   version: 1.0.2
   resolution: "char-regex@npm:1.0.2"
@@ -11233,13 +11240,13 @@ __metadata:
   linkType: hard
 
 "react-dom@npm:^19.0.0":
-  version: 19.2.5
-  resolution: "react-dom@npm:19.2.5"
+  version: 19.2.8
+  resolution: "react-dom@npm:19.2.8"
   dependencies:
     scheduler: "npm:^0.27.0"
   peerDependencies:
-    react: ^19.2.5
-  checksum: 10c0/8067606e9f58e4c2e8cb5f09570217dbc71c4843ebcaa20ae2085912d3e3a351f17d8f7c1713313cdda7f272840c8c34ff6c860fcb840862071bceea218e0c63
+    react: ^19.2.8
+  checksum: 10c0/41ba2247b76f687fcfe5bbc99f514d6b851d8c8041c2f5ded36ed05bd7fdc5208cacbac9de51e3e6633e77f96f44cec9f0d4a5a55184dba4e00738f224439134
   languageName: node
   linkType: hard
 
@@ -11350,9 +11357,9 @@ __metadata:
   linkType: hard
 
 "react@npm:^19.0.0":
-  version: 19.2.5
-  resolution: "react@npm:19.2.5"
-  checksum: 10c0/4b5f231dbef92886f602533c9ce3bde04d99f0e71dfb5d794c43e02726efaad0421c08688f75fc98a6d6e1dc017372e1af7abbfecdc86a79968f461675931a7a
+  version: 19.2.8
+  resolution: "react@npm:19.2.8"
+  checksum: 10c0/5f86bdb56426652fd6d989d30a6f2e603c057272c47c9ca3a3fbe190a3a39ee9ccce937d63cfc039717abed1b8891d6a499134bc35311acc07eafdacd86537cd
   languageName: node
   linkType: hard
 
@@ -11958,7 +11965,7 @@ __metadata:
     junit-report-builder: "npm:^3.1.0"
     lighthouse: "npm:13.4.1"
     lodash: "npm:^4.17.21"
-    node-gyp: "npm:^12.1.0"
+    node-gyp: "npm:12.1.0"
     object-hash: "npm:3.0.0"
     opn: "npm:^6.0.0"
     os: "npm:^0.1.2"
@@ -11971,7 +11978,7 @@ __metadata:
     race-cancellation: "npm:^0.4.1"
     react: "npm:^19.0.0"
     react-dom: "npm:^19.0.0"
-    shaka-shared: "workspace:^"
+    shaka-shared: "npm:^0.2.1"
     sharp: "npm:^0.35.0"
     temp: "npm:^0.9.4"
     tesseract.js: "npm:^7.0.0"
@@ -11987,7 +11994,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"shaka-shared@workspace:^, shaka-shared@workspace:packages/shaka-shared":
+"shaka-shared@npm:^0.2.1, shaka-shared@workspace:^, shaka-shared@workspace:packages/shaka-shared":
   version: 0.0.0-use.local
   resolution: "shaka-shared@workspace:packages/shaka-shared"
   dependencies:
@@ -12102,6 +12109,7 @@ __metadata:
     "@playwright/test": "npm:^1.50.0"
     "@types/node": "npm:^20.0.0"
     "@types/pngjs": "npm:^6.0.5"
+    chalk: "npm:^6.0.0"
     pixelmatch: "npm:^7.1.0"
     pngjs: "npm:^7.0.0"
     typescript: "npm:^5.3.3"

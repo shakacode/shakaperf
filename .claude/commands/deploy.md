@@ -25,7 +25,10 @@ Git tags trigger npm publish via CI. Packages that depend on `shaka-shared` (sha
 5. If `shaka-shared` is being deployed:
    a. Create and push the `shaka-shared@<version>` tag
    b. Wait for the publish workflow to complete successfully
-   c. Only then proceed to the remaining packages
+   c. Regenerate `packages/shaka-perf/npm-shrinkwrap.json` (`security-checks/sync-npm-shrinkwrap.mjs` regenerates it; a plain `yarn install` runs it via the Yarn plugin) and commit it — it pins `shaka-shared` to an exact version, so it must be refreshed *after* the new one is on npm. Expect CI to be red between step 4 and this commit: `yarn security-checks` fails while the shrinkwrap still names the old `shaka-shared`, and nothing can fix that until it is published.
+   d. Only then proceed to the remaining packages
+
+   Before tagging `shaka-perf`, run `yarn security-checks` — it fails if `npm-shrinkwrap.json` (shipped in the tarball, pins the graph for consumers) has drifted from `yarn.lock`, if a dependency gained an unreviewed install hook, or if a pinned version has a known high/critical advisory.
 
 6. Create and push tags for the remaining packages (these can be pushed together since they don't depend on each other).
 

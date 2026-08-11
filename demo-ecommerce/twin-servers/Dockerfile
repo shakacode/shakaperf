@@ -22,7 +22,9 @@ ARG NODE_PATH
 ARG APP_PATH
 
 ENV RUBY_VERSION=3.3.7
-ENV NODE_VERSION=24.13.0
+# Keep in step with the repo's .nvmrc: the root `yarn install` below runs the
+# sync-npm-shrinkwrap Yarn plugin, which refuses npm older than 11.6.3.
+ENV NODE_VERSION=24.13.1
 
 # Install base packages
 RUN apt-get update -qq && \
@@ -79,6 +81,10 @@ USER ${NON_ROOT_USER}
 # Copy monorepo root files for yarn workspace resolution
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} package.json yarn.lock .yarnrc.yml ./
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} .yarn ./.yarn
+
+# .yarnrc.yml registers the sync-npm-shrinkwrap plugin, whose afterAllInstalled
+# hook runs this directory's script on every install — including the one below.
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} security-checks ./security-checks
 
 # Copy workspace packages (dependencies for demo-ecommerce)
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages ./packages
