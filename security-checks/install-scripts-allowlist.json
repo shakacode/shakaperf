@@ -1,5 +1,5 @@
 {
-  "//": "Install hooks in shaka-perf's published npm graph, pinned exactly so every upgrade requires a fresh review. Repository-local Yarn hooks are outside this policy. See scripts/check-install-scripts.mjs.",
+  "//": "Install hooks in shaka-perf's published npm graph, pinned exactly so every upgrade requires a fresh review. Repository-local Yarn hooks are outside this policy. See security-checks/check-install-scripts.mjs.",
   "allowed": [
     { "package": "esbuild@0.28.1", "reason": "`node install.js` validates the platform binary from the matching @esbuild/* package. Reached via tsx, which loads the user's abtests.config.ts." },
     { "package": "tesseract.js@7.0.0", "reason": "`opencollective-postinstall || true` prints a funding banner. No side effects, cannot fail an install." },

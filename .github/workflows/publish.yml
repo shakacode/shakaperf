@@ -32,7 +32,7 @@ jobs:
           echo "Publishing $PACKAGE_NAME version $VERSION"
 
       - name: Check published install hooks before install
-        run: node scripts/check-install-scripts.mjs
+        run: node security-checks/check-install-scripts.mjs
 
       - name: Install dependencies
         run: yarn install --immutable
@@ -42,7 +42,7 @@ jobs:
 
       # A tag push skips CI, so this is the last gate before the tarball is public.
       - name: Check supply chain
-        run: yarn check-supply-chain
+        run: yarn security-checks
 
       - name: Build shaka-shared
         run: yarn workspace shaka-shared run build

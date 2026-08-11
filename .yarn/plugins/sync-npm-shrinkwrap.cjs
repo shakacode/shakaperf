@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-// Runs packages/shaka-perf/scripts/sync-npm-shrinkwrap.mjs after local Yarn installs,
+// Runs security-checks/sync-npm-shrinkwrap.mjs after local Yarn installs,
 // so npm-shrinkwrap.json follows yarn.lock automatically during dependency work.
 // CI must validate the reviewed shrinkwrap, never regenerate it.
 //
@@ -43,7 +43,7 @@ module.exports = {
         afterAllInstalled: (project) => {
           if (!shouldSyncNpmShrinkwrap(process.env)) return;
           const root = project.cwd;
-          const script = path.join(root, 'packages', 'shaka-perf', 'scripts', 'sync-npm-shrinkwrap.mjs');
+          const script = path.join(root, 'security-checks', 'sync-npm-shrinkwrap.mjs');
           // Errors are not swallowed: a failed refresh means the two lockfiles
           // have drifted, and the next commit would ship that.
           execFileSync(process.execPath, [script], { cwd: root, stdio: 'inherit' });

@@ -53,11 +53,12 @@ export const evaluateInstallScriptsPolicy = ({ lock, allowlist }) => {
   return { errors, found };
 };
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(HERE, '..');
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 
 const main = () => {
-  const allowlist = readJson(path.join(ROOT, 'scripts', 'install-scripts-allowlist.json'));
+  const allowlist = readJson(path.join(HERE, 'install-scripts-allowlist.json'));
   const allowed = new Set(allowlist.allowed.map((entry) => entry.package));
   const result = evaluateInstallScriptsPolicy({
     lock: readJson(path.join(ROOT, 'packages', 'shaka-perf', 'npm-shrinkwrap.json')),

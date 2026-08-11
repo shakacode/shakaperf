@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import * as lockfileChecker from './check-yarn-lock-and-shrinkwrap.mjs';
+import * as lockfileChecker from './check-lockfiles-consistency.mjs';
 
 const {
   collectNpmProductionVersions,

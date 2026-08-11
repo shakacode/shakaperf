@@ -6,34 +6,33 @@
  * License in LICENSE.md.
  */
 
-// Updates npm-shrinkwrap.json so it stays in step with yarn.lock. Run from this
-// package's `postinstall`, which Yarn triggers
-// exactly when it rebuilds the workspace — i.e. when the dependency tree
-// changed, which is when the lockfile needs updating.
+// Updates packages/shaka-perf/npm-shrinkwrap.json so it stays in step with
+// yarn.lock. Run from the repository-local Yarn plugin
+// (.yarn/plugins/sync-npm-shrinkwrap.cjs), whose `afterAllInstalled` hook fires
+// on every install — including one that rewrites yarn.lock without rebuilding
+// the workspace.
 //
 // Errors are not caught: they abort `yarn install` with npm's own output. A
 // silent failure here means the two lockfiles have drifted and nobody knows
 // until the pre-commit check catches it much later. CI never regenerates a
 // reviewed shrinkwrap; the pre-commit check refuses drift instead.
 //
-// It lives inside the package, and therefore ships, because Yarn's built-in shell
-// has no `if` — so the postinstall cannot test for an unpublished path, and a
-// missing file would fail every consumer install. The guard below is what makes
-// it a no-op there instead.
+// This is a repository tool and is deliberately outside the published package,
+// so a consumer install can never run it against the shrinkwrap in their own
+// node_modules. The guard below still refuses to run outside this repo.
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const PKG_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ROOT = path.resolve(PKG_DIR, '..', '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const PKG_DIR = path.join(ROOT, 'packages', 'shaka-perf');
 const SHRINKWRAP = path.join(PKG_DIR, 'npm-shrinkwrap.json');
 const isCI = process.env.CI && !['0', 'false'].includes(process.env.CI.toLowerCase());
 
-// shaka-perf's postinstall also runs on a consumer's machine. Unguarded, npm
-// would rewrite the shrinkwrap sitting in their node_modules — the very file it
-// just used to decide what to install. Only proceed inside this repo.
+// Only ever regenerate the shrinkwrap of this checkout, never one that happens
+// to sit at the same relative path elsewhere.
 const root = path.join(ROOT, 'package.json');
 if (isCI) process.exit(0);
 if (!fs.existsSync(root) || JSON.parse(fs.readFileSync(root, 'utf8')).name !== 'shakaperf') process.exit(0);
