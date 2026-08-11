@@ -6,43 +6,80 @@
  * License in LICENSE.md.
  */
 
-// Fails if a package in shaka-perf's published graph runs an install hook that
-// nobody has reviewed. A malicious postinstall in a transitive dependency is the
-// highest-value attack on a CLI people install globally, and shipping a
-// shrinkwrap rather than a bundled node_modules means those hooks cannot be
-// stripped from the tarball — so the defence is that a NEW one cannot appear
-// unnoticed.
-//
-// The signal is npm's `hasInstallScript`, recorded per package in the
-// shrinkwrap. It covers the whole graph including other platforms, and needs no
-// node_modules — which matters, since Yarn PnP means this repo has none.
-// Allowlisting name@version is a tripwire for free: a package cannot change its
-// install script without a version bump, and the new version is not on the list.
+// Every install hook npm consumers can receive through shaka-perf's shrinkwrap
+// must be reviewed at an exact name@version, with no stale entries. Repository-
+// local Yarn and workspace lifecycle hooks are deliberately outside this check.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const exactPackageVersion = /^(?:@[^/@]+\/[^/@]+|[^/@]+)@\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
+const packageNameFromPath = (packagePath) => {
+  const marker = 'node_modules/';
+  return packagePath.slice(packagePath.lastIndexOf(marker) + marker.length);
+};
+
+export const evaluateInstallScriptsPolicy = ({ lock, allowlist }) => {
+  const errors = [];
+  const found = [...new Set(
+    Object.entries(lock?.packages ?? {})
+      .filter(([packagePath, entry]) => packagePath && entry?.hasInstallScript && !entry.dev)
+      .map(([packagePath, entry]) =>
+        `${entry.name ?? packageNameFromPath(packagePath)}@${entry.version}`),
+  )].sort();
+
+  const allowedEntries = allowlist?.allowed ?? [];
+  const allowedByPackage = new Map();
+  for (const entry of allowedEntries) {
+    if (!exactPackageVersion.test(entry?.package ?? '')) {
+      errors.push(`allowlist entry is not an exact name@version: ${entry?.package ?? '(missing)'}`);
+      continue;
+    }
+    if (!entry.reason?.trim()) errors.push(`allowlist entry ${entry.package} must have a review reason`);
+    if (allowedByPackage.has(entry.package)) errors.push(`duplicate allowlist entry: ${entry.package}`);
+    allowedByPackage.set(entry.package, entry);
+  }
+
+  const foundSet = new Set(found);
+  for (const packageSpec of found) {
+    if (!allowedByPackage.has(packageSpec)) errors.push(`unreviewed install hook: ${packageSpec}`);
+  }
+  for (const packageSpec of allowedByPackage.keys()) {
+    if (!foundSet.has(packageSpec)) errors.push(`stale allowlist entry: ${packageSpec}`);
+  }
+
+  return { errors, found };
+};
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
+const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 
-const lock = readJson(path.join(ROOT, 'packages', 'shaka-perf', 'npm-shrinkwrap.json'));
-const allowed = new Set(readJson(path.join(ROOT, 'scripts', 'install-scripts-allowlist.json')).allowed.map((e) => e.package));
+const main = () => {
+  const allowlist = readJson(path.join(ROOT, 'scripts', 'install-scripts-allowlist.json'));
+  const allowed = new Set(allowlist.allowed.map((entry) => entry.package));
+  const result = evaluateInstallScriptsPolicy({
+    lock: readJson(path.join(ROOT, 'packages', 'shaka-perf', 'npm-shrinkwrap.json')),
+    allowlist,
+  });
 
-const found = Object.entries(lock.packages)
-  .filter(([key, entry]) => key && entry.hasInstallScript && !entry.dev)
-  .map(([key, entry]) => `${key.slice(key.lastIndexOf('node_modules/') + 13)}@${entry.version}`);
+  for (const packageSpec of result.found) {
+    process.stdout.write(`check-install-scripts: ${allowed.has(packageSpec) ? 'ok  ' : 'NEW '} ${packageSpec}\n`);
+  }
 
-const unreviewed = found.filter((spec) => !allowed.has(spec));
+  if (result.errors.length) {
+    process.stderr.write(
+      `\ncheck-install-scripts: policy failed with ${result.errors.length} issue(s):\n` +
+      result.errors.map((error) => `  - ${error}`).join('\n') +
+      '\nReview the package source and install hook, then update the exact allowlist.\n',
+    );
+    process.exit(1);
+  }
 
-for (const spec of found) process.stdout.write(`check-install-scripts: ${allowed.has(spec) ? 'ok  ' : 'NEW '} ${spec}\n`);
+  process.stdout.write(`check-install-scripts: all ${result.found.length} npm install hooks reviewed\n`);
+};
 
-if (unreviewed.length) {
-  process.stderr.write(
-    `\ncheck-install-scripts: ${unreviewed.length} unreviewed install hook(s): ${unreviewed.join(', ')}\n` +
-      'Read each package\'s install script, then add it to scripts/install-scripts-allowlist.json\n' +
-      'with a reason. Inspect one with: npm view <name>@<version> scripts\n',
-  );
-  process.exit(1);
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
 }
-process.stdout.write(`check-install-scripts: all ${found.length} install hooks reviewed\n`);

@@ -31,11 +31,18 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Publishing $PACKAGE_NAME version $VERSION"
 
+      - name: Check published install hooks before install
+        run: node scripts/check-install-scripts.mjs
+
       - name: Install dependencies
         run: yarn install --immutable
 
+      - name: Verify dependency locks were not rewritten
+        run: git diff --exit-code -- yarn.lock packages/shaka-perf/npm-shrinkwrap.json
+
       # A tag push skips CI, so this is the last gate before the tarball is public.
-      - run: yarn check-supply-chain
+      - name: Check supply chain
+        run: yarn check-supply-chain
 
       - name: Build shaka-shared
         run: yarn workspace shaka-shared run build
