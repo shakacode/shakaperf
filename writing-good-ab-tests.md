@@ -205,6 +205,49 @@ abTest('Address suggestions', {
 
 `beforeNavigate` runs on the `BrowserContext` before the page exists, so cookies, init scripts, request blocking, and routes cover the first navigation and subframes.
 
+## Annotate only user actions
+
+Annotations form a timeline of the user journey. Use them for actions a user performs—clicking, typing, selecting, hovering, or submitting—not for test mechanics such as setup, request interception, waiting, assertions, retries, or stabilization.
+
+### BAD — annotate test plumbing
+
+```typescript
+abTest('Compact cards', {
+  startingPath: '/menus/compact-menu',
+}, async ({ page, browserContext, annotate }) => {
+  await annotate('installing compact-card interception');
+  await stubCompactCards(browserContext);
+
+  await annotate('clicking Compact layout');
+  await page.getByRole('button', { name: 'Compact layout' }).click();
+
+  await annotate('waiting for compact cards');
+  await page.locator('.pm-compact-dish-card').first().waitFor({ state: 'visible' });
+});
+```
+
+### GOOD — annotate the action, leave mechanics unannotated
+
+```typescript
+abTest('Compact cards', {
+  startingPath: '/menus/compact-menu',
+  config: {
+    shared: {
+      beforeNavigate: async (ctx) => {
+        await applyGlobalBeforeNavigate(ctx);
+        await stubCompactCards(ctx.context);
+      },
+    },
+  },
+}, async ({ page, annotate }) => {
+  await annotate('clicking Compact layout');
+  await page.getByRole('button', { name: 'Compact layout' }).click();
+  await page.locator('.pm-compact-dish-card').first().waitFor({ state: 'visible' });
+});
+```
+
+Put an annotation immediately before its user action so the timeline chip marks that action. The surrounding setup and readiness checks should remain visible in the source, but not compete with the user journey in reports.
+
 ## Capture presence, not absence
 
 Shaka-perf is a snapshot-heavy framework: the captured artifact should contain the UI that proves the state under test. Do not use it for behavior whose only result is that an element is gone. A screenshot of the page after a dialog closes provides no meaningful evidence about the dialog or its close button.
@@ -276,4 +319,48 @@ abTest('Pick schedule time', {
 
 Choose `viewport` only when the whole viewport is the subject. Otherwise, a narrow selector produces a more meaningful diff and isolates the test from unrelated layout churn.
 
+## Capture each UI state once
+
+Different test names, setup steps, or routes do not make captures distinct. If tests finish by capturing the same component in the same rendered state, they duplicate coverage and multiply snapshot noise and runtime.
+
+### BAD — capture the same sign-in dialog through two routes
+
+```typescript
+const SIGN_IN_DIALOG = '[role="dialog"][aria-labelledby="sign-in-title"]';
+
+abTest('Sign in from menu', {
+  startingPath: '/menus/dinner-menu',
+  visregSelectors: [SIGN_IN_DIALOG],
+}, async ({ page }) => {
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.locator(SIGN_IN_DIALOG).waitFor({ state: 'visible' });
+  /* page stabilization is ommitted */
+});
+
+abTest('Sign in from cart', {
+  startingPath: '/cart',
+  visregSelectors: [SIGN_IN_DIALOG],
+}, async ({ page }) => {
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.locator(SIGN_IN_DIALOG).waitFor({ state: 'visible' });
+  /* page stabilization is ommitted */
+});
+```
+
+### GOOD — use one canonical route for one rendered state
+
+```typescript
+const SIGN_IN_DIALOG = '[role="dialog"][aria-labelledby="sign-in-title"]';
+
+abTest('Sign-in dialog', {
+  startingPath: '/menus/dinner-menu',
+  visregSelectors: [SIGN_IN_DIALOG],
+}, async ({ page }) => {
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  const dialog = page.locator(SIGN_IN_DIALOG);
+  /* page stabilization is ommitted */
+});
+```
+
+Before adding a test, inventory the final component and state already captured by the suite. Add another route only when it produces a materially different rendered state or when route performance is itself the subject and the capture provides route-specific evidence. Otherwise, cover alternate-route behavior in vanilla Playwright or Cypress.
 
