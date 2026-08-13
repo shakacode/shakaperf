@@ -1,12 +1,12 @@
 {
   "name": "shaka-perf",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
       "name": "shaka-perf",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "license": "SEE LICENSE IN LICENSE.md",
       "dependencies": {
         "@axe-core/playwright": "^4.11.3",
