@@ -321,7 +321,9 @@ Choose `viewport` only when the whole viewport is the subject. Otherwise, a narr
 
 ## Capture each UI state once
 
-Different test names, setup steps, or routes do not make captures distinct. If tests finish by capturing the same component in the same rendered state, they duplicate coverage and multiply snapshot noise and runtime.
+Different test names, setup steps, or routes do not make captures distinct. If two tests finish by capturing the same component in the same rendered state, they duplicate coverage and multiply snapshot noise and runtime.
+
+This rule is about **other tests**, not about your own test's viewports. Viewports are exempt. The same subject can render differently on different screens. So several do not dedupe viewports.
 
 ### BAD — capture the same sign-in dialog through two routes
 
@@ -347,6 +349,26 @@ abTest('Sign in from cart', {
 });
 ```
 
+### BAD — trim viewports because the shots would match
+
+```typescript
+abTest('Sign-in dialog', {
+  startingPath: '/menus/dinner-menu',
+  visregSelectors: [SIGN_IN_DIALOG],
+  config: {
+    // all viewports render the same dialog element, so desktop is enough - DO NOT DO THAT!!!
+    visreg: { viewports: ['desktop'] },
+    perf: { viewports: ['desktop', 'phone'] },
+  },
+}, async ({ page }) => {
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  const dialog = page.locator(SIGN_IN_DIALOG);
+  /* page stabilization is ommitted */
+});
+```
+
+Fewer visreg viewports than perf viewports is always backwards.
+
 ### GOOD — use one canonical route for one rendered state
 
 ```typescript
@@ -362,5 +384,7 @@ abTest('Sign-in dialog', {
 });
 ```
 
-Before adding a test, inventory the final component and state already captured by the suite. Add another route only when it produces a materially different rendered state or when route performance is itself the subject and the capture provides route-specific evidence. Otherwise, cover alternate-route behavior in vanilla Playwright or Cypress.
+Before adding a test, inventory the final component and state already captured by **the rest of the suite**. Add another route only when it produces a materially different rendered state or when route performance is itself the subject and the capture provides route-specific evidence. Otherwise, cover alternate-route behavior in vanilla Playwright or Cypress.
+
+The inventory is across tests. Within one test, the viewport list is a separate decision and this rule has nothing to say about it.
 
