@@ -15,6 +15,7 @@ import { buildAbTestsConfig, type AbTestsConfig } from '../config';
 import { runPipeline } from '../pipeline/runner';
 import { createTroubleshootPipeline } from './pipeline';
 import { getCLIDefaultsFromConfig } from '../cli-defaults';
+import { resolveUrl } from '../pipeline/unit-urls';
 import {
   DEFAULT_CDP_BASE_PORT,
   allocateCdpPorts,
@@ -209,8 +210,14 @@ export async function createTroubleshootCommand(): Promise<Command> {
           test: test.name,
           viewport: viewportLabel,
           headless,
-          controlURL,
-          experimentURL,
+          controlURL: resolveUrl(
+            test.startingPath,
+            test.config?.shared?.controlURL ?? controlURL,
+          ),
+          experimentURL: resolveUrl(
+            test.experimentPathOverride ?? test.startingPath,
+            test.config?.shared?.experimentURL ?? experimentURL,
+          ),
           browsers: describeCdpBrowsers(cdpPorts),
         };
         const sessionFile = writeCdpSessionFile(expectedResultsRoot, session);

@@ -33,6 +33,14 @@ describe('reusable compare results', () => {
   });
 
   it('rehydrates only selected category outcomes from compare-results', () => {
+    test.config = {
+      shared: {
+        controlURL: 'http://per-test-control.test/base',
+        experimentURL: 'http://per-test-experiment.test/base',
+      },
+    };
+    test.startingPath = '/control-path';
+    test.experimentPathOverride = '/experiment-path';
     const resultsRoot = path.join(cwd, 'compare-results');
     const store = new ArtifactStore(resultsRoot);
     store.writeOutcome(test, DESKTOP_VIEWPORT.label, {
@@ -63,6 +71,8 @@ describe('reusable compare results', () => {
     expect(result.testResults).toMatchObject([{
       name: 'Homepage',
       filePath: 'tests/homepage.abtest.ts',
+      controlUrl: 'http://per-test-control.test/control-path',
+      experimentUrl: 'http://per-test-experiment.test/experiment-path',
       outcomes: [{
         stage: 'accessibility',
         viewport: DESKTOP_VIEWPORT,

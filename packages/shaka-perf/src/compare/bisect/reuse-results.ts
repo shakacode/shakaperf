@@ -68,10 +68,13 @@ function loadTestResult(
     name: test.name,
     filePath: test.file ? path.relative(options.cwd, test.file) : '(unknown source)',
     startingPath: test.startingPath,
-    controlUrl: resolveUrl(test.startingPath, options.controlURL),
+    controlUrl: resolveUrl(
+      test.startingPath,
+      test.config?.shared?.controlURL ?? options.controlURL,
+    ),
     experimentUrl: resolveUrl(
       test.experimentPathOverride ?? test.startingPath,
-      options.experimentURL,
+      test.config?.shared?.experimentURL ?? options.experimentURL,
     ),
     code: null,
     chips: [],

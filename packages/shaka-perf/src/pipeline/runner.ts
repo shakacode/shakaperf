@@ -1036,10 +1036,13 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     logger,
     priorOutcomes: unit.priorOutcomes,
     runtime,
-    controlURL: resolveUrl(unit.test.startingPath, unitUrlOptions.controlURL),
+    controlURL: resolveUrl(
+      unit.test.startingPath,
+      unit.test.config?.shared?.controlURL ?? unitUrlOptions.controlURL,
+    ),
     experimentURL: resolveUrl(
       unit.test.experimentPathOverride ?? unit.test.startingPath,
-      unitUrlOptions.experimentURL,
+      unit.test.config?.shared?.experimentURL ?? unitUrlOptions.experimentURL,
     ),
     testAndViewportId,
     raceCancellation,
@@ -1417,8 +1420,14 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
       name: burnDisplayName(test),
       filePath: relFilePath,
       startingPath: test.startingPath,
-      controlUrl: resolveUrl(test.startingPath, controlURL),
-      experimentUrl: resolveUrl(test.experimentPathOverride ?? test.startingPath, experimentURL),
+      controlUrl: resolveUrl(
+        test.startingPath,
+        test.config?.shared?.controlURL ?? controlURL,
+      ),
+      experimentUrl: resolveUrl(
+        test.experimentPathOverride ?? test.startingPath,
+        test.config?.shared?.experimentURL ?? experimentURL,
+      ),
       code: readTestSource(test.file, test.line),
       durationMs: 0,
       measuredAt: freshestArtifactMtime(resultsRoot, test, pipeline.stages, config),
