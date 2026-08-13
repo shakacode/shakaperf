@@ -32,7 +32,18 @@ jest.mock('../../config-loader', () => ({
   loadTests: jest.fn(),
 }));
 
-function stage(name: StageName, category: StageCategory = 'perf'): Stage<Record<string, never>> {
+interface ObservedStageUrls {
+  readonly phase: 'run' | 'summary';
+  readonly stage: StageName;
+  readonly controlURL: string;
+  readonly experimentURL: string;
+}
+
+function stage(
+  name: StageName,
+  category: StageCategory = 'perf',
+  observedUrls?: ObservedStageUrls[],
+): Stage<Record<string, never>> {
   return {
     name,
     label: name,
@@ -40,9 +51,25 @@ function stage(name: StageName, category: StageCategory = 'perf'): Stage<Record<
     description: `${name} stage`,
     selfContainedReportStrip: {},
     applies: () => true,
-    run: async (_ctx: TestContext, _pool: WorkerPool) => ({}),
+    run: async (ctx: TestContext, _pool: WorkerPool) => {
+      observedUrls?.push({
+        phase: 'run',
+        stage: name,
+        controlURL: ctx.controlURL,
+        experimentURL: ctx.experimentURL,
+      });
+      return {};
+    },
     renderArtifacts: () => null,
-    machineReadableSummary: () => ({}),
+    machineReadableSummary: (_measurement, ctx) => {
+      observedUrls?.push({
+        phase: 'summary',
+        stage: name,
+        controlURL: ctx.controlURL,
+        experimentURL: ctx.experimentURL,
+      });
+      return {};
+    },
   };
 }
 
@@ -75,6 +102,44 @@ function pipeline(): Pipeline {
     builder.buildSorts({
       sortsForAllTests: () => new Map(),
     });
+  });
+}
+
+const ALL_PIPELINE_STAGE_CATEGORIES: readonly [StageName, StageCategory][] = [
+  // compare + troubleshoot
+  ['visreg', 'visreg'],
+  ['perf-warmup', 'perf'],
+  ['perf', 'perf'],
+  ['perf-low-noise', 'perf'],
+  // compare + audit
+  ['accessibility', 'accessibility'],
+  // audit (the last two consume prior artifacts rather than navigating)
+  ['audit', 'audit'],
+  ['agent-readiness', 'audit'],
+  ['build_annotated_timeline', 'audit'],
+  ['ai_summary', 'audit'],
+];
+
+function allPipelineStages(observedUrls: ObservedStageUrls[]): Pipeline {
+  return createPipeline({
+    name: 'all-pipeline-stages',
+    description: 'all pipeline stages URL contract',
+    report: {
+      reportLabel: 'All pipeline stages',
+      renderHeaderUrls: () => null,
+      renderTestCardUrls: () => null,
+      renderDialogMetaUrls: () => null,
+    },
+  }, (builder) => {
+    const pool = builder.registerWorkerPool(1);
+    for (const [name, category] of ALL_PIPELINE_STAGE_CATEGORIES) {
+      builder.runStage(pool, stage(name, category, observedUrls));
+    }
+    builder.waitForAllTasksFinishAndDispose(pool);
+    builder.buildChips({
+      chipsForAllTests: (perTest) => new Map(perTest.map(({ test }) => [test, []])),
+    });
+    builder.buildSorts({ sortsForAllTests: () => new Map() });
   });
 }
 
@@ -146,14 +211,17 @@ describe('runPipeline', () => {
     jest.mocked(loadTests).mockReset();
   });
 
-  async function runWithFrozenTest(runtime: Partial<RuntimeOptions> = {}) {
+  async function runWithFrozenTest(
+    runtime: Partial<RuntimeOptions> = {},
+    selectedPipeline: Pipeline = pipeline(),
+  ) {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-pipeline-test-'));
     // Point the machine-wide measurement lock at a private tmpdir so the test
     // doesn't queue behind (or block) a real shaka-perf run on this machine.
     const savedTmpdir = process.env.TMPDIR;
     process.env.TMPDIR = cwd;
     try {
-      return await runPipeline(pipeline(), {
+      return await runPipeline(selectedPipeline, {
         cwd,
         config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] } } }),
         controlURL: 'http://control.test',
@@ -182,6 +250,80 @@ describe('runPipeline', () => {
 
     expect(result.testResults[0]?.name).toBe(frozenTest.name);
   });
+
+  it('uses per-test shared base URLs in every pipeline stage and report context', async () => {
+    const test: AbTestDefinition = {
+      ...frozenTest,
+      startingPath: '/control-path',
+      experimentPathOverride: '/experiment-path',
+      config: {
+        shared: {
+          controlURL: 'http://per-test-control.test/base',
+          experimentURL: 'http://per-test-experiment.test/base',
+        },
+      },
+    };
+    const observedUrls: ObservedStageUrls[] = [];
+
+    const result = await runWithFrozenTest(
+      { tests: [test] },
+      allPipelineStages(observedUrls),
+    );
+
+    const expectedStages = new Set(ALL_PIPELINE_STAGE_CATEGORIES.map(([name]) => name));
+    expect(new Set(
+      observedUrls.filter(({ phase }) => phase === 'run').map(({ stage }) => stage),
+    )).toEqual(expectedStages);
+    expect(new Set(
+      observedUrls.filter(({ phase }) => phase === 'summary').map(({ stage }) => stage),
+    )).toEqual(expectedStages);
+    for (const observed of observedUrls) {
+      expect(observed.controlURL).toBe('http://per-test-control.test/control-path');
+      expect(observed.experimentURL).toBe('http://per-test-experiment.test/experiment-path');
+    }
+    expect(result.testResults[0]?.controlUrl)
+      .toBe('http://per-test-control.test/control-path');
+    expect(result.testResults[0]?.experimentUrl)
+      .toBe('http://per-test-experiment.test/experiment-path');
+  });
+
+  it('applies one-sided per-test URLs independently in every context', async () => {
+    for (const overriddenSide of ['control', 'experiment'] as const) {
+      const test: AbTestDefinition = {
+        ...frozenTest,
+        startingPath: '/control-path',
+        experimentPathOverride: '/experiment-path',
+        config: {
+          shared: overriddenSide === 'control'
+            ? { controlURL: 'http://per-test-control.test/base' }
+            : { experimentURL: 'http://per-test-experiment.test/base' },
+        },
+      };
+      const observedUrls: ObservedStageUrls[] = [];
+      const result = await runWithFrozenTest(
+        {
+          tests: [test],
+          controlURL: 'http://run-control.test/base',
+          experimentURL: 'http://run-experiment.test/base',
+        },
+        allPipelineStages(observedUrls),
+      );
+      const expectedControlURL = overriddenSide === 'control'
+        ? 'http://per-test-control.test/control-path'
+        : 'http://run-control.test/control-path';
+      const expectedExperimentURL = overriddenSide === 'experiment'
+        ? 'http://per-test-experiment.test/experiment-path'
+        : 'http://run-experiment.test/experiment-path';
+
+      for (const observed of observedUrls) {
+        expect(observed.controlURL).toBe(expectedControlURL);
+        expect(observed.experimentURL).toBe(expectedExperimentURL);
+      }
+      expect(result.testResults[0]?.controlUrl).toBe(expectedControlURL);
+      expect(result.testResults[0]?.experimentUrl).toBe(expectedExperimentURL);
+    }
+  });
+
 });
 
 describe('pre-run wipe', () => {

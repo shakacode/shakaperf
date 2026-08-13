@@ -655,8 +655,14 @@ export function writeMachineReport(
           logger: new ReportSummaryLogger(),
           priorOutcomes: new Map(),
           runtime,
-          controlURL: resolveUrl(test.startingPath, meta.controlUrl),
-          experimentURL: resolveUrl(test.experimentPathOverride ?? test.startingPath, meta.experimentUrl),
+          controlURL: resolveUrl(
+            test.startingPath,
+            test.config?.shared?.controlURL ?? meta.controlUrl,
+          ),
+          experimentURL: resolveUrl(
+            test.experimentPathOverride ?? test.startingPath,
+            test.config?.shared?.experimentURL ?? meta.experimentUrl,
+          ),
         }),
       })),
     })),
