@@ -132,7 +132,9 @@ export async function createTroubleshootCommand(): Promise<Command> {
     .description(
       'Debug one test at one viewport: run visreg + perf and leave every browser ' +
       'open — however the run ends — so you (or an agent) can inspect the live page. ' +
-      'Bare `troubleshoot` launches the session; the subcommands attach to it over CDP.',
+      'Bare `troubleshoot` launches the session; the subcommands attach to it over CDP. ' +
+      'Kill it when done — it holds the measurement lock, so any other shaka-perf ' +
+      'command queues behind it instead of failing.',
     )
     // Not `.requiredOption`: that check fires for subcommands too, so the launch
     // action enforces these itself (only it needs them).
@@ -317,7 +319,7 @@ export async function createTroubleshootCommand(): Promise<Command> {
   shaka-perf troubleshoot eval perf:control 'document.title'
   shaka-perf troubleshoot shot perf:experiment exp.png
 
-  # kill it when done (it holds its ports until you do):
+  # kill it when done — it holds its ports and the measurement lock:
   kill "$(shaka-perf troubleshoot session --pid)"
 
 Commands wait for the browser to come up, so no manual polling. Debug ports bind to

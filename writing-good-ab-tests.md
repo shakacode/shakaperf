@@ -319,6 +319,29 @@ abTest('Pick schedule time', {
 
 Choose `viewport` only when the whole viewport is the subject. Otherwise, a narrow selector produces a more meaningful diff and isolates the test from unrelated layout churn.
 
+## Keep the default perf set small
+
+Perf costs `numberOfMeasurements` samples per viewport per twin, so every test that opts into it multiplies the run. Visreg is cheap by comparison. Tag each test with the suite it belongs to and let an env var widen it, so a normal run measures only the numbers someone actually reads while visual coverage stays complete.
+
+### BAD — every test measures perf forever
+
+```typescript
+abTest('Menu tab switch', { startingPath: '/menus', testTypes: ['perf', 'visreg'] }, async () => {});
+abTest('Dish modal', { startingPath: '/menus', testTypes: ['perf', 'visreg'] }, async () => {});
+```
+
+### GOOD — tag the suite
+
+```typescript
+export function perfTestSuite(suite: 'essential' | 'all', types: TestType[] = ['perf', 'visreg']): TestType[] {
+  const measuresPerf = suite === 'essential' || process.env.ALL_PERF_TESTS === 'true';
+  return measuresPerf ? types : types.filter(type => type !== 'perf');
+}
+
+abTest('Menu tab switch', { startingPath: '/menus', testTypes: perfTestSuite('all') }, async () => {});
+abTest('Core layout', { startingPath: '/menus/core', testTypes: perfTestSuite('essential') }, async () => {});
+```
+
 ## Capture each UI state once
 
 Different test names, setup steps, or routes do not make captures distinct. If two tests finish by capturing the same component in the same rendered state, they duplicate coverage and multiply snapshot noise and runtime.
