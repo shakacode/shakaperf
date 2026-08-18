@@ -23,7 +23,6 @@ import { realChromeContextOptions, waitForBotWallToClear } from '../../real-chro
 import { launchStageBrowser, stageContextOptions } from '../../stage-browser';
 import {
   COVERAGE_FILENAME,
-  COVERAGE_STATEMENT_IDS_FILENAME,
   mirrorCoverageToNycOutput,
   summarizeCoverage,
 } from './coverage-artifacts';
@@ -142,10 +141,6 @@ async function drainCoverage(ctx: TestContext, page: Page): Promise<CoverageMeas
     COVERAGE_FILENAME,
     JSON.stringify(coverage),
   );
-  const coverageStatementIdsHref = await ctx.artifacts.writeJson(
-    COVERAGE_STATEMENT_IDS_FILENAME,
-    summary.statementIds,
-  );
   mirrorCoverageToNycOutput(
     path.join(ctx.artifacts.dir, COVERAGE_FILENAME),
     ctx.runtime.resultsRoot,
@@ -160,7 +155,6 @@ async function drainCoverage(ctx: TestContext, page: Page): Promise<CoverageMeas
     coveredStatements: summary.coveredStatements,
     totalStatements: summary.totalStatements,
     coverageHref,
-    coverageStatementIdsHref,
   };
 }
 

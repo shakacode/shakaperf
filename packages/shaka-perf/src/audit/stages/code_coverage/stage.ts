@@ -25,8 +25,6 @@ export interface CodeCoverageResult {
   totalStatements: number;
   /** Report-relative path to the raw istanbul `coverage.json`. */
   coverageHref?: string;
-  /** Report-relative path to the executed statement-id list. */
-  coverageStatementIdsHref?: string;
   /**
    * Report-relative path to the screenshot-coverage map: every element of the
    * finished page with its box and the share of it that falls inside this
@@ -63,7 +61,6 @@ export class CodeCoverageStage implements Stage<CodeCoverageResult> {
   readonly description = 'Run each test body in a visreg-configured browser, drain its instrumented JS coverage, and map what the finished page shows inside the capture region.';
   readonly selfContainedReportStrip = {
     coverageHref: true,
-    coverageStatementIdsHref: true,
     visibilityMapHref: true,
   };
 
@@ -92,9 +89,6 @@ export class CodeCoverageStage implements Stage<CodeCoverageResult> {
       coveredStatements: measurement.coveredStatements,
       totalStatements: measurement.totalStatements,
       ...(measurement.coverageHref ? { coverageHref: measurement.coverageHref } : {}),
-      ...(measurement.coverageStatementIdsHref
-        ? { coverageStatementIdsHref: measurement.coverageStatementIdsHref }
-        : {}),
       ...(measurement.visibilityMapHref ? { visibilityMapHref: measurement.visibilityMapHref } : {}),
     };
   }
