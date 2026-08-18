@@ -7,28 +7,26 @@
 
 import * as path from 'node:path';
 import chalk from 'chalk';
-import type { Browser, BrowserContext, Page } from 'playwright-core';
-import { resolvePlaywrightOptions, type PlaywrightOptions } from '../../../config';
+import type { Browser, Page } from 'playwright-core';
+import { resolvePlaywrightOptions } from '../../../config';
 import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool';
 import type { TestContext } from '../../../stage/stage';
 import { StageFailureError, captureFailureScreenshot } from '../../../stage/stage-failure';
-import { setUpContextForNavigation } from '../../../pre-navigation';
-import { runWithLastAnnotation } from '../../../test-annotation';
 import {
   captureVisibilitySnapshot,
   formatVisibilityMap,
   VISIBILITY_MAP_FILENAME,
 } from '../../../bench/core/visibility-map';
-import { realChromeContextOptions, waitForBotWallToClear } from '../../real-chrome';
-import { launchStageBrowser, stageContextOptions } from '../../stage-browser';
+import { createPlaywrightBrowser } from '../../../visreg/core/util/runPlaywright';
+import { withPreparedSide } from '../../../visreg/core/util/preparedSide';
+import { convertAbTestToScenario } from '../../../visreg/core/util/convertAbTestToScenario';
+import type { EngineBrowserConfig } from '../../../visreg/core/types';
 import {
   COVERAGE_FILENAME,
   mirrorCoverageToNycOutput,
   summarizeCoverage,
 } from './coverage-artifacts';
 import type { CodeCoverageResult } from './stage';
-
-type PageGotoOptions = NonNullable<Parameters<Page['goto']>[1]>;
 
 interface CodeCoverageSlotState extends PoolWorkerState {
   codeCoverageBrowser?: Browser;
@@ -52,71 +50,63 @@ export async function runCodeCoverageStage(
       // Launch options can't vary once the browser is up, so the shared
       // per-slot browser takes the FILE-level visreg options; the per-scan
       // context below re-resolves them per test.
-      slot.codeCoverageBrowser = await launchStageBrowser(
-        resolvePlaywrightOptions(ctx.runtime.config, 'visreg'),
-        ctx.runtime.headed === true,
+      slot.codeCoverageBrowser = await createPlaywrightBrowser(
+        engineConfig(resolvePlaywrightOptions(ctx.runtime.config, 'visreg'), ctx),
       );
     }
     return collectCoverage(ctx, slot.codeCoverageBrowser);
   }, { key: ctx.testAndViewportId });
 }
 
+// The engine helpers read nothing but these two fields (see EngineBrowserConfig),
+// so the stage drives them directly instead of building a bridge config.
+function engineConfig(
+  playwrightOptions: ReturnType<typeof resolvePlaywrightOptions>,
+  ctx: TestContext,
+): EngineBrowserConfig {
+  return { playwrightOptions, headed: ctx.runtime.headed === true };
+}
+
+/**
+ * Drain both coverage lenses off a page built by `withPreparedSide` — the SAME
+ * function visreg captures its screenshots from. Everything about the page is
+ * therefore visreg's: its context and device emulation, its navigation
+ * defaults, the `_visregTools` it injects, and the test body it runs. All this
+ * stage adds is what it does with the finished page.
+ *
+ * It deliberately passes no `browserConsole`: capture only pays for itself
+ * when someone asserts on it, and visreg already fails the test for a dirty
+ * console. Failing twice for one cause would just double the noise.
+ */
 async function collectCoverage(ctx: TestContext, browser: Browser): Promise<CodeCoverageResult> {
-  const playwrightOptions = resolvePlaywrightOptions(ctx.config, 'visreg');
-  let context: BrowserContext | undefined;
-  let page: Page | undefined;
-  try {
-    context = await browser.newContext({
-      ...stageContextOptions(ctx.viewport, playwrightOptions),
-      ...realChromeContextOptions(
-        ctx.viewport.formFactor,
-        browser.version?.(),
-        playwrightOptions.browser === 'chromium',
-      ),
-    });
-    await setUpContextForNavigation({
-      context,
-      url: ctx.experimentURL,
-      viewport: ctx.viewport,
-      isControl: false,
-      testType: 'visreg',
-      beforeNavigate: ctx.config.shared.beforeNavigate,
-    });
-    page = await context.newPage();
-    page.setDefaultTimeout(playwrightOptions.waitTimeout);
-    page.setDefaultNavigationTimeout(playwrightOptions.waitTimeout);
-    await page.goto(ctx.experimentURL, gotoOptions(playwrightOptions));
-    await waitForBotWallToClear(page);
-    // The same body visreg runs, told the same `testType`, so the coverage
-    // drained below belongs to the rendering visreg screenshots.
-    await runWithLastAnnotation((annotate) => ctx.test.testFn({
-      page: page!,
-      browserContext: context!,
-      isControl: false,
-      scenario: ctx.test,
-      viewport: ctx.viewport,
-      testType: 'visreg',
-      annotate,
-    }));
-    // Both lenses come off the SAME finished page, in the same browser visreg
-    // screenshots: which statements ran, and which of the elements they
-    // rendered would land inside this test's `visregSelectors`.
-    return {
-      ...await drainCoverage(ctx, page),
-      ...await writeVisibilityMap(ctx, page),
-    };
-  } catch (err) {
-    const media = page
-      ? await captureFailureScreenshot(
+  const config = engineConfig(resolvePlaywrightOptions(ctx.config, 'visreg'), ctx);
+  const scenario = convertAbTestToScenario(ctx.test, ctx.controlURL, ctx.experimentURL, {
+    controlURL: ctx.controlURL,
+    experimentURL: ctx.experimentURL,
+  });
+  return withPreparedSide({
+    browser,
+    config,
+    viewport: ctx.viewport,
+    scenario,
+    url: scenario.url,
+    isControl: false,
+    beforeNavigate: ctx.config.shared.beforeNavigate,
+    captureFailure: async (err, page) => {
+      const media = await captureFailureScreenshot(
         ctx.artifacts,
-        () => page!.screenshot({ type: 'png', fullPage: true }),
+        () => page.screenshot({ type: 'png', fullPage: true }),
         'code-coverage-failure-screenshot.png',
-      )
-      : undefined;
-    throw media ? new StageFailureError(err, { media }) : err;
-  } finally {
-    await context?.close().catch(() => {});
-  }
+      );
+      return media ? new StageFailureError(err, { media }) : err;
+    },
+  }, async (side) => ({
+    // Both lenses come off one finished page, at the moment visreg would
+    // photograph it: which statements ran, and which of the elements they
+    // rendered would land inside this test's `visregSelectors`.
+    ...await drainCoverage(ctx, side.page),
+    ...await writeVisibilityMap(ctx, side.page),
+  }));
 }
 
 type CoverageMeasurement = Omit<CodeCoverageResult, 'visibilityMapHref'>;
@@ -185,10 +175,4 @@ async function writeVisibilityMap(
     ));
     return {};
   }
-}
-
-function gotoOptions(playwrightOptions: PlaywrightOptions): PageGotoOptions {
-  const candidate = playwrightOptions.gotoParameters;
-  if (candidate && typeof candidate === 'object') return candidate as PageGotoOptions;
-  return { waitUntil: 'networkidle' };
 }

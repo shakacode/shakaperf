@@ -9,7 +9,7 @@ import path from 'node:path';
 
 import playwright from 'playwright';
 import chalk from 'chalk';
-import type { Browser, DecoratedCompareConfig } from '../types';
+import type { Browser, EngineBrowserConfig } from '../types';
 
 type PlaywrightBrowserType = 'chromium' | 'firefox' | 'webkit';
 
@@ -37,7 +37,7 @@ function buildMissingBrowserError (browserChoice: string, originalMessage: strin
   ].join('\n'));
 }
 
-export async function createPlaywrightBrowser (config: DecoratedCompareConfig) {
+export async function createPlaywrightBrowser (config: EngineBrowserConfig) {
   console.log('Creating Browser');
 
   const { playwrightOptions: sanitizedPlaywrightOptions } = JSON.parse(JSON.stringify(config));

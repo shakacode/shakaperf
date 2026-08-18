@@ -122,6 +122,16 @@ export interface VisregConfig {
   headed?: boolean;
 }
 
+/**
+ * The slice of {@link VisregConfig} the browser/context/navigation helpers
+ * actually read. Named so a caller outside the compare engine — the audit
+ * pipeline's `code_coverage` stage — can drive the SAME setup without
+ * synthesising a whole bridge config, and a `Pick` rather than its own
+ * interface so it cannot drift from the config it is a subset of.
+ */
+export type EngineBrowserConfig =
+  Pick<VisregConfig, 'playwrightOptions' | 'headed' | 'keepBrowserOpen'>;
+
 // ── Runtime Config (internal, after makeConfig + extendConfig) ───────
 export interface RuntimeConfig {
   args: Record<string, unknown>;
