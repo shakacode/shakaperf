@@ -23,6 +23,7 @@ import { convertAbTestToScenario } from '../../../visreg/core/util/convertAbTest
 import type { EngineBrowserConfig } from '../../../visreg/core/types';
 import {
   COVERAGE_FILENAME,
+  COVERAGE_SCREENSHOT_FILENAME,
   mirrorCoverageToNycOutput,
   summarizeCoverage,
 } from './coverage-artifacts';
@@ -106,6 +107,10 @@ async function collectCoverage(ctx: TestContext, browser: Browser): Promise<Code
     // rendered would land inside this test's `visregSelectors`.
     ...await drainCoverage(ctx, side.page),
     ...await writeVisibilityMap(ctx, side.page),
+    // LAST, deliberately: a fullPage screenshot scrolls the page to stitch it,
+    // and the map above reads scroll-dependent state (the viewport rect, and
+    // hit-testing that only works on what is currently on screen).
+    ...await writeScreenshot(ctx, side.page),
   }));
 }
 
@@ -172,6 +177,31 @@ async function writeVisibilityMap(
     // A map we could not take must not sink coverage we already drained.
     console.warn(chalk.yellow(
       `[shaka-perf visibility] could not snapshot ${ctx.experimentURL}: ${(err as Error).message}`,
+    ));
+    return {};
+  }
+}
+
+// The map's evidence: one shot of the page it describes, so a reader can see
+// the element it scored at 0% rather than trust the number. Whole document, not
+// the capture region — the map walks the whole document too, and scoring an
+// element "outside capture" only means something if you can see what was left
+// out of the frame.
+async function writeScreenshot(
+  ctx: TestContext,
+  page: Page,
+): Promise<{ screenshotHref?: string }> {
+  try {
+    return {
+      screenshotHref: await ctx.artifacts.writeFile(
+        COVERAGE_SCREENSHOT_FILENAME,
+        await page.screenshot({ type: 'png', fullPage: true }),
+      ),
+    };
+  } catch (err) {
+    // Same rule as the map: evidence is worth having, not worth failing over.
+    console.warn(chalk.yellow(
+      `[shaka-perf visibility] could not screenshot ${ctx.experimentURL}: ${(err as Error).message}`,
     ));
     return {};
   }
