@@ -14,6 +14,13 @@ import * as path from 'node:path';
  */
 export const COVERAGE_FILENAME = 'coverage.json';
 
+/**
+ * One shot of the page the visibility map describes. The map is hundreds of
+ * lines asserting what a screenshot WOULD show; this is the screenshot, so a
+ * reader can check the claim instead of taking it.
+ */
+export const COVERAGE_SCREENSHOT_FILENAME = 'coverage-page.png';
+
 export interface CoverageSummary {
   files: number;
   coveredStatements: number;

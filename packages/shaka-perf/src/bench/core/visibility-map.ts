@@ -35,7 +35,7 @@ export interface VisibilityNode {
   /** Nesting level; 0 for `document.body`'s own children. */
   depth: number;
   tag: string;
-  /** `#id,.cls` for this element, or '' when it has neither. */
+  /** `[data-testid="x"],[role="tab"],#id,.cls`, or '' when the element has none. */
   selector: string;
   /** Border box. Null when the element renders no box at all (display:none). */
   rect: VisibilityRect | null;
@@ -113,6 +113,19 @@ const SKIP_TAGS = ['SCRIPT', 'STYLE', 'LINK', 'META', 'NOSCRIPT', 'TEMPLATE', 'H
 // Tags whose children are graphical/media internals, not page structure. The
 // element itself is reported; its subtree is not walked.
 const LEAF_TAGS = ['SVG', 'CANVAS', 'VIDEO', 'AUDIO', 'IFRAME', 'PICTURE', 'SELECT', 'TEXTAREA'];
+
+// Attributes that NAME an element rather than style it, in the order a reader should trust
+// them. Everything here was written deliberately and survives a rebuild, which is what makes
+// a row traceable back to the source that rendered it — a CSS-in-JS class like `.jss159` or
+// `.css-1a2b3c` is regenerated per build and identifies nothing.
+//
+// The ARIA half earns its place twice over: for plenty of components `role` or `aria-label`
+// is the only stable hook in the markup, and it is also what the tests themselves select on,
+// so a map carrying it can be read against the test that produced it.
+const IDENTIFYING_ATTRIBUTES = [
+  'data-testid', 'data-test-id', 'data-cy', 'data-qa', 'data-tour-id',
+  'role', 'aria-label', 'aria-current', 'aria-selected',
+];
 
 /**
  * How much of `node` a screenshot over `regions` would actually show, as a
@@ -208,7 +221,9 @@ export function formatVisibilityMap(snapshot: VisibilitySnapshot): string {
     `# capture regions: ${snapshot.regions.length === 0
       ? '(none — no selector resolved, nothing would be captured)'
       : snapshot.regions.map(formatRect).join(' ')}`,
-    '# format: <indent by nesting> tag #id,.class => x,y,w,h N% visible (reason)',
+    '# format: <indent by nesting> tag [data-testid="x"],[role="tab"],#id,.class => x,y,w,h N% visible (reason)',
+    '#   Naming attributes (data-testid/-cy/-qa/-tour-id, role, aria-label/-current/-selected)',
+    '#   come first: they are what survives a rebuild, unlike CSS-in-JS names like .jss159.',
     "# \"visible\" = the share of the element's box a screenshot would show: rendered,",
     '#   not hidden by CSS (visibility/opacity/content-visibility), not clipped away by',
     "#   an ancestor's overflow, inside the capture regions above, and not covered by",
@@ -235,6 +250,7 @@ interface CollectorInput {
   maxNodes: number;
   skipTags: string[];
   leafTags: string[];
+  identifyingAttributes: string[];
 }
 
 interface CollectedSnapshot {
@@ -344,8 +360,13 @@ function collectVisibility(input: CollectorInput): CollectedSnapshot {
       truncated = true;
       return;
     }
+    // Naming attributes come first: they are the only part of this label a reader can rely
+    // on, and for many components they are the only stable part that exists.
+    const hooks = input.identifyingAttributes
+      .filter((name) => element.hasAttribute(name))
+      .map((name) => `[${name}="${element.getAttribute(name)}"]`);
     const classes = Array.from(element.classList).slice(0, 3).map((c) => `.${c}`);
-    const parts = element.id ? [`#${element.id}`, ...classes] : classes;
+    const parts = [...hooks, ...(element.id ? [`#${element.id}`] : []), ...classes];
     // getClientRects() is empty for display:none and for wrappers that lay out
     // nothing; getBoundingClientRect() would report a 0x0 box at the origin,
     // which reads as "at the top of the page" rather than "not rendered".
@@ -416,6 +437,7 @@ export async function captureVisibilitySnapshot(
     maxNodes: MAX_NODES,
     skipTags: SKIP_TAGS,
     leafTags: LEAF_TAGS,
+    identifyingAttributes: IDENTIFYING_ATTRIBUTES,
   });
   return {
     ...collected,
