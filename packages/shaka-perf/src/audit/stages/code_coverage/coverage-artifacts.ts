@@ -13,50 +13,35 @@ import * as path from 'node:path';
  * `view-coverage.js` reads (`<results>/<unit>/artifacts/coverage.json`).
  */
 export const COVERAGE_FILENAME = 'coverage.json';
-export const COVERAGE_STATEMENT_IDS_FILENAME = 'coverage_statement_ids.json';
 
 export interface CoverageSummary {
   files: number;
   coveredStatements: number;
   totalStatements: number;
-  /**
-   * Sorted, unique `${absFile}:${stmtId}` key per EXECUTED statement. Persisted
-   * as a small measurement reference so the duplicate-detection pass can
-   * compare tests by set inclusion without embedding tens of thousands of
-   * strings in every outcome.
-   */
-  statementIds: string[];
 }
 
 /**
  * Reduce an istanbul coverage object (`{ [absFile]: { s: { [stmtId]: hits } } }`)
- * to the counts the report shows and the statement-id list the chips compare.
- * Malformed entries are skipped rather than throwing: the shape comes from
- * whatever instrumented the user's bundle.
+ * to the counts the report shows. Malformed entries are skipped rather than
+ * throwing: the shape comes from whatever instrumented the user's bundle.
  */
 export function summarizeCoverage(raw: unknown): CoverageSummary {
-  const statementIds: string[] = [];
   let files = 0;
   let coveredStatements = 0;
   let totalStatements = 0;
   if (raw && typeof raw === 'object') {
-    for (const [file, fileCoverage] of Object.entries(raw as Record<string, unknown>)) {
+    for (const fileCoverage of Object.values(raw as Record<string, unknown>)) {
       if (!fileCoverage || typeof fileCoverage !== 'object') continue;
       const hits = (fileCoverage as { s?: unknown }).s;
       if (!hits || typeof hits !== 'object') continue;
       files += 1;
-      for (const [statementId, count] of Object.entries(hits as Record<string, unknown>)) {
+      for (const count of Object.values(hits as Record<string, unknown>)) {
         totalStatements += 1;
-        if (typeof count === 'number' && count > 0) {
-          coveredStatements += 1;
-          statementIds.push(`${file}:${statementId}`);
-        }
+        if (typeof count === 'number' && count > 0) coveredStatements += 1;
       }
     }
   }
-  // Sorted so set equality and debugging output are order-stable.
-  statementIds.sort();
-  return { files, coveredStatements, totalStatements, statementIds };
+  return { files, coveredStatements, totalStatements };
 }
 
 /**

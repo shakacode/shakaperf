@@ -120,7 +120,7 @@ Two tests that appear together on every line and never apart walked the same cod
   A+B │     <Chip label={section.name} …
 ```
 
-A signal, not a verdict: different states can share code paths, so diff the captures before acting. Prefer making the states differ over deleting. A test that is the only letter on some line carries unique coverage — leave it. The report's own `duplicate of` / `fully covered by` chips come from the same statement sets.
+A signal, not a verdict: different states can share code paths, so diff the captures before acting. Prefer making the states differ over deleting. A test that is the only letter on some line carries unique coverage — leave it. Nothing in the report flags this for you — reading the gutters is the whole method.
 
 ## Judging a change in coverage
 

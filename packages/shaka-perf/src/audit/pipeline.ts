@@ -19,7 +19,7 @@ import type { ChipDescriptor, SortDescriptor } from '../pipeline/report';
 import { AuditStage, type AuditMetric, type AuditResult } from './stages/audit';
 import { AccessibilityStage, type AccessibilityResult, type AccessibilityStageConfig } from './stages/accessibility';
 import { AgentReadinessStage, type AgentReadinessStageConfig } from './stages/agent_readiness';
-import { CodeCoverageStage, type CodeCoverageResult } from './stages/code_coverage';
+import { CodeCoverageStage } from './stages/code_coverage';
 import {
   METRIC_LEVEL_CHIP_COLOR,
   classifyMetric,
@@ -29,11 +29,6 @@ import {
 import { BuildAnnotatedTimelineStage } from './stages/build_annotated_timeline';
 import { AiSummaryStage } from './stages/ai_summary';
 import { auditPipelineReport } from './pipeline-report';
-import {
-  coverageCoversChips,
-  coverageDuplicateChips,
-  coverageSignaturesByTest,
-} from './coverage-duplicate-chips';
 
 export const auditPipelineMetadata = {
   description: 'Run absolute Lighthouse and accessibility audits on the target URL.',
@@ -88,12 +83,8 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     pipeline.runStage(workerPool, new AiSummaryStage());
     pipeline.waitForAllTasksFinishAndDispose(workerPool);
 
-    pipeline.buildChips<{
-      audit: AuditResult;
-      accessibility: AccessibilityResult;
-      code_coverage: CodeCoverageResult;
-    }>({
-      chipsForAllTests(perTest, context) {
+    pipeline.buildChips<{ audit: AuditResult; accessibility: AccessibilityResult }>({
+      chipsForAllTests(perTest) {
         const out = new Map<AbTestDefinition, readonly ChipDescriptor[]>();
         // Index test → metrics once and reuse across the chip builders below.
         const indexed = perTest.map((entry) => ({
@@ -102,23 +93,7 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
           accessibilityResults: entry.results.accessibility ?? [],
         }));
 
-        // Coverage-duplicate detection runs across the same `perTest` set
-        // because it needs every test's signature to spot supersets. Tests
-        // without coverage data — every test when the code_coverage stage is
-        // off — are simply absent from the chip map.
-        const signatures = coverageSignaturesByTest(
-          perTest.map(({ test, results }) => ({
-            test,
-            coverageResults: results.code_coverage ?? [],
-          })),
-          context?.readJsonArtifact,
-        );
-        const duplicateChips = coverageDuplicateChips(signatures);
-        const coversChips = coverageCoversChips(signatures);
-
         for (const { test, metrics, accessibilityResults } of indexed) {
-          const duplicateChip = duplicateChips.get(test);
-          const coversChip = coversChips.get(test);
           const accessibility = accessibilityChips(accessibilityResults);
           if (metrics.length === 0) {
             const chips: ChipDescriptor[] = [{
@@ -130,8 +105,6 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
               affectsCardOrder: false,
             }];
             chips.push(...accessibility);
-            if (duplicateChip) chips.push(duplicateChip);
-            if (coversChip) chips.push(coversChip);
             out.set(test, chips);
             continue;
           }
@@ -140,8 +113,6 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
             ...needsImprovementChips(metrics),
             interactionsChip(metrics),
           ];
-          if (duplicateChip) chips.push(duplicateChip);
-          if (coversChip) chips.push(coversChip);
           out.set(test, chips);
         }
         return out;
