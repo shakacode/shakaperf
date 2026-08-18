@@ -34,6 +34,8 @@ const configureClient = () => {
   }
   // In development (no BUNDLE_NAME set), keep all entries
 
+ addCoverageInstrumentation(clientConfig);
+
   // Add Loadable Components plugin for code splitting
   const bundleName = process.env.BUNDLE_NAME || 'app';
   clientConfig.plugins.push(new LoadablePlugin({
@@ -42,5 +44,23 @@ const configureClient = () => {
 
   return clientConfig;
 };
+
+function addCoverageInstrumentation(config) {
+  const coveragePlugin = require.resolve('swc-plugin-coverage-instrument');
+  config.module.rules.forEach((rule) => {
+    if (!Array.isArray(rule.use)) return;
+    rule.use.forEach((entry) => {
+      if (!entry || entry.loader !== 'builtin:swc-loader') return;
+      entry.options = entry.options || {};
+      entry.options.jsc = entry.options.jsc || {};
+      entry.options.jsc.experimental = entry.options.jsc.experimental || {};
+      const plugins = entry.options.jsc.experimental.plugins || [];
+      if (!plugins.some(([plugin]) => plugin === coveragePlugin)) {
+        plugins.push([coveragePlugin, {}]);
+      }
+      entry.options.jsc.experimental.plugins = plugins;
+    });
+  });
+}
 
 module.exports = configureClient;

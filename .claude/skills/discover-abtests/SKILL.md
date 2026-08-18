@@ -1,6 +1,6 @@
 ---
 name: discover-abtests
-description: Crawl a website and auto-generate .abtest.ts files for shaka-perf visreg visual regression testing. Use this skill whenever the user wants to discover, generate, or scaffold AB tests for a URL — even if they just say "set up tests for localhost:3020", "generate tests for this site", or "create visreg tests". Only use this skill when having no access to sources. When sources are present, use shaka-perf-add-coverage instead.
+description: Crawl a website and auto-generate .abtest.ts files for shaka-perf visreg visual regression testing. Use this skill whenever the user wants to discover, generate, or scaffold AB tests for a URL — even if they just say "set up tests for localhost:3020", "generate tests for this site", or "create visreg tests". Only use this skill when having no access to sources. When sources are present, use shaka-perf-add-coverage and shaka-perf-coverage instead.
 argument-hint: <url> [depth=2] [output=./ab-tests/] [mode=twin-server|single-server]
 ---
 

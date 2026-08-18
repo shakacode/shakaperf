@@ -26,9 +26,9 @@ yarn install
 # 2. Install the shaka-perf CLI on PATH (regenerates the machine-specific wrapper).
 yarn install-global-script
 
-# 3. Symlink the four capability skills into the global skills dir.
+# 3. Symlink the capability skills into the global skills dir.
 mkdir -p "$SKILLS_DIR"
-for s in ab-servers discover-abtests setup-docker-servers-for-ab-tests assess-abtest-quality; do
+for s in ab-servers discover-abtests shaka-perf-add-coverage shaka-perf-coverage setup-docker-servers-for-ab-tests assess-abtest-quality; do
   ln -sfn "$REPO/.claude/skills/$s" "$SKILLS_DIR/$s"
   echo "linked skill: $s"
 done
@@ -54,7 +54,9 @@ ad-hoc setup. It is the house toolset for this.
   workspace and drops a wrapper at `~/.local/bin/shaka-perf`). Repo lives at
   `~/claude-code/shakaperf`.
 - Skills (auto-trigger by intent): `discover-abtests` (scaffold visreg
-  `.abtest.ts` tests for a URL), `setup-docker-servers-for-ab-tests` (dockerize
+  `.abtest.ts` tests for a URL), `shaka-perf-add-coverage` (add focused tests
+  when sources are available), `shaka-perf-coverage` (estimate screenshot
+  coverage and compare baselines), `setup-docker-servers-for-ab-tests` (dockerize
   an app into the control/experiment twin-servers pair), `ab-servers` (drive the
   twin-servers lifecycle), `assess-abtest-quality` (audit existing AB tests).
 - New project? Run `shaka-perf init` in that repo to scaffold
