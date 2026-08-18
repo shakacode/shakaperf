@@ -17,9 +17,11 @@ This guide walks you through adding twin-servers to a project that already has a
 
 ## 1. Create the config file
 
-Run `shaka-perf init` to drop a starter `abtests.config.ts` into your project, plus two Claude Code skills under `.claude/skills/` so an agent in your repo can do the heavy lifting:
+Run `shaka-perf init` to drop a starter `abtests.config.ts` into your project, plus the bundled Claude Code skills under `.claude/skills/` so an agent in your repo can do the heavy lifting, including:
 
 - `discover-abtests` — crawls your site and scaffolds `.abtest.ts` files for visual regression.
+- `shaka-perf-add-coverage` — adds focused source-aware visual-regression tests.
+- `shaka-perf-coverage` — estimates screenshot coverage and compares baselines.
 - `setup-docker-servers-for-ab-tests` — walks an agent through this entire guide: filling the `twinServers` config, writing the production `twin-servers/Dockerfile`/`Procfile`, adding the `TWIN_SERVERS` guards, and driving `shaka-perf servers` until both sides build and serve. If you'd rather not follow the steps below by hand, ask Claude Code to "set up twin servers for this project" and it will use that skill.
 
 The generated config already auto-assigns the host ports used everywhere — see

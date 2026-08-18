@@ -450,19 +450,6 @@ class LighthouseWorkerSampler {
         annotate: createTestAnnotate(markAnnotation),
       })
         .then(() => collectINP(page))
-        // Drain istanbul coverage before we let Lighthouse finish (which
-        // tears down the page CDP target) — afterwards page.evaluate()
-        // rejects with a "Target page, context or browser has been
-        // closed"-style error. `window.__coverage__` is populated by
-        // babel-plugin-istanbul; an uninstrumented bundle isn't a hard error
-        // but it isn't silent either, since the audit pipeline opts in via
-        // `captureCoverage: true`.
-        .then(async (inp) => {
-          if (options.captureCoverage && options.resultsFolder) {
-            await captureWindowCoverage(page, options.resultsFolder, url);
-          }
-          return inp;
-        })
         .then((inp) => {
           assertConsoleClean(context);
           return inp;
@@ -579,42 +566,6 @@ class LighthouseWorkerSampler {
   }
 }
 
-
-async function captureWindowCoverage(
-  page: Page,
-  resultsFolder: string,
-  url: string,
-): Promise<void> {
-  let coverage: unknown;
-  try {
-    coverage = await page.evaluate(
-      () => (globalThis as { __coverage__?: unknown }).__coverage__,
-    );
-  } catch (err) {
-    console.warn(
-      `[shaka-perf coverage] page.evaluate(__coverage__) failed for ${url}: ${(err as Error).message}`,
-    );
-    return;
-  }
-  if (!coverage || typeof coverage !== 'object') {
-    // Bundle isn't instrumented. The caller (audit pipeline) explicitly opted
-    // in, so stay loud — silently skipping leaves users staring at an empty
-    // coverage report with no idea why.
-    console.warn(
-      `[shaka-perf coverage] window.__coverage__ missing on ${url}. ` +
-        'Coverage was requested but the served bundle is not instrumented — ' +
-        'add babel-plugin-istanbul to the build (or nyc instrument the served JS).',
-    );
-    return;
-  }
-  try {
-    writeFileSync(join(resultsFolder, 'coverage.json'), JSON.stringify(coverage));
-  } catch (err) {
-    console.warn(
-      `[shaka-perf coverage] failed to write coverage.json to ${resultsFolder}: ${(err as Error).message}`,
-    );
-  }
-}
 
 function assertSampleMessage(value: unknown, sampleIndex: number): SampleMessage {
   if (

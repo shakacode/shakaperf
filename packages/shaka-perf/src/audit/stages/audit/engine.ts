@@ -125,7 +125,6 @@ export async function runAuditStage(
     lhConfig,
     saveArtifacts: true,
     captureAuditArtifacts: true,
-    captureCoverage: true,
     targetUrl: ctx.experimentURL,
     ...(realChrome
       ? {
@@ -180,21 +179,12 @@ export async function runAuditStage(
     console.warn(chalk.yellow(`[shaka-perf a11y] no accessibility score for ${ctx.testAndViewportId}`));
   }
 
-  const coverageStatementIds = readCoverageStatementIds(artifactsDir);
-  mirrorCoverageToNycOutput(artifactsDir, ctx.runtime.resultsRoot, ctx.testAndViewportId);
   const metrics = sample.phases.map(auditMetricForPhase);
   printAuditLevels(ctx, metrics);
-  const artifact = await readAuditArtifact({
+  return readAuditArtifact({
     artifacts: ctx.artifacts,
     metrics,
   });
-  if (coverageStatementIds) {
-    artifact.coverageStatementIdsHref = await ctx.artifacts.writeJson(
-      'coverage_statement_ids.json',
-      coverageStatementIds,
-    );
-  }
-  return artifact;
 }
 
 function auditMetricForPhase(phase: PhaseSample): AuditMetric {
@@ -287,69 +277,4 @@ async function screenshotLighthouseHtml(htmlPath: string): Promise<Buffer | null
   } finally {
     await browser.close();
   }
-}
-
-// Drain `coverage.json` (istanbul shape: `{ [absFile]: { s: { [stmtId]: hit
-// count } } }`) into a sorted, unique list of `${absFile}:${stmtId}` keys for
-// every executed statement. The caller persists that list as a small
-// measurement reference instead of embedding tens of thousands of strings in
-// every outcome. Returns `undefined` (not `[]`) when there's no signal — either the
-// file is missing, malformed, or the bundle wasn't instrumented — so the chip
-// pass can distinguish "no coverage data" from "ran but executed nothing".
-function readCoverageStatementIds(artifactsDir: string): string[] | undefined {
-  const src = path.join(artifactsDir, 'coverage.json');
-  if (!fs.existsSync(src)) return undefined;
-  let raw: unknown;
-  try {
-    raw = JSON.parse(fs.readFileSync(src, 'utf8'));
-  } catch (err) {
-    console.warn(
-      chalk.yellow(
-        `[shaka-perf coverage] failed to parse ${src}: ${(err as Error).message}`,
-      ),
-    );
-    return undefined;
-  }
-  if (!raw || typeof raw !== 'object') return undefined;
-  const ids: string[] = [];
-  for (const [file, fileCov] of Object.entries(raw as Record<string, unknown>)) {
-    if (!fileCov || typeof fileCov !== 'object') continue;
-    const hits = (fileCov as { s?: unknown }).s;
-    if (!hits || typeof hits !== 'object') continue;
-    for (const [stmtId, count] of Object.entries(hits as Record<string, unknown>)) {
-      if (typeof count === 'number' && count > 0) {
-        ids.push(`${file}:${stmtId}`);
-      }
-    }
-  }
-  // Sort so set equality / debugging output is order-stable; the chip pass
-  // builds Sets so order doesn't matter for correctness.
-  ids.sort();
-  return ids;
-}
-
-// Each audit run captures one test's coverage as a single coverage.json.
-// nyc keys FileCoverage entries by absolute file path and sums hit counts
-// per location when merging, so mirroring under a unique per-(test,
-// viewport) filename lets nyc aggregate them into one report where any
-// statement hit by any test counts as covered.
-function mirrorCoverageToNycOutput(artifactsDir: string, resultsRoot: string, key: string): void {
-  const src = path.join(artifactsDir, 'coverage.json');
-  if (!fs.existsSync(src)) {
-    // Audit always opts into coverage (`captureCoverage: true` above); a
-    // missing file means the worker couldn't drain `__coverage__`. The worker
-    // already logs the specific cause — surface the test/viewport so users
-    // can correlate.
-    console.warn(
-      chalk.yellow(
-        `[shaka-perf coverage] no coverage.json for ${key} — see earlier ` +
-          `'[shaka-perf coverage]' lines for the cause.`,
-      ),
-    );
-    return;
-  }
-  const nycDir = path.join(resultsRoot, '.nyc_output');
-  fs.mkdirSync(nycDir, { recursive: true });
-  const slug = key.replace(/[^a-zA-Z0-9._-]+/g, '_');
-  fs.copyFileSync(src, path.join(nycDir, `${slug}.json`));
 }
