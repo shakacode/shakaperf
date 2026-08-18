@@ -31,6 +31,8 @@ export interface CodeCoverageResult {
    * test's `visregSelectors`. Absent only when the snapshot itself failed.
    */
   visibilityMapHref?: string;
+  /** Report-relative path to one shot of the page that map describes. */
+  screenshotHref?: string;
 }
 
 /**
@@ -59,6 +61,11 @@ export class CodeCoverageStage implements Stage<CodeCoverageResult> {
   readonly name: StageName = 'code_coverage';
   readonly label = 'Code Coverage';
   readonly description = 'Run each test body in a visreg-configured browser, drain its instrumented JS coverage, and map what the finished page shows inside the capture region.';
+  // The rule, since this field answers the same question two opposite ways:
+  // strip TEXT blobs nobody reads inline (coverage.json is a whole bundle's
+  // istanbul data; the map runs 20–400 KB of tree), keep the IMAGE the card
+  // exists to show. The accessibility stage and visreg land the same way —
+  // they strip raw JSON and inline their screenshots.
   readonly selfContainedReportStrip = {
     coverageHref: true,
     visibilityMapHref: true,
@@ -90,6 +97,7 @@ export class CodeCoverageStage implements Stage<CodeCoverageResult> {
       totalStatements: measurement.totalStatements,
       ...(measurement.coverageHref ? { coverageHref: measurement.coverageHref } : {}),
       ...(measurement.visibilityMapHref ? { visibilityMapHref: measurement.visibilityMapHref } : {}),
+      ...(measurement.screenshotHref ? { screenshotHref: measurement.screenshotHref } : {}),
     };
   }
 }
