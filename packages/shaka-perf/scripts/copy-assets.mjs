@@ -59,6 +59,8 @@ const assets = [
   // user's project at .claude/skills/<name>/. Source of truth lives at the
   // repo-root .claude/ dir so they're also active in this repo.
   ['../../.claude/skills/discover-abtests', 'dist/skills/discover-abtests'],
+  ['../../.claude/skills/shaka-perf-add-coverage', 'dist/skills/shaka-perf-add-coverage'],
+  ['../../.claude/skills/shaka-perf-coverage', 'dist/skills/shaka-perf-coverage'],
   ['../../.claude/skills/setup-docker-servers-for-ab-tests', 'dist/skills/setup-docker-servers-for-ab-tests'],
   ['../../.claude/skills/assess-abtest-quality', 'dist/skills/assess-abtest-quality'],
   ['../../.claude/skills/ab-servers', 'dist/skills/ab-servers'],

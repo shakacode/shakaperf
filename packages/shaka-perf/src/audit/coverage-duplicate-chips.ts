@@ -8,23 +8,23 @@
 import type { AbTestDefinition } from 'shaka-shared';
 import type { ChipStageResults } from '../pipeline/pipeline';
 import type { ChipDescriptor } from '../pipeline/report';
-import type { AuditResult } from './stages/audit';
+import type { CodeCoverageResult } from './stages/code_coverage';
 
 /**
  * Union of every viewport's coverage statement-id artifact for each test.
- * A test contributes a signature only if at least one of its audit measurements
- * had a non-empty coverage list — tests missing coverage (uninstrumented
- * bundles, drain failures) are absent from the returned map and therefore
- * never get the "duplicated" chip.
+ * A test contributes a signature only if at least one of its code_coverage
+ * measurements had a non-empty coverage list — tests without coverage (the
+ * stage disabled, or it errored) are absent from the returned map and
+ * therefore never get the "duplicated" chip.
  */
 export function coverageSignaturesByTest(
-  perTest: readonly { test: AbTestDefinition; auditResults: ChipStageResults<AuditResult> }[],
+  perTest: readonly { test: AbTestDefinition; coverageResults: ChipStageResults<CodeCoverageResult> }[],
   readJsonArtifact?: <T>(artifactPath: string) => T | undefined,
 ): Map<AbTestDefinition, ReadonlySet<string>> {
   const out = new Map<AbTestDefinition, ReadonlySet<string>>();
-  for (const { test, auditResults } of perTest) {
+  for (const { test, coverageResults } of perTest) {
     const ids = new Set<string>();
-    for (const entry of auditResults) {
+    for (const entry of coverageResults) {
       for (const id of readCoverageStatementIds(
         entry.measurement.coverageStatementIdsHref,
         readJsonArtifact,

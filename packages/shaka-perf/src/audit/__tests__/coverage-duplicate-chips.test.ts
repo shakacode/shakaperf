@@ -12,7 +12,7 @@ import {
   coverageDuplicateChips,
   coverageSignaturesByTest,
 } from '../coverage-duplicate-chips';
-import type { AuditResult } from '../stages/audit';
+import type { CodeCoverageResult } from '../stages/code_coverage';
 
 // Real AbTestDefinitions carry callbacks and registry plumbing we don't
 // need here — only `name` is read by the chip logic. Cast keeps the test
@@ -21,11 +21,11 @@ function mkTest(name: string): AbTestDefinition {
   return { name } as AbTestDefinition;
 }
 
-function mkAuditEntry(
+function mkCoverageEntry(
   coverageStatementIdsHref?: string,
-): ChipStageResult<AuditResult> {
+): ChipStageResult<CodeCoverageResult> {
   return {
-    stage: 'audit',
+    stage: 'code_coverage',
     viewport: {
       label: 'desktop',
       width: 1280,
@@ -34,10 +34,12 @@ function mkAuditEntry(
       deviceScaleFactor: 1,
     },
     measurement: {
-      metrics: [],
+      files: 1,
+      coveredStatements: 1,
+      totalStatements: 1,
       ...(coverageStatementIdsHref ? { coverageStatementIdsHref } : {}),
     },
-    outcome: { kind: 'ok' } as ChipStageResult<AuditResult>['outcome'],
+    outcome: { kind: 'ok' } as ChipStageResult<CodeCoverageResult>['outcome'],
   };
 }
 
@@ -58,9 +60,9 @@ describe('coverageSignaturesByTest', () => {
     const test = mkTest('a');
     const signatures = coverageSignaturesByTest([{
       test,
-      auditResults: [
-        mkAuditEntry(writeIds('desktop', ['f.js:1', 'f.js:2'])),
-        mkAuditEntry(writeIds('mobile', ['f.js:2', 'g.js:5'])),
+      coverageResults: [
+        mkCoverageEntry(writeIds('desktop', ['f.js:1', 'f.js:2'])),
+        mkCoverageEntry(writeIds('mobile', ['f.js:2', 'g.js:5'])),
       ],
     }], readJsonArtifact);
     expect([...signatures.get(test)!].sort()).toEqual(['f.js:1', 'f.js:2', 'g.js:5']);
@@ -70,8 +72,8 @@ describe('coverageSignaturesByTest', () => {
     const a = mkTest('a');
     const b = mkTest('b');
     const signatures = coverageSignaturesByTest([
-      { test: a, auditResults: [mkAuditEntry(writeIds('a', ['x:1']))] },
-      { test: b, auditResults: [mkAuditEntry()] },
+      { test: a, coverageResults: [mkCoverageEntry(writeIds('a', ['x:1']))] },
+      { test: b, coverageResults: [mkCoverageEntry()] },
     ], readJsonArtifact);
     expect(signatures.has(a)).toBe(true);
     expect(signatures.has(b)).toBe(false);

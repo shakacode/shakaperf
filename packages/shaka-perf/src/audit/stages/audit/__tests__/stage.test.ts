@@ -12,7 +12,6 @@ describe('AuditStage self-contained report stripping', () => {
     expect(new AuditStage({}).selfContainedReportStrip).toEqual({
       lighthouseHref: true,
       lighthouseThumbHref: true,
-      coverageStatementIdsHref: true,
     });
   });
 });

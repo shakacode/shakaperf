@@ -1,6 +1,6 @@
 Review git diffs in `integration-tests/` to catch meaningful changes hidden among expected run-to-run variance.
 
-Snapshots contain ONLY the normalized `baseline-*.log` per suite and the stable-named report screenshots under each `<suite>-results/` dir. The integration-tests run also emits a `screenshot-diff-report.html` under `integration-tests/snapshots/` for visual review (step 3).
+Snapshots contain ONLY the normalized `baseline-*.log` per suite and the stable-named report screenshots under each `<suite>-results/` dir. The integration-tests run also emits a `screenshot-diff-report.html` under `integration-tests/snapshots/` for visual review (step 4).
 
 This check reports **WHAT changed between the previous and current test run**
 (the git diff). NAME every meaningful change; deciding whether it's expected or
@@ -19,11 +19,31 @@ from control" :pray:
 
 1. List the baseline logs in `integration-tests/snapshots/` (they match `baseline-*.log`), then launch one Agent subagent per log, all in a single message so they run in parallel. Give each agent ONLY its own `git diff -- integration-tests/snapshots/<log>` command plus the rules below, and have it analyze that diff. Agents run no other commands — no ls, no cat, no extra git commands.
 
-   This check is **logs-only**: the agents judge the normalized transcripts, and the verdict is drawn from the logs alone. Screenshot diffs are NOT analyzed here — they are for the user to review by eye (see step 3).
+   This check is **logs-only**: the agents judge the normalized transcripts, and the verdict is drawn from the logs alone. Screenshot diffs are NOT analyzed here — they are for the user to review by eye (see step 4).
 
 2. Collect results from all agents and compile into the output format at the bottom, preserving every change they named. Before writing the **Changes** section, resolve each agent's quoted anchor text to a real `path:line` with `grep -n '<anchor text>' integration-tests/snapshots/<log>` — never a `git diff` hunk offset.
 
-3. The verdict above is logs-only — it does NOT cover the visual changes. The integration-tests run already generated the screenshot diff report at `integration-tests/snapshots/screenshot-diff-report.html`. Use AskUserQuestion to ask whether the user wants to open it in the browser. If they agree, open that path via Bash (`xdg-open <path>` on Linux, `open <path>` on macOS). If they decline, just print the path. Either way, make clear the screenshot changes still need the user's own eyes — the skill does not judge them.
+3. Regenerate the audit suite's screenshot-coverage baseline with the `shaka-perf-coverage` skill, run from the temp clone's demo dir so the skill's scripts resolve `audit-results/` and `app/javascript/` relative to it:
+
+   ```bash
+   cd /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce
+   ```
+
+   Use this exact `relevant-sources` string every time — a changed source list makes the diff meaningless:
+
+   ```text
+   components/pages/HomePage\.tsx,components/pages/ProductListPage\.tsx,components/shared/ProductCard\.tsx
+   ```
+
+   Keep the list this small. Change it only when `integration-tests/client-report.spec.ts` changes which pages its filtered audit exercises — never because some other source happened to load.
+
+   Follow the skill: `coverage-baseline.ts save "<relevant-sources>"` for the code gutters, then the manual, subagent-assisted pass over each unit's `artifacts/visibility-map.txt` for the visibility column. The demo's client bundle is always istanbul-instrumented, so BOTH halves must be present. An errored `code_coverage` stage, or `never loaded` gutters, means the instrumentation regressed — report that as the finding and stop; do not hand back a coverage estimate built from visibility maps alone.
+
+   Write the result to the stable path `integration-tests/snapshots/audit-results/screenshot-coverage-baseline.txt` (beside the audit screenshots), then `git diff` it against the committed baseline and report the two halves SEPARATELY: changes to the code gutters, and changes to the visibility percentages/reasons (`not rendered`, `hidden by CSS`, `clipped by ancestor`, `outside capture`, `obscured`). A percentage that moved is a real change even when the gutters are identical.
+
+   If `audit-results/` is absent because the audit suite was not run, say the baseline was not regenerated. Never reuse a stale artifact tree.
+
+4. The verdict above is logs-only — it does NOT cover the visual changes. The integration-tests run already generated the screenshot diff report at `integration-tests/snapshots/screenshot-diff-report.html`. Use AskUserQuestion to ask whether the user wants to open it in the browser. If they agree, open that path via Bash (`xdg-open <path>` on Linux, `open <path>` on macOS). If they decline, just print the path. Either way, make clear the screenshot changes still need the user's own eyes — the skill does not judge them.
 
 ## Log diffs
 
@@ -99,7 +119,10 @@ change, but never replaces naming it.]
 ### Visual Review Required
 This skill does NOT judge the screenshot diffs. Review them yourself in the
 report at `integration-tests/snapshots/screenshot-diff-report.html` (see
-step 3). The logs verdict above says nothing about whether a render broke.
+step 4). The logs verdict above says nothing about whether a render broke.
+
+### Screenshot Coverage
+[Summarize the diff in `integration-tests/snapshots/audit-results/screenshot-coverage-baseline.txt`, code gutters first and visibility percentages/reasons second — they are separate signals. State the fixed `relevant-sources` string. If it was not regenerated, say why.]
 
 ### Changes
 [One bullet per meaningful change, each a clickable `path:line` link to the

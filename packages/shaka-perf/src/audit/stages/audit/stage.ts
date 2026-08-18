@@ -39,8 +39,6 @@ export interface AuditResult {
   metrics: AuditMetric[];
   lighthouseHref?: string;
   lighthouseThumbHref?: string;
-  /** Report-relative path to the executed statement-id JSON artifact. */
-  coverageStatementIdsHref?: string;
 }
 
 export class AuditStage implements Stage<AuditResult> {
@@ -51,7 +49,6 @@ export class AuditStage implements Stage<AuditResult> {
   readonly selfContainedReportStrip = {
     lighthouseHref: true,
     lighthouseThumbHref: true,
-    coverageStatementIdsHref: true,
   };
 
   constructor(private readonly config: AuditStageConfig) {}

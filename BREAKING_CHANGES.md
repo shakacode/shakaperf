@@ -12,6 +12,28 @@ version being released and updates the "Current version" line at the bottom.
 
 ---
 
+## Unreleased
+
+### `audit` no longer collects JS coverage — the opt-in `code_coverage` category does
+
+Coverage (`coverage.json`, `.nyc_output/`, and the new `visibility-map.txt`) is
+now drained by a stage of its own that re-runs each test body in a second,
+visreg-configured browser, so a default audit measures only Lighthouse and the
+screencast — no fallback is left in the audit stage.
+
+There is no config switch: name the category to collect it.
+
+```bash
+shaka-perf audit --categories code_coverage                      # coverage alone
+```
+
+The stage fails the unit when the page carries no `window.__coverage__`: asking
+for coverage and silently getting none is the one outcome worse than not asking.
+
+Read the two artifacts together with the bundled `shaka-perf-coverage` skill —
+code coverage says a test executed a component, the visibility map says whether
+that component was inside the screenshot.
+
 ## 0.2.4 — 2026-08-11
 
 ### `SHAKA_PERF_NODE` removed, and the CLI no longer pins a Node version

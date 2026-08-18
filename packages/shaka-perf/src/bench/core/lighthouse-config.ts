@@ -231,15 +231,6 @@ export interface LighthouseBenchmarkOptions {
    * preserve measurement fidelity. Audit opts in.
    */
   captureAuditArtifacts?: boolean;
-  /**
-   * After the user's `testFn` resolves but before the browser is closed,
-   * read `window.__coverage__` (populated by babel-plugin-istanbul on the
-   * served bundles) and dump it to `${resultsFolder}/coverage.json`. The
-   * audit pipeline then aggregates these per-test files into a single
-   * Istanbul/nyc HTML report. No-op if the bundles weren't built with
-   * istanbul instrumentation — `__coverage__` simply doesn't exist.
-   */
-  captureCoverage?: boolean;
 }
 
 export interface PhaseSample {
