@@ -236,6 +236,7 @@ describe('bisect command', () => {
       reuseCurrentResults: true,
       dryRun: true,
       validateGoodRef: true,
+      configDirectory: '/tmp',
     }));
   });
 

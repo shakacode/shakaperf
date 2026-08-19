@@ -46,6 +46,13 @@ export interface E2eDependencyHarness {
   dependencies: ExecuteBisectDependencies;
   candidateComparisonCalls: CompareRunRequest[];
   experimentReloadCalls: ExperimentReloadRequest[];
+  repairCommandCalls: E2eRepairCommandCall[];
+}
+
+export interface E2eRepairCommandCall {
+  phase: 'prepare' | 'cleanup';
+  commands: readonly string[];
+  sha: string;
 }
 
 interface E2eDependencyOptions {
@@ -53,6 +60,9 @@ interface E2eDependencyOptions {
   resultsBySha: Record<string, readonly TestResult[]>;
   failAtSha?: string;
   containerFallbackAtSha?: string;
+  onCompare?(request: CompareRunRequest): void | Promise<void>;
+  onRefresh?(request: ExperimentReloadRequest): void | Promise<void>;
+  onRepairCommands?(call: E2eRepairCommandCall): void | Promise<void>;
 }
 
 export interface StubRegression {
@@ -171,6 +181,7 @@ function finishFixture(
   const config = {
     bisect: {
       rebuildContainer: false,
+      repairs: [],
     },
     twinServers: {
       rebuildCommands: [{ description: 'Build application', command: 'yarn build' }],
@@ -211,6 +222,7 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
   const { fixture } = options;
   const candidateComparisonCalls: CompareRunRequest[] = [];
   const experimentReloadCalls: ExperimentReloadRequest[] = [];
+  const repairCommandCalls: E2eRepairCommandCall[] = [];
   const nativeGit = new NativeGitBisectDriver({ repoDir: fixture.experimentDir });
   const exactCheckout = new ExactCheckout({ repoDir: fixture.experimentDir });
   let tick = 0;
@@ -218,6 +230,7 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
   return {
     candidateComparisonCalls,
     experimentReloadCalls,
+    repairCommandCalls,
     dependencies: {
       nativeGit,
       exactCheckout,
@@ -231,9 +244,18 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
       server: {
         async begin() {},
         async end() {},
-        async runRepairCommands() {},
+        async runRepairCommands(phase, commands) {
+          const call = {
+            phase,
+            commands: [...commands],
+            sha: git(fixture.experimentDir, ['rev-parse', 'HEAD']),
+          };
+          repairCommandCalls.push(call);
+          await options.onRepairCommands?.(call);
+        },
         async refreshExperiment(request) {
           experimentReloadCalls.push({ ...request });
+          await options.onRefresh?.(request);
           if (request.sha === options.containerFallbackAtSha) {
             return { mode: 'container', usedFallback: true };
           }
@@ -247,6 +269,7 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
             categories: [...request.categories],
             tests: [...request.tests],
           });
+          await options.onCompare?.(request);
           if (request.sha === options.failAtSha) {
             throw new Error(`Stubbed compare failure at ${request.sha}`);
           }

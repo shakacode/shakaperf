@@ -5,6 +5,9 @@
  * License in LICENSE.md.
  */
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import type { BisectRepairConfig } from '../../../config';
 import { runBisect } from '../session';
 import type {
   E2eDependencyHarness,
@@ -834,6 +837,283 @@ describe('bisect black-box E2E', () => {
       fixture.cleanup();
     }
   });
+
+  it('applies missing-test, build, overlapping, and data repairs without leaking state', async () => {
+    const fixture = createLinearFixture([
+      'known-good',
+      'older-without-test',
+      'regression-introduced',
+      'build-incompatible',
+      'regression-confirmed',
+      'known-bad',
+    ]);
+    const repairSha = fixture.shas['regression-introduced']!;
+    const seedPath = path.join(fixture.rootDir, 'experiment-seed-state');
+    try {
+      configureRepairs(fixture, [
+        repair(fixture, {
+          id: 'backport-frozen-test',
+          kind: 'test-harness',
+          purpose: 'Supply the frozen test on older candidates',
+          patch: newFilePatch('tests/frozen.abtest.ts', 'frozen test\n'),
+          appliesTo: { commits: [fixture.shas['older-without-test']!, repairSha] },
+        }),
+        repair(fixture, {
+          id: 'historical-build-fix',
+          kind: 'build',
+          purpose: 'Repair the historical build interval',
+          patch: newFilePatch('build-compatibility.txt', 'compatible\n'),
+          appliesTo: {
+            from: repairSha,
+            through: fixture.shas['build-incompatible']!,
+          },
+        }),
+        repair(fixture, {
+          id: 'ordered-base',
+          purpose: 'Create the base consumed by the following repair',
+          patch: newFilePatch('repair-order.txt', 'first\n'),
+          appliesTo: { commits: [repairSha] },
+        }),
+        repair(fixture, {
+          id: 'ordered-extension',
+          purpose: 'Extend the base from the preceding repair',
+          patch: appendLinePatch('repair-order.txt', 'first', 'second'),
+          appliesTo: { commits: [repairSha] },
+        }),
+        repair(fixture, {
+          id: 'seed-data',
+          kind: 'data',
+          purpose: 'Prepare candidate-specific seed data',
+          patch: newFilePatch('seed-repair.txt', 'seed repair\n'),
+          appliesTo: { commits: [repairSha] },
+          prepareCommands: [{ description: 'Seed data', command: 'seed-fixture' }],
+          cleanupCommands: [{ description: 'Remove seed data', command: 'unseed-fixture' }],
+        }),
+      ]);
+
+      const observedUnpatchedCandidates: string[] = [];
+      const harness = createE2eDependencies({
+        fixture,
+        resultsBySha: visregTimeline(fixture, {
+          'known-good': false,
+          'older-without-test': false,
+          'regression-introduced': true,
+          'build-incompatible': true,
+          'regression-confirmed': true,
+          'known-bad': true,
+        }),
+        onRefresh(request) {
+          const experiment = fixture.experimentDir;
+          if (request.sha === repairSha) {
+            expect(fs.readFileSync(path.join(experiment, 'tests/frozen.abtest.ts'), 'utf8'))
+              .toBe('frozen test\n');
+            expect(fs.readFileSync(path.join(experiment, 'build-compatibility.txt'), 'utf8'))
+              .toBe('compatible\n');
+            expect(fs.readFileSync(path.join(experiment, 'repair-order.txt'), 'utf8'))
+              .toBe('first\nsecond\n');
+          } else {
+            observedUnpatchedCandidates.push(request.sha);
+            expect(fs.existsSync(path.join(experiment, 'repair-order.txt'))).toBe(false);
+            expect(fs.existsSync(seedPath)).toBe(false);
+          }
+        },
+        onRepairCommands(call) {
+          if (call.commands.includes('seed-fixture')) fs.writeFileSync(seedPath, 'seeded\n');
+          if (call.commands.includes('unseed-fixture')) fs.rmSync(seedPath, { force: true });
+        },
+        onCompare(request) {
+          if (request.sha === repairSha) expect(fs.readFileSync(seedPath, 'utf8')).toBe('seeded\n');
+        },
+      });
+
+      const session = await runBisect({ ...fixture.runOptions, dependencies: harness.dependencies });
+
+      expectFirstBadCommits(session, fixture, [{
+        regression: stubRegression('visual', 'visreg'),
+        commit: 'regression-introduced',
+      }]);
+      expect(harness.repairCommandCalls.filter((call) => call.sha === repairSha))
+        .toEqual(expect.arrayContaining([
+          expect.objectContaining({ phase: 'prepare', commands: ['seed-fixture'] }),
+          expect.objectContaining({ phase: 'cleanup', commands: ['unseed-fixture'] }),
+        ]));
+      expect(observedUnpatchedCandidates.length).toBeGreaterThan(0);
+      expect(fs.existsSync(seedPath)).toBe(false);
+      assertExperimentRestored(fixture);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('selects repairs by SHA during merge endpoint and child measurements', async () => {
+    const fixture = createMergeFixture(['known-bad']);
+    const mergeShas: [string, string] = [
+      fixture.shas['topic-second-commit']!,
+      fixture.shas['topic-first-commit']!,
+    ];
+    try {
+      configureRepairs(fixture, [repair(fixture, {
+        id: 'topic-compatibility',
+        kind: 'build',
+        purpose: 'Build topic commits during merge investigation',
+        patch: newFilePatch('topic-compatibility.txt', 'topic compatible\n'),
+        appliesTo: { commits: mergeShas },
+      })]);
+      const visual = stubRegression('visual', 'visreg');
+      const observed = new Set<string>();
+      const harness = createE2eDependencies({
+        fixture,
+        resultsBySha: regressionTimeline(fixture, [visual], {
+          'known-good': [],
+          'mainline-before-merge': [],
+          'topic-first-commit': ['visual'],
+          'topic-second-commit': ['visual'],
+          'merge-topic-branch': ['visual'],
+          'known-bad': ['visual'],
+        }),
+        onCompare(request) {
+          if (mergeShas.includes(request.sha)) {
+            expect(fs.readFileSync(
+              path.join(fixture.experimentDir, 'topic-compatibility.txt'),
+              'utf8',
+            )).toBe('topic compatible\n');
+            observed.add(request.sha);
+          }
+        },
+      });
+
+      await runBisect({
+        ...fixture.runOptions,
+        investigateMerges: true,
+        dependencies: harness.dependencies,
+      });
+
+      expect(observed).toEqual(new Set(mergeShas));
+      assertExperimentRestored(fixture);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('withholds a native verdict when repair cleanup fails', async () => {
+    const fixture = createLinearFixture([
+      'known-good',
+      'clean-before-failure',
+      'cleanup-failure',
+      'regression-confirmed',
+      'known-bad',
+    ]);
+    const failureSha = fixture.shas['cleanup-failure']!;
+    try {
+      configureRepairs(fixture, [repair(fixture, {
+        id: 'cleanup-failure',
+        purpose: 'Exercise transactional cleanup failure',
+        patch: newFilePatch('cleanup-marker.txt', 'patched\n'),
+        appliesTo: { commits: [failureSha] },
+        cleanupCommands: [{ description: 'Fail cleanup', command: 'fail-cleanup' }],
+      })]);
+      const harness = createE2eDependencies({
+        fixture,
+        resultsBySha: visregTimeline(fixture, {
+          'known-good': false,
+          'clean-before-failure': false,
+          'cleanup-failure': true,
+          'regression-confirmed': true,
+          'known-bad': true,
+        }),
+        onRepairCommands(call) {
+          if (call.phase === 'cleanup' && call.commands.includes('fail-cleanup')) {
+            throw new Error('stubbed repair cleanup failure');
+          }
+        },
+      });
+
+      await expect(runBisect({ ...fixture.runOptions, dependencies: harness.dependencies }))
+        .rejects.toThrow(/stubbed repair cleanup failure/i);
+
+      const failed = readPersistedSession(fixture);
+      expect(failed.status).toBe('failed');
+      expect(failed.primary.groups.flatMap((group) => group.decisions))
+        .not.toContainEqual(expect.objectContaining({ sha: failureSha }));
+      expect([...failed.primary.attempts].reverse().find((attempt) => attempt.sha === failureSha))
+        .toMatchObject({
+        status: 'incomplete',
+        repairEvidence: {
+          applications: [expect.objectContaining({ cleanup: 'failed' })],
+        },
+      });
+      assertExperimentRestored(fixture);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('resumes with the persisted patch after its configured source is removed', async () => {
+    const fixture = createLinearFixture([
+      'known-good',
+      'clean-before-repair',
+      'repaired-candidate',
+      'regression-confirmed',
+      'known-bad',
+    ]);
+    const repairedSha = fixture.shas['repaired-candidate']!;
+    try {
+      const configured = repair(fixture, {
+        id: 'resume-repair',
+        purpose: 'Persist a repair across interruption',
+        patch: newFilePatch('resume-marker.txt', 'persisted repair\n'),
+        appliesTo: { commits: [repairedSha] },
+      });
+      configureRepairs(fixture, [configured]);
+      const resultsBySha = visregTimeline(fixture, {
+        'known-good': false,
+        'clean-before-repair': false,
+        'repaired-candidate': true,
+        'regression-confirmed': true,
+        'known-bad': true,
+      });
+      const interrupted = createE2eDependencies({
+        fixture,
+        resultsBySha,
+        failAtSha: repairedSha,
+        onCompare(request) {
+          if (request.sha === repairedSha) {
+            expect(fs.existsSync(path.join(fixture.experimentDir, 'resume-marker.txt'))).toBe(true);
+          }
+        },
+      });
+      await expect(runBisect({ ...fixture.runOptions, dependencies: interrupted.dependencies }))
+        .rejects.toThrow(/stubbed compare failure/i);
+      assertExperimentRestored(fixture);
+      fs.rmSync(path.resolve(fixture.rootDir, configured.patch));
+
+      const observedHashes: string[] = [];
+      const resumedHarness = createE2eDependencies({
+        fixture,
+        resultsBySha,
+        onCompare(request) {
+          if (request.sha === repairedSha) {
+            expect(fs.readFileSync(
+              path.join(fixture.experimentDir, 'resume-marker.txt'),
+              'utf8',
+            )).toBe('persisted repair\n');
+            observedHashes.push(readPersistedSession(fixture).repairs[0]!.sha256);
+          }
+        },
+      });
+      const resumed = await runBisect({
+        ...fixture.runOptions,
+        resume: true,
+        dependencies: resumedHarness.dependencies,
+      });
+
+      expect(resumed.status).toBe('complete');
+      expect(observedHashes).toEqual([resumed.repairs[0]!.sha256]);
+      assertExperimentRestored(fixture);
+    } finally {
+      fixture.cleanup();
+    }
+  });
 });
 
 function expectCommitsSkippedByBinarySearch(
@@ -845,4 +1125,61 @@ function expectCommitsSkippedByBinarySearch(
   for (const label of commitLabels) {
     expect(traversedShas).not.toContain(fixture.shas[label]);
   }
+}
+
+function configureRepairs(
+  fixture: E2eRepositoryFixture,
+  repairs: BisectRepairConfig[],
+): void {
+  fixture.runOptions.config.bisect.repairs = repairs;
+}
+
+function repair(
+  fixture: E2eRepositoryFixture,
+  options: Pick<BisectRepairConfig, 'id' | 'purpose' | 'appliesTo'> & {
+    patch: string;
+    kind?: BisectRepairConfig['kind'];
+    prepareCommands?: BisectRepairConfig['prepareCommands'];
+    cleanupCommands?: BisectRepairConfig['cleanupCommands'];
+  },
+): BisectRepairConfig {
+  const patchDirectory = path.join(fixture.rootDir, 'repair-sources');
+  fs.mkdirSync(patchDirectory, { recursive: true });
+  const patchPath = path.join(patchDirectory, `${options.id}.patch`);
+  fs.writeFileSync(patchPath, options.patch, 'utf8');
+  return {
+    id: options.id,
+    purpose: options.purpose,
+    appliesTo: options.appliesTo,
+    kind: options.kind ?? 'other',
+    prepareCommands: options.prepareCommands ?? [],
+    cleanupCommands: options.cleanupCommands ?? [],
+    patch: path.relative(fixture.rootDir, patchPath),
+  };
+}
+
+function newFilePatch(filename: string, contents: string): string {
+  const added = contents.split('\n').slice(0, -1).map((line) => `+${line}`).join('\n');
+  const lineCount = contents.split('\n').length - 1;
+  return [
+    `diff --git a/${filename} b/${filename}`,
+    'new file mode 100644',
+    '--- /dev/null',
+    `+++ b/${filename}`,
+    `@@ -0,0 +1,${lineCount} @@`,
+    added,
+    '',
+  ].join('\n');
+}
+
+function appendLinePatch(filename: string, existing: string, addition: string): string {
+  return [
+    `diff --git a/${filename} b/${filename}`,
+    `--- a/${filename}`,
+    `+++ b/${filename}`,
+    '@@ -1 +1,2 @@',
+    ` ${existing}`,
+    `+${addition}`,
+    '',
+  ].join('\n');
 }

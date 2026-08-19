@@ -164,6 +164,7 @@ compare-bisect-results/
   bisect-report.json
   bisect-report.html
   session.json
+  patches/<repair-id>.patch
   bad-ref-tests.json
   summary.json
   decision-log.md
@@ -180,7 +181,11 @@ compare-bisect-results/
   HTML report. Its renderable artifacts are already stored as data URIs.
 - `session.json` is the current strict resumable state recording repository identity,
   compatibility fingerprints, primary and child phases, target observations,
-  complete/incomplete attempts, merge queues, rebuild strategy, and failures.
+  complete/incomplete attempts, merge queues, rebuild strategy, configured
+  repairs, repair application evidence, and failures.
+- `patches/` contains immutable copies of configured repair patches. Their
+  SHA-256 hashes are stored in `session.json`; resume verifies these copies and
+  does not depend on the original source paths.
 - `bad-ref-tests.json` is the digest-checked report input used to regenerate the
   HTML report on resume without repeating bad-ref discovery.
 - `summary.json` records the final user-facing answer grouped by target status.
@@ -220,6 +225,33 @@ export default defineConfig({
   },
   bisect: {
     rebuildContainer: false,
+    repairs: [
+      {
+        id: 'backport-checkout-test',
+        kind: 'test-harness',
+        purpose: 'Keep the frozen checkout test runnable on older commits',
+        patch: './bisect-repairs/backport-checkout-test.patch',
+        appliesTo: { through: 'historical-test-migration' },
+        prepareCommands: [],
+        cleanupCommands: [],
+      },
+      {
+        id: 'seed-legacy-schema',
+        kind: 'data',
+        purpose: 'Create and remove seed data required by legacy candidates',
+        patch: './bisect-repairs/legacy-seed-hook.patch',
+        appliesTo: {
+          from: 'legacy-schema-start',
+          through: 'legacy-schema-end',
+        },
+        prepareCommands: [
+          { description: 'Seed legacy data', command: 'yarn seed:legacy' },
+        ],
+        cleanupCommands: [
+          { description: 'Remove legacy data', command: 'yarn seed:legacy:clean' },
+        ],
+      },
+    ],
   },
 });
 ```
@@ -234,6 +266,47 @@ export default defineConfig({
 - If command refresh fails, compare bisect falls back to the container rebuild path for that
   candidate, recreates the experiment container, and records the fallback in
   `session.json`. Control remains untouched.
+
+### Preconfigured Repair Patches
+
+Use `bisect.repairs` when commits in the search range need a known compatibility
+change to remain measurable—for example, backporting a frozen test, repairing a
+historical build API, or adding candidate-specific seed setup. This is normal
+project configuration and works when the published `shaka-perf` CLI is run in
+another repository; it is not tied to the demo app.
+
+- `patch` is resolved relative to the directory containing
+  `abtests.config.ts`. At the start of a fresh run, its exact bytes are copied
+  into `compare-bisect-results/patches/` and hashed before old result artifacts
+  are cleared.
+- `appliesTo.commits` names one or more exact refs. Alternatively,
+  `{ from?, through }` selects an inclusive first-parent interval; an omitted
+  `from` means the primary good commit. Refs are resolved to immutable SHAs
+  when the session starts.
+- Repairs apply in array order and are removed in reverse order. `kind` is
+  descriptive metadata only; all kinds use the same SHA-selected transaction.
+- Patches affect only the experiment checkout. They are present for refresh and
+  compare, then cleanup commands run and patches are reversed before Git can
+  receive a verdict or advance to another candidate.
+- `prepareCommands` and `cleanupCommands` run inside the experiment container
+  under the active bisect lease. A `data` repair with preparation
+  commands requires cleanup commands unless every candidate rebuilds its
+  container.
+- A patch, preparation, comparison, cleanup, reversal, or final clean-check
+  failure leaves the attempt incomplete. The candidate is not marked good or
+  bad, native bisect is reset, and the original experiment checkout is restored.
+
+When a repair applies to the bad ref, `--reuse-current-results` is rejected
+because ordinary compare artifacts do not carry the repair-set fingerprint.
+Run bad-ref discovery through bisect so it can apply and record the
+repair.
+
+Repair kinds currently do not select behavior, and there are no CLI repair
+flags. This first iteration supports only repairs declared before a fresh run.
+It does not capture a patch after a failure or add, change, remove, or supersede
+repairs in an existing session. A test-harness repair can backport a frozen test
+to older commits, but the test must still be discoverable from the invocation
+checkout when the run begins.
 
 ## Algorithm
 
@@ -299,6 +372,14 @@ frozen `(test file, test name)` pairs, and rebuild strategy. Moved, dirty, or
 incompatible sessions fail with a fresh-run instruction. Older session shapes
 are rejected rather than migrated or normalized into the current shape.
 
+Configured patch source files are not reread on resume. The persisted repair
+metadata and copied patch artifacts are authoritative, and every stored patch
+must still exist and match its recorded SHA-256 hash before the lease is
+acquired. Therefore a session can resume after the original patch source is
+removed, while a missing or modified stored artifact fails safely. Report-only
+rendering uses saved metadata and does not require patch bytes because it never
+measures a commit.
+
 Completed observations are never compared again. A crashed `running` attempt is
 loaded as `incomplete` and retried without advancing its target group. Resume
 starts a fresh native Git bisect run from each persisted group's already-narrowed
@@ -327,6 +408,8 @@ The implementation keeps a few invariants simple on purpose:
   requested target is actually observed in that candidate's compare output.
 - **Artifacts are durable.** Each measured SHA writes normal compare artifacts
   plus JSON session state so a failed run can be inspected after the fact.
+  Configured repair bytes are session artifacts too, rather than transient Git
+  state or files that must remain at their original config-relative paths.
 
 These invariants make the result auditable: for any target in `summary.json`,
 you can walk the observations in `session.json` and see why its group moved.
@@ -486,3 +569,7 @@ Candidate run fields:
 - `refreshMode` and `usedFallback` describe how the experiment side was rebuilt
   or restarted.
 - `infrastructureError` means the candidate was not used as evidence.
+- `repairIds`, `repairSetFingerprint`, and repair application evidence identify
+  the ordered repair set and whether apply, prepare, cleanup, and reversal
+  succeeded. The same evidence is surfaced in session state, summaries,
+  decision logs, and reports.

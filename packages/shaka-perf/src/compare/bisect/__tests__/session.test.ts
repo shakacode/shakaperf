@@ -31,11 +31,12 @@ function config(): AbTestsConfig {
   return {
     bisect: {
       rebuildContainer: false,
+      repairs: [],
     },
     twinServers: {
       rebuildCommands: [{ description: 'Build assets', command: 'yarn build' }],
     },
-  } as AbTestsConfig;
+  } as unknown as AbTestsConfig;
 }
 
 function input(rootDir: string): ExecuteBisectInput {
@@ -73,6 +74,7 @@ function input(rootDir: string): ExecuteBisectInput {
     reuseCurrentResults: false,
     dryRun: false,
     validateGoodRef: false,
+    repairs: [],
   };
 }
 
