@@ -69,8 +69,8 @@ export const BisectPatchManifestEntrySchema = z.object({
     IntervalSelectorSchema,
     AllSelectorSchema,
   ]),
-  prepareCommands: z.array(PatchCommandSchema),
-  cleanupCommands: z.array(PatchCommandSchema),
+  prepareCommands: z.array(PatchCommandSchema).default([]),
+  cleanupCommands: z.array(PatchCommandSchema).default([]),
 }).strict();
 
 export const BisectPatchManifestSchema = z.object({
