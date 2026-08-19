@@ -176,6 +176,14 @@ export class BisectPatchRegistry {
     if ((options.goodRef && !options.badRef) || (!options.goodRef && options.badRef)) {
       throw new Error('Patch verification requires both good-ref and bad-ref when either is supplied');
     }
+    if (!options.goodRef && (
+      'all' in patch.entry.appliesTo
+      || ('through' in patch.entry.appliesTo && !patch.entry.appliesTo.from)
+    )) {
+      throw new Error(
+        'Patch verification requires good-ref and bad-ref to enumerate this configured scope',
+      );
+    }
     const repoDir = gitRoot(this.options.repoDir);
     const bytes = fs.readFileSync(patch.artifactPath);
     return verifyPatchBytes(repoDir, patch.entry.id, patch.entry.appliesTo, bytes, options);
@@ -394,7 +402,7 @@ function verificationShas(
       selected = commitsBetween(repoDir, from, through, false);
     }
   }
-  if (graph) {
+  if (graph && !('commits' in selector)) {
     const allowed = new Set(graph);
     selected = selected.filter((sha) => allowed.has(sha));
   }
