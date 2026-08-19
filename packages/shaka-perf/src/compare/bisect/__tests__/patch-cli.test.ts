@@ -73,6 +73,27 @@ describe('bisect patch CLI', () => {
     expect(updatePrompt.initialInputs).toContain('Keep historical tests runnable');
   });
 
+  it('pins refs entered during metadata updates to commit SHAs', async () => {
+    fs.writeFileSync(path.join(repoDir, 'app.txt'), 'after\n');
+    await command(false).parseAsync([
+      'create', 'compat', '--working-tree', '--kind', 'build', '--all',
+      '--no-interactive', '--', 'app.txt',
+    ], { from: 'user' });
+    git(['restore', 'app.txt']);
+    const prompt = new ScriptedPrompt({
+      selects: ['build', 'commits'],
+      inputs: ['', 'HEAD'],
+    });
+
+    await command(true, prompt).parseAsync(['update', 'compat'], { from: 'user' });
+
+    const manifest = JSON.parse(fs.readFileSync(
+      path.join(rootDir, 'bisect-repairs', 'manifest.json'),
+      'utf8',
+    )) as { patches: Array<{ appliesTo: { commits: string[] } }> };
+    expect(manifest.patches[0]?.appliesTo.commits).toEqual([git(['rev-parse', 'HEAD'])]);
+  });
+
   it('edits from working-tree content and applies and reverses by ID', async () => {
     fs.writeFileSync(path.join(repoDir, 'app.txt'), 'one\n');
     await command(false).parseAsync([
