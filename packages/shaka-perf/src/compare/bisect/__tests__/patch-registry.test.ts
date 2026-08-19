@@ -157,6 +157,43 @@ describe('bisect patch registry', () => {
     expect(git(['worktree', 'list', '--porcelain']).match(/worktree /g)).toHaveLength(1);
   });
 
+  it('requires a range when the configured verification scope cannot be enumerated alone', () => {
+    fs.writeFileSync(path.join(repoDir, 'app.txt'), 'after\n');
+    const captured = captureWorkingTreePatch({ repoDir, paths: ['app.txt'] });
+    git(['restore', 'app.txt']);
+    registry.create('all', captured, { kind: 'build', appliesTo: { all: true } });
+    registry.create('session-start', captured, {
+      kind: 'build', appliesTo: { through: 'HEAD' },
+    });
+
+    expect(() => registry.verify('all')).toThrow(/requires good-ref and bad-ref/i);
+    expect(() => registry.verify('session-start')).toThrow(/requires good-ref and bad-ref/i);
+  });
+
+  it('verifies every exact commit even when supplied range excludes one', () => {
+    const goodSha = git(['rev-parse', 'HEAD']);
+    fs.writeFileSync(path.join(repoDir, 'app.txt'), 'after\n');
+    const captured = captureWorkingTreePatch({ repoDir, paths: ['app.txt'] });
+    git(['restore', 'app.txt']);
+    fs.writeFileSync(path.join(repoDir, 'middle.txt'), 'middle\n');
+    git(['add', 'middle.txt']);
+    git(['commit', '-m', 'middle']);
+    const middleSha = git(['rev-parse', 'HEAD']);
+    fs.writeFileSync(path.join(repoDir, 'later.txt'), 'later\n');
+    git(['add', 'later.txt']);
+    git(['commit', '-m', 'later']);
+    const laterSha = git(['rev-parse', 'HEAD']);
+    registry.create('exact', captured, {
+      kind: 'build', appliesTo: { commits: [goodSha, laterSha] },
+    });
+
+    expect(registry.verify('exact', { goodRef: goodSha, badRef: middleSha }))
+      .toEqual([
+        { sha: goodSha, outcome: 'applies' },
+        { sha: laterSha, outcome: 'applies' },
+      ]);
+  });
+
   function git(args: string[]): string {
     return execFileSync('git', args, { cwd: repoDir, encoding: 'utf8' }).trim();
   }
