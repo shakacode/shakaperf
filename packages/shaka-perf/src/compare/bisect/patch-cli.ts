@@ -266,7 +266,7 @@ async function runUpdate(
     artifact: current.artifactPath,
     sha256: current.entry.sha256,
   }, false, deps);
-  const metadata = await promptMetadata(prompt, current.entry);
+  const metadata = await promptMetadata(context.repoDir, prompt, current.entry);
   output({
     current: metadataView(current.entry),
     proposed: metadataView(metadata),
@@ -435,6 +435,7 @@ async function completeCreateAnswers(
 }
 
 async function promptMetadata(
+  repoDir: string,
   prompt: PatchPrompt,
   current: BisectPatchManifestEntry,
 ): Promise<PatchMetadata> {
@@ -454,12 +455,17 @@ async function promptMetadata(
     const initial = 'commits' in current.appliesTo ? current.appliesTo.commits.join(', ') : '';
     const commits = splitValues(await prompt.input('Exact commit SHAs (comma-separated)', initial));
     if (commits.length === 0) throw new Error('At least one exact commit is required');
-    appliesTo = { commits: commits as [string, ...string[]] };
+    appliesTo = {
+      commits: commits.map((ref) => resolveRef(repoDir, ref)) as [string, ...string[]],
+    };
   } else {
     const interval = 'through' in current.appliesTo ? current.appliesTo : { through: '' };
     const from = await prompt.input('Inclusive lower SHA (blank uses session good SHA)', interval.from ?? '');
     const through = await prompt.input('Inclusive upper SHA', interval.through);
-    appliesTo = { ...(from ? { from } : {}), through };
+    appliesTo = {
+      ...(from ? { from: resolveRef(repoDir, from) } : {}),
+      through: resolveRef(repoDir, through),
+    };
   }
   const prepareCommands = await promptCommandList(prompt, 'preparation', current.prepareCommands);
   const cleanupCommands = await promptCommandList(prompt, 'cleanup', current.cleanupCommands);
