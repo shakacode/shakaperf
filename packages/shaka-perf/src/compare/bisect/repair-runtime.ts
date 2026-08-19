@@ -92,10 +92,24 @@ export class ConfiguredBisectRepairRuntime {
       for (const repair of repairs) {
         const application = applicationFor(evidence, repair.id);
         try {
-          await this.gitApply(repair, false, true);
-          await this.gitApply(repair, false, false);
+          let patchAlreadyPresent = false;
+          try {
+            await this.gitApply(repair, false, true);
+          } catch (forwardCheckError) {
+            try {
+              await this.gitApply(repair, true, true);
+              patchAlreadyPresent = true;
+            } catch {
+              throw forwardCheckError;
+            }
+          }
+          if (!patchAlreadyPresent) {
+            await this.gitApply(repair, false, false);
+            applied.push(repair);
+          } else {
+            application.reverse = 'succeeded';
+          }
           application.apply = 'succeeded';
-          applied.push(repair);
         } catch (error) {
           application.apply = 'failed';
           application.errors.push(errorMessage(error));
@@ -177,7 +191,7 @@ export class ConfiguredBisectRepairRuntime {
 
   private repairsFor(sha: string): BisectRepair[] {
     return this.options.repairs
-      .filter((repair) => repair.applicableShas.includes(sha))
+      .filter((repair) => repairAppliesToSha(repair, sha))
       .sort((left, right) => left.order - right.order);
   }
 
@@ -207,6 +221,10 @@ export class ConfiguredBisectRepairRuntime {
       throw new Error(`Repair "${repair.id}" git apply failed: ${detail}`);
     }
   }
+}
+
+export function repairAppliesToSha(repair: BisectRepair, sha: string): boolean {
+  return repair.appliesToAll || repair.applicableShas.includes(sha);
 }
 
 export function createRepairEvidence(

@@ -1,0 +1,24 @@
+diff --git a/demo-ecommerce/ab-tests/deals.abtest.ts b/demo-ecommerce/ab-tests/deals.abtest.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..f180248768c55e27562691a4184db71df49aa100
+--- /dev/null
++++ b/demo-ecommerce/ab-tests/deals.abtest.ts
+@@ -0,0 +1,18 @@
++/*
++ * Copyright (c) 2026 ShakaCode LLC.
++ *
++ * SPDX-License-Identifier: LicenseRef-ShakaPerf-1.0
++ *
++ * This file is part of ShakaPerf. Use is governed by The ShakaPerf
++ * License in LICENSE.md.
++ */
++
++import { abTest } from 'shaka-shared';
++import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
++
++abTest('deals List', {
++  startingPath: '/deals',
++}, async ({ page, annotate }) => {
++  annotate('Wait for deals list to settle');
++  await waitUntilPageSettled(page);
++});

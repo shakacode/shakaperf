@@ -113,6 +113,7 @@ import { installCommitRun } from './commit-run-state';
 import {
   ConfiguredBisectRepairRuntime,
   createRepairEvidence,
+  repairAppliesToSha,
 } from './repair-runtime';
 
 type ExperimentReloadMode = CommitRun['experimentReloadMode'];
@@ -316,7 +317,7 @@ async function prepareBisectExecution(
     verifyPersistedRepairArtifacts(resultsDirectory, preliminaryResume.repairs);
   }
   if (options.reuseCurrentResults && preparedRepairs.repairs.some((repair) => (
-    repair.applicableShas.includes(gitRange.badSha)
+    repairAppliesToSha(repair, gitRange.badSha)
   ))) {
     throw new Error(
       'Cannot use --reuse-current-results when a configured repair applies to the bad ref',
@@ -622,6 +623,7 @@ async function startBisectExecution(context: BisectExecutionContext): Promise<vo
       kind: repair.kind,
       purpose: repair.purpose,
       sha256: repair.sha256,
+      appliesToAll: repair.appliesToAll,
       applicableShas: repair.applicableShas,
     })),
   });

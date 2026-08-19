@@ -21,6 +21,7 @@ export interface BisectRepair {
   filename: string;
   sha256: string;
   order: number;
+  appliesToAll: boolean;
   applicableShas: string[];
   prepareCommands: BisectRepairCommand[];
   cleanupCommands: BisectRepairCommand[];

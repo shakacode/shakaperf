@@ -201,6 +201,13 @@ describe('bisect config', () => {
             prepareCommands: [{ description: 'Seed', command: 'bin/seed' }],
             cleanupCommands: [{ description: 'Unseed', command: 'bin/unseed' }],
           },
+          {
+            id: 'universal-build-fix',
+            kind: 'build',
+            purpose: 'Keep every evaluated commit buildable',
+            patch: './patches/universal-build-fix.patch',
+            appliesTo: { all: true },
+          },
         ],
       },
     })).bisect.repairs).toEqual([
@@ -221,6 +228,15 @@ describe('bisect config', () => {
         appliesTo: { commits: ['abc123', 'def456'] },
         prepareCommands: [{ description: 'Seed', command: 'bin/seed' }],
         cleanupCommands: [{ description: 'Unseed', command: 'bin/unseed' }],
+      },
+      {
+        id: 'universal-build-fix',
+        kind: 'build',
+        purpose: 'Keep every evaluated commit buildable',
+        patch: './patches/universal-build-fix.patch',
+        appliesTo: { all: true },
+        prepareCommands: [],
+        cleanupCommands: [],
       },
     ]);
   });
@@ -248,6 +264,16 @@ describe('bisect config', () => {
       name: 'mixed selectors',
       repairs: [repair({ appliesTo: { commits: ['abc'], through: 'def' } })],
       error: /unrecognized key|invalid input/i,
+    },
+    {
+      name: 'mixed all selector',
+      repairs: [repair({ appliesTo: { all: true, commits: ['abc'] } })],
+      error: /unrecognized key|invalid input/i,
+    },
+    {
+      name: 'disabled all selector',
+      repairs: [repair({ appliesTo: { all: false } })],
+      error: /invalid input/i,
     },
     {
       name: 'unknown fields',

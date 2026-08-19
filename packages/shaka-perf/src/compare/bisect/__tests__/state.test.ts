@@ -133,6 +133,36 @@ describe('resumable bisect state', () => {
     expect(() => parseBisectSession(legacy)).toThrow();
   });
 
+  it('requires explicit persisted all-commit applicability', () => {
+    const universalRepair = {
+      id: 'universal-build-fix',
+      kind: 'build' as const,
+      purpose: 'Keep every evaluated commit buildable',
+      filename: 'patches/universal-build-fix.patch',
+      sha256: 'abc123',
+      order: 0,
+      appliesToAll: true,
+      applicableShas: [],
+      prepareCommands: [],
+      cleanupCommands: [],
+      registeredAt: '2026-07-27T00:00:00.000Z',
+      source: 'config' as const,
+    };
+    const value = session();
+    const current = {
+      ...value,
+      repairs: [universalRepair],
+      compatibility: {
+        ...value.compatibility,
+        effective: { ...value.compatibility.effective, repairs: [universalRepair] },
+      },
+    };
+    expect(parseBisectSession(current).repairs).toEqual([universalRepair]);
+
+    const { appliesToAll: _missingAllFlag, ...legacyRepair } = universalRepair;
+    expect(() => parseBisectSession({ ...current, repairs: [legacyRepair] })).toThrow();
+  });
+
   it('fingerprints objects independently of object key order', () => {
     expect(fingerprint({ b: 2, a: { d: 4, c: 3 } }))
       .toBe(fingerprint({ a: { c: 3, d: 4 }, b: 2 }));

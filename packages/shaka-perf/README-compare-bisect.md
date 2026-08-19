@@ -251,6 +251,15 @@ export default defineConfig({
           { description: 'Remove legacy data', command: 'yarn seed:legacy:clean' },
         ],
       },
+      {
+        id: 'package-manager-compatibility',
+        kind: 'build',
+        purpose: 'Keep every evaluated commit compatible with the runner image',
+        patch: './bisect-repairs/package-manager-compatibility.patch',
+        appliesTo: { all: true },
+        prepareCommands: [],
+        cleanupCommands: [],
+      },
     ],
   },
 });
@@ -281,8 +290,11 @@ another repository; it is not tied to the demo app.
   are cleared.
 - `appliesTo.commits` names one or more exact refs. Alternatively,
   `{ from?, through }` selects an inclusive first-parent interval; an omitted
-  `from` means the primary good commit. Refs are resolved to immutable SHAs
-  when the session starts.
+  `from` means the primary good commit. `{ all: true }` applies to every SHA
+  measured by the session, including endpoints, primary and queued candidates,
+  merge second parents, and merge child candidates. The three selector shapes
+  are mutually exclusive. Refs are resolved to immutable SHAs when the session
+  starts.
 - Repairs apply in array order and are removed in reverse order. `kind` is
   descriptive metadata only; all kinds use the same SHA-selected transaction.
 - Patches affect only the experiment checkout. They are present for refresh and

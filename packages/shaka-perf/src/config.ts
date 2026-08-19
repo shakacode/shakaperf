@@ -346,6 +346,10 @@ const BisectRepairIntervalSelectorSchema = z.object({
   through: z.string().trim().min(1),
 }).strict();
 
+const BisectRepairAllSelectorSchema = z.object({
+  all: z.literal(true),
+}).strict();
+
 export const BisectRepairConfigSchema = z.object({
   id: z.string().regex(
     /^[A-Za-z0-9][A-Za-z0-9._-]*$/,
@@ -357,6 +361,7 @@ export const BisectRepairConfigSchema = z.object({
   appliesTo: z.union([
     BisectRepairCommitSelectorSchema,
     BisectRepairIntervalSelectorSchema,
+    BisectRepairAllSelectorSchema,
   ]),
   prepareCommands: z.array(BisectRepairCommandSchema).default([]),
   cleanupCommands: z.array(BisectRepairCommandSchema).default([]),

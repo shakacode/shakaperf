@@ -945,7 +945,7 @@ describe('bisect black-box E2E', () => {
     }
   });
 
-  it('selects repairs by SHA during merge endpoint and child measurements', async () => {
+  it('applies an all-commit repair during primary and merge measurements', async () => {
     const fixture = createMergeFixture(['known-bad']);
     const mergeShas: [string, string] = [
       fixture.shas['topic-second-commit']!,
@@ -955,9 +955,9 @@ describe('bisect black-box E2E', () => {
       configureRepairs(fixture, [repair(fixture, {
         id: 'topic-compatibility',
         kind: 'build',
-        purpose: 'Build topic commits during merge investigation',
+        purpose: 'Build every commit measured by primary and merge investigation',
         patch: newFilePatch('topic-compatibility.txt', 'topic compatible\n'),
-        appliesTo: { commits: mergeShas },
+        appliesTo: { all: true },
       })]);
       const visual = stubRegression('visual', 'visreg');
       const observed = new Set<string>();
@@ -972,23 +972,55 @@ describe('bisect black-box E2E', () => {
           'known-bad': ['visual'],
         }),
         onCompare(request) {
-          if (mergeShas.includes(request.sha)) {
-            expect(fs.readFileSync(
-              path.join(fixture.experimentDir, 'topic-compatibility.txt'),
-              'utf8',
-            )).toBe('topic compatible\n');
-            observed.add(request.sha);
-          }
+          expect(fs.readFileSync(
+            path.join(fixture.experimentDir, 'topic-compatibility.txt'),
+            'utf8',
+          )).toBe('topic compatible\n');
+          observed.add(request.sha);
         },
       });
 
-      await runBisect({
+      const session = await runBisect({
         ...fixture.runOptions,
         investigateMerges: true,
         dependencies: harness.dependencies,
       });
 
-      expect(observed).toEqual(new Set(mergeShas));
+      expect(observed).toEqual(new Set(
+        harness.candidateComparisonCalls.map((request) => request.sha),
+      ));
+      for (const sha of mergeShas) expect(observed).toContain(sha);
+      expect(session.repairs[0]).toMatchObject({ appliesToAll: true, applicableShas: [] });
+      assertExperimentRestored(fixture);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('rejects reused bad-ref results when an all-commit repair is configured', async () => {
+    const fixture = createLinearFixture(['known-good', 'known-bad']);
+    try {
+      configureRepairs(fixture, [repair(fixture, {
+        id: 'all-commits',
+        purpose: 'Repair every evaluated commit',
+        patch: newFilePatch('all-commits.txt', 'all commits\n'),
+        appliesTo: { all: true },
+      })]);
+      const harness = createE2eDependencies({
+        fixture,
+        resultsBySha: visregTimeline(fixture, {
+          'known-good': false,
+          'known-bad': true,
+        }),
+      });
+
+      await expect(runBisect({
+        ...fixture.runOptions,
+        reuseCurrentResults: true,
+        dependencies: harness.dependencies,
+      })).rejects.toThrow(/repair applies to the bad ref/i);
+
+      expect(harness.candidateComparisonCalls).toEqual([]);
       assertExperimentRestored(fixture);
     } finally {
       fixture.cleanup();

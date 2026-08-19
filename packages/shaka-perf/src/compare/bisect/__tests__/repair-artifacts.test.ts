@@ -74,6 +74,7 @@ describe('bisect repair artifacts', () => {
       id: 'compat',
       filename: 'patches/compat.patch',
       order: 0,
+      appliesToAll: false,
       applicableShas: range.orderedCommits.slice(1),
       registeredAt: '2026-07-27T00:00:00.000Z',
     })]);
@@ -94,6 +95,24 @@ describe('bisect repair artifacts', () => {
     });
 
     expect(prepared.repairs[0]?.applicableShas).toEqual([range.badSha, range.goodSha]);
+    expect(prepared.repairs[0]?.appliesToAll).toBe(false);
+  });
+
+  it('persists an all selector without limiting it to the primary range', async () => {
+    fs.writeFileSync(path.join(configDirectory, 'compat.patch'), 'patch bytes\n');
+    const prepared = await prepareConfiguredRepairs({
+      repairs: [repair({ appliesTo: { all: true } })],
+      configDirectory,
+      experimentDir: repoDir,
+      range,
+      registeredAt: 'registered',
+      rebuildContainer: false,
+    });
+
+    expect(prepared.repairs[0]).toMatchObject({
+      appliesToAll: true,
+      applicableShas: [],
+    });
   });
 
   it('rejects reversed intervals and unsafe data setup', async () => {
