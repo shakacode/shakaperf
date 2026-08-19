@@ -74,6 +74,18 @@ describe('bisect patch manifest', () => {
     expect(loaded.manifest.patches[1]?.purpose).toBe('Backport the test');
   });
 
+  it('defaults omitted preparation and cleanup commands', () => {
+    const {
+      prepareCommands: _prepareCommands,
+      cleanupCommands: _cleanupCommands,
+      ...withoutCommands
+    } = patch();
+    writeManifest({ version: 1, patches: [withoutCommands] });
+
+    expect(loadBisectPatchManifest({ configDirectory: rootDir }).manifest.patches[0])
+      .toMatchObject({ prepareCommands: [], cleanupCommands: [] });
+  });
+
   it.each([
     ['duplicate ids', [patch(), patch({ filename: 'other.patch' })], /duplicate patch id/],
     ['duplicate filenames', [patch(), patch({ id: 'other' })], /duplicate patch filename/],
