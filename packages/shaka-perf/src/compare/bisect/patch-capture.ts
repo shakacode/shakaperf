@@ -144,10 +144,18 @@ export function inspectPatch(
   bytes: Buffer,
   copyIgnore: CopyIgnoreConfig = defaultCopyIgnoreConfig(),
 ): PatchFileSummary[] {
+  return inspectPatchAtRoot(gitRoot(repoDir), bytes, copyIgnore);
+}
+
+export function inspectPatchAtRoot(
+  repoRoot: string,
+  bytes: Buffer,
+  copyIgnore: CopyIgnoreConfig = defaultCopyIgnoreConfig(),
+): PatchFileSummary[] {
   if (bytes.length === 0) throw new Error('Patch capture is empty');
   let output: Buffer;
   try {
-    output = gitBuffer(gitRoot(repoDir), ['apply', '--numstat', '-z', '--binary', '-'], { input: bytes });
+    output = gitBuffer(repoRoot, ['apply', '--numstat', '-z', '--binary', '-'], { input: bytes });
   } catch (error) {
     throw new Error('Patch is not a valid git apply patch', { cause: error });
   }
