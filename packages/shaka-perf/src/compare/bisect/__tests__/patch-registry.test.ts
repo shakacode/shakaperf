@@ -49,6 +49,16 @@ describe('bisect patch registry', () => {
     expect(registry.list()).toHaveLength(1);
   });
 
+  it('uses the manifest schema to reject unsafe IDs before creating artifacts', () => {
+    fs.writeFileSync(path.join(repoDir, 'app.txt'), 'after\n');
+    const captured = captureWorkingTreePatch({ repoDir, paths: ['app.txt'] });
+
+    expect(() => registry.create('../escape', captured, {
+      kind: 'build', appliesTo: { all: true },
+    })).toThrow(/filesystem-safe identifier/i);
+    expect(fs.existsSync(path.join(rootDir, 'bisect-repairs'))).toBe(false);
+  });
+
   it('updates metadata without changing bytes and edits bytes without changing metadata', () => {
     fs.writeFileSync(path.join(repoDir, 'app.txt'), 'version one\n');
     const first = captureWorkingTreePatch({ repoDir, paths: ['app.txt'] });

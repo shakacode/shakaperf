@@ -47,11 +47,13 @@ const PatchFileSourceSchema = z.object({
   importedFromBasename: z.string().trim().min(1),
 }).strict();
 
+export const BisectPatchIdSchema = z.string().regex(
+  /^[A-Za-z0-9][A-Za-z0-9._-]*$/,
+  'patch id must be a filesystem-safe identifier',
+);
+
 export const BisectPatchManifestEntrySchema = z.object({
-  id: z.string().regex(
-    /^[A-Za-z0-9][A-Za-z0-9._-]*$/,
-    'patch id must be a filesystem-safe identifier',
-  ),
+  id: BisectPatchIdSchema,
   kind: z.enum(['test-harness', 'build', 'data', 'other']),
   purpose: z.string().trim().min(1, 'purpose cannot be empty').optional(),
   filename: z.string().regex(
