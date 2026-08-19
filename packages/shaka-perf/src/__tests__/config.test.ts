@@ -225,10 +225,10 @@ describe('bisect config', () => {
     }))).toThrow();
   });
 
-  it('rejects the removed bisect.repairs configuration', () => {
+  it('rejects the removed bisect.repairs configuration as an unknown key', () => {
     expect(() => buildAbTestsConfig(baseConfig({
       bisect: { repairs: [] },
-    }))).toThrow(/bisect\.repairs is not supported.*patch create <id>/s);
+    }))).toThrow(/bisect.*unrecognized key.*repairs/i);
   });
 });
 
