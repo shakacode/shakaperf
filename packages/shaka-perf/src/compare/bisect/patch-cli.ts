@@ -47,6 +47,7 @@ export interface BisectPatchCliDependencies {
   print?: (message: string) => void;
   isInteractive?: () => boolean;
   assertMutable?: (context: PatchCliContext) => Promise<void>;
+  tryProxy?: typeof tryProxy;
 }
 
 interface SharedOptions {
@@ -533,16 +534,25 @@ async function assertMutable(
 ): Promise<void> {
   if (deps.assertMutable) return deps.assertMutable(context);
   if (!context.projectSlug) return;
-  const outcome = await tryProxy({
+  const outcome = await (deps.tryProxy ?? tryProxy)({
     slug: context.projectSlug,
     request: { v: PROTOCOL_VERSION, cmd: 'bisect-status' },
   });
+  if (!outcome.proxied) {
+    if (/^manifest v\d+, this CLI speaks v\d+$/.test(outcome.reason)) {
+      throw new Error(
+        `Cannot verify the bisect lease because ${outcome.reason}. ` +
+        'Restart the running `shaka-perf servers` process and retry.',
+      );
+    }
+    return;
+  }
   if (outcome.proxied && outcome.code !== 0) {
     throw new Error(outcome.error ?? 'Cannot query bisect lease status');
   }
-  const activeSessionId = outcome.proxied
-    ? (outcome.data as { activeSessionId?: string | null } | undefined)?.activeSessionId
-    : null;
+  const activeSessionId = (outcome.data as {
+    activeSessionId?: string | null;
+  } | undefined)?.activeSessionId;
   if (activeSessionId) {
     throw new Error(
       `Cannot modify bisect patches while session "${activeSessionId}" owns the project`,
