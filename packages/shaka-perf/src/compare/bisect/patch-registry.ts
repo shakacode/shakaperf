@@ -13,7 +13,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { CapturedPatch, PatchFileSummary } from './patch-capture';
-import { inspectPatch } from './patch-capture';
+import { inspectPatchAtRoot } from './patch-capture';
 import {
   BisectPatchIdSchema,
   BisectPatchManifestSchema,
@@ -52,6 +52,8 @@ export interface PatchVerificationResult {
 }
 
 export class BisectPatchRegistry {
+  private repoRoot?: string;
+
   constructor(private readonly options: PatchRegistryOptions) {}
 
   list(): RegisteredPatch[] {
@@ -144,7 +146,7 @@ export class BisectPatchRegistry {
     if (!patch.hashValid) {
       throw new Error(`Bisect patch "${id}" artifact hash does not match the manifest`);
     }
-    const repoDir = gitRoot(this.options.repoDir);
+    const repoDir = this.root();
     const bytes = fs.readFileSync(patch.artifactPath);
     const reverse = options.reverse === true;
     if (!reverse && !canApply(repoDir, bytes, false)) {
@@ -185,7 +187,7 @@ export class BisectPatchRegistry {
         'Patch verification requires good-ref and bad-ref to enumerate this configured scope',
       );
     }
-    const repoDir = gitRoot(this.options.repoDir);
+    const repoDir = this.root();
     const bytes = fs.readFileSync(patch.artifactPath);
     return verifyPatchBytes(repoDir, patch.entry.id, patch.entry.appliesTo, bytes, options);
   }
@@ -210,9 +212,14 @@ export class BisectPatchRegistry {
     return {
       entry,
       artifactPath,
-      files: inspectPatch(this.options.repoDir, bytes),
+      files: inspectPatchAtRoot(this.root(), bytes),
       hashValid: createHash('sha256').update(bytes).digest('hex') === entry.sha256,
     };
+  }
+
+  private root(): string {
+    this.repoRoot ??= gitRoot(this.options.repoDir);
+    return this.repoRoot;
   }
 }
 
