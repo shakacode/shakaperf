@@ -145,6 +145,25 @@ describe('bisect patch CLI', () => {
     ], { from: 'user' })).rejects.toThrow(/active bisect lease/i);
   });
 
+  it('refuses mutations when a running server uses an incompatible protocol', async () => {
+    fs.writeFileSync(path.join(repoDir, 'app.txt'), 'after\n');
+    const incompatible = createBisectPatchCommand({
+      resolveContext: async () => ({ configDirectory: rootDir, repoDir, projectSlug: 'project' }),
+      isInteractive: () => false,
+      tryProxy: async () => ({
+        proxied: false,
+        reason: 'manifest v3, this CLI speaks v4',
+      }),
+      print: (message) => output.push(message),
+    }).exitOverride();
+
+    await expect(incompatible.parseAsync([
+      'create', 'compat', '--working-tree', '--kind', 'build', '--all',
+      '--all-files', '--no-interactive',
+    ], { from: 'user' })).rejects.toThrow(/Cannot verify the bisect lease.*Restart/s);
+    expect(fs.existsSync(path.join(rootDir, 'bisect-repairs', 'compat.patch'))).toBe(false);
+  });
+
   function command(interactive: boolean, prompt?: PatchPrompt) {
     return createBisectPatchCommand({
       resolveContext: async () => ({ configDirectory: rootDir, repoDir }),
