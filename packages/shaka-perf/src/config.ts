@@ -519,19 +519,6 @@ function rejectHeadlessInConfig(parsed: Record<string, unknown>, at: string): vo
  */
 export function buildAbTestsConfig(raw: unknown, origin?: string): AbTestsConfig {
   const at = origin ? `${origin}: ` : '';
-  const rawBisect = raw && typeof raw === 'object'
-    ? (raw as { bisect?: unknown }).bisect
-    : undefined;
-  if (
-    rawBisect && typeof rawBisect === 'object'
-    && Object.prototype.hasOwnProperty.call(rawBisect, 'repairs')
-  ) {
-    throw new Error(
-      at + 'bisect.repairs is not supported. Manage patches with:\n\n' +
-      '  shaka-perf bisect patch create <id>\n\n' +
-      'Patch registrations are stored in bisect-repairs/manifest.json.',
-    );
-  }
   const result = AbTestsConfigSchema.safeParse(raw ?? {});
   if (!result.success) {
     const first = result.error.errors[0];
