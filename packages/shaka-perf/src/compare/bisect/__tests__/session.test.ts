@@ -354,6 +354,7 @@ function deps(
         async end() {
           calls.events.push('lease:end');
         },
+        async runRepairCommands() {},
         async refreshExperiment(request) {
           calls.refreshes.push(request.sha);
           calls.events.push(`reload-experiment:${request.sha}`);
@@ -405,6 +406,7 @@ function deps(
         clearPrevious() {
           options.clearPriorReportOutput?.();
         },
+        writeRepairArtifacts() {},
         writeSession(session) {
           const snapshot = JSON.parse(JSON.stringify(session)) as BisectSession;
           calls.sessionAttempts.push(snapshot);

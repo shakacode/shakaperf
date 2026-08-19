@@ -67,6 +67,12 @@ export type ProxyRequestPayload =
     rebuildCommands: string[];
     noCache: boolean;
   }
+  | {
+    cmd: 'bisect-run-commands';
+    sessionId: string;
+    phase: 'prepare' | 'cleanup';
+    commands: string[];
+  }
   | { cmd: 'bisect-end'; sessionId: string };
 
 export type ProxyRequest = BaseRequestEnvelope & ProxyRequestPayload;

@@ -7,6 +7,46 @@
 
 export type BisectCategory = 'visreg' | 'perf' | 'accessibility';
 
+export type BisectRepairKind = 'test-harness' | 'build' | 'data' | 'other';
+
+export interface BisectRepairCommand {
+  description: string;
+  command: string;
+}
+
+export interface BisectRepair {
+  id: string;
+  kind: BisectRepairKind;
+  purpose: string;
+  filename: string;
+  sha256: string;
+  order: number;
+  applicableShas: string[];
+  prepareCommands: BisectRepairCommand[];
+  cleanupCommands: BisectRepairCommand[];
+  registeredAt: string;
+  source: 'config';
+}
+
+export type BisectRepairStepStatus = 'not-run' | 'succeeded' | 'failed';
+
+export interface BisectRepairApplicationEvidence {
+  repairId: string;
+  apply: BisectRepairStepStatus;
+  prepare: BisectRepairStepStatus;
+  cleanup: BisectRepairStepStatus;
+  reverse: BisectRepairStepStatus;
+  errors: string[];
+}
+
+export interface BisectRepairEvidence {
+  evaluationId: string;
+  sha: string;
+  repairIds: string[];
+  repairSetFingerprint: string;
+  applications: BisectRepairApplicationEvidence[];
+}
+
 export type TargetStatus = 'active' | 'found' | 'invalid';
 
 export interface BisectTestSelection {
@@ -61,6 +101,9 @@ export interface CommitRun {
   requestedTests: BisectTestSelection[];
   experimentReloadMode: 'commands' | 'container';
   usedFallback: boolean;
+  repairIds: string[];
+  repairSetFingerprint: string;
+  repairEvidence: BisectRepairEvidence;
   compareResultsPath?: string;
   startedAt: string;
   finishedAt?: string;
@@ -88,6 +131,8 @@ export interface BisectSession {
   originalExperiment: { sha: string; branch: string | null };
   control: { sha: string; branch: string | null };
   rebuildStrategy: PersistedRebuildStrategy;
+  repairs: BisectRepair[];
+  repairApplications: BisectRepairEvidence[];
   reportInput: { filename: string; sha256: string };
   primary: BisectSearchPhase;
   mergeQueue: string[];
@@ -108,6 +153,9 @@ export interface CommitAttempt {
   requestedTests: BisectTestSelection[];
   experimentReloadMode: 'commands' | 'container';
   usedFallback: boolean;
+  repairIds: string[];
+  repairSetFingerprint: string;
+  repairEvidence?: BisectRepairEvidence;
   startedAt: string;
   finishedAt?: string;
   compareResultsPath?: string;
@@ -149,12 +197,14 @@ export interface BisectCompatibility {
   categoriesFingerprint: string;
   testsFingerprint: string;
   rebuildFingerprint: string;
+  repairsFingerprint: string;
   rangeFingerprint: string;
   effective: {
     config: unknown;
     categories: BisectCategory[];
     tests: BisectTestSelection[];
     rebuildStrategy: PersistedRebuildStrategy;
+    repairs: BisectRepair[];
     range: { goodSha: string; badSha: string };
   };
 }

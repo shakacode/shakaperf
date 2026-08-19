@@ -23,6 +23,7 @@ import {
 import { BisectRunEnvironment } from '../run-environment';
 import { CompareBisectSession } from '../session-owner';
 import type { BisectSession, BisectTarget, TargetEvaluationAtCommit } from '../types';
+import { createRepairEvidence } from '../repair-runtime';
 
 function target(id: string, firstBadSha = 'merge'): BisectTarget {
   return {
@@ -49,16 +50,20 @@ function session(parents: string[], targets = [target('one')]): BisectSession {
     },
     compatibility: {
       configFingerprint: 'config', categoriesFingerprint: 'categories',
-      testsFingerprint: 'tests', rebuildFingerprint: 'rebuild', rangeFingerprint: 'range',
+      testsFingerprint: 'tests', rebuildFingerprint: 'rebuild',
+      repairsFingerprint: 'repairs', rangeFingerprint: 'range',
       effective: {
         config: {}, categories: ['visreg'], tests: [],
         rebuildStrategy: { mode: 'commands', commands: [] },
+        repairs: [],
         range: { goodSha: 'good', badSha: 'merge' },
       },
     },
     originalExperiment: { branch: 'main', sha: 'merge' },
     control: { branch: null, sha: 'good' },
     rebuildStrategy: { mode: 'commands', commands: [] },
+    repairs: [],
+    repairApplications: [],
     reportInput: { filename: 'bad-ref-tests.json', sha256: 'fixture' },
     commitRuns: {},
     primary: {
@@ -100,6 +105,7 @@ function evaluation(
 }
 
 function result(sha: string, evaluations: TargetEvaluationAtCommit[]): CandidateResult {
+  const repairEvidence = createRepairEvidence(sha, `result:${sha}`, []);
   return {
     commitRun: {
       sha,
@@ -108,6 +114,7 @@ function result(sha: string, evaluations: TargetEvaluationAtCommit[]): Candidate
       requestedTests: [],
       experimentReloadMode: 'commands',
       usedFallback: false,
+      repairIds: [], repairSetFingerprint: repairEvidence.repairSetFingerprint, repairEvidence,
       startedAt: 'start',
       finishedAt: 'finish',
     },
@@ -185,6 +192,7 @@ class MergeCandidateEvaluator extends CandidateEvaluator {
     try {
       return await this.measure(plan);
     } catch (error) {
+      const repairEvidence = createRepairEvidence(plan.sha, `failure:${plan.sha}`, []);
       throw new CandidateEvaluationError({
         sha: plan.sha,
         compareCompleted: false,
@@ -192,6 +200,7 @@ class MergeCandidateEvaluator extends CandidateEvaluator {
         requestedTests: [...plan.tests],
         experimentReloadMode: 'commands',
         usedFallback: false,
+        repairIds: [], repairSetFingerprint: repairEvidence.repairSetFingerprint, repairEvidence,
         startedAt: 'start',
         finishedAt: 'finish',
         infrastructureError: error instanceof Error ? error.message : String(error),

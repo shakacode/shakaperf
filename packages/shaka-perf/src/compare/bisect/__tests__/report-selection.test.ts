@@ -66,6 +66,8 @@ const model: BisectReportModel = {
   goodSha: 'good',
   badSha: 'bad',
   generatedAt: '2026-07-13T00:00:00.000Z',
+  repairs: [],
+  repairApplications: [],
   commits: [
     {
       sha: 'visual',

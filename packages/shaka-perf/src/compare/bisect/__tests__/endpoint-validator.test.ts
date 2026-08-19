@@ -15,16 +15,19 @@ import {
   type CandidateResult,
 } from '../run-candidate';
 import { BisectRunEnvironment } from '../run-environment';
+import { createRepairEvidence } from '../repair-runtime';
 
 function plan(): CandidateEvaluationPlan {
   return { sha: 'endpoint', categories: [], tests: [], targetIds: [], targets: [] };
 }
 
 function result(): CandidateResult {
+  const repairEvidence = createRepairEvidence('endpoint', 'endpoint-test', []);
   return {
     commitRun: {
       sha: 'endpoint', compareCompleted: true, requestedCategories: [], requestedTests: [],
       experimentReloadMode: 'commands', usedFallback: false, startedAt: 'start', finishedAt: 'end',
+      repairIds: [], repairSetFingerprint: repairEvidence.repairSetFingerprint, repairEvidence,
     },
     testResults: [],
     targetEvaluations: [],

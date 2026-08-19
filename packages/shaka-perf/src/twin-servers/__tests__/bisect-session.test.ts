@@ -279,6 +279,40 @@ describe('BisectSessionController experiment reload strategy', () => {
 });
 
 describe('BisectSessionController lease', () => {
+  it('runs repair commands sequentially only for the owning session', async () => {
+    const config = fakeConfig();
+    const deps = fakeDependencies();
+    const controller = new BisectSessionController(config, deps);
+    controller.beginSession('owner', process.pid);
+
+    await controller.runRepairCommands('owner', 'prepare', ['bin/seed', 'bin/check-seed']);
+
+    expect(deps.runExperimentCommand.mock.calls).toEqual([
+      [config, 'bin/seed'],
+      [config, 'bin/check-seed'],
+    ]);
+    await expect(controller.runRepairCommands('competitor', 'cleanup', ['bin/unseed']))
+      .rejects.toThrow(/does not match/);
+  });
+
+  it('stops repair commands at the first failure with phase context', async () => {
+    const config = fakeConfig();
+    const deps = fakeDependencies({
+      runExperimentCommand: jest.fn()
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('seed failed')),
+    });
+    const controller = new BisectSessionController(config, deps);
+    controller.beginSession('owner', process.pid);
+
+    await expect(controller.runRepairCommands(
+      'owner',
+      'cleanup',
+      ['bin/one', 'bin/two', 'bin/three'],
+    )).rejects.toThrow(/cleanup command 2 failed: bin\/two/i);
+    expect(deps.runExperimentCommand).toHaveBeenCalledTimes(2);
+  });
+
   it('rejects non-positive owner PIDs', () => {
     const controller = new BisectSessionController(fakeConfig(), fakeDependencies());
 

@@ -36,11 +36,14 @@ function session(): BisectSession {
       categories: ['visreg', 'perf'],
       tests: [{ testFile: 'tests/home.abtest.ts', testName: 'Homepage' }],
       rebuildStrategy: { mode: 'commands', commands: ['yarn build'] },
+      repairs: [],
       range: { goodSha: 'good', badSha: 'bad' },
     }),
     originalExperiment: { branch: 'feature', sha: 'bad' },
     control: { branch: null, sha: 'good' },
     rebuildStrategy: { mode: 'commands', commands: ['yarn build'] },
+    repairs: [],
+    repairApplications: [],
     reportInput: { filename: 'bad-ref-tests.json', sha256: 'abc' },
     primary: {
       id: 'primary',
@@ -60,6 +63,8 @@ function session(): BisectSession {
         requestedTests: [{ testFile: 'tests/home.abtest.ts', testName: 'Homepage' }],
         experimentReloadMode: 'commands',
         usedFallback: false,
+        repairIds: [],
+        repairSetFingerprint: 'empty',
         startedAt: '2026-07-13T00:01:00.000Z',
       }],
       startedAt: '2026-07-13T00:00:00.000Z',
@@ -122,6 +127,12 @@ describe('resumable bisect state', () => {
     expect(() => parseBisectSession({ ...value, primary: legacyPrimary })).toThrow();
   });
 
+  it('rejects sessions without the current strict repair registry', () => {
+    const value = session();
+    const { repairs: _legacyMissingRepairs, ...legacy } = value;
+    expect(() => parseBisectSession(legacy)).toThrow();
+  });
+
   it('fingerprints objects independently of object key order', () => {
     expect(fingerprint({ b: 2, a: { d: 4, c: 3 } }))
       .toBe(fingerprint({ a: { c: 3, d: 4 }, b: 2 }));
@@ -136,6 +147,7 @@ describe('resumable bisect state', () => {
         { testFile: 'tests/a.abtest.ts', testName: 'Overview' },
       ],
       rebuildStrategy: { mode: 'container', commands: [] },
+      repairs: [],
       range: { goodSha: 'good', badSha: 'bad' },
     });
     const right = buildCompatibility({
@@ -146,6 +158,7 @@ describe('resumable bisect state', () => {
         { testFile: 'tests/b.abtest.ts', testName: 'Overview' },
       ],
       rebuildStrategy: { mode: 'container', commands: [] },
+      repairs: [],
       range: { goodSha: 'good', badSha: 'bad' },
     });
 
@@ -157,6 +170,7 @@ describe('resumable bisect state', () => {
     ['categoriesFingerprint', 'selected categories changed'],
     ['testsFingerprint', 'frozen AB tests changed'],
     ['rebuildFingerprint', 'rebuild strategy changed'],
+    ['repairsFingerprint', 'configured repairs changed'],
     ['rangeFingerprint', 'resolved Git range changed'],
   ] as const)('reports an actionable %s incompatibility', (field, message) => {
     const saved = session().compatibility;

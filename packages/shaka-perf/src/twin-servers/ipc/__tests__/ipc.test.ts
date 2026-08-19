@@ -306,6 +306,9 @@ describe('ipc dispatcher', () => {
         calls.push(`refresh:${request.sessionId}:${request.mode}:${request.rebuildCommands.join('|')}`);
         return { mode: 'container', usedFallback: true };
       },
+      async runBisectRepairCommands(request) {
+        calls.push(`repair:${request.sessionId}:${request.phase}:${request.commands.join('|')}`);
+      },
       async endBisectSession(sessionId) {
         calls.push(`end:${sessionId}`);
       },
@@ -326,12 +329,20 @@ describe('ipc dispatcher', () => {
       rebuildCommands: ['yarn build'],
       noCache: false,
     });
+    await dispatch({
+      v: PROTOCOL_VERSION,
+      cmd: 'bisect-run-commands',
+      sessionId: 't1',
+      phase: 'prepare',
+      commands: ['bin/seed', 'bin/check'],
+    });
     await dispatch({ v: PROTOCOL_VERSION, cmd: 'bisect-end', sessionId: 't1' });
     await dispatch({ v: PROTOCOL_VERSION, cmd: 'prune-cache', images: true });
 
     expect(calls).toEqual([
       `begin:t1:${process.pid}`,
       'refresh:t1:commands:yarn build',
+      'repair:t1:prepare:bin/seed|bin/check',
       'end:t1',
       'run-one-off',
     ]);

@@ -155,7 +155,7 @@ export class NativeBisectPhaseRunner {
     let partition: ReturnType<typeof partitionTargetGroup>;
     try {
       const targets = runningPhase.targets.filter((target) => work.targetIds.includes(target.id));
-      const plan: CandidateEvaluationPlan = { ...work, targets };
+      const plan: CandidateEvaluationPlan = { ...work, targets, evaluationId: attempt.id };
       result = await this.candidates.evaluate(plan);
       if (result.commitRun.infrastructureError) {
         throw new Error(
@@ -171,7 +171,7 @@ export class NativeBisectPhaseRunner {
       });
     } catch (error) {
       const evaluationError = error instanceof CandidateEvaluationError ? error : undefined;
-      const incomplete = this.incompleteAttempt(attempt, error);
+      const incomplete = this.incompleteAttempt(attempt, error, evaluationError?.commitRun);
       runningPhase = {
         ...runningPhase,
         attempts: replaceAttempt(runningPhase.attempts, incomplete),
@@ -211,6 +211,8 @@ export class NativeBisectPhaseRunner {
     phase: BisectSearchPhase,
     plan: Pick<CandidateEvaluationPlan, 'sha' | 'categories' | 'tests'>,
   ): CommitAttempt {
+    const evaluationId = `${phase.id}-attempt-${this.attemptNumber + 1}`;
+    const repairSelection = this.candidates.repairSelection(plan.sha, evaluationId);
     return {
       id: `${phase.id}-attempt-${++this.attemptNumber}`,
       sha: plan.sha,
@@ -219,6 +221,8 @@ export class NativeBisectPhaseRunner {
       requestedTests: [...plan.tests],
       experimentReloadMode: this.candidates.preferredReloadMode(),
       usedFallback: false,
+      repairIds: repairSelection.repairIds,
+      repairSetFingerprint: repairSelection.repairSetFingerprint,
       startedAt: this.environment.now(),
     };
   }
@@ -229,6 +233,9 @@ export class NativeBisectPhaseRunner {
       status: 'complete',
       experimentReloadMode: result.experimentReload.mode,
       usedFallback: result.experimentReload.usedFallback,
+      repairIds: result.commitRun.repairIds,
+      repairSetFingerprint: result.commitRun.repairSetFingerprint,
+      repairEvidence: result.commitRun.repairEvidence,
       finishedAt: result.commitRun.finishedAt ?? this.environment.now(),
       ...(result.commitRun.compareResultsPath
         ? { compareResultsPath: result.commitRun.compareResultsPath }
@@ -236,12 +243,21 @@ export class NativeBisectPhaseRunner {
     };
   }
 
-  private incompleteAttempt(attempt: CommitAttempt, error: unknown): CommitAttempt {
+  private incompleteAttempt(
+    attempt: CommitAttempt,
+    error: unknown,
+    commitRun?: CommitRun,
+  ): CommitAttempt {
     return {
       ...attempt,
       status: 'incomplete',
       finishedAt: this.environment.now(),
       error: errorMessage(error),
+      ...(commitRun ? {
+        repairIds: commitRun.repairIds,
+        repairSetFingerprint: commitRun.repairSetFingerprint,
+        repairEvidence: commitRun.repairEvidence,
+      } : {}),
     };
   }
 

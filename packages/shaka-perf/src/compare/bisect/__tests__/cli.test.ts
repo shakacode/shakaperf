@@ -464,16 +464,20 @@ function completedSession(): BisectSession {
     },
     compatibility: {
       configFingerprint: 'config', categoriesFingerprint: 'categories',
-      testsFingerprint: 'tests', rebuildFingerprint: 'rebuild', rangeFingerprint: 'range',
+      testsFingerprint: 'tests', rebuildFingerprint: 'rebuild',
+      repairsFingerprint: 'repairs', rangeFingerprint: 'range',
       effective: {
         config: {}, categories: ['visreg'], tests: [],
         rebuildStrategy: { mode: 'commands', commands: [] },
+        repairs: [],
         range: { goodSha: 'good', badSha: 'bad' },
       },
     },
     originalExperiment: { sha: 'bad', branch: 'feature' },
     control: { sha: 'good', branch: null },
     rebuildStrategy: { mode: 'commands', commands: [] },
+    repairs: [],
+    repairApplications: [],
     reportInput: { filename: 'bad-ref-tests.json', sha256: 'fixture' },
     primary: {
       id: 'primary', status: 'complete', goodSha: 'good', badSha: 'bad',

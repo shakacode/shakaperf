@@ -112,6 +112,13 @@ export function createDispatcher(
           rebuildCommands: req.rebuildCommands,
           noCache: req.noCache,
         });
+      case 'bisect-run-commands':
+        await requireController().runBisectRepairCommands({
+          sessionId: req.sessionId,
+          phase: req.phase,
+          commands: req.commands,
+        });
+        return;
       case 'bisect-end':
         await requireController().endBisectSession(req.sessionId);
         return;

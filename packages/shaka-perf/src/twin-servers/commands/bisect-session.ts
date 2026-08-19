@@ -94,6 +94,24 @@ export class BisectSessionController {
     }
   }
 
+  async runRepairCommands(
+    sessionId: string,
+    phase: 'prepare' | 'cleanup',
+    commands: readonly string[],
+  ): Promise<void> {
+    this.requireSession(sessionId);
+    for (const [index, command] of commands.entries()) {
+      try {
+        await this.dependencies.runExperimentCommand(this.config, command);
+      } catch (error) {
+        throw new Error(
+          `Bisect repair ${phase} command ${index + 1} failed: ${command}`,
+          { cause: error },
+        );
+      }
+    }
+  }
+
   endSession(sessionId: string): void {
     this.requireSession(sessionId);
     this.activeSession = null;

@@ -41,6 +41,10 @@ import {
 import { filterFrozenTests } from './test-selection';
 import { writeBadRefTestsAtomic } from './state';
 import type { BisectCategory, BisectSession } from './types';
+import {
+  writePreparedRepairArtifacts,
+  type PreparedBisectRepairArtifact,
+} from './repair-artifacts';
 
 export interface ReuseCurrentResultsRequest {
   sha: string;
@@ -65,10 +69,15 @@ export interface BisectSignalHandlers {
 export interface BisectServerSession extends BisectCandidateServer {
   begin(): Promise<void>;
   end(): Promise<void>;
+  runRepairCommands(
+    phase: 'prepare' | 'cleanup',
+    commands: readonly string[],
+  ): Promise<void>;
 }
 
 export interface BisectArtifactStore {
   clearPrevious(): void;
+  writeRepairArtifacts(artifacts: readonly PreparedBisectRepairArtifact[]): void;
   writeSession(session: BisectSession): void;
   writeReport(session: BisectSession, badRefTests: readonly TestResult[]): void;
   writeSummary(session: BisectSession, metadata?: BisectSummaryMetadata): void;
@@ -152,6 +161,18 @@ class TwinServerBisectSession implements BisectServerSession {
       noCache: false,
     });
   }
+
+  runRepairCommands(
+    phase: 'prepare' | 'cleanup',
+    commands: readonly string[],
+  ): Promise<void> {
+    return proxyBisect<void>(this.twinServers, {
+      cmd: 'bisect-run-commands',
+      sessionId: this.sessionId,
+      phase,
+      commands: [...commands],
+    });
+  }
 }
 
 /** Restores both the experiment checkout and the server built from it. */
@@ -209,6 +230,10 @@ class FileBisectArtifactStore implements BisectArtifactStore {
     fs.rmSync(path.join(this.options.resultsDirectory, 'decision-log.jsonl'), { force: true });
     fs.rmSync(path.join(this.options.resultsDirectory, 'decision-log.md'), { force: true });
     clearPriorBisectReportOutput(this.options.resultsDirectory);
+  }
+
+  writeRepairArtifacts(artifacts: readonly PreparedBisectRepairArtifact[]): void {
+    writePreparedRepairArtifacts(this.options.resultsDirectory, artifacts);
   }
 
   writeSession(session: BisectSession): void {
