@@ -15,6 +15,7 @@ import * as path from 'node:path';
 import type { CapturedPatch, PatchFileSummary } from './patch-capture';
 import { inspectPatch } from './patch-capture';
 import {
+  BisectPatchIdSchema,
   BisectPatchManifestSchema,
   loadBisectPatchManifest,
   type BisectPatchManifest,
@@ -233,9 +234,8 @@ function normalizeEntry(
 }
 
 function validatePatchId(id: string): void {
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id)) {
-    throw new Error('Patch id must be a filesystem-safe identifier');
-  }
+  const result = BisectPatchIdSchema.safeParse(id);
+  if (!result.success) throw new Error(result.error.errors[0]!.message);
 }
 
 function parseManifest(value: unknown): BisectPatchManifest {
