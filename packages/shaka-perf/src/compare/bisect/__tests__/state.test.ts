@@ -163,6 +163,14 @@ describe('resumable bisect state', () => {
     expect(() => parseBisectSession({ ...current, repairs: [legacyRepair] })).toThrow();
   });
 
+  it('explains how to replace legacy config-based repairs before resuming', () => {
+    const value = session();
+    expect(() => parseBisectSession({
+      ...value,
+      repairs: [{ source: 'config' }],
+    })).toThrow(/Cannot resume bisect.*legacy bisect\.repairs.*patch create <id>/s);
+  });
+
   it('fingerprints objects independently of object key order', () => {
     expect(fingerprint({ b: 2, a: { d: 4, c: 3 } }))
       .toBe(fingerprint({ a: { c: 3, d: 4 }, b: 2 }));
