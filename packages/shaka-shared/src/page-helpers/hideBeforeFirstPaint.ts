@@ -20,6 +20,16 @@ export async function hideBeforeFirstPaint(
   await context.addInitScript((hiddenSelector) => {
     const style = document.createElement('style');
     style.textContent = `${hiddenSelector} { display: none !important; }`;
-    (document.head ?? document.documentElement).appendChild(style);
+    const attach = () => (document.head ?? document.documentElement).appendChild(style);
+    if (document.documentElement) {
+      attach();
+    } else {
+      new MutationObserver((_records, observer) => {
+        if (document.documentElement) {
+          attach();
+          observer.disconnect();
+        }
+      }).observe(document, { childList: true });
+    }
   }, selector);
 }

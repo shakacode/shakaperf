@@ -192,6 +192,36 @@ abTest('Like a dish', {
 
 Keep stubs narrow: continue unmatched GraphQL operations and return the complete response shape the UI reads. Use the same interception pattern for nondeterministic third-party APIs such as geocoders, which can rank results differently or time out. For merely blocking resources in perf runs, prefer `installRequestBlocking(context, patterns)`; general Playwright routing disables Chromium's HTTP cache and can distort the measurement.
 
+## Do not hand-roll counters for what the run already records
+
+The trace behind every perf run already carries each network request as a span,
+and same-origin `/graphql` POSTs are keyed by their `operationName`. A repeated
+request is therefore visible as repeated bars on one side of the timeline strip.
+Counting the same requests yourself adds a listener that can only agree with the
+trace, and asserting on the count turns a measurement into a pass/fail gate that
+hides the numbers when it trips. Reproduce the condition and let the comparison
+report it.
+
+### BAD — count requests in the test and throw
+
+```typescript
+abTest('Autonavigate', { startingPath: '/order?location=main', testTypes: ['perf'] },
+  async ({ browserContext, page }) => {
+    const updates = cartUpdateMutationCount(browserContext); // duplicates the trace
+    if (updates > 2) throw new Error(`sent ${updates} cart updates`);
+  });
+```
+
+### GOOD — drive the page to the state and let the trace show the requests
+
+```typescript
+abTest('Autonavigate', { startingPath: '/order?location=main', testTypes: ['perf'] },
+  async ({ page }) => {
+    await page.waitForURL('**/order/main/menus/**');
+    await waitUntilPageSettled(page);
+  });
+```
+
 ## Compose per-test `beforeNavigate` setup explicitly
 
 A per-test `config.shared.beforeNavigate` **replaces** the file-level hook. It does not run after it automatically. Put global setup in a callable function and invoke it from overrides.
