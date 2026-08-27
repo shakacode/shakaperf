@@ -56,8 +56,18 @@ const sharedLabelingGaps: Partial<PageSignals> = {
   structuredData: { blocks: 0, valid: 0, invalid: 0, types: [], microdataItems: 0 },
 };
 
+type Understanding = ReturnType<typeof buildAgentUnderstanding>;
+
+function allFacts(result: Understanding) {
+  return result.groups.flatMap((group) => group.items.flatMap((item) => item.facts));
+}
+
+function namedGroup(result: Understanding, label: string) {
+  return result.groups.find((group) => group.label === label);
+}
+
 describe('buildAgentUnderstanding', () => {
-  it('deduplicates shared gaps, reports their page coverage, and sorts by total lost points', () => {
+  it('builds three stable groups and merges rendered and pre-JavaScript states', () => {
     const result = buildAgentUnderstanding([
       view('Home', sharedLabelingGaps),
       view('Services', sharedLabelingGaps),
@@ -65,18 +75,32 @@ describe('buildAgentUnderstanding', () => {
     ]);
 
     expect(result.status).toBe('fair');
-    expect(result.items[0]).toMatchObject({
-      label: 'Structured data',
-      coverage: 'on all 3 pages',
-      detail: 'No schema.org structured data, so machines must infer what the page is about.',
-      action: 'Add schema.org structured data (Organization, Product, Article, and so on) so machines can identify the page.',
-    });
-    expect(result.items.filter((item) => item.label === 'Structured data')).toHaveLength(1);
-    expect(result.items.map((item) => item.label)).toEqual(expect.arrayContaining([
-      'Structured data before JavaScript',
-      'Meta description',
-      'Social preview tags',
-    ]));
+    expect(result.groups.map((group) => group.label)).toEqual([
+      'Labels that name the page',
+      'Machine labels (schema.org)',
+      'Previews and links',
+    ]);
+    expect(result.groups.every((group) => group.affectedPages === 3 && group.totalPages === 3)).toBe(true);
+    expect(namedGroup(result, 'Labels that name the page')?.items).toEqual([
+      expect.objectContaining({
+        label: 'Page description',
+        facts: [
+          expect.objectContaining({ label: 'Meta description', coverage: 'on all 3 pages' }),
+          expect.objectContaining({ label: 'Description before JavaScript', coverage: 'on all 3 pages' }),
+        ],
+      }),
+    ]);
+    expect(namedGroup(result, 'Machine labels (schema.org)')?.items[0]?.facts).toEqual([
+      expect.objectContaining({
+        label: 'Structured data',
+        detail: 'No schema.org structured data, so machines must infer what the page is about.',
+        actions: ['Add schema.org structured data (Organization, Product, Article, and so on) so machines can identify the page.'],
+      }),
+      expect.objectContaining({
+        label: 'Structured data before JavaScript',
+        actions: ['Add schema.org structured data to the HTML the server sends.'],
+      }),
+    ]);
   });
 
   it('uses the worst measured partial result without inventing an average', () => {
@@ -85,17 +109,17 @@ describe('buildAgentUnderstanding', () => {
       view('Media & PR', { ...sharedLabelingGaps, images: { total: 10, withAlt: 8 } }),
       view('Contact', { ...sharedLabelingGaps, images: { total: 10, withAlt: 7 } }),
     ]);
-    const altText = result.items.find((item) => item.label === 'Image alt text');
+    const altText = allFacts(result).find((fact) => fact.label === 'Image alt text');
 
     expect(altText).toMatchObject({
       status: 'partial',
       coverage: 'on all 3 pages',
-      action: 'Add descriptive alt text to the images that lack it.',
+      actions: ['Add descriptive alt text to the images that lack it.'],
     });
     expect(altText?.detail).toBe('Lowest coverage on Home: 6 of 10 images have alt text describing them.');
   });
 
-  it('keeps page-only gaps separate and excludes text-reachability checks', () => {
+  it('keeps document-outline and text-reachability checks out of the grouped summary', () => {
     const result = buildAgentUnderstanding([
       view('Home', sharedLabelingGaps, { ...sharedLabelingGaps, textWords: 0 }),
       view('Media & PR', {
@@ -103,12 +127,11 @@ describe('buildAgentUnderstanding', () => {
         headings: { h1Count: 2, total: 4, orderOk: false },
       }),
     ]);
+    const labels = allFacts(result).map((fact) => fact.label);
 
-    expect(result.items).toEqual(expect.arrayContaining([
-      expect.objectContaining({ label: 'Single main heading', coverage: 'Media & PR only' }),
-      expect.objectContaining({ label: 'Heading order', coverage: 'Media & PR only' }),
-    ]));
-    expect(result.items.map((item) => item.label)).not.toEqual(expect.arrayContaining([
+    expect(labels).not.toEqual(expect.arrayContaining([
+      'Single main heading',
+      'Heading order',
       'Content before JavaScript',
       'Title before JavaScript',
       'Main text before JavaScript',
@@ -121,7 +144,7 @@ describe('buildAgentUnderstanding', () => {
     expect(result).toEqual({
       status: 'good',
       verdict: 'Labeling is in place.',
-      items: [],
+      groups: [],
     });
   });
 
@@ -132,14 +155,14 @@ describe('buildAgentUnderstanding', () => {
 
     expect(result.status).toBe('fair');
     expect(result.verdict).toBe('Only partly - the labels machines rely on are missing.');
-    expect(result.items.map((item) => item.label)).not.toEqual(expect.arrayContaining([
+    expect(allFacts(result).map((fact) => fact.label)).not.toEqual(expect.arrayContaining([
       'Content before JavaScript',
       'Title before JavaScript',
       'Main text before JavaScript',
     ]));
   });
 
-  it('does not apply one page reason and action to every failing page', () => {
+  it('preserves every distinct action when failing pages need different repairs', () => {
     const result = buildAgentUnderstanding([
       view('Services', sharedLabelingGaps),
       view('Home', {
@@ -147,12 +170,15 @@ describe('buildAgentUnderstanding', () => {
         structuredData: { blocks: 1, valid: 0, invalid: 1, types: [], microdataItems: 0 },
       }),
     ]);
-    const structuredData = result.items.find((item) => item.label === 'Structured data');
+    const structuredData = allFacts(result).find((fact) => fact.label === 'Structured data');
 
     expect(structuredData).toMatchObject({
       detail: 'Lowest coverage on Home: 1 structured-data block on the page could not be parsed, so a machine cannot read it.',
+      actions: [
+        'Add schema.org structured data (Organization, Product, Article, and so on) so machines can identify the page.',
+        'Fix the broken structured-data block so a machine can parse it.',
+      ],
     });
-    expect(structuredData?.action).toBeUndefined();
   });
 
   it('returns a green one-line verdict for good-bucket pages', () => {
@@ -161,7 +187,7 @@ describe('buildAgentUnderstanding', () => {
     expect(result).toEqual({
       status: 'good',
       verdict: 'Labeling is in place.',
-      items: [],
+      groups: [],
     });
   });
 });

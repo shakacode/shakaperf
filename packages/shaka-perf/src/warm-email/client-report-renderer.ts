@@ -6,6 +6,7 @@
  */
 
 import {
+  AI_READABILITY_TARGET,
   AI_STUDIES_OTHER_SITES_CAVEAT,
   CALC_HEADLINE_LABEL,
   CALC_HOW_WE_GOT_THIS_LABEL,
@@ -27,6 +28,9 @@ import {
   PAGESPEED_FIELD_VS_LAB_PREEMPT,
   VIEW_INSTRUCTIONS,
   WHAT_THIS_COSTS_YOU,
+  aiHomepageReadableLine,
+  aiInvisibleTextLabel,
+  aiReadableWordsLabel,
   calcBreakEvenLine,
   calcCapNote,
   calcTinyResultLine,
@@ -119,7 +123,7 @@ export interface ClientReportPerfCard {
   frames: ClientReportFrame[];
   totalFrames: number;
   facts: ClientReportFact[];
-  plain?: string;
+  plain: string;
   copyPrompt?: string;
 }
 export interface ClientReportPerfFineRow {
@@ -190,17 +194,29 @@ export interface ClientReportAgentReading {
   status: ClientReportStatus;
   verdict: string;
 }
-export interface ClientReportAgentUnderstandingItem {
+export interface ClientReportAgentUnderstandingFact {
   label: string;
   status: 'partial' | 'fail';
   coverage: string;
   detail: string;
-  action?: string;
+  actions: string[];
+}
+export interface ClientReportAgentUnderstandingItem {
+  label: string;
+  status: ClientReportStatus;
+  facts: ClientReportAgentUnderstandingFact[];
+}
+export interface ClientReportAgentUnderstandingGroup {
+  label: string;
+  status: ClientReportStatus;
+  affectedPages: number;
+  totalPages: number;
+  items: ClientReportAgentUnderstandingItem[];
 }
 export interface ClientReportAgentUnderstanding {
   status: ClientReportStatus;
   verdict: string;
-  items: ClientReportAgentUnderstandingItem[];
+  groups: ClientReportAgentUnderstandingGroup[];
 }
 export interface ClientReportTile {
   target: 'perf' | 'a11y' | 'agent';
@@ -258,9 +274,11 @@ export interface ClientReportCostBlock extends CostBlockExtras {
   scale?: Pick<BenchmarkScaleGeometry, 'axisMaxDisplay' | 'zones' | 'goodLinePercent' | 'poorLinePercent' | 'markerPercent'>;
   pageSpeedUrl?: string;
   aiTiles?: {
+    pagePath: string;
     invisiblePercent: number;
     readableWords: number;
     totalWords: number;
+    homepageReadablePercent?: number;
   };
 }
 export interface ClientReportModel {
@@ -634,21 +652,33 @@ function a11yMeasuredRow(cost: ClientReportCostBlock): string {
 
 function aiTiles(cost: ClientReportCostBlock): string {
   const tiles = cost.aiTiles;
-  if (!tiles || ![tiles.invisiblePercent, tiles.readableWords, tiles.totalWords].every(Number.isFinite)) return '';
-  return `        <div class="cr-cost-tiles" style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px">
-          <div style="border:1px solid #eed9a8; background:#fdf6e8; border-radius:11px; padding:13px 14px">
-            <div style="font-size:25px; font-weight:800; letter-spacing:-.02em; color:#a85f00; line-height:1">${esc(String(tiles.invisiblePercent))}%</div>
-            <div style="font-size:11.5px; line-height:1.4; color:#5e5549; margin-top:6px">of your homepage text invisible to AI</div>
+  if (!tiles
+    || ![tiles.invisiblePercent, tiles.readableWords, tiles.totalWords].every(Number.isFinite)
+    || tiles.totalWords <= 0) return '';
+  const missingStatus: ClientReportStatus = tiles.invisiblePercent === 0
+    ? 'good'
+    : tiles.invisiblePercent <= 10 ? 'fair' : 'poor';
+  const readableShare = tiles.readableWords / tiles.totalWords;
+  const readableStatus: ClientReportStatus = readableShare >= 1
+    ? 'good'
+    : readableShare >= 0.9 ? 'fair' : 'poor';
+  const missingPalette = PAL[missingStatus];
+  const readablePalette = PAL[readableStatus];
+  const homepageLine = tiles.homepageReadablePercent === 100
+    ? `<div style="margin-top:9px; font-size:12px; line-height:1.45; color:${PAL.good.fg}">${esc(aiHomepageReadableLine(tiles.homepageReadablePercent))}</div>`
+    : '';
+  return `        <div class="cr-cost-tiles" style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px">
+          <div data-ai-tile-status="${missingStatus}" style="border:1px solid ${missingPalette.line}; background:${missingPalette.bg}; border-radius:11px; padding:13px 14px">
+            <div style="font-size:25px; font-weight:800; letter-spacing:-.02em; color:${missingPalette.fg}; line-height:1">${esc(String(tiles.invisiblePercent))}%</div>
+            <div style="font-size:11.5px; line-height:1.4; color:#5e5549; margin-top:6px">${esc(aiInvisibleTextLabel(tiles.pagePath))}</div>
           </div>
-          <div style="border:1px solid #eed9a8; background:#fdf6e8; border-radius:11px; padding:13px 14px">
-            <div style="font-size:22px; font-weight:800; letter-spacing:-.02em; color:#a85f00; line-height:1.15">${esc(String(tiles.readableWords))}<span style="font-size:14px">/${esc(String(tiles.totalWords))}</span></div>
-            <div style="font-size:11.5px; line-height:1.4; color:#5e5549; margin-top:4px">homepage words AI can read today</div>
+          <div data-ai-tile-status="${readableStatus}" style="border:1px solid ${readablePalette.line}; background:${readablePalette.bg}; border-radius:11px; padding:13px 14px">
+            <div style="font-size:22px; font-weight:800; letter-spacing:-.02em; color:${readablePalette.fg}; line-height:1.15">${esc(String(tiles.readableWords))}<span style="font-size:14px">/${esc(String(tiles.totalWords))}</span></div>
+            <div style="font-size:11.5px; line-height:1.4; color:#5e5549; margin-top:4px">${esc(aiReadableWordsLabel(tiles.pagePath))}</div>
           </div>
-          <div style="border:1px solid #cfe6d6; background:#e9f4ec; border-radius:11px; padding:13px 14px">
-            <div style="font-size:25px; font-weight:800; letter-spacing:-.02em; color:#2f7d4f; line-height:1">100%</div>
-            <div style="font-size:11.5px; line-height:1.4; color:#5e5549; margin-top:6px">the target - every word visible</div>
-          </div>
-        </div>`;
+        </div>
+        <div style="margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:10.5px; line-height:1.45; color:#6f665c">${esc(AI_READABILITY_TARGET)}</div>
+        ${homepageLine}`;
 }
 
 function aiMeasuredRow(cost: ClientReportCostBlock): string {
@@ -939,7 +969,7 @@ ${facts}
         <div style="font-size:17px; font-weight:600; line-height:1.4; margin-bottom:5px; letter-spacing:-.01em">${c.headlineHtml}</div>
         ${c.sub ? `<p style="font-size:15.5px; line-height:1.55; color:#6f665c; margin:0 0 18px; max-width:62ch">${boldTimes(esc(c.sub))}</p>` : ''}
 ${watch}
-        ${c.plain ? `<div style="font-size:15.5px; line-height:1.6; color:#4a443c; max-width:64ch; margin-top:2px">${boldTimes(esc(c.plain))}</div>` : ''}
+        <div style="font-size:15.5px; line-height:1.6; color:#4a443c; max-width:64ch; margin-top:2px">${boldTimes(esc(c.plain))}</div>
 ${prompt}
       </div>`;
 }
@@ -1229,24 +1259,55 @@ function agentZoneHead(title: string, status: ClientReportStatus, verdict: strin
       </div>`;
 }
 
+function agentTheoryDisclosure(): string {
+  const id = costId('cr', 'agent', 'terms');
+  const theory = 'Reading is whether AI can fetch your text at all. Understanding is whether labels - descriptions, structured data, and previews - tell it what each page is.';
+  return `    <div data-agent-theory style="margin:0 0 4px">
+      ${costChipButton(id, 'how these checks differ', true)}
+      ${costDetailsPanel(id, `<p style="font-size:14.5px; line-height:1.55; color:#6f665c; margin:0; max-width:66ch">${esc(theory)}</p>`, true)}
+    </div>`;
+}
+
 function agentUnderstandingList(understanding: ClientReportAgentUnderstanding): string {
-  if (!understanding.items.length) return '';
-  const rows = understanding.items.map((item) => {
-    const p = PAL[item.status === 'fail' ? 'poor' : 'fair'];
-    const label = item.coverage.endsWith(' only')
-      ? `${item.coverage}: ${item.label}`
-      : `${item.label} - ${item.coverage}`;
-    return `        <div style="display:flex; gap:11px; align-items:flex-start; padding:15px 0; border-top:1px solid #efeae2">
-          <span style="width:8px; height:8px; border-radius:50%; background:${p.fg}; flex:none; margin-top:6px"></span>
-          <div style="min-width:0">
-            <div style="font-size:15px; font-weight:700; line-height:1.45; color:#26221d">${esc(label)}</div>
-            <div style="font-size:14.5px; line-height:1.5; color:#4a443c; margin-top:3px">${esc(item.detail)}</div>
-            ${item.action ? `<div style="font-size:14.5px; line-height:1.5; color:#4a443c; margin-top:6px"><strong style="font-weight:700; color:#26221d">What to change:</strong> ${esc(item.action)}</div>` : ''}
-          </div>
-        </div>`;
+  if (!understanding.groups.length) return '';
+  const groups = understanding.groups.map((group, groupIndex) => {
+    const id = costId('cr', 'agent', 'understanding', groupIndex);
+    const p = PAL[group.status];
+    const items = group.items.map((item) => {
+      const itemHeading = item.facts.length > 1 || item.facts[0]?.label !== item.label
+        ? `<div style="font-size:15px; font-weight:800; line-height:1.45; color:#26221d; margin-bottom:8px">${esc(item.label)}</div>`
+        : '';
+      const facts = item.facts.map((fact) => {
+        const factPalette = PAL[fact.status === 'fail' ? 'poor' : 'fair'];
+        const label = fact.coverage.endsWith(' only')
+          ? `${fact.coverage}: ${fact.label}`
+          : `${fact.label} - ${fact.coverage}`;
+        const actions = fact.actions.map((action) => `              <div style="font-size:14.5px; line-height:1.5; color:#4a443c; margin-top:6px"><strong style="font-weight:700; color:#26221d">What to change:</strong> ${esc(action)}</div>`).join('\n');
+        return `            <div style="display:flex; gap:11px; align-items:flex-start; padding:11px 0; border-top:1px solid #efeae2">
+              <span style="width:8px; height:8px; border-radius:50%; background:${factPalette.fg}; flex:none; margin-top:6px"></span>
+              <div style="min-width:0">
+                <div style="font-size:14.5px; font-weight:700; line-height:1.45; color:#26221d">${esc(label)}</div>
+                <div style="font-size:14px; line-height:1.5; color:#4a443c; margin-top:3px">${esc(fact.detail)}</div>
+${actions}
+              </div>
+            </div>`;
+      }).join('\n');
+      return `          <div data-understanding-item style="padding:5px 0 8px">
+${itemHeading}
+${facts}
+          </div>`;
+    }).join('\n');
+    const button = `        <button type="button" data-disclose="${esc(id)}" data-understanding-group data-understanding-status="${group.status}" style="appearance:none; width:100%; border:1px solid ${p.line}; background:#ffffff; border-radius:11px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:14px; font-family:inherit; cursor:pointer; text-align:left">
+          <span style="display:flex; align-items:center; gap:10px; min-width:0; font-size:15.5px; font-weight:750; color:#26221d"><span style="width:9px; height:9px; border-radius:50%; background:${p.fg}; flex:none"></span>${esc(group.label)}</span>
+          <span style="flex:none; border:1px solid ${p.line}; background:${p.bg}; color:${p.fg}; border-radius:999px; padding:4px 8px; font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:700; white-space:nowrap">${group.affectedPages} of ${group.totalPages} pages</span>
+        </button>`;
+    return `      <div style="margin-bottom:10px">
+${button}
+        ${costDetailsPanel(id, `<div>${items}</div>`, true)}
+      </div>`;
   }).join('\n');
-  return `      <div style="background:#ffffff; border:1px solid #e7e1d8; border-radius:14px; padding:6px 22px; margin-bottom:18px">
-${rows}
+  return `      <div class="cr-agent-understanding-groups" style="margin-bottom:18px">
+${groups}
       </div>`;
 }
 
@@ -1263,7 +1324,7 @@ ${blockedSection(m.agentBlocked, !(m.agentCouldNotMeasure && m.agentCost?.state 
   }
   const needs = m.agentCards.length;
   const body = `${verdictHead('Can AI read and recommend you?', m.agentStatus, m.narrative.agent, m.agentCouldNotMeasure, m.agentScore)}
-    <p style="font-size:14.5px; line-height:1.55; color:#6f665c; margin:0 0 4px; max-width:66ch">Reading is whether AI can fetch your text at all. Understanding is whether labels - descriptions, structured data, and previews - tell it what each page is.</p>
+${agentTheoryDisclosure()}
 ${agentZoneHead('Can AI read your site?', m.agentReading.status, m.agentReading.verdict)}
 ${costBlock(m.agentCost)}
 ${m.agentSite ? agentSiteCard(m.agentSite) : ''}

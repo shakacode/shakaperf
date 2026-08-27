@@ -35,6 +35,29 @@ export const SCORE_BADGE_POLICY: ScoreBadgePolicy = 'score-status';
 export const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
 export const secs = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
 
+function joinMeasuredFacts(facts: readonly string[]): string {
+  if (facts.length <= 1) return facts[0] ?? '';
+  if (facts.length === 2) return `${facts[0]} and ${facts[1]}`;
+  return `${facts.slice(0, -1).join(', ')}, and ${facts[facts.length - 1]}`;
+}
+
+export function perfPlainFallback(page: PagePerf): string {
+  const facts: string[] = [];
+  const lcp = metricVal(page, 'LCP');
+  const fcp = metricVal(page, 'FCP');
+  const tbt = metricVal(page, 'TBT');
+  const cls = metricVal(page, 'CLS');
+  const score = metricVal(page, 'LH Score');
+  if (lcp !== undefined) facts.push(`main content appears in ${secs(lcp)}`);
+  else if (fcp !== undefined) facts.push(`the first pixels appear in ${secs(fcp)}`);
+  if (tbt !== undefined) facts.push(`tap-blocking time is ${secs(tbt)}`);
+  if (cls !== undefined) facts.push(`the layout-shift score is ${(cls / 100).toFixed(2)}`);
+  if (facts.length === 0 && score !== undefined) facts.push(`the Lighthouse speed score is ${Math.round(score)}/100`);
+  return facts.length > 0
+    ? `Measured on a phone: ${joinMeasuredFacts(facts)}.`
+    : 'The available measurements show this page needs performance work on a phone.';
+}
+
 export function metricVal(p: PagePerf, label: string): number | undefined {
   const m = p.metrics[label];
   return m && typeof m.value === 'number' && !Number.isNaN(m.value) ? m.value : undefined;

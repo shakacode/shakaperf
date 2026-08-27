@@ -485,7 +485,7 @@ function writePerfResults(metrics: Record<string, number>, opts: PerfResultsOpti
 }
 
 function writePerfResultsForPages(
-  pages: { id: string; name: string; startingPath: string; metrics: Record<string, number>; agent?: AgentFixture; a11y?: A11yFixture }[],
+  pages: { id: string; name: string; startingPath: string; metrics: Record<string, number>; summary?: string; agent?: AgentFixture; a11y?: A11yFixture }[],
   opts: PerfResultsOptions = {},
 ): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-cr-report-'));
@@ -501,6 +501,7 @@ function writePerfResultsForPages(
       name: page.name,
       startingPath: page.startingPath,
       viewport: { label: 'phone', width: 390, height: 844 },
+      ...(page.summary ? { outcomes: [{ summary: { summary: page.summary } }] } : {}),
     })),
   }, null, 2)}\n`);
   for (const page of pages) {
@@ -870,6 +871,41 @@ function threeTabHeaderModel(over: Partial<ClientReportModel> = {}): ClientRepor
 }
 
 describe('renderClientReport perf tile assembly', () => {
+  it('uses measured numbers when ai_summary is missing and lets AI copy replace the fallback', async () => {
+    const metrics = { LCP: 8200, FCP: 1200, TBT: 750, CLS: 31, 'LH Score': 55 };
+    const withoutAi = await renderClientReport(writePerfResults(metrics));
+    const withAi = await renderClientReport(writePerfResultsForPages([{
+      id: 'home',
+      name: 'Home',
+      startingPath: '/',
+      metrics,
+      summary: 'This page is slow to load, react, and settle.',
+    }]));
+
+    expect(withoutAi.model.perfCards[0]?.plain).toBe(
+      'Measured on a phone: main content appears in 8.2s, tap-blocking time is 0.8s, and the layout-shift score is 0.31.',
+    );
+    expect(withoutAi.html).toContain('Measured on a phone: main content appears in');
+    expect(withoutAi.html).toContain('>8.2s</strong>');
+    expect(withAi.model.perfCards[0]?.plain).toBe('This page is slow to load, react, and settle.');
+    expect(withAi.html).toContain('This page is slow to load, react, and settle.');
+  });
+
+  it('treats a blank AI summary as missing', async () => {
+    const metrics = { LCP: 4200, FCP: 1200, TBT: 300, CLS: 12, 'LH Score': 70 };
+    const report = await renderClientReport(writePerfResultsForPages([{
+      id: 'home',
+      name: 'Home',
+      startingPath: '/',
+      metrics,
+      summary: '   ',
+    }]));
+
+    expect(report.model.perfCards[0]?.plain).toBe(
+      'Measured on a phone: main content appears in 4.2s, tap-blocking time is 0.3s, and the layout-shift score is 0.12.',
+    );
+  });
+
   it('writes and reuses a versioned narrative overlay cache', async () => {
     const dir = writePerfResults({ LCP: 8200, FCP: 1200, 'LH Score': 55 });
     let calls = 0;
@@ -1245,7 +1281,7 @@ describe('renderClientReport perf tile assembly', () => {
     ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
-    expect(agentPanelHtml).toContain('100% of your page&#39;s text is missing');
+    expect(agentPanelHtml).toContain('100% of /shell text is missing');
     expect(agentPanelHtml).toContain('only 0 of 100 words present');
     expect(agentPanelHtml).not.toContain(NOTHING_TO_FIX);
     expect(agentPanelHtml).toContain('copy: view-source:http://localhost/shell');
@@ -1265,7 +1301,7 @@ describe('renderClientReport perf tile assembly', () => {
     ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
-    expect(agentPanelHtml).toContain('20% of your page&#39;s text is missing');
+    expect(agentPanelHtml).toContain('20% of /mostly-readable text is missing');
     expect(agentPanelHtml).toContain('only 80 of 100 words present');
     expect(agentPanelHtml).toContain('Copy fix instructions - for your developer or AI agent');
     expect(agentPanelHtml).not.toContain(NOTHING_TO_FIX);
@@ -2056,20 +2092,66 @@ describe('renderClientReportHtml', () => {
       agentUnderstanding: {
         status: 'fair',
         verdict: 'Only partly - the labels machines rely on are missing.',
-        items: [
+        groups: [
           {
-            label: 'Structured data',
-            status: 'fail',
-            coverage: 'on all 6 pages',
-            detail: 'No schema.org structured data, so machines must infer what the page is about.',
-            action: 'Add schema.org structured data to the HTML the server sends.',
+            label: 'Labels that name the page',
+            status: 'poor',
+            affectedPages: 4,
+            totalPages: 7,
+            items: [{
+              label: 'Page description',
+              status: 'poor',
+              facts: [
+                {
+                  label: 'Meta description',
+                  status: 'fail',
+                  coverage: 'on 4 of 7 pages',
+                  detail: 'No meta description, so engines write their own summary.',
+                  actions: ['Add a meta description that summarizes the page.'],
+                },
+                {
+                  label: 'Description before JavaScript',
+                  status: 'fail',
+                  coverage: 'on 4 of 7 pages',
+                  detail: 'The page description is missing before JavaScript runs.',
+                  actions: ['Add a meta description in the HTML the server sends.'],
+                },
+              ],
+            }],
           },
           {
-            label: '<main> heading',
-            status: 'partial',
-            coverage: 'Media & PR only',
-            detail: '<script>must stay text</script>',
-            action: 'Use exactly one h1.',
+            label: 'Machine labels (schema.org)',
+            status: 'poor',
+            affectedPages: 7,
+            totalPages: 7,
+            items: [{
+              label: 'Structured data',
+              status: 'poor',
+              facts: [{
+                label: 'Structured data',
+                status: 'fail',
+                coverage: 'on all 7 pages',
+                detail: 'No schema.org structured data, so machines must infer what the page is about.',
+                actions: ['Add schema.org structured data to the HTML the server sends.'],
+              }],
+            }],
+          },
+          {
+            label: 'Previews and links',
+            status: 'fair',
+            affectedPages: 1,
+            totalPages: 7,
+            items: [{
+              label: '<main> preview',
+              status: 'fair',
+              facts: [{
+                label: '<main> preview',
+                status: 'partial',
+                coverage: 'Media & PR only',
+                detail: '<script>must stay text</script>',
+                actions: ['Use exactly one h1.'],
+              }],
+            }],
           },
         ],
       },
@@ -2079,8 +2161,17 @@ describe('renderClientReportHtml', () => {
     expect(panel).toContain('Can AI read your site?');
     expect(panel).toContain('Does AI understand what it reads?');
     expect(panel).toContain('Reading is whether AI can fetch your text at all.');
-    expect(panel).toContain('Structured data - on all 6 pages');
-    expect(panel).toContain('Media &amp; PR only: &lt;main&gt; heading');
+    expect(panel).toContain('id="cr-agent-terms" data-disclosure hidden');
+    expect(panel.match(/data-understanding-group/g)).toHaveLength(3);
+    expect(panel).toContain('Labels that name the page');
+    expect(panel).toContain('Machine labels (schema.org)');
+    expect(panel).toContain('Previews and links');
+    expect(panel).toContain('7 of 7 pages');
+    expect(panel).toContain('Page description');
+    expect(panel).toContain('Meta description - on 4 of 7 pages');
+    expect(panel).toContain('Description before JavaScript - on 4 of 7 pages');
+    expect(panel).toContain('Structured data - on all 7 pages');
+    expect(panel).toContain('Media &amp; PR only: &lt;main&gt; preview');
     expect(panel).toContain('&lt;script&gt;must stay text&lt;/script&gt;');
     expect(panel).not.toContain('<script>must stay text</script>');
     expect(panel.indexOf('Can AI read your site?')).toBeLessThan(panel.indexOf('What this costs you'));
@@ -2130,6 +2221,31 @@ describe('renderClientReportHtml', () => {
     expect(agentPanelHtml).toContain('data-copy-prompt="cr-agent-card-0-cards"');
     expect(agentPanelHtml).toContain('width:118px');
     expect(agentPanelHtml).toContain('Fix this page card.');
+  });
+
+  it('colors AI readability tiles from measured values and keeps the target as a caption', () => {
+    const panelFor = (invisiblePercent: number, readableWords: number, totalWords: number): string => renderedPanel(
+      renderClientReportHtml(model({
+        agentCost: {
+          tab: 'ai',
+          state: 'measured',
+          headline: `${invisiblePercent}% of /details text is missing from the page the server sends, before any JavaScript runs`,
+          aiTiles: { pagePath: '/details', invisiblePercent, readableWords, totalWords },
+        },
+      })),
+      'agent',
+    );
+    const good = panelFor(0, 405, 405);
+    const fair = panelFor(5, 95, 100);
+    const poor = panelFor(35, 65, 100);
+
+    expect(good.match(/data-ai-tile-status="good"/g)).toHaveLength(2);
+    expect(fair.match(/data-ai-tile-status="fair"/g)).toHaveLength(2);
+    expect(poor.match(/data-ai-tile-status="poor"/g)).toHaveLength(2);
+    expect(good.match(/data-ai-tile-status=/g)).toHaveLength(2);
+    expect(good).toContain('of /details text invisible to AI');
+    expect(good).toContain('Target: every word visible (100%).');
+    expect(good).not.toContain('the target - every word visible');
   });
 
   it('renders the measured perf cost block and card prompt without data-cost output', () => {
@@ -2376,6 +2492,44 @@ describe('renderClientReportHtml', () => {
       perfScore: 87,
       a11yScore: 95,
       agentScore: 76,
+      agentReading: {
+        status: 'fair',
+        verdict: 'Only partly - some of your text still needs JavaScript before AI can read it.',
+      },
+      agentUnderstanding: {
+        status: 'fair',
+        verdict: 'Only partly - the labels machines rely on are missing.',
+        groups: [
+          {
+            label: 'Labels that name the page', status: 'poor', affectedPages: 4, totalPages: 7,
+            items: [{
+              label: 'Page description', status: 'poor',
+              facts: [
+                { label: 'Meta description', status: 'fail', coverage: 'on 4 of 7 pages', detail: 'No meta description, so engines write their own summary.', actions: ['Add a meta description that summarizes the page.'] },
+                { label: 'Description before JavaScript', status: 'fail', coverage: 'on 4 of 7 pages', detail: 'The page description is missing before JavaScript runs.', actions: ['Add a meta description in the HTML the server sends.'] },
+              ],
+            }],
+          },
+          {
+            label: 'Machine labels (schema.org)', status: 'poor', affectedPages: 7, totalPages: 7,
+            items: [{
+              label: 'Structured data', status: 'poor',
+              facts: [
+                { label: 'Structured data', status: 'fail', coverage: 'on all 7 pages', detail: 'No schema.org structured data, so machines must infer what the page is about.', actions: ['Add schema.org structured data so machines can identify the page.'] },
+                { label: 'Structured data before JavaScript', status: 'fail', coverage: 'on all 7 pages', detail: 'No machine-readable structured data in the page the server sends.', actions: ['Add schema.org structured data to the HTML the server sends.'] },
+              ],
+            }],
+          },
+          {
+            label: 'Previews and links', status: 'poor', affectedPages: 4, totalPages: 7,
+            items: [
+              { label: 'Social preview tags', status: 'fair', facts: [{ label: 'Social preview tags', status: 'partial', coverage: 'on 4 of 7 pages', detail: 'Open Graph tags are incomplete.', actions: ['Add Open Graph title, description, and image tags.'] }] },
+              { label: 'Image alt text', status: 'poor', facts: [{ label: 'Image alt text', status: 'fail', coverage: 'on 4 of 7 pages', detail: 'Some images do not have alt text.', actions: ['Add descriptive alt text to the images that lack it.'] }] },
+              { label: 'Descriptive links', status: 'fair', facts: [{ label: 'Descriptive links', status: 'partial', coverage: 'on 2 of 7 pages', detail: 'Some links do not explain where they go.', actions: ['Give every link descriptive text.'] }] },
+            ],
+          },
+        ],
+      },
       perfCost: {
         tab: 'perf',
         state: 'measured',
@@ -2418,14 +2572,20 @@ describe('renderClientReportHtml', () => {
       agentCost: {
         tab: 'ai',
         state: 'measured',
-        headline: 'The missing text only appears after the page runs its code.',
-        headlineSub: 'Site-wide, about 77% of your text is readable today.',
-        checkLine: 'view-source:https://www.example.com/',
+        headline: '35% of /powered-hot-tubs text is missing from the page the server sends, before any JavaScript runs',
+        headlineSub: 'only 389 of 597 words present Site-wide, about 87% of your text is readable today.',
+        checkLine: 'view-source:https://www.example.com/powered-hot-tubs',
         stakes: { kind: 'at-risk', prose: 'AI may miss what you sell, answer without your site, or cite a competitor.' },
         stats: [...AI_INDUSTRY_DATA_STATS],
-        fix: { tone: 'primary', text: 'Main: put your page text into the page the server sends.' },
+        fix: { tone: 'primary', text: "Render the page's primary text on the server with SSR or prerendering, so it is present in the HTML before JavaScript runs. Optional addition: add an llms.txt file to point some AI crawlers to key pages; it does not replace readable HTML." },
         sitePrompt: 'Render primary text on the server.',
-        aiTiles: { invisiblePercent: 34, readableWords: 615, totalWords: 937 },
+        aiTiles: {
+          pagePath: '/powered-hot-tubs',
+          invisiblePercent: 35,
+          readableWords: 389,
+          totalWords: 597,
+          homepageReadablePercent: 100,
+        },
       } as unknown as ClientReportModel['agentCost'],
     }));
 
@@ -2445,7 +2605,15 @@ describe('renderClientReportHtml', () => {
     expect(html).toContain('data-disclosure hidden style="margin-top:10px');
     expect(html).not.toContain('data-disclosure hidden style="display:');
     expect(html).toContain('class="cr-cost-tiles"');
-    expect(html).toContain('615<span style="font-size:14px">/937</span>');
+    expect(html.match(/data-ai-tile-status=/g)).toHaveLength(2);
+    expect(html).toContain('data-ai-tile-status="poor"');
+    expect(html).toContain('of /powered-hot-tubs text invisible to AI');
+    expect(html).toContain('389<span style="font-size:14px">/597</span>');
+    expect(html).toContain('Homepage (/): 100% of its text is readable to AI.');
+    expect(html).toContain('Target: every word visible (100%).');
+    expect(html.match(/data-understanding-group/g)).toHaveLength(3);
+    expect(html).toContain('SSR or prerendering');
+    expect(html).toContain('Optional addition: add an llms.txt file');
     expect(html).toContain('Copy fix instructions - for your developer or AI agent');
     expect(html).toContain('view the instructions');
     expect(html).toContain('value="middle" data-calc-band checked');

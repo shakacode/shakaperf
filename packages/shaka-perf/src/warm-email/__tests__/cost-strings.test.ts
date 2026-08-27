@@ -7,6 +7,9 @@
 
 import {
   AI_INDUSTRY_DATA_STATS,
+  AI_OPTIONAL_LLMS_FIX,
+  AI_READABILITY_TARGET,
+  AI_SERVER_RENDER_FIX,
   AI_ZERO_COPY,
   A11Y_INDUSTRY_DATA_STATS,
   BOT_WALL_COPY,
@@ -31,8 +34,6 @@ import {
   PERF_ZERO_COPY,
   WHAT_THIS_AFFECTS,
   WHAT_THIS_COSTS_YOU,
-  AI_HOMEPAGE_INVISIBLE_LABEL,
-  AI_HOMEPAGE_WORDS_LABEL,
   AI_STUDIES_OTHER_SITES_CAVEAT,
   COPY_FIX_INSTRUCTIONS,
   COPY_SITE_FIX_INSTRUCTIONS,
@@ -41,8 +42,11 @@ import {
   VIEW_INSTRUCTIONS,
   a11yNoNumberLine,
   aiCheckLine,
+  aiHomepageReadableLine,
   aiHeadline,
   aiHeadlineSub,
+  aiInvisibleTextLabel,
+  aiReadableWordsLabel,
   aiSingleCountLine,
   aiSiteWideContextLine,
   botWallFooterSentence,
@@ -159,9 +163,12 @@ describe('cost state matrix', () => {
 
 describe('canonical cost copy', () => {
   it('builds AI headline, subline, and self-check text', () => {
-    expect(aiHeadline(58, 42, 100)).toBe("58% of your page's text is missing from the page the server sends, before any JavaScript runs");
+    expect(aiHeadline(58, 42, 100, '/services')).toBe('58% of /services text is missing from the page the server sends, before any JavaScript runs');
     expect(aiHeadlineSub(42, 100)).toBe('only 42 of 100 words present');
     expect(aiCheckLine('https://example.com/a')).toBe('check it yourself: open view-source:https://example.com/a and search for a sentence from your page');
+    expect(aiInvisibleTextLabel('/services')).toBe('of /services text invisible to AI');
+    expect(aiReadableWordsLabel('/services')).toBe('words from /services AI can read today');
+    expect(aiHomepageReadableLine(100)).toBe('Homepage (/): 100% of its text is readable to AI.');
   });
 
   it('builds performance headline and profile-aware PSI check lines', () => {
@@ -217,8 +224,9 @@ describe('canonical cost copy', () => {
     expect(aiSiteWideContextLine(77, 'homepage')).toBe(
       'Site-wide, about 77% of your text is readable today - the homepage sits below that, which is why we graded it.',
     );
-    expect(AI_HOMEPAGE_INVISIBLE_LABEL).toBe('of your homepage text invisible to AI');
-    expect(AI_HOMEPAGE_WORDS_LABEL).toBe('homepage words AI can read today');
+    expect(AI_READABILITY_TARGET).toBe('Target: every word visible (100%).');
+    expect(AI_SERVER_RENDER_FIX).toContain('SSR or prerendering');
+    expect(AI_OPTIONAL_LLMS_FIX).toContain('does not replace readable HTML');
     expect(CALC_HEADLINE_LABEL).toBe('what a faster site could bring back');
     expect(CALC_HOW_WE_GOT_THIS_LABEL).toBe('how we got this');
     expect(calcAddValueLine('inquiry')).toBe('add what one inquiry is worth to see the money');
@@ -256,8 +264,12 @@ describe('canonical cost copy', () => {
       PAGESPEED_FIELD_VS_LAB_PREEMPT,
       AI_STUDIES_OTHER_SITES_CAVEAT,
       aiSiteWideContextLine(77, 'homepage'),
-      AI_HOMEPAGE_INVISIBLE_LABEL,
-      AI_HOMEPAGE_WORDS_LABEL,
+      AI_READABILITY_TARGET,
+      AI_SERVER_RENDER_FIX,
+      AI_OPTIONAL_LLMS_FIX,
+      aiInvisibleTextLabel('/services'),
+      aiReadableWordsLabel('/services'),
+      aiHomepageReadableLine(100),
       CALC_HEADLINE_LABEL,
       CALC_HOW_WE_GOT_THIS_LABEL,
       calcAddValueLine('inquiry'),
