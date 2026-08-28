@@ -527,3 +527,37 @@ abTest('Consumer App Menu - Material Menu Tabs Layout Tab Switch', /* … */);
 
 When you add a variant of an existing test, rename the original rather than extending its name.
 
+## Make the viewport bigger than the element you capture
+
+A screenshot is cropped to the viewport, so a subject taller than the window comes back
+clipped or full of capture artifacts (fixed chrome mid-image, unmounted lazy content).
+Check the subject's height and pick a viewport it fits inside — the tall trio
+(`desktop-tall`, `tablet-tall`, `phone-tall`: same widths, 3000 px) exists for this.
+Phone is the worst case: 667 px tall, and columns restack into one long strip.
+
+### BAD — a ~2,200 px footer at phone's 667 px
+
+```typescript
+abTest('Footer locations', {
+  startingPath: '/custom-form',
+  visregSelectors: ['footer'],
+}, async ({ page }) => {
+  await waitUntilPageSettled(page);
+});
+```
+
+### GOOD — a viewport the footer fits inside
+
+```typescript
+const MEASURED = ['desktop-tall', 'phone-tall'] satisfies [string, ...string[]];
+
+abTest('Footer locations', {
+  startingPath: '/custom-form',
+  visregSelectors: ['footer'],
+  config: {
+    visreg: { viewports: VISREG },
+  },
+}, async ({ page }) => {
+  await waitUntilPageSettled(page);
+});
+```
