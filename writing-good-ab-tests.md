@@ -549,13 +549,13 @@ abTest('Footer locations', {
 ### GOOD — a viewport the footer fits inside
 
 ```typescript
-const MEASURED = ['desktop-tall', 'phone-tall'] satisfies [string, ...string[]];
+const MEASURED = ['desktop-tall', 'tablet-tall', 'phone-tall'] satisfies [string, ...string[]];
 
 abTest('Footer locations', {
   startingPath: '/custom-form',
   visregSelectors: ['footer'],
   config: {
-    visreg: { viewports: VISREG },
+    visreg: { viewports: MEASURED },
   },
 }, async ({ page }) => {
   await waitUntilPageSettled(page);
