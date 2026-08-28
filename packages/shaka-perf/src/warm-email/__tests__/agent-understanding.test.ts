@@ -56,6 +56,12 @@ const sharedLabelingGaps: Partial<PageSignals> = {
   structuredData: { blocks: 0, valid: 0, invalid: 0, types: [], microdataItems: 0 },
 };
 
+const allLabelingGaps: Partial<PageSignals> = {
+  ...sharedLabelingGaps,
+  links: { total: 10, nondescriptive: 10 },
+  images: { total: 10, withAlt: 0 },
+};
+
 type Understanding = ReturnType<typeof buildAgentUnderstanding>;
 
 function allFacts(result: Understanding) {
@@ -74,7 +80,7 @@ describe('buildAgentUnderstanding', () => {
       view('Contact', sharedLabelingGaps),
     ]);
 
-    expect(result.status).toBe('fair');
+    expect(result.status).toBe('poor');
     expect(result.groups.map((group) => group.label)).toEqual([
       'Labels that name the page',
       'Machine labels (schema.org)',
@@ -100,6 +106,22 @@ describe('buildAgentUnderstanding', () => {
         label: 'Structured data before JavaScript',
         actions: ['Add schema.org structured data to the HTML the server sends.'],
       }),
+    ]);
+  });
+
+  it('returns a poor verdict when all seven judged labeling checks fail', () => {
+    const result = buildAgentUnderstanding([view('Home', allLabelingGaps)]);
+
+    expect(result.status).toBe('poor');
+    expect(result.verdict).toBe('No - key labels machines rely on are missing.');
+    expect(allFacts(result).map((fact) => fact.label)).toEqual([
+      'Meta description',
+      'Description before JavaScript',
+      'Structured data',
+      'Structured data before JavaScript',
+      'Social preview tags',
+      'Image alt text',
+      'Descriptive links',
     ]);
   });
 
@@ -153,8 +175,8 @@ describe('buildAgentUnderstanding', () => {
       view('Home', sharedLabelingGaps, { ...sharedLabelingGaps, textWords: 0 }),
     ]);
 
-    expect(result.status).toBe('fair');
-    expect(result.verdict).toBe('Only partly - the labels machines rely on are missing.');
+    expect(result.status).toBe('poor');
+    expect(result.verdict).toBe('No - key labels machines rely on are missing.');
     expect(allFacts(result).map((fact) => fact.label)).not.toEqual(expect.arrayContaining([
       'Content before JavaScript',
       'Title before JavaScript',

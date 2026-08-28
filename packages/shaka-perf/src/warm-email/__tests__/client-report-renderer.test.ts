@@ -68,7 +68,12 @@ import {
   RECOVERY_CAP,
 } from '../client-report-model/cost';
 import { escapeHtml } from '../html-escape';
-import { renderClientReportHtml, clientReportStatusWord, type ClientReportModel } from '../client-report-renderer';
+import {
+  renderClientReportHtml,
+  clientReportStatusWord,
+  type ClientReportModel,
+  type ClientReportStatus,
+} from '../client-report-renderer';
 import type { AgentReadinessResult, PageSignals } from '../../audit/stages/agent_readiness/types';
 import type {
   AccessibilityResult,
@@ -1307,6 +1312,28 @@ describe('renderClientReport perf tile assembly', () => {
     expect(agentPanelHtml).not.toContain(NOTHING_TO_FIX);
   });
 
+  it('uses one rounded AI readability status from the model for both rendered tiles', async () => {
+    const { html, model: reportModel } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'rounding-edge',
+        name: 'Rounding edge',
+        startingPath: '/rounding-edge',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 895, renderedWords: 1000 },
+      },
+    ]));
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(reportModel.agentCost?.aiTiles).toMatchObject({
+      invisiblePercent: 10,
+      readableWords: 895,
+      totalWords: 1000,
+      status: 'fair',
+    });
+    expect(agentPanelHtml.match(/data-ai-tile-status="fair"/g)).toHaveLength(2);
+    expect(agentPanelHtml).not.toContain('data-ai-tile-status="poor"');
+  });
+
   it('derives zero AI cost through the client report model only when reachable page text is fully present', async () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
       {
@@ -2223,21 +2250,26 @@ describe('renderClientReportHtml', () => {
     expect(agentPanelHtml).toContain('Fix this page card.');
   });
 
-  it('colors AI readability tiles from measured values and keeps the target as a caption', () => {
-    const panelFor = (invisiblePercent: number, readableWords: number, totalWords: number): string => renderedPanel(
+  it('uses the model-provided AI readability status and keeps the target as a caption', () => {
+    const panelFor = (
+      status: ClientReportStatus,
+      invisiblePercent: number,
+      readableWords: number,
+      totalWords: number,
+    ): string => renderedPanel(
       renderClientReportHtml(model({
         agentCost: {
           tab: 'ai',
           state: 'measured',
           headline: `${invisiblePercent}% of /details text is missing from the page the server sends, before any JavaScript runs`,
-          aiTiles: { pagePath: '/details', invisiblePercent, readableWords, totalWords },
+          aiTiles: { pagePath: '/details', invisiblePercent, readableWords, totalWords, status },
         },
       })),
       'agent',
     );
-    const good = panelFor(0, 405, 405);
-    const fair = panelFor(5, 95, 100);
-    const poor = panelFor(35, 65, 100);
+    const good = panelFor('good', 0, 405, 405);
+    const fair = panelFor('fair', 5, 95, 100);
+    const poor = panelFor('poor', 35, 65, 100);
 
     expect(good.match(/data-ai-tile-status="good"/g)).toHaveLength(2);
     expect(fair.match(/data-ai-tile-status="fair"/g)).toHaveLength(2);
@@ -2584,6 +2616,7 @@ describe('renderClientReportHtml', () => {
           invisiblePercent: 35,
           readableWords: 389,
           totalWords: 597,
+          status: 'poor',
           homepageReadablePercent: 100,
         },
       } as unknown as ClientReportModel['agentCost'],

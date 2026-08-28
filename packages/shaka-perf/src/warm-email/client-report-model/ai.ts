@@ -94,6 +94,12 @@ function boundedCoveragePct(rawWords: number, renderedWords: number): number {
   return Math.round(boundedCoverageRatio(rawWords, renderedWords) * 100);
 }
 
+export function aiTileStatus(readablePercent: number): ClientReportStatus {
+  if (readablePercent >= 100) return 'good';
+  if (readablePercent >= 90) return 'fair';
+  return 'poor';
+}
+
 function boundedPresentWords(rawWords: number, renderedWords: number): number {
   return Math.max(0, Math.min(rawWords, renderedWords));
 }
@@ -306,6 +312,7 @@ export function buildAgentSection(
         invisiblePercent: worstMissingPct,
         readableWords: worstPresentWords,
         totalWords: worstRenderedWords,
+        status: aiTileStatus(worstCoveragePct),
         ...(homepageCostPage !== worstCostPage
           && homepageRenderedWords >= MIN_AGENT_COST_WORDS
           && homepageInvisiblePct === 0

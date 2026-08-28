@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { buildAgentSection, type AgentPromptContext } from '../client-report-model/ai';
+import { aiTileStatus, buildAgentSection, type AgentPromptContext } from '../client-report-model/ai';
 import type { AgentPageView } from '../agent-ready-report';
 import { scorePageStructure, type SiteAccessSignals } from '../agent-ready-score';
 import type { AgentReadinessResult, PageSignals } from '../../audit/stages/agent_readiness/types';
@@ -81,11 +81,15 @@ describe('buildAgentSection', () => {
     expect(result.agentCost).toMatchObject({
       state: 'measured',
       headline: '50% of / text is missing from the page the server sends, before any JavaScript runs',
-      aiTiles: { pagePath: '/', invisiblePercent: 50, readableWords: 50, totalWords: 100 },
+      aiTiles: { pagePath: '/', invisiblePercent: 50, readableWords: 50, totalWords: 100, status: 'poor' },
       fix: { tone: 'primary' },
     });
     expect(result.agentCost?.fix?.text).toContain('SSR or prerendering');
     expect(result.agentCost?.fix?.text).toContain('Optional addition: add an llms.txt file');
+  });
+
+  it('buckets the rounded readable percentage for both AI tiles', () => {
+    expect([100, 90, 89].map(aiTileStatus)).toEqual(['good', 'fair', 'poor']);
   });
 
   it('keeps the server-rendering fix but omits llms.txt without site-access data', () => {
@@ -226,8 +230,8 @@ describe('buildAgentSection', () => {
       verdict: 'Yes - your text is served before JavaScript and AI crawlers are allowed in.',
     });
     expect(result.agentUnderstanding).toMatchObject({
-      status: 'fair',
-      verdict: 'Only partly - the labels machines rely on are missing.',
+      status: 'poor',
+      verdict: 'No - key labels machines rely on are missing.',
     });
     expect(result.agentUnderstanding?.groups.map((group) => group.label)).toEqual([
       'Labels that name the page',

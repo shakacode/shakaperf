@@ -278,6 +278,7 @@ export interface ClientReportCostBlock extends CostBlockExtras {
     invisiblePercent: number;
     readableWords: number;
     totalWords: number;
+    status: ClientReportStatus;
     homepageReadablePercent?: number;
   };
 }
@@ -655,25 +656,17 @@ function aiTiles(cost: ClientReportCostBlock): string {
   if (!tiles
     || ![tiles.invisiblePercent, tiles.readableWords, tiles.totalWords].every(Number.isFinite)
     || tiles.totalWords <= 0) return '';
-  const missingStatus: ClientReportStatus = tiles.invisiblePercent === 0
-    ? 'good'
-    : tiles.invisiblePercent <= 10 ? 'fair' : 'poor';
-  const readableShare = tiles.readableWords / tiles.totalWords;
-  const readableStatus: ClientReportStatus = readableShare >= 1
-    ? 'good'
-    : readableShare >= 0.9 ? 'fair' : 'poor';
-  const missingPalette = PAL[missingStatus];
-  const readablePalette = PAL[readableStatus];
+  const palette = PAL[tiles.status];
   const homepageLine = tiles.homepageReadablePercent === 100
     ? `<div style="margin-top:9px; font-size:12px; line-height:1.45; color:${PAL.good.fg}">${esc(aiHomepageReadableLine(tiles.homepageReadablePercent))}</div>`
     : '';
   return `        <div class="cr-cost-tiles" style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px">
-          <div data-ai-tile-status="${missingStatus}" style="border:1px solid ${missingPalette.line}; background:${missingPalette.bg}; border-radius:11px; padding:13px 14px">
-            <div style="font-size:25px; font-weight:800; letter-spacing:-.02em; color:${missingPalette.fg}; line-height:1">${esc(String(tiles.invisiblePercent))}%</div>
+          <div data-ai-tile-status="${tiles.status}" style="border:1px solid ${palette.line}; background:${palette.bg}; border-radius:11px; padding:13px 14px">
+            <div style="font-size:25px; font-weight:800; letter-spacing:-.02em; color:${palette.fg}; line-height:1">${esc(String(tiles.invisiblePercent))}%</div>
             <div style="font-size:11.5px; line-height:1.4; color:#5e5549; margin-top:6px">${esc(aiInvisibleTextLabel(tiles.pagePath))}</div>
           </div>
-          <div data-ai-tile-status="${readableStatus}" style="border:1px solid ${readablePalette.line}; background:${readablePalette.bg}; border-radius:11px; padding:13px 14px">
-            <div style="font-size:22px; font-weight:800; letter-spacing:-.02em; color:${readablePalette.fg}; line-height:1.15">${esc(String(tiles.readableWords))}<span style="font-size:14px">/${esc(String(tiles.totalWords))}</span></div>
+          <div data-ai-tile-status="${tiles.status}" style="border:1px solid ${palette.line}; background:${palette.bg}; border-radius:11px; padding:13px 14px">
+            <div style="font-size:22px; font-weight:800; letter-spacing:-.02em; color:${palette.fg}; line-height:1.15">${esc(String(tiles.readableWords))}<span style="font-size:14px">/${esc(String(tiles.totalWords))}</span></div>
             <div style="font-size:11.5px; line-height:1.4; color:#5e5549; margin-top:4px">${esc(aiReadableWordsLabel(tiles.pagePath))}</div>
           </div>
         </div>

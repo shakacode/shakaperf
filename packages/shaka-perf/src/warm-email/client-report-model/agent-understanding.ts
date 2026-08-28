@@ -106,10 +106,9 @@ function pageUnderstandingStatus(view: AgentPageView): ClientReportStatus {
   let max = 0;
   for (const category of view.struct.categories) {
     for (const item of category.items) {
+      if (!isUnderstandingItem(item.label) || item.state === 'na') continue;
       max += item.max;
-      points += isUnderstandingItem(item.label) && item.state !== 'na'
-        ? item.points
-        : item.max;
+      points += item.points;
     }
   }
   return scoreBucket(max > 0 ? Math.round((points / max) * 100) : 100);
