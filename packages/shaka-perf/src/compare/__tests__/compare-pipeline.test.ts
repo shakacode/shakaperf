@@ -81,13 +81,10 @@ describe('compare accessibility pipeline integration', () => {
     try {
       const result = await runPipeline(pipeline, {
         cwd,
-        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] } } }),
+        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, timeoutMs: 1_000, retries: 0, retryDelay: 0 } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         skipReport: true,
-        retries: 0,
-        retryDelay: 0,
-        timeoutMs: 1_000,
         tests: [testDefinition()],
       });
 
