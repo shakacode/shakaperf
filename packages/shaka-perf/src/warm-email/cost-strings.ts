@@ -165,18 +165,22 @@ export const COST_STATE_MATRIX: Record<Tab, Record<State, CostStateCell>> = {
   },
 };
 
+function aiPageTextLabel(pagePath: string): string {
+  return !pagePath || pagePath === '/' ? 'your homepage' : pagePath;
+}
+
 export function aiHeadline(pct: number, present: number, total: number, pagePath: string): string {
   void present;
   void total;
-  return `${pct}% of ${pagePath || '/'} text is missing from the page the server sends, before any JavaScript runs`;
+  return `${pct}% of ${aiPageTextLabel(pagePath)} text is missing from the page the server sends, before any JavaScript runs`;
 }
 
 export function aiInvisibleTextLabel(pagePath: string): string {
-  return `of ${pagePath || '/'} text invisible to AI`;
+  return `of ${aiPageTextLabel(pagePath)} text invisible to AI`;
 }
 
 export function aiReadableWordsLabel(pagePath: string): string {
-  return `words from ${pagePath || '/'} AI can read today`;
+  return `words from ${aiPageTextLabel(pagePath)} AI can read today`;
 }
 
 export function aiHomepageReadableLine(readablePct: number): string {

@@ -168,6 +168,9 @@ describe('canonical cost copy', () => {
     expect(aiCheckLine('https://example.com/a')).toBe('check it yourself: open view-source:https://example.com/a and search for a sentence from your page');
     expect(aiInvisibleTextLabel('/services')).toBe('of /services text invisible to AI');
     expect(aiReadableWordsLabel('/services')).toBe('words from /services AI can read today');
+    expect(aiHeadline(50, 50, 100, '/')).toBe('50% of your homepage text is missing from the page the server sends, before any JavaScript runs');
+    expect(aiInvisibleTextLabel('/')).toBe('of your homepage text invisible to AI');
+    expect(aiReadableWordsLabel('/')).toBe('words from your homepage AI can read today');
     expect(aiHomepageReadableLine(100)).toBe('Homepage (/): 100% of its text is readable to AI.');
   });
 

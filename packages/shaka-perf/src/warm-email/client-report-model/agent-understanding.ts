@@ -121,8 +121,9 @@ function understandingStatus(views: readonly AgentPageView[]): ClientReportStatu
   }, 'good');
 }
 
-function verdictFor(status: ClientReportStatus): string {
+function verdictFor(status: ClientReportStatus, measuredStatus: ClientReportStatus): string {
   if (status === 'good') return 'Labeling is in place.';
+  if (measuredStatus === 'good') return 'Mostly - a few labels are incomplete on some pages.';
   if (status === 'fair') return 'Only partly - the labels machines rely on are missing.';
   return 'No - key labels machines rely on are missing.';
 }
@@ -210,5 +211,5 @@ export function buildAgentUnderstanding(views: readonly AgentPageView[]): Client
   });
   const measuredStatus = understandingStatus(views);
   const status = groups.length === 0 ? 'good' : measuredStatus === 'good' ? 'fair' : measuredStatus;
-  return { status, verdict: verdictFor(status), groups };
+  return { status, verdict: verdictFor(status, measuredStatus), groups };
 }

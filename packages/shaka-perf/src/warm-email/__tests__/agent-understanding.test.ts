@@ -212,4 +212,18 @@ describe('buildAgentUnderstanding', () => {
       groups: [],
     });
   });
+
+  it('describes a measured-good partial label as incomplete instead of missing', () => {
+    const result = buildAgentUnderstanding([view('Home', {
+      og: { title: true, description: true, image: false, type: true, siteName: true },
+    })]);
+
+    expect(result).toMatchObject({
+      status: 'fair',
+      verdict: 'Mostly - a few labels are incomplete on some pages.',
+    });
+    expect(allFacts(result)).toEqual([
+      expect.objectContaining({ label: 'Social preview tags', status: 'partial' }),
+    ]);
+  });
 });

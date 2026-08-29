@@ -80,7 +80,7 @@ describe('buildAgentSection', () => {
 
     expect(result.agentCost).toMatchObject({
       state: 'measured',
-      headline: '50% of / text is missing from the page the server sends, before any JavaScript runs',
+      headline: '50% of your homepage text is missing from the page the server sends, before any JavaScript runs',
       aiTiles: { pagePath: '/', invisiblePercent: 50, readableWords: 50, totalWords: 100, status: 'poor' },
       fix: { tone: 'primary' },
     });
