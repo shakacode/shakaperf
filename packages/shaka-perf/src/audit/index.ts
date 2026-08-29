@@ -21,6 +21,8 @@ export type {
   AccessibilityViolation,
   AccessibilityViolationNode,
 } from './stages/accessibility';
+export { CodeCoverageStage } from './stages/code_coverage';
+export type { CodeCoverageResult } from './stages/code_coverage';
 export { AgentReadinessStage } from './stages/agent_readiness';
 export type {
   AgentReadinessResult,

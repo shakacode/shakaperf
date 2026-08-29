@@ -58,10 +58,11 @@ describe('accessibility report UI filters', () => {
 
     const html = renderToStaticMarkup(React.createElement(App, { data }));
 
-    expect(html).toContain('report sections filter · 1/5');
+    expect(html).toContain('report sections filter · 1/6');
     expect(html).toContain('accessibility');
     expect(html).toContain('audit is not present in this report');
     expect(html).toContain('agent-readiness is not present in this report');
+    expect(html).toContain('code_coverage is not present in this report');
     expect(html).toContain('build_annotated_timeline is not present in this report');
     expect(html).toContain('ai_summary is not present in this report');
     expect(html).toContain('disabled=""');

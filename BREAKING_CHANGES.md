@@ -12,6 +12,55 @@ version being released and updates the "Current version" line at the bottom.
 
 ---
 
+## Unreleased
+
+### `shared.timeoutMs` / `retries` / `retryDelay` are now honoured per test
+
+These three were previously listed as run-level-only: an `abTest()` could set
+them in its `config`, the schema validated them, they were merged into that
+test's effective config — and then the worker pool, already built from
+`abtests.config.ts`, ignored them. They now apply to that test's tasks.
+
+**This supersedes the `0.2.0` table row** that reads "run-level pool/infra
+fields (`shared.parallelism`, `retries`, `timeoutMs`, `perf.samplingMode`, …) |
+No". Only those three moved. `shared.parallelism` and `perf.samplingMode` are
+still resolved once per run — a pool's worker count is fixed when the pipeline
+registers it, before any test is known.
+
+If a test carries one of these and you did not mean it to apply, **delete the
+key** — it was inert before and is not now:
+
+```ts
+// This used to do nothing. It now caps every task for this test at 5s.
+abTest({ name: 'dashboard', config: { shared: { timeoutMs: 5000 } } });
+```
+
+Unchanged: `timeoutMs` is still `z.number().int().positive()`, so a test cannot
+write `0` to disable its own cap. `--burn` still forces `retries` to 0 for every
+task, over any config value. `troubleshoot` pins `{ timeoutMs: 0, retries: 0 }`
+on its pools, so a test's override cannot reintroduce a timeout or a retry there
+— its browsers stay open by contract.
+
+### `audit` no longer collects JS coverage — the opt-in `code_coverage` category does
+
+Coverage (`coverage.json`, `.nyc_output/`, and the new `visibility-map.txt`) is
+now drained by a stage of its own that re-runs each test body in a second,
+visreg-configured browser, so a default audit measures only Lighthouse and the
+screencast — no fallback is left in the audit stage.
+
+There is no config switch: name the category to collect it.
+
+```bash
+shaka-perf audit --categories code_coverage                      # coverage alone
+```
+
+The stage fails the unit when the page carries no `window.__coverage__`: asking
+for coverage and silently getting none is the one outcome worse than not asking.
+
+Read the two artifacts together with the bundled `shaka-perf-coverage` skill —
+code coverage says a test executed a component, the visibility map says whether
+that component was inside the screenshot.
+
 ## 0.2.4 — 2026-08-11
 
 ### `SHAKA_PERF_NODE` removed, and the CLI no longer pins a Node version

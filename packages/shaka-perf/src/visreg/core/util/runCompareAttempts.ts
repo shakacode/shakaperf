@@ -19,15 +19,10 @@ import {
   windowPlacementFor,
 } from '../../../troubleshoot/window-placement';
 import { createComparisonSide as defaultCreateComparisonSide, type ComparisonSide } from './createComparisonSide';
+import { withPreparedSide, type CreateSideFn, type PreparePageFn } from './preparedSide';
 import { ScreenshotPool, crossMatch, type PoolFrame, type CrossMatchResult } from './screenshotPool';
-import { setUpContextForNavigation } from '../../../pre-navigation';
 import { assertConsoleClean, type BrowserConsolePolicy } from '../../../browser-console';
 import { reconstructEffectiveConfig } from '../../../effective-config';
-import {
-  attachLatestTestAnnotation,
-  getLatestTestAnnotation,
-  runWithFreshTestAnnotationContext,
-} from '../../../test-annotation';
 import type { Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig } from '../types';
 
 const logger = createLogger('runCompareAttempts');
@@ -37,12 +32,10 @@ export type CaptureScreenshotFn = (
   selector: string,
 ) => Promise<Buffer | null>;
 
-type PreparePageFn = typeof defaultPreparePage;
-
 /** Injected collaborators — defaulted to the real implementations; overridden in tests. */
 export interface CompareAttemptsDeps {
   captureScreenshot: CaptureScreenshotFn;
-  createSide?: (browser: Browser, config: DecoratedCompareConfig, viewport: Viewport, onContextReady?: (context: BrowserContext) => Promise<void>) => Promise<ComparisonSide>;
+  createSide?: CreateSideFn;
   preparePage?: PreparePageFn;
   sleep?: (ms: number) => Promise<void>;
   captureFailure?: (
@@ -104,112 +97,59 @@ interface CaptureComparisonSideParams {
 }
 
 /**
- * Own one comparison side from browser-context creation through selector
- * capture and teardown. Its annotation state and failure screenshot stay on
- * the same async branch, so a concurrent sibling cannot overwrite either.
+ * Capture one comparison side's selectors. The side's whole lifecycle —
+ * context, navigation, test body, teardown — belongs to `withPreparedSide`,
+ * which the audit's `code_coverage` stage drives too, so both engines read the
+ * same page. All that is compare-specific lives in the callback: screenshot
+ * every pending selector, then assert the console stayed clean.
  */
 async function captureComparisonSide(
   params: CaptureComparisonSideParams,
 ): Promise<Map<string, Buffer>> {
-  const {
-    browser,
-    config,
-    viewport,
-    scenario,
-    url,
-    isControl,
-    beforeNavigate,
-    browserConsole,
-    runs,
-    activeSides,
-    createSide,
-    preparePage,
-    captureScreenshot,
-    captureFailure,
-  } = params;
-  let side: ComparisonSide | undefined;
+  const { scenario, viewport, isControl, runs, captureScreenshot } = params;
   const group = isControl ? 'control' : 'experiment';
 
-  return runWithFreshTestAnnotationContext(async () => {
-    try {
-      side = await createSide(
-        browser,
-        config,
-        viewport,
-        (context) => setUpContextForNavigation({
-          context,
-          url,
-          viewport,
-          isControl,
-          testType: 'visreg',
-          beforeNavigate,
-          browserConsole,
-        }),
-      );
-      activeSides.add(side);
-      if (config.keepBrowserOpen) {
-        // One browser, two contexts — so the window is moved, not launched placed.
-        await placeWindow(side.page, windowPlacementFor('visreg', group, viewport));
+  return withPreparedSide({
+    browser: params.browser,
+    config: params.config,
+    viewport,
+    scenario,
+    url: params.url,
+    isControl,
+    beforeNavigate: params.beforeNavigate,
+    browserConsole: params.browserConsole,
+    activeSides: params.activeSides,
+    createSide: params.createSide,
+    preparePage: params.preparePage,
+    ...(params.captureFailure ? { captureFailure: params.captureFailure } : {}),
+    // One browser, two contexts — so the window is moved, not launched placed.
+    ...(params.config.keepBrowserOpen
+      ? {
+        onSideReady: async (side: ComparisonSide) => {
+          await placeWindow(side.page, windowPlacementFor('visreg', group, viewport));
+        },
       }
-
-      await preparePage(
-        side.page,
-        url,
-        scenario,
-        viewport,
-        config,
-        isControl,
-        side.context,
-      );
-
-      const captures = new Map<string, Buffer>();
-      for (const run of runs) {
-        if (run.done) continue;
-        const screenshot = await captureScreenshot(side.page, run.selector);
-        if (!screenshot) {
-          const pageLabel = isControl ? 'reference page' : 'test page';
-          throw new Error(
-            `Selector "${run.selector}" not found on ${pageLabel} for "${scenario.label}"`,
-          );
-        }
-        captures.set(run.selector, screenshot);
+      : {}),
+    onKeptOpen: async (side) => {
+      await labelWindow(side.page, formatWindowLabel('visreg', scenario.label, viewport.label));
+    },
+  }, async (side) => {
+    const captures = new Map<string, Buffer>();
+    for (const run of runs) {
+      if (run.done) continue;
+      const screenshot = await captureScreenshot(side.page, run.selector);
+      if (!screenshot) {
+        const pageLabel = isControl ? 'reference page' : 'test page';
+        throw new Error(
+          `Selector "${run.selector}" not found on ${pageLabel} for "${scenario.label}"`,
+        );
       }
-
-      assertConsoleClean(side.context);
-
-      return captures;
-    } catch (err) {
-      attachLatestTestAnnotation(err, getLatestTestAnnotation(err));
-      const failure = side && activeSides.has(side) && captureFailure
-        ? await captureFailure(err, side.page, isControl)
-        : err;
-      // The sibling window is evidence too; Promise.all already rejects without help.
-      if (!config.keepBrowserOpen) disposeActiveSidesOnNextTask(activeSides);
-      throw failure;
-    } finally {
-      if (side && activeSides.delete(side)) {
-        if (config.keepBrowserOpen) {
-          // Last point the side's identity is in scope, first at which writing is harmless.
-          await labelWindow(side.page, formatWindowLabel('visreg', scenario.label, viewport.label));
-        } else {
-          await side.dispose();
-        }
-      }
+      captures.set(run.selector, screenshot);
     }
-  });
-}
 
-function disposeActiveSidesOnNextTask(
-  activeSides: Set<ComparisonSide>,
-): void {
-  const sidesToDispose = [...activeSides];
-  activeSides.clear();
-  if (sidesToDispose.length === 0) return;
-  // Let this side's rejection settle Promise.all before closing its sibling.
-  // Otherwise the sibling's resulting "page closed" rejection can win the
-  // race and replace the failure that initiated cancellation.
-  setImmediate(() => {
-    void Promise.all(sidesToDispose.map((side) => side.dispose()));
+    assertConsoleClean(side.context);
+
+    return captures;
   });
 }
 

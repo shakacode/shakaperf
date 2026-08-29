@@ -51,6 +51,38 @@ abTest(
 );
 ```
 
+## Keep perf and audit viewports a subset of the visreg ones
+
+Visreg is cheap, so it can cover more viewports than perf and audit. What those
+must never do is cover *different* ones. If `visreg` runs `desktop-tall` and
+`perf` runs `desktop`, perf measures a rendering no screenshot ever captured —
+it never sees the content below the fold that visreg is diffing, so a perf
+number has no visual evidence to explain it. The same goes for `audit`. Every
+perf and audit viewport must also be a visreg viewport.
+
+### BAD — perf and audit measure viewports visreg never captures
+
+```typescript
+config: {
+  visreg: { viewports: ['desktop-tall', 'phone-tall'] },
+  perf: { viewports: ['desktop'] },
+  audit: { viewports: ['phone'] },
+}
+```
+
+### GOOD — perf and audit narrow the visreg list, reusing the same sizes
+
+```typescript
+const VISREG = ['desktop-tall', 'tablet-tall', 'phone-tall'] satisfies [string, ...string[]];
+const MEASURED = ['desktop-tall', 'phone-tall'] satisfies [string, ...string[]];
+
+config: {
+  visreg: { viewports: VISREG },
+  perf: { viewports: MEASURED },
+  audit: { viewports: MEASURED },
+}
+```
+
 ## Wait for a durable final state, not the first success signal
 
 Modern UIs can expose a component before its content and geometry have finished updating. Wait for both the meaningful state and the specific component's rendered size to settle.
@@ -319,6 +351,61 @@ abTest('Pick schedule time', {
 
 Choose `viewport` only when the whole viewport is the subject. Otherwise, a narrow selector produces a more meaningful diff and isolates the test from unrelated layout churn.
 
+## Trim unrelated chrome, never the component's own parts
+
+`visregSelectors` is for excluding page furniture that has nothing to do with the subject. It is not for cropping a component down to the piece you changed. A nav and the content it drives are one component: capture the nav alone and the shot cannot show whether the nav did anything.
+
+### BAD — crop to the nav, losing the menu it navigates
+
+```typescript
+const SIDEBAR_NAV = '.pm-menu-sidebar';
+
+abTest('Sidebar Section Tab Click', {
+  startingPath: '/sidebar-menu-tabs-layout',
+  visregSelectors: [SIDEBAR_NAV], // the sidebar means nothing outside its menu
+}, async ({ page }) => {
+  await page.locator(SIDEBAR_NAV).getByRole('tab', { name: 'Sides' }).click();
+  /* page stabilization is ommitted */
+});
+```
+
+### GOOD — capture the whole menu group, nav and content together
+
+```typescript
+abTest('Sidebar Section Tab Click', {
+  startingPath: '/sidebar-menu-tabs-layout',
+  visregSelectors: ['.pm-menus-bg'],
+}, async ({ page }) => {
+  await page.locator('.pm-menu-sidebar').getByRole('tab', { name: 'Sides' }).click();
+  /* page stabilization is ommitted */
+});
+```
+
+If the whole-component shot looks nearly identical to another test's, make the states genuinely different or drop the redundant test — do not crop until a diff appears.
+
+## Keep the default perf set small
+
+Perf costs `numberOfMeasurements` samples per viewport per twin, so every test that opts into it multiplies the run. Visreg is cheap by comparison. Tag each test with the suite it belongs to and let an env var widen it, so a normal run measures only the numbers someone actually reads while visual coverage stays complete.
+
+### BAD — every test measures perf forever
+
+```typescript
+abTest('Menu tab switch', { startingPath: '/menus', testTypes: ['perf', 'visreg'] }, async () => {});
+abTest('Dish modal', { startingPath: '/menus', testTypes: ['perf', 'visreg'] }, async () => {});
+```
+
+### GOOD — tag the suite
+
+```typescript
+export function perfTestSuite(suite: 'essential' | 'all', types: TestType[] = ['perf', 'visreg']): TestType[] {
+  const measuresPerf = suite === 'essential' || process.env.ALL_PERF_TESTS === 'true';
+  return measuresPerf ? types : types.filter(type => type !== 'perf');
+}
+
+abTest('Menu tab switch', { startingPath: '/menus', testTypes: perfTestSuite('all') }, async () => {});
+abTest('Core layout', { startingPath: '/menus/core', testTypes: perfTestSuite('essential') }, async () => {});
+```
+
 ## Capture each UI state once
 
 Different test names, setup steps, or routes do not make captures distinct. If two tests finish by capturing the same component in the same rendered state, they duplicate coverage and multiply snapshot noise and runtime.
@@ -387,4 +474,26 @@ abTest('Sign-in dialog', {
 Before adding a test, inventory the final component and state already captured by **the rest of the suite**. Add another route only when it produces a materially different rendered state or when route performance is itself the subject and the capture provides route-specific evidence. Otherwise, cover alternate-route behavior in vanilla Playwright or Cypress.
 
 The inventory is across tests. Within one test, the viewport list is a separate decision and this rule has nothing to say about it.
+
+## No test name may contain another test name
+
+`troubleshoot --filter` must resolve to exactly ONE test. A name that is a prefix of a sibling's cannot be addressed at all, so the test becomes undebuggable — and `compare --filter` silently runs more tests than you asked for.
+
+### BAD — the first name is a prefix of the other two
+
+```typescript
+abTest('Consumer App Menu - Material Menu Tabs Layout', /* … */);
+abTest('Consumer App Menu - Material Menu Tabs Layout Single Menu', /* … */);
+abTest('Consumer App Menu - Material Menu Tabs Layout Tab Switch', /* … */);
+```
+
+### GOOD — qualify the base case too
+
+```typescript
+abTest('Consumer App Menu - Material Menu Tabs Layout Multi Menu', /* … */);
+abTest('Consumer App Menu - Material Menu Tabs Layout Single Menu', /* … */);
+abTest('Consumer App Menu - Material Menu Tabs Layout Tab Switch', /* … */);
+```
+
+When you add a variant of an existing test, rename the original rather than extending its name.
 

@@ -223,12 +223,9 @@ describe('runPipeline', () => {
     try {
       return await runPipeline(selectedPipeline, {
         cwd,
-        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] } } }),
+        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, timeoutMs: 1_000, retries: 0, retryDelay: 0 } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
-        retries: 0,
-        retryDelay: 0,
-        timeoutMs: 1_000,
         tests: [frozenTest],
         ...runtime,
       });
@@ -357,12 +354,9 @@ describe('pre-run wipe', () => {
     try {
       return await runPipeline(pipeline(), {
         cwd,
-        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] } } }),
+        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, timeoutMs: 1_000, retries: 0, retryDelay: 0 } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
-        retries: 0,
-        retryDelay: 0,
-        timeoutMs: 1_000,
         tests: [narrowedTest],
         skipReport: true,
         ...runtime,
@@ -571,13 +565,10 @@ describe('per-side visreg failures', () => {
       const result = await withAbTestsConfigPath(configPath, () =>
         runPipeline(visregPipeline(), {
           cwd,
-          config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] } } }),
+          config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, timeoutMs: 5_000, retries: 0, retryDelay: 0 } }),
           controlURL: 'http://control.test',
           experimentURL: 'http://experiment.test',
-          retries: 0,
-          retryDelay: 0,
-          timeoutMs: 5_000,
-          tests: [test],
+            tests: [test],
         }));
 
       const store = new ArtifactStore(path.join(cwd, 'test-results'));
@@ -628,4 +619,104 @@ describe('per-side visreg failures', () => {
     expect(selfContainedReport)
       .not.toContain(`data:image/png;base64,${Base64('control')}`);
   });
+});
+
+describe('per-test task limits reach the pool', () => {
+  // The whole seam is two lines in the runner: it publishes each unit's
+  // TaskLimits — derived from that unit's EFFECTIVE config — into an
+  // async-local, and the pool reads that async-local at submit time. Cut
+  // either line and the pool silently falls back to the FILE config, which is
+  // precisely the bug this replaced. No other test in the suite notices,
+  // because none of them declares a per-test override: with the wire cut they
+  // still assert the file numbers they already pass in.
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  // Cooperates with the pool's cancellation, the way a real stage does.
+  // `raceCancellation` RESOLVES with a marker instead of throwing, so the
+  // sentinel tells the two apart; rethrowing puts us on the poison path
+  // immediately rather than waiting out the 15s grace window.
+  const FINISHED = 'finished';
+
+  function poolWorkStage(name: StageName): Stage<Record<string, never>> {
+    return {
+      ...stage(name),
+      run: async (_ctx: TestContext, pool: WorkerPool) => {
+        await pool.submit(async (_state, raceCancellation) => {
+          const settled = await raceCancellation(() => sleep(150).then(() => FINISHED));
+          if (settled !== FINISHED) throw new Error('stage aborted');
+          return FINISHED;
+        });
+        return {};
+      },
+    };
+  }
+
+  function poolWorkPipeline(): Pipeline {
+    return createPipeline({
+      name: 'test',
+      description: 'test pipeline',
+      report: {
+        reportLabel: 'Test',
+        renderHeaderUrls: () => null,
+        renderTestCardUrls: () => null,
+        renderDialogMetaUrls: () => null,
+      },
+    }, (builder) => {
+      const pool = builder.registerWorkerPool(2);
+      builder.runStage(pool, poolWorkStage('perf'));
+      builder.waitForAllTasksFinishAndDispose(pool);
+      builder.buildChips({
+        chipsForAllTests: (perTest) => new Map(perTest.map(({ test }) => [test, []])),
+      });
+      builder.buildSorts({ sortsForAllTests: () => new Map() });
+    });
+  }
+
+  const definition = (name: string, config?: AbTestDefinition['config']): AbTestDefinition => ({
+    name,
+    startingPath: '/',
+    file: null,
+    line: null,
+    testTypes: null,
+    testFn: async () => {},
+    ...(config ? { config } : {}),
+  });
+
+  beforeEach(() => {
+    jest.mocked(loadTests).mockReset();
+  });
+
+  it('caps a test at ITS OWN timeoutMs and everyone else at the file\'s', async () => {
+    // 20ms against a file-wide 60s: only the per-test value can end this task,
+    // and only if the runner actually delivers it to the pool.
+    const capped = definition('Capped', { shared: { timeoutMs: 20 } });
+    const plain = definition('Plain');
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-task-limits-'));
+    const savedTmpdir = process.env.TMPDIR;
+    process.env.TMPDIR = cwd;
+    try {
+      jest.mocked(loadTests).mockResolvedValue([capped, plain]);
+      const result = await runPipeline(poolWorkPipeline(), {
+        cwd,
+        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 2, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, viewports: ['desktop'], timeoutMs: 60_000, retries: 0, retryDelay: 0 } }),
+        controlURL: 'http://control.test',
+        experimentURL: 'http://experiment.test',
+        tests: [capped, plain],
+        skipReport: true,
+      });
+
+      const outcomeFor = (name: string) =>
+        result.testResults.find((t) => t.name === name)?.outcomes[0];
+
+      expect(outcomeFor('Capped')?.kind).toBe('error');
+      expect(outcomeFor('Capped')?.error?.message)
+        .toContain('task exceeded its 20ms budget');
+      // The file's 60s cap never fires, so the un-overriding test just finishes.
+      expect(outcomeFor('Plain')?.kind).toBe('ok');
+    } finally {
+      if (savedTmpdir === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = savedTmpdir;
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  }, 30_000);
 });

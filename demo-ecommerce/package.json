@@ -60,6 +60,7 @@
     "shaka-bundle-size": "workspace:*",
     "shaka-perf": "workspace:*",
     "shaka-shared": "workspace:^",
+    "swc-plugin-coverage-instrument": "^0.0.32",
     "typescript": "^5.9.3",
     "webpack-bundle-analyzer": "^5.1.1"
   },

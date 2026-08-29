@@ -24,12 +24,16 @@ export interface CreateAuditCommandOptions {
 export function createAuditCommand(options: CreateAuditCommandOptions = {}): Command {
   const validStages = auditPipelineMetadata.stages;
   const validCategories = auditPipelineMetadata.categories;
+  const defaultCategories = auditPipelineMetadata.defaultCategories;
   return new Command('audit')
     .description(auditPipelineMetadata.description)
     .option(
       '--categories <list>',
-      `Comma-separated list of categories to run (${validCategories.join(', ')})`,
-      validCategories.join(','),
+      `Comma-separated list of categories to run (${validCategories.join(', ')}). ` +
+      `Defaults to ${defaultCategories.join(',')} — code_coverage is opt-in because it ` +
+      're-runs every test body in a second browser to drain instrumented JS coverage and ' +
+      'map what the finished page shows inside the capture region.',
+      defaultCategories.join(','),
     )
     .option(
       '--skip-stages <list>',
@@ -98,9 +102,6 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
           fullReportZip: opts.fullReportZip === true,
           headed: opts.headed === true,
           burn: parseBurnOption(opts.burn),
-          retries: config.shared.retries,
-          retryDelay: config.shared.retryDelay,
-          timeoutMs: config.shared.timeoutMs,
         });
         printReportSummary(result);
         maybeGenerateCoverageReport(result.resultsRoot);
@@ -110,9 +111,11 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
 }
 
 // Generates an HTML + text-summary Istanbul report from per-test coverage JSONs
-// the audit engine drained off each Playwright page. Soft-depends on nyc being
-// available in the user's project. If nyc can't be found we print actionable
-// instructions instead of erroring — the .nyc_output/ dir is still on disk.
+// the code_coverage stage drained off each Playwright page. Nothing to do when
+// that stage is off (the default) — `.nyc_output/` simply isn't there.
+// Soft-depends on nyc being available in the user's project: if nyc can't be
+// found we print actionable instructions instead of erroring, and the
+// .nyc_output/ dir is still on disk.
 function maybeGenerateCoverageReport(resultsRoot: string): void {
   const nycDir = path.join(resultsRoot, '.nyc_output');
   if (!fs.existsSync(nycDir) || fs.readdirSync(nycDir).length === 0) return;

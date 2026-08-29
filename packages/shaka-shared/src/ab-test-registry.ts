@@ -51,7 +51,7 @@ export const PHONE_TALL_VIEWPORT: Viewport = { label: 'phone-tall', width: 375, 
 export const TABLET_TALL_VIEWPORT: Viewport = { label: 'tablet-tall', width: 768, height: 3000, formFactor: 'mobile', deviceScaleFactor: 3 };
 export const DESKTOP_TALL_VIEWPORT: Viewport = { label: 'desktop-tall', width: 1280, height: 3000, formFactor: 'desktop', deviceScaleFactor: 1 };
 
-export type TestType = 'perf' | 'visreg' | 'accessibility' | 'audit';
+export type TestType = 'perf' | 'visreg' | 'accessibility' | 'audit' | 'code_coverage';
 
 export interface TestFnContext {
   page: Page;
@@ -253,10 +253,16 @@ export function abTest(
 // we only need to extend explicit lists. Accessibility is deliberately not
 // auto-added: it is a first-class category, so `testTypes: ['visreg']` should
 // mean visual-only work while omitted testTypes still means every category.
+//
+// Code coverage rides along like audit, for a different reason: it only runs
+// when someone asks for its category by name, and whoever does wants it for
+// the whole suite. Leaving it out here would silently exempt every test that
+// narrows `testTypes` to, say, `['visreg']`.
 function withMandatoryTestTypes(testTypes: TestType[] | undefined): TestType[] | null {
   if (testTypes == null) return null;
   const out = [...testTypes];
   if (!out.includes('audit')) out.push('audit');
+  if (!out.includes('code_coverage')) out.push('code_coverage');
   return out;
 }
 

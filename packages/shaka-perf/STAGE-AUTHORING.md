@@ -401,9 +401,6 @@ format.
 
 ## Cancellation semantics
 
-- `runtime.retries` and `runtime.timeoutMs` apply to every
-  `pool.submit` call in the pipeline. Per-submit overrides aren't
-  exposed.
 - Stages run on a per-unit chain, so a stage failure for unit K does
   **not** block other units. Subsequent stages on unit K skip
   themselves via `priorOutcomes`.

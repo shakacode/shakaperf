@@ -8,7 +8,7 @@
 import path from 'node:path';
 import injectVisregTools from '../../capture/visregTools';
 import { createTestAnnotate } from '../../../test-annotation';
-import type { PlaywrightPage, Scenario, Viewport, DecoratedCompareConfig, BrowserContext } from '../types';
+import type { PlaywrightPage, Scenario, Viewport, EngineBrowserConfig, BrowserContext } from '../types';
 
 function translateUrl (url: string) {
   const RE = /^[./]/;
@@ -24,7 +24,7 @@ function translateUrl (url: string) {
  * Ready-waits, interactions, and DOM manipulation are the test body's job —
  * the scenario carries no declarative fields for them.
  */
-async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: DecoratedCompareConfig, isControl: boolean, browserOrContext: BrowserContext) {
+async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: EngineBrowserConfig, isControl: boolean, browserOrContext: BrowserContext) {
   const gotoParameters = config?.playwrightOptions?.gotoParameters || {};
 
   // Cookie loading + the beforeNavigate hooks now run on the context BEFORE this

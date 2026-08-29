@@ -19,6 +19,8 @@ const DEFAULT_DEST_FILENAME = 'abtests.config.ts';
 // gets both the runtime config and the agent tooling in one step:
 //   - discover-abtests: turns "discover ab tests for <url>" into a real crawl
 //     + .abtest.ts generation flow.
+//   - shaka-perf-add-coverage: adds focused source-aware visual-regression tests.
+//   - shaka-perf-coverage: estimates screenshot coverage from code + visibility maps.
 //   - setup-docker-servers-for-ab-tests: walks an agent through standing up the
 //     twin-servers Docker A/B infrastructure (Dockerfile, Procfile, config).
 //   - assess-abtest-quality: audits existing .abtest.ts files + the latest
@@ -29,6 +31,8 @@ const DEFAULT_DEST_FILENAME = 'abtests.config.ts';
 //     browsers over CDP from bash (bundled zero-dep cdp.mjs), no MCP required.
 const SKILL_NAMES = [
   'discover-abtests',
+  'shaka-perf-add-coverage',
+  'shaka-perf-coverage',
   'setup-docker-servers-for-ab-tests',
   'assess-abtest-quality',
   'ab-servers',

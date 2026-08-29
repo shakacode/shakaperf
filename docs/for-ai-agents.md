@@ -23,13 +23,15 @@ yarn shaka-perf init
 
 `init` creates:
 
-- **`abtests.config.ts`** - the single project config (sections: `shared`, `visreg`, `perf`, `audit`, `twinServers`), every field annotated with its default. `accessibility` is supported but not scaffolded; its `failOnViolation` default is `true`.
-- **Four Claude Code skills** under `.claude/skills/` (they ship inside the npm package):
+- **`abtests.config.ts`** - the single project config (sections: `shared`, `visreg`, `perf`, `audit`, `twinServers`), every field annotated with its default. `accessibility` is supported but not scaffolded; its `failOnViolation` default is `true`. Coverage has no config section: `--categories code_coverage` runs the opt-in audit stage that drains instrumented-JS coverage and maps what each finished page shows inside its capture region.
+- **Seven Claude Code skills** under `.claude/skills/` (they ship inside the npm package):
 
 | Skill | What it does |
 | --- | --- |
 | `setup-docker-servers-for-ab-tests` | Walks an agent through standing up the twin Docker servers: production Dockerfile, Procfile, config, and the build/verify loop. |
 | `discover-abtests` | Crawls the running app and generates validated `.abtest.ts` files (currently requires desktop Claude with the Chrome extension — portability is tracked in [#73](https://github.com/shakacode/shakaperf/issues/73)). |
+| `shaka-perf-add-coverage` | Adds focused source-aware visual-regression tests without duplicating existing coverage. |
+| `shaka-perf-coverage` | Estimates screenshot coverage from code coverage and audit visibility maps, and compares saved baselines. |
 | `assess-abtest-quality` | Audits existing tests for anti-patterns and false-positive PASSes. Also the canonical test-writing rules. |
 | `ab-servers` | The command dispatch table for driving twin servers from an agent. |
 
@@ -130,7 +132,7 @@ Attach to the frozen browsers with `troubleshoot`'s own subcommands (`session`, 
 }
 ```
 
-**Chips are the verdict vocabulary.** In `compare-results/report.json`, failure-class chips that make a `compare` run fail are `regression`, `visual change`, `broken`, `accessibility regression` (new a11y findings while `accessibility.failOnViolation` is on), `accessibility error` (a scan failed, so no comparison exists), and `accessibility blocked` (bot protection). Its informational chips are `improvement`, `no difference`, `flaky` (a stage crashed but recovered on retry), `visreg unstable`, `accessibility finding` (new findings with `failOnViolation` off), `accessibility changed`, and `accessibility fixed`. `a11y-*` values are HTML-report sorting dimensions, not chips, and are absent from `report.json`. The separate `audit` pipeline uses `accessibility violation` for the failure role and can emit `needs improvement`, `duplicate`, `has interactions` / `no interactions`, and `no audit` informational chips.
+**Chips are the verdict vocabulary.** In `compare-results/report.json`, failure-class chips that make a `compare` run fail are `regression`, `visual change`, `broken`, `accessibility regression` (new a11y findings while `accessibility.failOnViolation` is on), `accessibility error` (a scan failed, so no comparison exists), and `accessibility blocked` (bot protection). Its informational chips are `improvement`, `no difference`, `flaky` (a stage crashed but recovered on retry), `visreg unstable`, `accessibility finding` (new findings with `failOnViolation` off), `accessibility changed`, and `accessibility fixed`. `a11y-*` values are HTML-report sorting dimensions, not chips, and are absent from `report.json`. The separate `audit` pipeline uses `accessibility violation` for the failure role and can emit `needs improvement`, `has interactions` / `no interactions`, and `no audit` informational chips. Duplicate-test detection is not a chip: it is the `shaka-perf-coverage` skill's job, from the coverage artifacts.
 
 **Where the numbers are today:** per-stage `summary` objects in `compare-results/report.json` are still empty placeholders ([#68](https://github.com/shakacode/shakaperf/issues/68) tracks populating p-values / estimates / diff percentages there; the schema doc is [#69](https://github.com/shakacode/shakaperf/issues/69)). Audit reports already include machine-readable summaries for accessibility, agent-readiness, and AI summary stages. Until compare summaries are populated:
 

@@ -189,10 +189,12 @@ export const SharedConfigSchema = z
     parallelism: z.number().int().positive(),
     retries: z.number().int().nonnegative().default(2),
     retryDelay: z.number().int().nonnegative().default(1000),
-    // Runner-level cap on every race-timeout the pipeline wraps around
-    // engine work (setup, sample, etc.). Sits alongside `parallelism` /
-    // `retries` because the runner is shared infrastructure — a single
-    // cap covers every category's engines.
+    // Cap on every race-timeout the pipeline wraps around engine work
+    // (setup, sample, etc.), covering every category's engines. Sits
+    // alongside `parallelism` / `retries` because the runner is shared
+    // infrastructure — but unlike `parallelism`, this one and `retries` /
+    // `retryDelay` are resolved per unit, so an `abTest()` can override
+    // them for itself (see BREAKING_CHANGES.md).
     timeoutMs: z.number().int().positive().default(120000),
     // Global pre-navigation hook (see shaka-shared `SharedConfigInput`). Runs
     // before every test's navigation on every engine; a per-test
@@ -485,6 +487,14 @@ export function resolveViewports(
   });
 }
 
+const CATEGORY_VIEWPORT_LABELS: Record<TestType, (config: AbTestsConfig) => readonly string[]> = {
+  visreg: (config) => config.visreg.viewports ?? config.shared.viewports,
+  perf: (config) => config.perf.viewports ?? config.shared.viewports,
+  audit: (config) => config.audit.viewports ?? config.shared.viewports,
+  accessibility: (config) => config.accessibility.viewports ?? config.shared.viewports,
+  code_coverage: (config) => config.visreg.viewports ?? config.shared.viewports,
+};
+
 /**
  * The viewports one stage category runs at, under one (already per-test-merged)
  * config. THE single site of the `<category>.viewports ?? shared.viewports`
@@ -497,14 +507,14 @@ export function resolveViewports(
  *   file `shared.viewports`              (least specific)
  *
  * Test-over-file at each level is the per-test deep merge's doing
- * (`applyPerTestConfigOverrides`); category-over-shared is the `??` below.
+ * (`applyPerTestConfigOverrides`); category-over-shared is the table above.
  */
 export function viewportsForCategory(
   config: AbTestsConfig,
   category: TestType,
 ): readonly Viewport[] {
   return resolveViewports(
-    config[category].viewports ?? config.shared.viewports,
+    CATEGORY_VIEWPORT_LABELS[category](config),
     config.shared.viewportDefinitions,
   );
 }
@@ -534,6 +544,7 @@ export function viewportsByStageCategory(
     perf: viewportsForCategory(config, 'perf'),
     audit: viewportsForCategory(config, 'audit'),
     accessibility: viewportsForCategory(config, 'accessibility'),
+    code_coverage: viewportsForCategory(config, 'code_coverage'),
   };
 }
 

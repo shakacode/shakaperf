@@ -64,17 +64,45 @@ export interface WorkerTaskProgressSink {
   onTaskFailed(): void;
 }
 
+/**
+ * Everything the pool applies to one task. A single object rather than three
+ * loose options, so a task's budget travels as a unit: `submit` resolves it
+ * once, the job carries it, and every use site reads it off the job. Adding a
+ * knob is a field here — not another pool option, another async-local channel,
+ * and another `QueuedJob` field.
+ */
+export interface TaskLimits {
+  /**
+   * Hard cap on the task's wall-clock. On expiry the pool fires the task's
+   * race-cancellation (cooperative subsystems exit promptly) and counts the
+   * attempt as a failure, so it flows through the same poison path as a
+   * crash. `0` disables it.
+   */
+  readonly timeoutMs: number;
+  /** Crash-retries, re-run on the SAME worker (see `runOnWorker`). */
+  readonly retries: number;
+  /** Pause between those retries, in ms. */
+  readonly retryDelay: number;
+}
+
 export interface WorkerPoolOptions {
   currentTaskProgress?: () => WorkerTaskProgressSink | undefined;
-  retries?: number;
-  retryDelay?: number;
   /**
-   * Hard cap on every task's wall-clock. If a task exceeds this, the pool
-   * fires its race-cancellation (cooperative subsystems exit promptly) and
-   * counts the attempt as a failure — so it flows through the same
-   * retry/poison path as a regular crash. `0` disables it.
+   * The limits for the task being submitted, read at SUBMIT time out of the
+   * submitting async context — the same trick as `currentTaskProgress`. The
+   * runner publishes each unit's, derived from that unit's EFFECTIVE config,
+   * so every budget a test overrides applies to that test's tasks instead of
+   * being silently dropped. Returning undefined falls back to `limits`.
    */
-  timeoutMs?: number;
+  currentTaskLimits?: () => TaskLimits | undefined;
+  /**
+   * Applied to a task submitted outside any published context. Required, and
+   * deliberately without a default: the only value a pool could fall back to
+   * is "no cap, no retries", and a pool that quietly stops enforcing timeouts
+   * because a caller forgot an option is the failure this whole seam exists to
+   * prevent. State the budget, even when it is zero.
+   */
+  limits: TaskLimits;
 }
 
 export interface SubmitOptions {
@@ -148,6 +176,8 @@ interface QueuedJob<T> {
   run(state: PoolWorkerState): Promise<T>;
   orchestrator: SubmitOrchestrator;
   stageName: string | undefined;
+  /** THIS task's budget, resolved at submit time and fixed across its retries. */
+  limits: TaskLimits;
 }
 
 function reasonMessage(reason: unknown): string {
@@ -210,15 +240,13 @@ export class WorkerPool {
   private completedCount = 0;
   private expected: number | null = null;
   private readonly startedAt = Date.now();
-  private readonly defaultRetries: number;
-  private readonly defaultRetryDelay: number;
-  private readonly defaultTimeoutMs: number;
+  private readonly defaultLimits: TaskLimits;
 
   onProgressChange?: (snapshot: PoolSnapshot) => void;
 
   constructor(
     parallelism: number,
-    private readonly options: WorkerPoolOptions = {},
+    private readonly options: WorkerPoolOptions,
   ) {
     this.workers = Array.from(
       { length: Math.max(1, parallelism) },
@@ -231,9 +259,7 @@ export class WorkerPool {
         consecutiveFailures: 0,
       }),
     );
-    this.defaultRetries = options.retries ?? 0;
-    this.defaultRetryDelay = options.retryDelay ?? 0;
-    this.defaultTimeoutMs = options.timeoutMs ?? 0;
+    this.defaultLimits = options.limits;
   }
 
   setExpectedTotal(n: number | null): void {
@@ -277,6 +303,9 @@ export class WorkerPool {
       : keyOrOptions;
     const progress = this.options.currentTaskProgress?.();
     const stageName = progressStageName(progress);
+    // Resolved HERE, in the submitter's context, not when the job later starts:
+    // by then we're on whichever worker freed up and the unit's context is gone.
+    const limits = this.options.currentTaskLimits?.() ?? this.defaultLimits;
     progress?.onTaskSubmitted();
     this.submittedCount += 1;
     // Capture the caller's async context now. `pump` and retry handling run
@@ -302,7 +331,7 @@ export class WorkerPool {
         cancel,
       };
       this.orchestrators.add(orchestrator);
-      this.queue.push({ run: boundRun, orchestrator, stageName });
+      this.queue.push({ run: boundRun, orchestrator, stageName, limits });
       this.pump();
       this.notify();
     });
@@ -416,6 +445,7 @@ export class WorkerPool {
     }
     while (true) {
       if (this.disposed || orchestrator.cancelled) {
+        worker.consecutiveFailures = 0;
         // settleTerminal is already done (cancelOrchestrator / dispose);
         // this call is a noop, the rejection reason is whatever they set.
         this.settleTerminal(orchestrator, () => orchestrator.rejectOuter(undefined));
@@ -450,7 +480,7 @@ export class WorkerPool {
         // "attempt 3/3" reads as "third of three" rather than the old
         // ambiguous "third of two retries".
         worker.consecutiveFailures += 1;
-        const totalAttempts = this.defaultRetries + 1;
+        const totalAttempts = job.limits.retries + 1;
         console.log(
           chalk.red(`task failed (worker ${worker.state.workerIndex} attempt ${worker.consecutiveFailures}/${totalAttempts}):\n${stackOrMessage}`),
         );
@@ -462,9 +492,9 @@ export class WorkerPool {
         // blew its wall-clock budget just burns more of it. Surface this error
         // now, the same way the retries-exhausted path does.
         const timedOut = isTimedOut(err);
-        if (timedOut || worker.consecutiveFailures > this.defaultRetries) {
+        if (timedOut || worker.consecutiveFailures > job.limits.retries) {
           const detail = timedOut
-            ? `task exceeded its ${this.defaultTimeoutMs}ms budget`
+            ? `task exceeded its ${job.limits.timeoutMs}ms budget`
             : `exhausted ${totalAttempts} consecutive attempts`;
           const poison = wrapWithCause(
             `worker ${worker.state.workerIndex} ${detail}; ` +
@@ -476,7 +506,7 @@ export class WorkerPool {
           else this.settleTerminal(orchestrator, () => orchestrator.rejectOuter(poison));
           return;
         }
-        if (this.defaultRetryDelay > 0) await this.sleepForRetry(orchestrator);
+        if (job.limits.retryDelay > 0) await this.sleepForRetry(orchestrator, job.limits.retryDelay);
       }
     }
   }
@@ -485,8 +515,8 @@ export class WorkerPool {
     job: QueuedJob<T>,
     worker: InternalWorker,
   ): Promise<T> {
-    if (this.defaultTimeoutMs <= 0) return job.run(worker.state);
-    const timeoutMs = this.defaultTimeoutMs;
+    const { timeoutMs } = job.limits;
+    if (timeoutMs <= 0) return job.run(worker.state);
 
     // Materialise the task's outcome as a settled marker so we can race it
     // twice (hard timeout, then grace) without losing the original result.
@@ -549,12 +579,12 @@ export class WorkerPool {
     }
   }
 
-  private sleepForRetry(orchestrator: SubmitOrchestrator): Promise<void> {
+  private sleepForRetry(orchestrator: SubmitOrchestrator, delayMs: number): Promise<void> {
     return new Promise<void>((resolve) => {
       const timer = setTimeout(() => {
         orchestrator.wakeRetry = undefined;
         resolve();
-      }, this.defaultRetryDelay);
+      }, delayMs);
       orchestrator.wakeRetry = () => {
         clearTimeout(timer);
         orchestrator.wakeRetry = undefined;
