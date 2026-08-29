@@ -67,7 +67,8 @@ import type {
   StageRuntime,
   TestContext,
 } from '../stage/stage';
-import { WorkerPool, type WorkerTaskProgressSink } from './worker-pool';
+import { taskLimitsResolver } from './task-limits';
+import { WorkerPool, type TaskLimits, type WorkerTaskProgressSink } from './worker-pool';
 import type { StageSelection } from './pipeline';
 import { testIdForTest, unitIdForTest } from './unit-id';
 import { burnDisplayName, expandTestsForBurn } from './burn';
@@ -147,6 +148,8 @@ interface StageExecution {
 interface RuntimeWorkerPool {
   ref: PipelineWorkerPool;
   pool: WorkerPool;
+  /** This pool's `config -> TaskLimits` mapping (see `taskLimitsResolver`). */
+  taskLimits(config: AbTestsConfig): TaskLimits;
   unitChains: Map<string, Promise<void>>;
   stageExecutions: StageExecution[];
   pending: Promise<void>[];
@@ -238,6 +241,13 @@ class BufferedStageLogger implements StageLogger {
 }
 
 const stageTaskProgressStorage = new AsyncLocalStorage<WorkerTaskProgressSink>();
+// The limits every task the CURRENT unit submits runs under, derived from that
+// unit's effective config. Stage engines call `pool.submit()` from inside
+// `runStage`, so the pool reads this at submit time the same way it reads
+// `stageTaskProgressStorage`. Before it existed, a pool was built once from the
+// FILE config and a test's own `shared.timeoutMs`/`retries`/`retryDelay` were
+// accepted by the schema, merged into its effective config, and then ignored.
+const stageTaskLimitsStorage = new AsyncLocalStorage<TaskLimits>();
 
 function errorInfo(err: unknown): ErrorInfo {
   const lastAnnotation = findLastAnnotation(err);
@@ -369,28 +379,12 @@ export interface RuntimeOptions {
    */
   readonly fullReportZip?: boolean | undefined;
   /**
-   * Worker-pool crash retries — applied uniformly to every worker pool
-   * the pipeline registers. Engine-level retries (e.g. visreg best-of-N
-   * screenshot stability) are a stage knob and stay on pipeline config.
-   *
-   * Ignored under `burn`, which forces both to 0.
-   */
-  readonly retries: number;
-  readonly retryDelay: number;
-  /**
    * `--burn <n>`: run every test n times as independent instances, retries off
-   * (see `burn.ts`). Covers the framework's crash-retries, forced to 0 below;
-   * a stage's own retries are zeroed on the pipeline config by the CLI.
-   * Undefined = off.
+   * (see `burn.ts`). Covers the framework's crash-retries, forced to 0 by
+   * `taskLimitsResolver`; a stage's own retries are zeroed on the pipeline
+   * config by the CLI. Undefined = off.
    */
   readonly burn?: number | undefined;
-  /**
-   * Per-task wall-clock cap, applied uniformly to every worker pool.
-   * Driven by `shared.timeoutMs`; stages never see this value — the pool
-   * itself races each `job.run` against the timer and fires its
-   * race-cancellation so cooperative subsystems exit on time. `0` disables it.
-   */
-  readonly timeoutMs: number;
 }
 
 export async function runPipeline(
@@ -620,17 +614,18 @@ async function runConfiguredPipelineWithSelection(
     const getRuntimePool = (ref: PipelineWorkerPool): RuntimeWorkerPool => {
       let runtimePool = runtimePools.get(ref);
       if (runtimePool) return runtimePool;
+      const taskLimits = taskLimitsResolver(ref, runtime.burn);
       const pool = new WorkerPool(ref.parallelism, {
         currentTaskProgress: () => stageTaskProgressStorage.getStore(),
-        // Burn replaces retries: 0 makes the pool terminal on the first
-        // throw, so an instance's raw outcome is the measurement.
-        retries: runtime.burn == null ? runtime.retries : 0,
-        retryDelay: runtime.retryDelay,
-        timeoutMs: runtime.timeoutMs,
+        currentTaskLimits: () => stageTaskLimitsStorage.getStore(),
+        // Only for a task submitted outside a unit's context; every per-unit
+        // task publishes its own test's effective config over this.
+        limits: taskLimits(runtime.config),
       });
       runtimePool = {
         ref,
         pool,
+        taskLimits,
         unitChains: new Map(),
         stageExecutions: [],
         pending: [],
@@ -1078,11 +1073,19 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     },
   };
   try {
+    // `ctx.config` is this unit's EFFECTIVE config, so a test that overrode a
+    // budget gets its own and one that overrode nothing gets the file's — no
+    // "did this test declare it?" branch, because whatever outranks a test is
+    // layered on inside the pool's own resolver rather than smuggled in as a
+    // pool-wide default nobody may override.
     const measurement = await consoleCaptureStorage.run(
       logger,
       () => stageTaskProgressStorage.run(
         taskProgressSink,
-        () => runWithTestAnnotationContext(() => stage.run(ctx, runtimePool.pool)),
+        () => stageTaskLimitsStorage.run(
+          runtimePool.taskLimits(ctx.config),
+          () => runWithTestAnnotationContext(() => stage.run(ctx, runtimePool.pool)),
+        ),
       ),
     );
     outcome = {
