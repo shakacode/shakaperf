@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { buildAgentSection, type AgentPromptContext } from '../client-report-model/ai';
+import { aiTileStatus, buildAgentSection, type AgentPromptContext } from '../client-report-model/ai';
 import type { AgentPageView } from '../agent-ready-report';
 import { scorePageStructure, type SiteAccessSignals } from '../agent-ready-score';
 import type { AgentReadinessResult, PageSignals } from '../../audit/stages/agent_readiness/types';
@@ -80,15 +80,23 @@ describe('buildAgentSection', () => {
 
     expect(result.agentCost).toMatchObject({
       state: 'measured',
-      aiTiles: { invisiblePercent: 50, readableWords: 50, totalWords: 100 },
-      fix: { tone: 'secondary' },
+      headline: '50% of your homepage text is missing from the page the server sends, before any JavaScript runs',
+      aiTiles: { pagePath: '/', invisiblePercent: 50, readableWords: 50, totalWords: 100, status: 'poor' },
+      fix: { tone: 'primary' },
     });
+    expect(result.agentCost?.fix?.text).toContain('SSR or prerendering');
+    expect(result.agentCost?.fix?.text).toContain('Optional addition: add an llms.txt file');
   });
 
-  it('does not add the optional llms.txt fix without site-access data', () => {
+  it('buckets the rounded readable percentage for both AI tiles', () => {
+    expect([100, 90, 89].map(aiTileStatus)).toEqual(['good', 'fair', 'poor']);
+  });
+
+  it('keeps the server-rendering fix but omits llms.txt without site-access data', () => {
     const result = buildAgentSection([agentView(50, 100)], [], promptCtx, undefined);
 
-    expect(result.agentCost?.fix).toBeUndefined();
+    expect(result.agentCost?.fix?.text).toContain('SSR or prerendering');
+    expect(result.agentCost?.fix?.text).not.toContain('llms.txt');
   });
 
   it('does not mistake sitemap or indexing deductions for blocked AI crawlers', () => {
@@ -222,14 +230,14 @@ describe('buildAgentSection', () => {
       verdict: 'Yes - your text is served before JavaScript and AI crawlers are allowed in.',
     });
     expect(result.agentUnderstanding).toMatchObject({
-      status: 'fair',
-      verdict: 'Only partly - the labels machines rely on are missing.',
+      status: 'poor',
+      verdict: 'No - key labels machines rely on are missing.',
     });
-    expect(result.agentUnderstanding?.items.map((item) => item.label)).toEqual(expect.arrayContaining([
-      'Structured data',
-      'Meta description',
-      'Social preview tags',
-    ]));
+    expect(result.agentUnderstanding?.groups.map((group) => group.label)).toEqual([
+      'Labels that name the page',
+      'Machine labels (schema.org)',
+      'Previews and links',
+    ]);
   });
 
   it('keeps a good understanding zone as a green one-line verdict', () => {
@@ -238,7 +246,7 @@ describe('buildAgentSection', () => {
     expect(result.agentUnderstanding).toEqual({
       status: 'good',
       verdict: 'Labeling is in place.',
-      items: [],
+      groups: [],
     });
   });
 

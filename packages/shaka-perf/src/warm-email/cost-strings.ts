@@ -83,8 +83,9 @@ export const FOOTER_GUARDRAIL = 'Measured on your site - every number links to i
 export const MULTIPLES_FLOORED_NOTE = 'multiples are floored, never rounded up';
 export const PAGESPEED_FIELD_VS_LAB_PREEMPT = 'opens on a 28-day real-user summary first - a different check; the lab test below it runs the same Slow-4G phone profile we measured on';
 export const AI_STUDIES_OTHER_SITES_CAVEAT = 'The click studies ran on other sites - direction and rough size only, not your number.';
-export const AI_HOMEPAGE_INVISIBLE_LABEL = 'of your homepage text invisible to AI';
-export const AI_HOMEPAGE_WORDS_LABEL = 'homepage words AI can read today';
+export const AI_READABILITY_TARGET = 'Target: every word visible (100%).';
+export const AI_SERVER_RENDER_FIX = "Render the page's primary text on the server with SSR or prerendering, so it is present in the HTML before JavaScript runs.";
+export const AI_OPTIONAL_LLMS_FIX = 'Optional addition: add an llms.txt file to point some AI crawlers to key pages; it does not replace readable HTML.';
 export const COPY_SITE_FIX_INSTRUCTIONS = 'Copy fix instructions - for your developer or AI agent';
 export const COPY_FIX_INSTRUCTIONS = 'Copy fix instructions';
 export const VIEW_INSTRUCTIONS = 'view the instructions';
@@ -164,10 +165,26 @@ export const COST_STATE_MATRIX: Record<Tab, Record<State, CostStateCell>> = {
   },
 };
 
-export function aiHeadline(pct: number, present: number, total: number): string {
+function aiPageTextLabel(pagePath: string): string {
+  return !pagePath || pagePath === '/' ? 'your homepage' : pagePath;
+}
+
+export function aiHeadline(pct: number, present: number, total: number, pagePath: string): string {
   void present;
   void total;
-  return `${pct}% of your page's text is missing from the page the server sends, before any JavaScript runs`;
+  return `${pct}% of ${aiPageTextLabel(pagePath)} text is missing from the page the server sends, before any JavaScript runs`;
+}
+
+export function aiInvisibleTextLabel(pagePath: string): string {
+  return `of ${aiPageTextLabel(pagePath)} text invisible to AI`;
+}
+
+export function aiReadableWordsLabel(pagePath: string): string {
+  return `words from ${aiPageTextLabel(pagePath)} AI can read today`;
+}
+
+export function aiHomepageReadableLine(readablePct: number): string {
+  return `Homepage (/): ${readablePct}% of its text is readable to AI.`;
 }
 
 export function aiHeadlineSub(present: number, total: number): string {

@@ -11,7 +11,16 @@ import {
   type AgentPageView,
 } from '../agent-ready-report';
 import { scoreBucket, scoreSite, type CategoryScore, type SiteAccessScore, type SiteAccessSignals } from '../agent-ready-score';
-import { AI_INDUSTRY_DATA_STATS, aiCheckLine, aiHeadline, aiHeadlineSub, aiSingleCountLine, aiSiteWideContextLine } from '../cost-strings';
+import {
+  AI_INDUSTRY_DATA_STATS,
+  AI_OPTIONAL_LLMS_FIX,
+  AI_SERVER_RENDER_FIX,
+  aiCheckLine,
+  aiHeadline,
+  aiHeadlineSub,
+  aiSingleCountLine,
+  aiSiteWideContextLine,
+} from '../cost-strings';
 import { buildCopyPrompt } from '../copy-prompt';
 import type {
   ClientReportAgentCard,
@@ -83,6 +92,12 @@ function boundedCoverageRatio(rawWords: number, renderedWords: number): number {
 
 function boundedCoveragePct(rawWords: number, renderedWords: number): number {
   return Math.round(boundedCoverageRatio(rawWords, renderedWords) * 100);
+}
+
+export function aiTileStatus(readablePercent: number): ClientReportStatus {
+  if (readablePercent >= 100) return 'good';
+  if (readablePercent >= 90) return 'fair';
+  return 'poor';
 }
 
 function boundedPresentWords(rawWords: number, renderedWords: number): number {
@@ -229,16 +244,15 @@ export function buildAgentSection(
   const homepageCostPage = reachableForCost.find((view) => view.page.startingPath === '/');
   const homepageRawWords = homepageCostPage ? agentRawWords(homepageCostPage) : 0;
   const homepageRenderedWords = homepageCostPage ? agentRenderedWords(homepageCostPage) : 0;
-  const homepagePresentWords = boundedPresentWords(homepageRawWords, homepageRenderedWords);
   const homepageInvisiblePct = 100 - boundedCoveragePct(homepageRawWords, homepageRenderedWords);
   const costPageLabel = worstCostPage?.page.startingPath === '/'
     ? 'homepage'
     : worstCostPage?.page.name.toLowerCase() ?? 'page';
   const aiAffects = `${AI_AFFECTS_PROSE} ${aiSingleCountLine()}`;
-  const aiFix = siteSignals?.llmsTxtConfirmedAbsent === true
+  const optionalLlmsFix = siteSignals?.llmsTxtConfirmedAbsent === true
     ? {
       tone: 'secondary' as const,
-      text: 'One optional addition: an llms.txt file - a short plain-text guide some AI crawlers read to find your key pages. Minutes to add, small upside, zero risk.',
+      text: AI_OPTIONAL_LLMS_FIX,
     }
     : undefined;
   let agentCostState: ClientReportCostBlock['state'];
@@ -264,11 +278,12 @@ export function buildAgentSection(
     };
   }
   if (agentCostState === 'measured' && worstCostPage) {
+    const costPagePath = worstCostPage.page.startingPath || '/';
     const worstUrl = liveUrlFor(agentPromptCtx.siteUrl, worstCostPage.page.startingPath || '/') || worstCostPage.result.url || agentPromptCtx.siteUrl;
     agentCost = {
       tab: 'ai',
       state: 'measured',
-      headline: aiHeadline(worstMissingPct, worstPresentWords, worstRenderedWords),
+      headline: aiHeadline(worstMissingPct, worstPresentWords, worstRenderedWords, costPagePath),
       headlineSub: [
         aiHeadlineSub(worstPresentWords, worstRenderedWords),
         ...(siteWideReadable === undefined || worstCoveragePct >= siteWideReadable
@@ -292,19 +307,27 @@ export function buildAgentSection(
         rawState: agentRawStateForPrompt(worstCostPage),
       }),
       stats: [...AI_INDUSTRY_DATA_STATS],
-      ...(homepageCostPage && homepageRenderedWords >= MIN_AGENT_COST_WORDS ? {
-        aiTiles: {
-          invisiblePercent: homepageInvisiblePct,
-          readableWords: homepagePresentWords,
-          totalWords: homepageRenderedWords,
-        },
-      } : {}),
+      aiTiles: {
+        pagePath: costPagePath,
+        invisiblePercent: worstMissingPct,
+        readableWords: worstPresentWords,
+        totalWords: worstRenderedWords,
+        status: aiTileStatus(worstCoveragePct),
+        ...(homepageCostPage !== worstCostPage
+          && homepageRenderedWords >= MIN_AGENT_COST_WORDS
+          && homepageInvisiblePct === 0
+          ? { homepageReadablePercent: 100 }
+          : {}),
+      },
       stakes: {
         kind: 'at-risk',
         prose: AI_AFFECTS_PROSE,
         studies: AI_INDUSTRY_DATA_STATS,
       },
-      ...(aiFix ? { fix: aiFix } : {}),
+      fix: {
+        tone: 'primary',
+        text: [AI_SERVER_RENDER_FIX, ...(optionalLlmsFix ? [optionalLlmsFix.text] : [])].join(' '),
+      },
       scoreBadgePolicy: SCORE_BADGE_POLICY,
     };
   } else if (agentCostState === 'zero' && worstCostPage) {
@@ -319,7 +342,7 @@ export function buildAgentSection(
         studies: AI_INDUSTRY_DATA_STATS,
         expanderIntro: 'These are the studies behind this check - they describe a risk your site is not exposed to.',
       },
-      ...(aiFix ? { fix: aiFix } : {}),
+      ...(optionalLlmsFix ? { fix: optionalLlmsFix } : {}),
       scoreBadgePolicy: SCORE_BADGE_POLICY,
     };
   }

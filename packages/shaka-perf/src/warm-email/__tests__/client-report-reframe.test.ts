@@ -259,7 +259,7 @@ describe('cost-of-pain reframe model', () => {
     const ai = result.model.agentCost;
     expect(ai).toMatchObject({
       state: 'measured',
-      aiTiles: { invisiblePercent: 34, readableWords: 615, totalWords: 937 },
+      aiTiles: { pagePath: '/', invisiblePercent: 34, readableWords: 615, totalWords: 937, status: 'poor' },
       scoreBadgePolicy: 'score-status',
       strongPageGroup: {
         label: 'Strong pages',
@@ -269,7 +269,7 @@ describe('cost-of-pain reframe model', () => {
     expect(ai?.headlineSub).toContain('Site-wide, about');
   });
 
-  it('does not label a non-homepage AI audit page as the homepage', async () => {
+  it('labels a non-homepage AI tile with the measured page path', async () => {
     const result = await renderClientReport(writeResults([
       basePage({
         id: 'entry', name: 'Entry', startingPath: '/entry',
@@ -278,8 +278,11 @@ describe('cost-of-pain reframe model', () => {
       }),
     ]));
 
-    expect(result.model.agentCost).toMatchObject({ state: 'measured' });
-    expect(result.model.agentCost?.aiTiles).toBeUndefined();
+    expect(result.model.agentCost).toMatchObject({
+      state: 'measured',
+      headline: '100% of /entry text is missing from the page the server sends, before any JavaScript runs',
+      aiTiles: { pagePath: '/entry', invisiblePercent: 100, readableWords: 0, totalWords: 100, status: 'poor' },
+    });
   });
 
   it('weights AI site context by words and names the page the cost block grades', async () => {
@@ -293,8 +296,16 @@ describe('cost-of-pain reframe model', () => {
 
     expect(result.model.agentCost).toMatchObject({
       state: 'measured',
+      headline: '20% of /pricing text is missing from the page the server sends, before any JavaScript runs',
       headlineSub: expect.stringContaining('Site-wide, about 82% of your text is readable today - the pricing sits below that'),
-      aiTiles: { invisiblePercent: 0, readableWords: 100, totalWords: 100 },
+      aiTiles: {
+        pagePath: '/pricing',
+        invisiblePercent: 20,
+        readableWords: 800,
+        totalWords: 1000,
+        status: 'poor',
+        homepageReadablePercent: 100,
+      },
     });
   });
 

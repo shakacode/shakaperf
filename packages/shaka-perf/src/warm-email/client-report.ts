@@ -73,6 +73,7 @@ import {
   detectProblems,
   dominantPerfProblem,
   metricVal,
+  perfPlainFallback,
   perfCostCopyPromptEnabled,
   scoreStatus,
   secs,
@@ -1285,6 +1286,7 @@ function cardPerfProblem(rp: RenderedPage): ClientReportPerfProblemCandidate | u
 
 function perfCardModel(rp: RenderedPage, siteUrl: string, promptCtx: PerfPromptContext, includeCopyPrompt: boolean): ClientReportPerfCard {
   const { page, lead } = rp;
+  const aiSummary = page.summary?.trim();
   const cardCandidate = cardPerfProblem(rp);
   const cardStatus = cardCandidate?.status ?? reportPagePerfStatus(rp);
   const cardProblem = cardCandidate?.problem.headline ? cardCandidate.problem : lead;
@@ -1331,6 +1333,7 @@ function perfCardModel(rp: RenderedPage, siteUrl: string, promptCtx: PerfPromptC
     frames,
     totalFrames: rp.totalFrames,
     facts,
+    plain: aiSummary ? dashSafe(aiSummary) : perfPlainFallback(page),
   };
   const liveUrl = liveUrlFor(siteUrl, page.startingPath);
   if (liveUrl) card.liveUrl = liveUrl;
@@ -1338,7 +1341,6 @@ function perfCardModel(rp: RenderedPage, siteUrl: string, promptCtx: PerfPromptC
   if (rp.videoUri) card.videoUri = rp.videoUri;
   if (poster) card.posterUri = poster;
   if (rp.captionCues && rp.captionCues.length) card.cues = rp.captionCues.map((c) => ({ t: Math.round(c.atMs), x: c.text }));
-  if (page.summary) card.plain = dashSafe(page.summary);
   if (includeCopyPrompt && cardStatus !== 'good' && cardCandidate && perfCostCopyPromptEnabled(cardCandidate.problem)) {
     const copyPrompt = perfCopyPromptForPage(page, siteUrl, promptCtx);
     if (copyPrompt) card.copyPrompt = copyPrompt;

@@ -9,14 +9,50 @@ import type { AgentPageView } from '../agent-ready-report';
 import { scoreBucket } from '../agent-ready-score';
 import type {
   ClientReportAgentUnderstanding,
+  ClientReportAgentUnderstandingFact,
+  ClientReportAgentUnderstandingGroup,
   ClientReportAgentUnderstandingItem,
   ClientReportStatus,
 } from '../client-report-renderer';
 
-const SSR_LABELING_ITEMS = new Set([
-  'Description before JavaScript',
-  'Structured data before JavaScript',
-]);
+interface UnderstandingItemDefinition {
+  label: string;
+  sourceLabels: readonly string[];
+}
+
+interface UnderstandingGroupDefinition {
+  label: string;
+  items: readonly UnderstandingItemDefinition[];
+}
+
+const UNDERSTANDING_GROUPS: readonly UnderstandingGroupDefinition[] = [
+  {
+    label: 'Labels that name the page',
+    items: [{
+      label: 'Page description',
+      sourceLabels: ['Meta description', 'Description before JavaScript'],
+    }],
+  },
+  {
+    label: 'Machine labels (schema.org)',
+    items: [{
+      label: 'Structured data',
+      sourceLabels: ['Structured data', 'Structured data before JavaScript'],
+    }],
+  },
+  {
+    label: 'Previews and links',
+    items: [
+      { label: 'Social preview tags', sourceLabels: ['Social preview tags'] },
+      { label: 'Image alt text', sourceLabels: ['Image alt text'] },
+      { label: 'Descriptive links', sourceLabels: ['Descriptive links'] },
+    ],
+  },
+];
+
+const UNDERSTANDING_LABELS = new Set(
+  UNDERSTANDING_GROUPS.flatMap((group) => group.items.flatMap((item) => item.sourceLabels)),
+);
 
 interface UnderstandingSource {
   item: {
@@ -28,23 +64,19 @@ interface UnderstandingSource {
     action?: string;
   };
   page: AgentPageView['page'];
-  order: number;
 }
-
-interface UnderstandingGroup {
-  label: string;
-  sources: UnderstandingSource[];
-  order: number;
-}
-
-type RankedUnderstandingItem = ClientReportAgentUnderstandingItem & { lostPoints: number; order: number };
 
 const STATUS_RANK: Record<ClientReportStatus, number> = { good: 0, fair: 1, poor: 2 };
 
-function isUnderstandingItem(category: string, label: string): boolean {
-  return category === 'structure'
-    || category === 'semantics'
-    || (category === 'ssr' && SSR_LABELING_ITEMS.has(label));
+function isUnderstandingItem(label: string): boolean {
+  return UNDERSTANDING_LABELS.has(label);
+}
+
+function worstStatus(statuses: readonly ClientReportStatus[]): ClientReportStatus {
+  return statuses.reduce<ClientReportStatus>(
+    (worst, status) => STATUS_RANK[status] > STATUS_RANK[worst] ? status : worst,
+    'good',
+  );
 }
 
 function worstSource(sources: readonly UnderstandingSource[]): UnderstandingSource {
@@ -74,10 +106,9 @@ function pageUnderstandingStatus(view: AgentPageView): ClientReportStatus {
   let max = 0;
   for (const category of view.struct.categories) {
     for (const item of category.items) {
+      if (!isUnderstandingItem(item.label) || item.state === 'na') continue;
       max += item.max;
-      points += isUnderstandingItem(category.id, item.label) && item.state !== 'na'
-        ? item.points
-        : item.max;
+      points += item.points;
     }
   }
   return scoreBucket(max > 0 ? Math.round((points / max) * 100) : 100);
@@ -90,55 +121,95 @@ function understandingStatus(views: readonly AgentPageView[]): ClientReportStatu
   }, 'good');
 }
 
-function verdictFor(status: ClientReportStatus): string {
+function verdictFor(status: ClientReportStatus, measuredStatus: ClientReportStatus): string {
   if (status === 'good') return 'Labeling is in place.';
+  if (measuredStatus === 'good') return 'Mostly - a few labels are incomplete on some pages.';
   if (status === 'fair') return 'Only partly - the labels machines rely on are missing.';
   return 'No - key labels machines rely on are missing.';
 }
 
-function groupItem(group: UnderstandingGroup, totalPages: number): RankedUnderstandingItem {
-  const lostPoints = group.sources.reduce((sum, source) => sum + source.item.max - source.item.points, 0);
-  const status = group.sources.some((source) => source.item.state === 'fail') ? 'fail' : 'partial';
-  const item: RankedUnderstandingItem = {
-    label: group.label,
+function understandingFact(
+  label: string,
+  sources: readonly UnderstandingSource[],
+  totalPages: number,
+): ClientReportAgentUnderstandingFact {
+  const status = sources.some((source) => source.item.state === 'fail') ? 'fail' : 'partial';
+  return {
+    label,
     status,
-    coverage: coverageLabel(group.sources, totalPages),
-    detail: aggregatedDetail(group.sources),
-    lostPoints,
-    order: group.order,
+    coverage: coverageLabel(sources, totalPages),
+    detail: aggregatedDetail(sources),
+    actions: Array.from(new Set(
+      sources.map((source) => source.item.action).filter((action): action is string => Boolean(action)),
+    )),
   };
-  const action = group.sources[0]?.item.action;
-  if (action && group.sources.every((source) => source.item.action === action)) item.action = action;
-  return item;
+}
+
+function understandingItem(
+  definition: UnderstandingItemDefinition,
+  sourcesByLabel: ReadonlyMap<string, readonly UnderstandingSource[]>,
+  totalPages: number,
+): ClientReportAgentUnderstandingItem | undefined {
+  const facts = definition.sourceLabels.flatMap((label) => {
+    const sources = sourcesByLabel.get(label);
+    return sources?.length ? [understandingFact(label, sources, totalPages)] : [];
+  });
+  if (facts.length === 0) return undefined;
+  return {
+    label: definition.label,
+    status: worstStatus(facts.map((fact) => fact.status === 'fail' ? 'poor' : 'fair')),
+    facts,
+  };
+}
+
+function understandingGroup(
+  definition: UnderstandingGroupDefinition,
+  sourcesByLabel: ReadonlyMap<string, readonly UnderstandingSource[]>,
+  totalPages: number,
+): ClientReportAgentUnderstandingGroup | undefined {
+  const items = definition.items.flatMap((item) => {
+    const built = understandingItem(item, sourcesByLabel, totalPages);
+    return built ? [built] : [];
+  });
+  if (items.length === 0) return undefined;
+  const affectedPageIds = new Set(
+    definition.items.flatMap((item) => item.sourceLabels)
+      .flatMap((label) => sourcesByLabel.get(label) ?? [])
+      .map((source) => source.page.id),
+  );
+  return {
+    label: definition.label,
+    status: worstStatus(items.map((item) => item.status)),
+    affectedPages: affectedPageIds.size,
+    totalPages,
+    items,
+  };
 }
 
 /**
- * Aggregates page-level machine-understanding gaps without changing any score.
- * Text-reachability checks stay in the reading zone, while labeling checks are
- * deduplicated by their category and label across every measured page.
+ * Groups page-level machine-understanding gaps without changing any score.
+ * Text reachability and lower-level document-outline details stay in their
+ * existing page cards instead of becoming another flat site-wide checklist.
  */
 export function buildAgentUnderstanding(views: readonly AgentPageView[]): ClientReportAgentUnderstanding {
-  const groups = new Map<string, UnderstandingGroup>();
-  let order = 0;
+  const sourcesByLabel = new Map<string, UnderstandingSource[]>();
   for (const view of views) {
     for (const category of view.struct.categories) {
       for (const item of category.items) {
-        if (item.state === 'pass' || item.state === 'na' || !isUnderstandingItem(category.id, item.label)) continue;
-        const key = `${category.id}\u0000${item.label}`;
-        const source: UnderstandingSource = { item, page: view.page, order };
-        order += 1;
-        const existing = groups.get(key);
-        if (existing) existing.sources.push(source);
-        else groups.set(key, { label: item.label, sources: [source], order: source.order });
+        if (item.state === 'pass' || item.state === 'na' || !isUnderstandingItem(item.label)) continue;
+        const existing = sourcesByLabel.get(item.label);
+        const source: UnderstandingSource = { item, page: view.page };
+        if (existing) existing.push(source);
+        else sourcesByLabel.set(item.label, [source]);
       }
     }
   }
 
-  const items = [...groups.values()]
-    .map((group) => groupItem(group, views.length))
-    .sort((a, b) => b.lostPoints - a.lostPoints || a.order - b.order)
-    .map(({ lostPoints: _lostPoints, order: _order, ...item }) => item);
-  const status = items.length ? understandingStatus(views) : 'good';
-  if (status === 'good') return { status, verdict: verdictFor(status), items: [] };
-  return { status, verdict: verdictFor(status), items };
+  const groups = UNDERSTANDING_GROUPS.flatMap((group) => {
+    const built = understandingGroup(group, sourcesByLabel, views.length);
+    return built ? [built] : [];
+  });
+  const measuredStatus = understandingStatus(views);
+  const status = groups.length === 0 ? 'good' : measuredStatus === 'good' ? 'fair' : measuredStatus;
+  return { status, verdict: verdictFor(status, measuredStatus), groups };
 }

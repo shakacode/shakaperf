@@ -1,5 +1,7 @@
 # AGENTS.md
 
+NO-CI
+
 Before running repository commands, run `nvm use` in the repository root to activate the Node.js version specified by the project.
 
 ## Agent Workflow Configuration
