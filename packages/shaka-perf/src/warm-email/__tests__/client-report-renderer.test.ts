@@ -2206,6 +2206,27 @@ describe('renderClientReportHtml', () => {
     expect(panel.indexOf('Can AI reach your site at all?')).toBeLessThan(panel.indexOf('Does AI understand what it reads?'));
   });
 
+  it('uses singular grammar for a one-page understanding group', () => {
+    const html = renderClientReportHtml(model({
+      agentReading: { status: 'good', verdict: 'Yes - AI can read the page.' },
+      agentUnderstanding: {
+        status: 'fair',
+        verdict: 'Only partly - one label needs work.',
+        groups: [{
+          label: 'Labels that name the page',
+          status: 'poor',
+          affectedPages: 1,
+          totalPages: 1,
+          items: [],
+        }],
+      },
+    }));
+    const panel = renderedPanel(html, 'agent');
+
+    expect(panel).toContain('1 of 1 page');
+    expect(panel).not.toContain('1 of 1 pages');
+  });
+
   it('does not render an AI zone when the report has no agent-readiness data', async () => {
     const { html } = await renderClientReport(writePerfResults({ LCP: 3700, FCP: 1200, 'LH Score': 76 }));
 

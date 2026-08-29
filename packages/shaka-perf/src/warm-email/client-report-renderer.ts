@@ -1266,6 +1266,7 @@ function agentUnderstandingList(understanding: ClientReportAgentUnderstanding): 
   const groups = understanding.groups.map((group, groupIndex) => {
     const id = costId('cr', 'agent', 'understanding', groupIndex);
     const p = PAL[group.status];
+    const pageNoun = group.totalPages === 1 ? 'page' : 'pages';
     const items = group.items.map((item) => {
       const itemHeading = item.facts.length > 1 || item.facts[0]?.label !== item.label
         ? `<div style="font-size:15px; font-weight:800; line-height:1.45; color:#26221d; margin-bottom:8px">${esc(item.label)}</div>`
@@ -1292,7 +1293,7 @@ ${facts}
     }).join('\n');
     const button = `        <button type="button" data-disclose="${esc(id)}" data-understanding-group data-understanding-status="${group.status}" style="appearance:none; width:100%; border:1px solid ${p.line}; background:#ffffff; border-radius:11px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:14px; font-family:inherit; cursor:pointer; text-align:left">
           <span style="display:flex; align-items:center; gap:10px; min-width:0; font-size:15.5px; font-weight:750; color:#26221d"><span style="width:9px; height:9px; border-radius:50%; background:${p.fg}; flex:none"></span>${esc(group.label)}</span>
-          <span style="flex:none; border:1px solid ${p.line}; background:${p.bg}; color:${p.fg}; border-radius:999px; padding:4px 8px; font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:700; white-space:nowrap">${group.affectedPages} of ${group.totalPages} pages</span>
+          <span style="flex:none; border:1px solid ${p.line}; background:${p.bg}; color:${p.fg}; border-radius:999px; padding:4px 8px; font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:700; white-space:nowrap">${group.affectedPages} of ${group.totalPages} ${pageNoun}</span>
         </button>`;
     return `      <div style="margin-bottom:10px">
 ${button}
