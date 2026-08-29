@@ -77,9 +77,6 @@ export function createCompareCommand(
           fullReportZip: opts.fullReportZip === true,
           headed: opts.headed === true,
           burn,
-          retries: config.shared.retries,
-          retryDelay: config.shared.retryDelay,
-          timeoutMs: config.shared.timeoutMs,
         });
         printReportSummary(result);
         reportPipelineFailure(result);

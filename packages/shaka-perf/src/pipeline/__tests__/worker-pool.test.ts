@@ -8,7 +8,8 @@
 import { attachLatestTestAnnotation } from '../../test-annotation';
 import { StageFailureError } from '../../stage/stage-failure';
 import type { ArtifactPath } from '../artifact-store';
-import { WorkerPool, type PoolWorkerState, type WorkerTaskProgressSink } from '../worker-pool';
+import type { RaceCancellation } from 'race-cancellation';
+import { WorkerPool, type PoolWorkerState, type TaskLimits, type WorkerTaskProgressSink } from '../worker-pool';
 
 type TestWorkerState = PoolWorkerState & {
   count?: number;
@@ -29,6 +30,9 @@ describe('WorkerPool worker state ownership', () => {
     };
     return new WorkerPool(1, {
       currentTaskProgress: () => progressSink,
+      // These tests are about worker-state ownership, not budgets: no cap, and
+      // a single attempt so a failure surfaces instead of being retried away.
+      limits: { timeoutMs: 0, retries: 0, retryDelay: 0 },
     });
   }
 
@@ -131,6 +135,149 @@ describe('WorkerPool worker state ownership', () => {
       expect(output).toContain('at Object._testFn (ab-tests/cart.abtest.ts:54:16)');
     } finally {
       log.mockRestore();
+      await pool.dispose();
+    }
+  });
+});
+
+describe('WorkerPool per-task limits', () => {
+  // Regression: the pool used to know one set of budgets, taken from the FILE
+  // config, so a test's own `shared.timeoutMs` / `retries` / `retryDelay` were
+  // validated, merged into its effective config, and then dropped on the floor.
+  // The runner now publishes the unit's whole `TaskLimits` through
+  // `currentTaskLimits`, read once at submit time.
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const limits = (over: Partial<TaskLimits> = {}): TaskLimits =>
+    ({ timeoutMs: 0, retries: 0, retryDelay: 0, ...over });
+
+  // The task must COOPERATE with the pool's cancellation. A task that ignores it
+  // gets a 15s grace window to finish on its own, and one that finishes inside
+  // that window still succeeds — so an uncooperative sleep would prove nothing
+  // and cost 15s. `raceCancellation` is exactly what real stages thread through.
+  const cancellableWork = (raceCancellation: RaceCancellation) =>
+    raceCancellation(() => sleep(10_000));
+
+  // `raceCancellation` RESOLVES with a Cancellation marker rather than throwing,
+  // and that marker quotes the cap that fired — so it names which of the two
+  // budgets won, which is the whole point of these tests.
+  const cancelReason = async (pool: WorkerPool): Promise<string> => {
+    const outcome = await pool.submit(
+      (_state, raceCancellation) => cancellableWork(raceCancellation),
+    ) as { message?: string };
+    return outcome.message ?? '';
+  };
+
+  it('prefers the published timeout over the pool default', async () => {
+    const pool = new WorkerPool(1, {
+      limits: limits({ timeoutMs: 60_000 }),
+      currentTaskLimits: () => limits({ timeoutMs: 20 }),
+    });
+    try {
+      // 20ms cap against a 60s pool default: only the per-task cap can fire here.
+      expect(await cancelReason(pool)).toBe('task timeout after 20ms');
+    } finally {
+      await pool.dispose();
+    }
+  });
+
+  it('falls back to the pool default when nothing is published', async () => {
+    const pool = new WorkerPool(1, {
+      limits: limits({ timeoutMs: 20 }),
+      currentTaskLimits: () => undefined,
+    });
+    try {
+      expect(await cancelReason(pool)).toBe('task timeout after 20ms');
+    } finally {
+      await pool.dispose();
+    }
+  });
+
+  it('does not fire when the published timeout is generous', async () => {
+    const pool = new WorkerPool(1, {
+      // Pool default would kill this at 20ms; the published one must win.
+      limits: limits({ timeoutMs: 20 }),
+      currentTaskLimits: () => limits({ timeoutMs: 60_000 }),
+    });
+    try {
+      await expect(pool.submit(async () => {
+        await sleep(120);
+        return 'done';
+      })).resolves.toBe('done');
+    } finally {
+      await pool.dispose();
+    }
+  });
+
+  it('lets a published timeout of 0 disable the pool default', async () => {
+    const pool = new WorkerPool(1, {
+      limits: limits({ timeoutMs: 30 }),
+      currentTaskLimits: () => limits({ timeoutMs: 0 }),
+    });
+    try {
+      await expect(pool.submit(async () => {
+        await sleep(120);
+        return 'done';
+      })).resolves.toBe('done');
+    } finally {
+      await pool.dispose();
+    }
+  });
+
+  it('names the cap that actually fired when it poisons the task', async () => {
+    // The inner cancellation always quoted the right number; the outer poison
+    // error — the one that reaches the report as the failure reason — used to
+    // quote the pool default instead, so a 20ms task read "exceeded its
+    // 60000ms budget".
+    const pool = new WorkerPool(1, {
+      limits: limits({ timeoutMs: 60_000 }),
+      currentTaskLimits: () => limits({ timeoutMs: 20 }),
+    });
+    try {
+      // Surfaces its OWN rejection once cancelled, which is what a real stage
+      // does (its error carries the failure screenshot). That lands on the
+      // poison path immediately instead of waiting out the grace window.
+      await expect(pool.submit(async (_state, raceCancellation) => {
+        await cancellableWork(raceCancellation);
+        throw new Error('stage aborted');
+      })).rejects.toThrow('task exceeded its 20ms budget');
+    } finally {
+      await pool.dispose();
+    }
+  });
+
+  it('retries a published number of times, not the pool default', async () => {
+    const pool = new WorkerPool(1, {
+      limits: limits({ retries: 0 }),
+      currentTaskLimits: () => limits({ retries: 2 }),
+    });
+    let attempts = 0;
+    try {
+      // Fails twice, succeeds on the third — reachable only on the published
+      // budget of 2 retries; the pool default of 0 would poison it at attempt 1.
+      await expect(pool.submit(async () => {
+        attempts += 1;
+        if (attempts < 3) throw new Error(`attempt ${attempts} fails`);
+        return 'done';
+      })).resolves.toBe('done');
+      expect(attempts).toBe(3);
+    } finally {
+      await pool.dispose();
+    }
+  });
+
+  it('reports the published retry budget when it is exhausted', async () => {
+    const pool = new WorkerPool(1, {
+      limits: limits({ retries: 9 }),
+      currentTaskLimits: () => limits({ retries: 1 }),
+    });
+    let attempts = 0;
+    try {
+      await expect(pool.submit(async () => {
+        attempts += 1;
+        throw new Error('always fails');
+      })).rejects.toThrow('exhausted 2 consecutive attempts');
+      expect(attempts).toBe(2);
+    } finally {
       await pool.dispose();
     }
   });

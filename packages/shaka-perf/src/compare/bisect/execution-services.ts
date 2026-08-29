@@ -279,9 +279,6 @@ class CandidateCompareRunner implements CandidateComparison {
       categories: [...request.categories],
       skipReport: true,
       headed: this.options.headed,
-      retries: this.options.config.shared.retries,
-      retryDelay: this.options.config.shared.retryDelay,
-      timeoutMs: this.options.config.shared.timeoutMs,
     });
     return { testResults: result.testResults, compareResultsPath: result.resultsRoot };
   }

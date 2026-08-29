@@ -189,10 +189,12 @@ export const SharedConfigSchema = z
     parallelism: z.number().int().positive(),
     retries: z.number().int().nonnegative().default(2),
     retryDelay: z.number().int().nonnegative().default(1000),
-    // Runner-level cap on every race-timeout the pipeline wraps around
-    // engine work (setup, sample, etc.). Sits alongside `parallelism` /
-    // `retries` because the runner is shared infrastructure — a single
-    // cap covers every category's engines.
+    // Cap on every race-timeout the pipeline wraps around engine work
+    // (setup, sample, etc.), covering every category's engines. Sits
+    // alongside `parallelism` / `retries` because the runner is shared
+    // infrastructure — but unlike `parallelism`, this one and `retries` /
+    // `retryDelay` are resolved per unit, so an `abTest()` can override
+    // them for itself (see BREAKING_CHANGES.md).
     timeoutMs: z.number().int().positive().default(120000),
     // Global pre-navigation hook (see shaka-shared `SharedConfigInput`). Runs
     // before every test's navigation on every engine; a per-test

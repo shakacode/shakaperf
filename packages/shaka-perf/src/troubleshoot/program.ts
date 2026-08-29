@@ -242,12 +242,6 @@ export async function createTroubleshootCommand(): Promise<Command> {
             headed: opts.headed,
             keepBrowserOpen: true,
             cdpPorts,
-            // A retry would build a second set of windows that also never close.
-            retries: 0,
-            retryDelay: config.shared.retryDelay,
-            // No timeout: it would abort the deliberate freezes and let the run
-            // finish, taking the browsers with it.
-            timeoutMs: 0,
           });
         } catch (err) {
           // Reached only if every stage failed BEFORE its freeze.

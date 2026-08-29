@@ -102,9 +102,6 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
           fullReportZip: opts.fullReportZip === true,
           headed: opts.headed === true,
           burn: parseBurnOption(opts.burn),
-          retries: config.shared.retries,
-          retryDelay: config.shared.retryDelay,
-          timeoutMs: config.shared.timeoutMs,
         });
         printReportSummary(result);
         maybeGenerateCoverageReport(result.resultsRoot);
