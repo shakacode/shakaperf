@@ -1833,7 +1833,7 @@ describe('renderClientReportHtml', () => {
 
   it('ships shared disclosure toggle plumbing and print force-open CSS', () => {
     const html = renderClientReportHtml(model());
-    expect(html).toContain('[data-disclose]{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;color:#26221d}');
+    expect(html).toContain('[data-disclose]{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;min-width:44px;color:#26221d}');
     expect(html).toContain('[data-disclosure][hidden]{display:block!important}');
     expect(html).toContain('Disclosure contract: button uses data-disclose="<target-id>"; target uses');
     expect(html).toContain("if(!target || !target.hasAttribute('data-disclosure')) return null;");
@@ -1858,6 +1858,31 @@ describe('renderClientReportHtml', () => {
     expect(html).toContain("label.textContent = 'Copy failed'");
     expect(html).toContain('}).catch(function(){');
     expect(html).toContain('window.setTimeout(function(){ label.textContent = original; }, 2000)');
+  });
+
+  it('renders one hidden chevron in every disclosure control', () => {
+    const html = renderClientReportHtml(model({
+      perfCost: {
+        tab: 'perf',
+        state: 'measured',
+        sitePrompt: 'Fix the first content path.',
+        calculator: {
+          mobileSharePrefill: 0.52,
+          bands: RECOVERY_BANDS,
+          materialityFloorUsdPerMonth: 50,
+          inquiryNoun: 'inquiries',
+        },
+      },
+    }));
+    const disclosureControls = html.match(/<button\b[^>]*\bdata-disclose="[^"]+"[^>]*>[\s\S]*?<\/button>/g) ?? [];
+
+    expect(disclosureControls.length).toBeGreaterThan(0);
+    for (const control of disclosureControls) {
+      expect(control.match(/class="cr-disclosure-indicator" aria-hidden="true"/g)).toHaveLength(1);
+    }
+    expect(html).toContain('.cr-cost-chip .cr-disclosure-indicator{width:9px;height:6px}');
+    expect(html).toContain('[data-disclose][aria-expanded="true"] .cr-disclosure-indicator{transform:rotate(180deg)}');
+    expect(html).toContain('@media print{.cr-disclosure-indicator{display:none!important}');
   });
 
   it('synchronizes disclosure controls and retains keyboard focus in the rendered script', () => {
