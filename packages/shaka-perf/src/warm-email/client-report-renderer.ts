@@ -78,6 +78,7 @@ const LINE = '#e7e1d8';
 const COST_TIER_LABEL_WIDTH = 104;
 const COST_TIER_GAP = 16;
 const COST_TIER_CONTENT_OFFSET = 120;
+const DISCLOSURE_INDICATOR = '<span class="cr-disclosure-indicator" aria-hidden="true"><svg viewBox="0 0 12 8" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>';
 
 // ---- model (assembled in client-report.ts) ----
 
@@ -340,8 +341,12 @@ const HEAD_STYLE = `
   .cr-tab{transition:color .12s ease,border-color .12s ease}
   .cr-panel[hidden]{display:none}
   [data-disclosure][hidden]{display:none}
-  [data-disclose]{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;color:#26221d}
+  [data-disclose]{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;min-width:44px;color:#26221d}
   [data-disclose] .cr-mono-chip,[data-disclose].cr-mono-chip{color:#4a443c}
+  .cr-disclosure-indicator{display:inline-flex;width:12px;height:8px;flex:none;line-height:0;transform-origin:center;transition:transform .18s ease}
+  .cr-disclosure-indicator svg{display:block;width:100%;height:100%}
+  .cr-cost-chip .cr-disclosure-indicator{width:9px;height:6px}
+  [data-disclose][aria-expanded="true"] .cr-disclosure-indicator{transform:rotate(180deg)}
   .cr-shot{cursor:zoom-in}
   .cr-sev-chip{transition:opacity .12s ease,box-shadow .12s ease}
   .cr-sev-chip:hover{box-shadow:0 0 0 2px rgba(38,34,29,.14)}
@@ -376,7 +381,7 @@ const HEAD_STYLE = `
   .cr-lb-prev{left:16px} .cr-lb-next{right:16px}
   .cr-lb-close:hover,.cr-lb-arrow:not(:disabled):hover{background:rgba(255,255,255,.26)}
   .cr-lb-arrow:disabled{opacity:.42;cursor:default}
-  @media print{.cr-calc-teaser{display:none!important}.cr-calculator-card:has([data-calc-output][hidden]){display:none!important}.cr-calculator-card [data-disclose]{display:none!important}.cr-panel[hidden],[data-disclosure][hidden]{display:block!important}.cr-tabs{display:none!important}.cr-calculator-output[hidden]{display:none!important}.cr-calculator-card:not(.cr-calculator-has-output) .cr-calculator-fields{display:none!important}}
+  @media print{.cr-disclosure-indicator{display:none!important}.cr-calc-teaser{display:none!important}.cr-calculator-card:has([data-calc-output][hidden]){display:none!important}.cr-calculator-card [data-disclose]{display:none!important}.cr-panel[hidden],[data-disclosure][hidden]{display:block!important}.cr-tabs{display:none!important}.cr-calculator-output[hidden]{display:none!important}.cr-calculator-card:not(.cr-calculator-has-output) .cr-calculator-fields{display:none!important}}
   @media (max-width:760px){
     .cr-tiles{grid-template-columns:1fr!important}
     .cr-wrap h1{font-size:30px!important}
@@ -512,7 +517,7 @@ function copyPromptControl(prompt: string | undefined, id: string, compact = fal
     : 'border:1px solid #26221d; background:#26221d; color:#fff';
   return `        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:${gap}; margin-top:${compact ? '14px' : '16px'}">
           <button type="button" data-copy-prompt="${esc(id)}"${toneAttr} style="appearance:none; ${buttonStyle}; border-radius:8px; width:${width}; min-height:38px; padding:0 12px; display:inline-flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; letter-spacing:.04em; cursor:pointer"><span data-copy-label>${esc(label)}</span></button>
-          <button type="button" data-disclose="${esc(id)}" class="cr-mono-chip" style="appearance:none; border:0; background:transparent; padding:0 2px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#6f665c; text-decoration:underline; cursor:pointer">${esc(VIEW_INSTRUCTIONS)}</button>
+          <button type="button" data-disclose="${esc(id)}" class="cr-mono-chip" style="appearance:none; border:0; background:transparent; padding:0 2px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#6f665c; text-decoration:underline; cursor:pointer">${esc(VIEW_INSTRUCTIONS)}${DISCLOSURE_INDICATOR}</button>
         </div>
         <pre id="${esc(id)}" data-disclosure hidden style="white-space:pre-wrap; overflow:auto; max-height:340px; margin:${compact ? '10px' : '12px'} 0 0; padding:14px 16px; border:1px solid #e0d9cd; border-radius:11px; background:#f4f1ea; color:#3a352e; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.55">${esc(prompt)}</pre>`;
 }
@@ -551,7 +556,7 @@ function costSitePrompt(cost: ClientReportCostBlock): string | undefined {
 }
 
 function costChipButton(id: string, label: string, small = false): string {
-  return `<button type="button" data-disclose="${esc(id)}" class="cr-cost-chip" style="appearance:none; border:1px solid #e0d9cd; background:#f4f1ea; border-radius:999px; padding:${small ? '3px 9px' : '5px 11px'}; min-height:${small ? '30px' : '38px'}; font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:#4a443c; cursor:pointer${small ? '; vertical-align:2px' : ''}">${esc(label)}</button>`;
+  return `<button type="button" data-disclose="${esc(id)}" class="cr-cost-chip" style="appearance:none; border:1px solid #e0d9cd; background:#f4f1ea; border-radius:999px; padding:${small ? '3px 9px' : '5px 11px'}; min-height:${small ? '30px' : '38px'}; font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:#4a443c; cursor:pointer${small ? '; vertical-align:2px' : ''}">${esc(label)}${DISCLOSURE_INDICATOR}</button>`;
 }
 
 function costDetailsPanel(id: string, content: string, compact = false): string {
@@ -734,6 +739,7 @@ function calculatorCard(calculator: CostCalculatorConfig, tab: CostTab): string 
           <button type="button" data-disclose="${esc(panelId)}" class="cr-calc-teaser" style="appearance:none; width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; border:1.5px dashed #a69b8d; border-radius:12px; background:#faf8f3; padding:10px 14px; font:inherit; text-align:left; cursor:pointer">
             <span style="flex:1; min-width:220px; font-size:13px; line-height:1.4; color:#3a352e"><strong style="font-weight:700">What is the wait worth in dollars?</strong> <span style="color:#6f665c">- your numbers, your math</span></span>
             <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:500; letter-spacing:.05em; text-transform:uppercase; color:#26221d; border:1px solid #26221d; background:#ffffff; border-radius:8px; padding:7px 12px; white-space:nowrap; flex:none">Open calculator</span>
+            ${DISCLOSURE_INDICATOR}
           </button>
           <div id="${esc(panelId)}" data-disclosure hidden>
             <div class="cr-calculator-card" data-calculator data-calculator-tool data-calc-bands="${esc(JSON.stringify(calculator.bands))}" data-calc-floor="${esc(String(calculator.materialityFloorUsdPerMonth))}" data-calc-recovery-cap="${esc(String(RECOVERY_CAP))}" data-calc-prefill="${esc(String(prefill))}" data-calc-noun="${esc(calculator.inquiryNoun)}" data-calc-partial="${esc(CALC_PARTIAL_LINE)}" data-calc-tiny="${esc(tinyResultLine(calculator.materialityFloorUsdPerMonth))}" data-calc-break-even-template="${esc(calcBreakEvenLine('__VALUE__'))}" style="margin-top:10px; padding:16px 18px; border:1px solid #e0d9cd; border-radius:12px; background:#faf8f3">
@@ -757,7 +763,7 @@ ${bands}
                 <div style="margin-top:8px; font-size:11.5px; line-height:1.5; color:#6f665c">${esc(CALC_HONESTY_FOOTER)}</div>
               </div>
               <div style="font-size:11px; line-height:1.5; color:#6f665c; margin-top:10px">${esc(CALC_PRIVACY_LINE)} ${esc(calcCapNote())}</div>
-              <button type="button" data-disclose="${esc(panelId)}" style="appearance:none; border:0; background:transparent; padding:0 2px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:11px; color:#6f665c; text-decoration:underline; cursor:pointer; margin-top:6px">hide calculator</button>
+              <button type="button" data-disclose="${esc(panelId)}" style="appearance:none; border:0; background:transparent; padding:0 2px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:11px; color:#6f665c; text-decoration:underline; cursor:pointer; margin-top:6px">hide calculator${DISCLOSURE_INDICATOR}</button>
             </div>
           </div>
         </div>`;
@@ -768,7 +774,7 @@ function costFixControls(prompt: string | undefined, id: string): string {
   return `
             <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:12px">
               <button type="button" data-copy-prompt="${esc(id)}" data-copy-tone="secondary" style="appearance:none; border:1px solid #26221d; background:#26221d; color:#ffffff; border-radius:8px; min-height:38px; padding:0 14px; display:inline-flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; letter-spacing:.04em; cursor:pointer"><span data-copy-label>${esc(COPY_SITE_FIX_INSTRUCTIONS)}</span></button>
-              <button type="button" data-disclose="${esc(id)}" class="cr-mono-chip" style="appearance:none; border:0; background:transparent; padding:0 2px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#6f665c; text-decoration:underline; cursor:pointer">${esc(VIEW_INSTRUCTIONS)}</button>
+              <button type="button" data-disclose="${esc(id)}" class="cr-mono-chip" style="appearance:none; border:0; background:transparent; padding:0 2px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#6f665c; text-decoration:underline; cursor:pointer">${esc(VIEW_INSTRUCTIONS)}${DISCLOSURE_INDICATOR}</button>
             </div>
             <pre id="${esc(id)}" data-disclosure hidden style="white-space:pre-wrap; overflow:auto; max-height:340px; margin:12px 0 0; padding:14px 16px; border:1px solid #e0d9cd; border-radius:11px; background:#f4f1ea; color:#3a352e; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.55">${esc(prompt)}</pre>`;
 }
@@ -1292,8 +1298,9 @@ ${facts}
           </div>`;
     }).join('\n');
     const button = `        <button type="button" data-disclose="${esc(id)}" data-understanding-group data-understanding-status="${group.status}" style="appearance:none; width:100%; border:1px solid ${p.line}; background:#ffffff; border-radius:11px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:14px; font-family:inherit; cursor:pointer; text-align:left">
-          <span style="display:flex; align-items:center; gap:10px; min-width:0; font-size:15.5px; font-weight:750; color:#26221d"><span style="width:9px; height:9px; border-radius:50%; background:${p.fg}; flex:none"></span>${esc(group.label)}</span>
+          <span style="display:flex; align-items:center; gap:10px; min-width:0; flex:1; font-size:15.5px; font-weight:750; color:#26221d"><span style="width:9px; height:9px; border-radius:50%; background:${p.fg}; flex:none"></span>${esc(group.label)}</span>
           <span style="flex:none; border:1px solid ${p.line}; background:${p.bg}; color:${p.fg}; border-radius:999px; padding:4px 8px; font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:700; white-space:nowrap">${group.affectedPages} of ${group.totalPages} ${pageNoun}</span>
+          ${DISCLOSURE_INDICATOR}
         </button>`;
     return `      <div style="margin-bottom:10px">
 ${button}
