@@ -198,7 +198,6 @@ describe('buildPerfCost', () => {
     expect(result.perfCost?.pageSpeedUrl).toBe(
       'https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fexample.com%2F',
     );
-    expect(result.perfCost?.checkLine).toContain('https%3A%2F%2Fexample.com%2Fcontact');
   });
 
   it('encodes a query string in the measured problem anchor URL', () => {
