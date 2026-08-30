@@ -179,7 +179,7 @@ describe('buildPerfCost', () => {
     );
   });
 
-  it('uses the cost headline page for every PageSpeed URL', () => {
+  it('uses the cost headline page for the visible PageSpeed URL', () => {
     const supporting = perfPage(
       page('Contact', '/contact', { LCP: 8000, FCP: 900, CLS: 2, TBT: 50 }),
       { kind: 'slow-lcp', status: 'poor', severity: 1, headline: '', chip: 'slow-lcp' },
@@ -199,7 +199,7 @@ describe('buildPerfCost', () => {
       'https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fexample.com%2F',
     );
     expect(result.perfCost?.checkLine).toContain(
-      'https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fexample.com%2F',
+      'https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fexample.com%2Fcontact',
     );
   });
 
