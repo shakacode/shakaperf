@@ -6,7 +6,7 @@
  */
 
 import type { ClientReportCostBlock } from '../client-report-renderer';
-import { perfCheckLine } from '../cost-strings';
+import { buildPageSpeedUrl, perfCheckLine } from '../cost-strings';
 import {
   isPerfCostProblem,
   metricVal,
@@ -20,7 +20,11 @@ import {
 } from './perf';
 import type { CostGap } from './cost-benchmarks';
 import type { BuildPerfCostInput, PerfFactPage, PerfGapKind, PerfGapMetrics } from './cost-performance';
-import { buildAtRiskPerfStakes, buildPerfCalculator, optionalCountedZeroLine } from './cost-performance-state';
+import {
+  buildAtRiskPerfStakes,
+  buildPerfCalculator,
+  optionalCountedZeroLine,
+} from './cost-performance-state';
 
 export interface ProblemPerfCostStateDependencies {
   bookingLine: (page: { name: string; lcpMs: number }) => string;
@@ -59,6 +63,9 @@ export function buildProblemMeasuredPerfCost(
     ? supportingProblem.problem
     : perfCostAnchor.problem;
   const anchorPage = perfCostAnchor.page;
+  // Keep the visible PageSpeed chip on the headline anchor; the legacy check line follows the supporting problem.
+  const anchorUrl = input.pageUrl(anchorPage);
+  const pageSpeedUrl = buildPageSpeedUrl(anchorUrl);
   const anchorProblemTx = perfProblemPhrase(perfCostAnchor.problem, anchorPage);
   const anchorProblemMetricTx = perfProblemMetric(perfCostAnchor.problem, anchorPage);
   const anchorProblemLabel = anchorProblemMetricTx ?? anchorProblemTx ?? perfCostAnchor.problem.chip;
@@ -99,6 +106,7 @@ export function buildProblemMeasuredPerfCost(
     headline: perfCostHeadline(perfCostAnchor.problem, anchorProblemLabel, anchorProblemPhrase, anchorPage),
     chip: 'measured',
     checkLine: perfCheckLine(problemUrl, input.sameAsPsiDefaultProfile(input.throttleProfile), checkProfile),
+    pageSpeedUrl,
     affectsProse: perfAffectsProse(supportingPerfProblem),
     sitePrompt: perfCostCopyPromptEnabled(supportingPerfProblem)
       ? input.copyPromptForPage(supportingProblem.page)

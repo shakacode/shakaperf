@@ -6,13 +6,17 @@
  */
 
 import type { ClientReportCostBlock } from '../client-report-renderer';
-import { perfCheckLine } from '../cost-strings';
+import { buildPageSpeedUrl, perfCheckLine } from '../cost-strings';
 import { buildPerfSitePrompt } from '../copy-prompt';
 import type { PagePerf } from '../synthesis';
 import { metricVal, perfAffectsProse, SCORE_BADGE_POLICY, type ClientReportPerfProblemCandidate } from './perf';
 import { BENCHMARK_LINES, benchmarkMultiple, benchmarkScaleGeometry, BENCHMARK_SCALE_POLICIES, type CostGap } from './cost-benchmarks';
 import type { BuildPerfCostInput, PerfFactPage, PerfGapMetrics, PerfHeroMetric } from './cost-performance';
-import { buildAtRiskPerfStakes, buildPerfCalculator, optionalCountedZeroLine } from './cost-performance-state';
+import {
+  buildAtRiskPerfStakes,
+  buildPerfCalculator,
+  optionalCountedZeroLine,
+} from './cost-performance-state';
 
 type CompletePerfPromptFacts = {
   name: string;
@@ -83,6 +87,7 @@ export function buildFcpMeasuredPerfCost(
     .map(({ page }) => ({ page, fcpMs: displayTimingMs(metricVal(page, 'FCP')) }))
     .filter((candidate): candidate is { page: PagePerf; fcpMs: number } => candidate.fcpMs !== undefined && candidate.fcpMs > heroMetric.goodMs)
     .sort((a, b) => b.fcpMs - a.fcpMs);
+  // Prefer an eligible homepage, then keep the slowest measured candidate.
   const fcpCostAnchor = fcpCostCandidates.find((candidate) => candidate.page.startingPath === '/') ?? fcpCostCandidates[0];
   const fcpCostIsDominant = siteDominantPerfProblem?.problem.kind === 'blank'
     || siteDominantPerfProblem?.problem.kind === 'late-paint'
@@ -91,7 +96,7 @@ export function buildFcpMeasuredPerfCost(
 
   const anchorPage = fcpCostAnchor.page;
   const anchorUrl = input.pageUrl(anchorPage);
-  const pageSpeedUrl = `https://pagespeed.web.dev/analysis?url=${encodeURIComponent(anchorUrl)}`;
+  const pageSpeedUrl = buildPageSpeedUrl(anchorUrl);
   const checkProfile = input.throttleProfile || 'a profile not recorded in this audit';
   const perfFactPages = input.measured.map(({ page }) => ({
     name: page.name,

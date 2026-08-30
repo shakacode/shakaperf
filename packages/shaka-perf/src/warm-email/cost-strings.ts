@@ -81,7 +81,7 @@ export const BOT_WALL_COPY =
   "The site's bot protection served our checker a challenge page instead of the real page, so this could not be measured. Allowlist our checker and we will re-run a clean pass.";
 export const FOOTER_GUARDRAIL = 'Measured on your site - every number links to its source';
 export const MULTIPLES_FLOORED_NOTE = 'multiples are floored, never rounded up';
-export const PAGESPEED_FIELD_VS_LAB_PREEMPT = 'opens on a 28-day real-user summary first - a different check; the lab test below it runs the same Slow-4G phone profile we measured on';
+export const PAGESPEED_FIELD_VS_LAB_PREEMPT = "may open with Google's own summary of real user data from the last 28 days when one exists for this address, which is a different check; use the lab test on that page for comparison, noting that it runs on Google's own phone and network settings";
 export const AI_STUDIES_OTHER_SITES_CAVEAT = 'The click studies ran on other sites - direction and rough size only, not your number.';
 export const AI_READABILITY_TARGET = 'Target: every word visible (100%).';
 export const AI_SERVER_RENDER_FIX = "Render the page's primary text on the server with SSR or prerendering, so it is present in the HTML before JavaScript runs.";
@@ -204,8 +204,12 @@ export function perfHeadline(label: string, page: string): string {
   return `${label} before your main content appears on a mid-range phone`;
 }
 
+export function buildPageSpeedUrl(url: string): string {
+  return `https://pagespeed.web.dev/analysis?url=${encodeURIComponent(url)}`;
+}
+
 export function perfCheckLine(url: string, sameProfile: boolean, usedProfile?: string): string {
-  const psiUrl = `https://pagespeed.web.dev/analysis?url=${encodeURIComponent(url)}`;
+  const psiUrl = buildPageSpeedUrl(url);
   if (sameProfile) {
     return `check it yourself: run PageSpeed Insights on this page - same phone and network profile we used: ${psiUrl}`;
   }

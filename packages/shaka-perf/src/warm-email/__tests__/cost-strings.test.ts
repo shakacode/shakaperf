@@ -219,7 +219,7 @@ describe('canonical cost copy', () => {
     );
     expect(MULTIPLES_FLOORED_NOTE).toBe('multiples are floored, never rounded up');
     expect(PAGESPEED_FIELD_VS_LAB_PREEMPT).toBe(
-      'opens on a 28-day real-user summary first - a different check; the lab test below it runs the same Slow-4G phone profile we measured on',
+      "may open with Google's own summary of real user data from the last 28 days when one exists for this address, which is a different check; use the lab test on that page for comparison, noting that it runs on Google's own phone and network settings",
     );
     expect(AI_STUDIES_OTHER_SITES_CAVEAT).toBe(
       'The click studies ran on other sites - direction and rough size only, not your number.',
