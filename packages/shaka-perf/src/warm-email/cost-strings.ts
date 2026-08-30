@@ -204,8 +204,12 @@ export function perfHeadline(label: string, page: string): string {
   return `${label} before your main content appears on a mid-range phone`;
 }
 
+export function buildPageSpeedUrl(url: string): string {
+  return `https://pagespeed.web.dev/analysis?url=${encodeURIComponent(url)}`;
+}
+
 export function perfCheckLine(url: string, sameProfile: boolean, usedProfile?: string): string {
-  const psiUrl = `https://pagespeed.web.dev/analysis?url=${encodeURIComponent(url)}`;
+  const psiUrl = buildPageSpeedUrl(url);
   if (sameProfile) {
     return `check it yourself: run PageSpeed Insights on this page - same phone and network profile we used: ${psiUrl}`;
   }
