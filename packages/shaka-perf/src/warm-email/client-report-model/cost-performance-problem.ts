@@ -64,12 +64,12 @@ export function buildProblemMeasuredPerfCost(
     : perfCostAnchor.problem;
   const anchorPage = perfCostAnchor.page;
   // Keep PageSpeed on the page that owns the headline and metric gap.
-  const pageSpeedUrl = buildPageSpeedUrl(input.pageUrl(anchorPage));
+  const anchorUrl = input.pageUrl(anchorPage);
+  const pageSpeedUrl = buildPageSpeedUrl(anchorUrl);
   const anchorProblemTx = perfProblemPhrase(perfCostAnchor.problem, anchorPage);
   const anchorProblemMetricTx = perfProblemMetric(perfCostAnchor.problem, anchorPage);
   const anchorProblemLabel = anchorProblemMetricTx ?? anchorProblemTx ?? perfCostAnchor.problem.chip;
   const anchorProblemPhrase = anchorProblemTx ?? perfCostAnchor.problem.chip;
-  const problemUrl = input.pageUrl(supportingProblem.page);
   const checkProfile = input.throttleProfile || 'a profile not recorded in this audit';
   const perfFactPages = input.measured.map(({ page }) => ({
     name: page.name,
@@ -104,7 +104,7 @@ export function buildProblemMeasuredPerfCost(
     state: 'measured',
     headline: perfCostHeadline(perfCostAnchor.problem, anchorProblemLabel, anchorProblemPhrase, anchorPage),
     chip: 'measured',
-    checkLine: perfCheckLine(problemUrl, input.sameAsPsiDefaultProfile(input.throttleProfile), checkProfile),
+    checkLine: perfCheckLine(anchorUrl, input.sameAsPsiDefaultProfile(input.throttleProfile), checkProfile),
     pageSpeedUrl,
     affectsProse: perfAffectsProse(supportingPerfProblem),
     sitePrompt: perfCostCopyPromptEnabled(supportingPerfProblem)
