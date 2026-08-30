@@ -768,7 +768,7 @@ function model(over: Partial<ClientReportModel> = {}): ClientReportModel {
     dateStr: 'June 24, 2026',
     faviconLinkTag: '',
     measurementConditions: 'Emulated mid-range phone · 390x844 mobile viewport · Slow-4G · Google PageSpeed profile',
-    compactMeasurementConditions: 'Mid-range phone emulation · Slow-4G · Google PageSpeed',
+    compactMeasurementConditions: 'Mid-range phone · Slow-4G · PageSpeed profile',
     lede: 'We loaded 6 pages.',
     tiles: [
       { target: 'perf', kicker: 'Mobile speed', status: 'poor', wordTx: 'Slow on phones', metric: '5.3s', metricSub: 'typical wait', conseq: 'They leave.', usesMobileMeasurementConditions: true },
@@ -776,6 +776,7 @@ function model(over: Partial<ClientReportModel> = {}): ClientReportModel {
     ],
     hasPerf: true,
     perfStatus: 'poor',
+    perfScoreUsesMobileMeasurementConditions: true,
     perfCouldNotMeasure: false,
     perfCards: [
       {
@@ -899,7 +900,7 @@ describe('renderClientReport perf tile assembly', () => {
       'Emulated mid-range phone · mobile viewport · Slow-4G · Google PageSpeed profile',
     );
     expect(badge).toContain(reportModel.measurementConditions);
-    expect(badge).not.toContain('<span></span>');
+    expect(reportModel.measurementConditions.split(' · ')).not.toContain('');
     expect(profileOffset).toBeGreaterThanOrEqual(0);
     expect(profileOffset / html.length).toBeLessThan(0.15);
   });
@@ -914,6 +915,17 @@ describe('renderClientReport perf tile assembly', () => {
 
     expect(badge).toContain('Fast-3G profile');
     expect(badge).not.toContain('Google PageSpeed');
+  });
+
+  it('keeps the measurement setup visible when speed data is unavailable', async () => {
+    const { html, model: reportModel } = await renderClientReport(writePerfResults({}));
+    const badge = renderedMeasurementBadge(html);
+
+    expect(reportModel.perfCouldNotMeasure).toBe(true);
+    expect(badge).toContain(reportModel.measurementConditions);
+    expect(badge).toContain('Slow-4G');
+    expect(renderedPanel(html, 'perf')).toContain('Could not measure');
+    expect(renderedPanel(html, 'perf')).not.toContain('cr-measurement-glyph');
   });
 
   it('uses measured numbers when ai_summary is missing and lets AI copy replace the fallback', async () => {
@@ -1797,10 +1809,13 @@ describe('renderClientReportHtml', () => {
     expect(badgeStart).toBeGreaterThan(headingEnd);
     expect(badgeStart).toBeLessThan(ledeStart);
     expect(badge).toContain('class="cr-measurement-badge"');
+    expect(badge).toContain('role="note"');
+    expect(badge).toContain('tabindex="0"');
     expect(badge).toContain('white-space:nowrap');
     expect(badge).toContain(m.measurementConditions);
     expect(badge).toContain(m.compactMeasurementConditions);
     expect(badge).toContain('<svg viewBox="0 0 12 18" aria-hidden="true"');
+    expect(html).toContain('font-size:clamp(8px,2.65vw,9.5px)!important');
     expect(html).toContain('@media print{.cr-measurement-badge{display:inline-flex!important}.cr-measurement-full{display:inline!important}.cr-measurement-compact{display:none!important}');
     expect(html).not.toMatch(/cr-measurement-badge\{[^}]*display:none/);
   });
@@ -1826,13 +1841,19 @@ describe('renderClientReportHtml', () => {
     expect(perfTile.indexOf('biggest piece takes 15.4s to load')).toBeLessThan(perfTile.indexOf('typical wait'));
   });
 
-  it('keeps a problem-free perf tile compact around its measurement glyph', () => {
+  it('keeps a problem free perf tile byte identical around its measurement glyph', () => {
     const perfTile = renderedTile(renderClientReportHtml(model()), 'perf');
+    const glyph = '<span class="cr-measurement-glyph" role="img" aria-label="Mobile measurement conditions" title="Mobile measurement conditions" style="display:inline-flex; width:11px; height:17px; flex:none; color:#6f665c; vertical-align:-2px"><svg viewBox="0 0 12 18" aria-hidden="true" focusable="false"><rect x="1.25" y=".75" width="9.5" height="16.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"></rect><path d="M4.25 3h3.5M5.25 14.75h1.5" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"></path></svg></span>';
+
     expect(perfTile).not.toContain('biggest piece takes');
     expect(perfTile.match(/class="cr-measurement-glyph"/g)).toHaveLength(1);
-    expect(perfTile).toContain('>5.3s<span class="cr-measurement-glyph"');
-    expect(perfTile).toContain('>typical wait</div>');
-    expect(perfTile).toContain('>They leave.</div>');
+    expect(perfTile).toBe(`<button type="button" data-jump="perf" class="cr-tile" style="--soft:#fdf0ee; text-align:left; cursor:pointer; appearance:none; font-family:inherit; background:#ffffff; border:1px solid #f0c4bd; border-top:3px solid #c0271f; border-radius:14px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:0">
+        <div style="font-size:12px; font-weight:600; letter-spacing:.02em; color:#9b9286; margin-bottom:11px">Mobile speed</div>
+        <div style="font-size:23px; font-weight:800; letter-spacing:-.02em; color:#c0271f; line-height:1.05; margin-bottom:13px">Slow on phones</div>
+        <div style="display:flex; align-items:center; gap:7px; font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">5.3s${glyph}</div>
+        <div style="font-size:12.5px; color:#9b9286; margin-bottom:13px">typical wait</div>
+        <div style="font-size:13.5px; line-height:1.5; color:#4a443c">They leave.</div>
+      </button>`);
   });
 
   it('shows a tab bar with one button per present section', () => {

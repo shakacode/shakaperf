@@ -97,6 +97,7 @@ import { buildAgentSection, type AgentPromptContext, type AgentSection } from '.
 import {
   assembleClientReportModel,
   buildClientReportNarrativeFacts,
+  usesMobileMeasurementConditions,
   type ClientReportReportInput,
 } from './client-report-model/report';
 import { dashSafe, liveUrlFor, stripTags } from './client-report-model/shared';
@@ -1323,7 +1324,7 @@ function perfCardModel(rp: RenderedPage, siteUrl: string, promptCtx: PerfPromptC
     val: `${Math.round(score)}/100`,
     label: 'speed score',
     status: scoreStatus(score),
-    usesMobileMeasurementConditions: true,
+    usesMobileMeasurementConditions: usesMobileMeasurementConditions('speed-score'),
   });
   if (clsV !== undefined && clsV > CLS_GOOD) facts.push({ val: (clsV / 100).toFixed(2), label: 'layout-shift score', status: clsStatus(clsV) });
 
@@ -1514,7 +1515,7 @@ function throttlePhrase(profile: string, context: 'badge' | 'compact-badge' | 'f
     return usesPageSpeedProfile ? `${profile} · Google PageSpeed profile` : `${profile} profile`;
   }
   if (context === 'compact-badge') {
-    return usesPageSpeedProfile ? `${profile} · Google PageSpeed` : profile;
+    return usesPageSpeedProfile ? `${profile} · PageSpeed profile` : `${profile} profile`;
   }
   return usesPageSpeedProfile
     ? `the ${profile} profile Google PageSpeed uses`
@@ -1528,7 +1529,7 @@ function footnoteThrottlePhrase(profile: string): string {
 function measurementConditionsLabels(ctx: PerfPromptContext): { full: string; compact: string } {
   return {
     full: `Emulated mid-range phone · ${ctx.viewportLabel} · ${throttlePhrase(ctx.throttleProfile, 'badge')}`,
-    compact: `Mid-range phone emulation · ${throttlePhrase(ctx.throttleProfile, 'compact-badge')}`,
+    compact: `Mid-range phone · ${throttlePhrase(ctx.throttleProfile, 'compact-badge')}`,
   };
 }
 

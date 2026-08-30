@@ -298,6 +298,7 @@ export interface ClientReportModel {
   hasPerf: boolean;
   perfStatus: ClientReportStatus;
   perfScore?: number;
+  perfScoreUsesMobileMeasurementConditions: boolean;
   perfCouldNotMeasure: boolean; // true when NO performance page could be measured
   perfCards: ClientReportPerfCard[];
   perfFine: ClientReportPerfFineRow[];
@@ -391,7 +392,7 @@ const HEAD_STYLE = `
   @media (max-width:760px){
     .cr-tiles{grid-template-columns:1fr!important}
     .cr-wrap h1{font-size:30px!important}
-    .cr-measurement-badge{font-size:9.5px!important;padding:6px 7px!important;gap:5px!important}
+    .cr-measurement-badge{font-size:clamp(8px,2.65vw,9.5px)!important;padding:6px 7px!important;gap:5px!important}
     .cr-measurement-full{display:none}
     .cr-measurement-compact{display:inline}
     .cr-cost-tier{grid-template-columns:1fr!important;gap:8px!important}
@@ -415,7 +416,7 @@ function masthead(m: ClientReportModel): string {
 
   <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:#9b9286; margin-bottom:14px">How your site performs for real visitors</div>
   <h1 style="font-size:40px; line-height:1.08; letter-spacing:-.02em; font-weight:800; margin:0 0 12px; max-width:18ch">${esc(m.domain)}</h1>
-  <div id="cr-measurement-conditions" class="cr-measurement-badge" style="display:inline-flex; align-items:center; gap:7px; max-width:100%; overflow-x:auto; white-space:nowrap; border:1px solid #d8d0c3; border-radius:999px; background:#f0ece4; color:#4a443c; padding:6px 10px; margin:0 0 18px; font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.3; letter-spacing:.01em">
+  <div id="cr-measurement-conditions" class="cr-measurement-badge" role="note" aria-label="Mobile measurement conditions: ${esc(m.measurementConditions)}" tabindex="0" style="display:inline-flex; align-items:center; gap:7px; max-width:100%; overflow-x:auto; white-space:nowrap; border:1px solid #d8d0c3; border-radius:999px; background:#f0ece4; color:#4a443c; padding:6px 10px; margin:0 0 18px; font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.3; letter-spacing:.01em">
     <span aria-hidden="true" style="display:inline-flex; width:12px; height:18px; flex:none; color:#4a443c">${PHONE_GLYPH}</span>
     <span class="cr-measurement-full">${esc(m.measurementConditions)}</span>
     <span class="cr-measurement-compact">${esc(m.compactMeasurementConditions)}</span>
@@ -834,6 +835,11 @@ function costBlock(cost: ClientReportCostBlock | undefined): string {
   return costGrammarBlock(cost);
 }
 
+interface ClientReportScoreBadgeOptions {
+  label?: string;
+  usesMobileMeasurementConditions?: boolean;
+}
+
 function verdictHead(
   question: string,
   status: ClientReportStatus,
@@ -841,11 +847,14 @@ function verdictHead(
   blocked?: boolean,
   score?: number,
   cost?: ClientReportCostBlock,
-  scoreLabel = 'score',
-  usesMobileMeasurementConditions = false,
+  scoreOptions: ClientReportScoreBadgeOptions = {},
 ): string {
   const p = blocked ? NEUTRAL : PAL[status];
-  const badge = blocked ? '' : scoreBadge(score, scoreLabel, usesMobileMeasurementConditions);
+  const badge = blocked ? '' : scoreBadge(
+    score,
+    scoreOptions.label ?? 'score',
+    scoreOptions.usesMobileMeasurementConditions ?? false,
+  );
   return `    <div style="margin-bottom:30px">
       <div style="font-size:13.5px; font-weight:600; letter-spacing:.01em; color:#9b9286; margin-bottom:6px">${esc(question)}</div>
       <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:10px">
@@ -1018,7 +1027,10 @@ ${items}
 
 function perfPanel(m: ClientReportModel, multi: boolean, first: boolean): string {
   const needs = m.perfCards.length;
-  const body = `${verdictHead('Is your site fast enough on a phone?', m.perfStatus, m.narrative.perf, m.perfCouldNotMeasure, m.perfScore, m.perfCost, 'score', true)}
+  const body = `${verdictHead('Is your site fast enough on a phone?', m.perfStatus, m.narrative.perf, m.perfCouldNotMeasure, m.perfScore, m.perfCost, {
+    label: 'score',
+    usesMobileMeasurementConditions: m.perfScoreUsesMobileMeasurementConditions,
+  })}
 ${needs ? sectionKicker(`Needs attention &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.perfCards.map(perfCard).join('\n')}
 ${perfFineList(m.perfFine)}`;
@@ -1171,7 +1183,7 @@ ${items}
 
 function a11yPanel(m: ClientReportModel, multi: boolean, first: boolean): string {
   const needs = m.a11yCards.length;
-  const body = `${verdictHead('Can everyone use your site?', m.a11yStatus, m.narrative.a11y, m.a11yCouldNotMeasure, m.a11yScore, m.a11yCost, 'Lighthouse')}
+  const body = `${verdictHead('Can everyone use your site?', m.a11yStatus, m.narrative.a11y, m.a11yCouldNotMeasure, m.a11yScore, m.a11yCost, { label: 'Lighthouse' })}
 ${needs ? sectionKicker(`Needs attention &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.a11yCards.map(a11yCard).join('\n')}
 ${m.a11yStrongPageGroup ? strongPageGroupList(m.a11yStrongPageGroup) : ''}

@@ -45,6 +45,15 @@ export interface ClientReportReportInput {
   agent: AgentSection;
 }
 
+export type ClientReportMeasurementMetric = 'time' | 'speed-score' | 'other';
+
+export function usesMobileMeasurementConditions(
+  metric: ClientReportMeasurementMetric,
+  measured = true,
+): boolean {
+  return measured && (metric === 'time' || metric === 'speed-score');
+}
+
 export function buildClientReportNarrativeFacts(input: ClientReportReportInput): NarrativeFacts {
   const { perf, a11y, agent } = input;
   const rank: Record<ClientReportStatus, number> = { good: 0, fair: 1, poor: 2 };
@@ -109,6 +118,10 @@ export function assembleClientReportModel(
   const { perf, a11y, agent } = input;
   const narrative = composeNarrative(buildClientReportNarrativeFacts(input), overlay);
   const tiles: ClientReportTile[] = [];
+  const perfScoreUsesMobileMeasurementConditions = usesMobileMeasurementConditions(
+    'speed-score',
+    perf.hasPerf && !perf.perfCouldNotMeasure && perf.perfScore !== undefined,
+  );
   if (perf.hasPerf) {
     const defaultPerfMetricSub = 'typical wait before a page is usable';
     const defaultPerfConseq = perf.perfStatus === 'good'
@@ -123,10 +136,12 @@ export function assembleClientReportModel(
       ? 'no usable mobile speed data'
       : dominantPerfTileCopy?.metricSub(input.avgMs !== undefined ? input.avgLabel : undefined) ?? defaultPerfMetricSub;
     const perfMetric = perf.perfProblemMetricTx ?? (input.avgMs !== undefined ? input.avgLabel : 'n/a');
-    const perfMetricUsesMobileMeasurementConditions = !perf.perfCouldNotMeasure && (
-      perf.perfProblemMetricTx !== undefined
-        ? perf.tilePerfProblem?.problem.kind !== 'layout-shift'
-        : input.avgMs !== undefined
+    const perfMetricMeasurementKind: ClientReportMeasurementMetric = perf.perfProblemMetricTx !== undefined
+      ? perf.tilePerfProblem?.problem.kind === 'layout-shift' ? 'other' : 'time'
+      : input.avgMs !== undefined ? 'time' : 'other';
+    const perfMetricUsesMobileMeasurementConditions = usesMobileMeasurementConditions(
+      perfMetricMeasurementKind,
+      !perf.perfCouldNotMeasure,
     );
     const perfConseq = perf.perfCouldNotMeasure
       ? 'The audit did not return enough mobile speed data to make a speed claim.'
@@ -225,6 +240,7 @@ export function assembleClientReportModel(
     hasPerf: perf.hasPerf,
     perfStatus: perf.perfStatus,
     ...(perf.perfScore !== undefined ? { perfScore: perf.perfScore } : {}),
+    perfScoreUsesMobileMeasurementConditions,
     perfCouldNotMeasure: perf.perfCouldNotMeasure,
     perfCards: perf.perfCards,
     perfFine: perf.perfFine,
