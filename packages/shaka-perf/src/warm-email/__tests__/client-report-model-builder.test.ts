@@ -70,7 +70,7 @@ function input(overrides: Partial<ClientReportReportInput> = {}): ClientReportRe
     slowCount: 2,
     jumpyCount: 0,
     measurementConditions: 'Emulated mid-range phone · 390x844 mobile viewport · Slow-4G · Google PageSpeed profile',
-    compactMeasurementConditions: 'Mid-range phone · Slow-4G · PageSpeed profile',
+    compactMeasurementConditions: 'Emulated phone · Slow-4G · PageSpeed profile',
     footnoteThrottle: 'the Slow-4G profile Google PageSpeed uses',
     perf: perf(),
     a11y: a11y(),
@@ -142,7 +142,7 @@ describe('assembleClientReportModel', () => {
       'Emulated mid-range phone · 390x844 mobile viewport · Slow-4G · Google PageSpeed profile',
     );
     expect(withNarrativeOverlay.compactMeasurementConditions).toBe(
-      'Mid-range phone · Slow-4G · PageSpeed profile',
+      'Emulated phone · Slow-4G · PageSpeed profile',
     );
     expect(withNarrativeOverlay.perfScoreUsesMobileMeasurementConditions).toBe(true);
     expect(withNarrativeOverlay.tiles.find((tile) => tile.target === 'perf')).toMatchObject({

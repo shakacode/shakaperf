@@ -1529,7 +1529,7 @@ function footnoteThrottlePhrase(profile: string): string {
 function measurementConditionsLabels(ctx: PerfPromptContext): { full: string; compact: string } {
   return {
     full: `Emulated mid-range phone · ${ctx.viewportLabel} · ${throttlePhrase(ctx.throttleProfile, 'badge')}`,
-    compact: `Mid-range phone · ${throttlePhrase(ctx.throttleProfile, 'compact-badge')}`,
+    compact: `Emulated phone · ${throttlePhrase(ctx.throttleProfile, 'compact-badge')}`,
   };
 }
 

@@ -768,7 +768,7 @@ function model(over: Partial<ClientReportModel> = {}): ClientReportModel {
     dateStr: 'June 24, 2026',
     faviconLinkTag: '',
     measurementConditions: 'Emulated mid-range phone · 390x844 mobile viewport · Slow-4G · Google PageSpeed profile',
-    compactMeasurementConditions: 'Mid-range phone · Slow-4G · PageSpeed profile',
+    compactMeasurementConditions: 'Emulated phone · Slow-4G · PageSpeed profile',
     lede: 'We loaded 6 pages.',
     tiles: [
       { target: 'perf', kicker: 'Mobile speed', status: 'poor', wordTx: 'Slow on phones', metric: '5.3s', metricSub: 'typical wait', conseq: 'They leave.', usesMobileMeasurementConditions: true },
