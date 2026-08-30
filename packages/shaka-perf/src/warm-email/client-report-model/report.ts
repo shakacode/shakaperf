@@ -36,6 +36,8 @@ export interface ClientReportReportInput {
   avgLabel: string;
   slowCount: number;
   jumpyCount: number;
+  measurementConditions: string;
+  compactMeasurementConditions: string;
   footnoteThrottle: string;
   perf: ClientReportPerformanceSection;
   a11y: A11ySection;
@@ -120,6 +122,12 @@ export function assembleClientReportModel(
     const perfMetricSub = perf.perfCouldNotMeasure
       ? 'no usable mobile speed data'
       : dominantPerfTileCopy?.metricSub(input.avgMs !== undefined ? input.avgLabel : undefined) ?? defaultPerfMetricSub;
+    const perfMetric = perf.perfProblemMetricTx ?? (input.avgMs !== undefined ? input.avgLabel : 'n/a');
+    const perfMetricUsesMobileMeasurementConditions = !perf.perfCouldNotMeasure && (
+      perf.perfProblemMetricTx !== undefined
+        ? perf.tilePerfProblem?.problem.kind !== 'layout-shift'
+        : input.avgMs !== undefined
+    );
     const perfConseq = perf.perfCouldNotMeasure
       ? 'The audit did not return enough mobile speed data to make a speed claim.'
       : dominantPerfTileCopy?.conseq ?? defaultPerfConseq;
@@ -128,12 +136,13 @@ export function assembleClientReportModel(
       kicker: perfKicker,
       status: perf.perfStatus,
       wordTx: perfWordTx,
-      metric: perf.perfProblemMetricTx ?? (input.avgMs !== undefined ? input.avgLabel : 'n/a'),
+      metric: perfMetric,
       ...(dominantPerfTileCopy?.benchmarkTx ? { benchmarkTx: dominantPerfTileCopy.benchmarkTx } : {}),
       ...(dominantPerfTileCopy?.benchmarkHtml ? { benchmarkHtml: dominantPerfTileCopy.benchmarkHtml } : {}),
       ...(perf.perfProblemTx ? { problemTx: perf.perfProblemTx } : {}),
       metricSub: perfMetricSub,
       conseq: perfConseq,
+      ...(perfMetricUsesMobileMeasurementConditions ? { usesMobileMeasurementConditions: true } : {}),
       ...(perf.perfCouldNotMeasure ? { blocked: true } : {}),
     });
   }
@@ -208,6 +217,8 @@ export function assembleClientReportModel(
     domain: input.domain,
     dateStr: input.dateStr,
     faviconLinkTag: input.faviconLinkTag,
+    measurementConditions: input.measurementConditions,
+    compactMeasurementConditions: input.compactMeasurementConditions,
     lede,
     tiles,
     tabOrder,

@@ -79,6 +79,7 @@ const COST_TIER_LABEL_WIDTH = 104;
 const COST_TIER_GAP = 16;
 const COST_TIER_CONTENT_OFFSET = 120;
 const DISCLOSURE_INDICATOR = '<span class="cr-disclosure-indicator" aria-hidden="true"><svg viewBox="0 0 12 8" focusable="false"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>';
+const PHONE_GLYPH = '<svg viewBox="0 0 12 18" aria-hidden="true" focusable="false"><rect x="1.25" y=".75" width="9.5" height="16.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"></rect><path d="M4.25 3h3.5M5.25 14.75h1.5" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"></path></svg>';
 
 // ---- model (assembled in client-report.ts) ----
 
@@ -108,6 +109,7 @@ export interface ClientReportFact {
   val: string;
   label: string;
   status: ClientReportStatus;
+  usesMobileMeasurementConditions?: boolean;
 }
 export interface ClientReportPerfCard {
   id: string;
@@ -230,6 +232,7 @@ export interface ClientReportTile {
   problemTx?: string; // the dominant problem in plain words, shown beside the number
   metricSub: string;
   conseq: string;
+  usesMobileMeasurementConditions?: boolean;
   blocked?: boolean; // neutral "could not measure" styling (a bot wall blocked the audit)
 }
 // A page whose audit landed on a bot-protection challenge: shown as "could not
@@ -287,6 +290,8 @@ export interface ClientReportModel {
   domain: string;
   dateStr: string;
   faviconLinkTag: string;
+  measurementConditions: string;
+  compactMeasurementConditions: string;
   lede: string;
   tiles: ClientReportTile[];
   // performance (always present when there are pages)
@@ -359,6 +364,7 @@ const HEAD_STYLE = `
   .cr-calc-teaser[aria-expanded="true"]{display:none!important}
   .cr-blank{border:0;border-bottom:2px solid #bcb3a7;border-radius:0;background:transparent;text-align:center;font:inherit;font-size:15px;font-weight:700;color:#26221d;padding:1px 2px}
   .cr-calculator-card input.cr-blank:focus-visible{outline:0;box-shadow:none;border-color:transparent;border-bottom-color:#26221d!important}
+  .cr-measurement-compact{display:none}
   .cr-band{position:relative;display:inline-flex;cursor:pointer}
   .cr-band input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
   .cr-band span{border:1px solid #d8d0c3;background:#fff;color:#3a352e;border-radius:999px;padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.04em;transition:background .12s ease,color .12s ease,border-color .12s ease}
@@ -381,16 +387,23 @@ const HEAD_STYLE = `
   .cr-lb-prev{left:16px} .cr-lb-next{right:16px}
   .cr-lb-close:hover,.cr-lb-arrow:not(:disabled):hover{background:rgba(255,255,255,.26)}
   .cr-lb-arrow:disabled{opacity:.42;cursor:default}
-  @media print{.cr-disclosure-indicator{display:none!important}.cr-calc-teaser{display:none!important}.cr-calculator-card:has([data-calc-output][hidden]){display:none!important}.cr-calculator-card [data-disclose]{display:none!important}.cr-panel[hidden],[data-disclosure][hidden]{display:block!important}.cr-tabs{display:none!important}.cr-calculator-output[hidden]{display:none!important}.cr-calculator-card:not(.cr-calculator-has-output) .cr-calculator-fields{display:none!important}}
+  @media print{.cr-measurement-badge{display:inline-flex!important}.cr-measurement-full{display:inline!important}.cr-measurement-compact{display:none!important}.cr-disclosure-indicator{display:none!important}.cr-calc-teaser{display:none!important}.cr-calculator-card:has([data-calc-output][hidden]){display:none!important}.cr-calculator-card [data-disclose]{display:none!important}.cr-panel[hidden],[data-disclosure][hidden]{display:block!important}.cr-tabs{display:none!important}.cr-calculator-output[hidden]{display:none!important}.cr-calculator-card:not(.cr-calculator-has-output) .cr-calculator-fields{display:none!important}}
   @media (max-width:760px){
     .cr-tiles{grid-template-columns:1fr!important}
     .cr-wrap h1{font-size:30px!important}
+    .cr-measurement-badge{font-size:9.5px!important;padding:6px 7px!important;gap:5px!important}
+    .cr-measurement-full{display:none}
+    .cr-measurement-compact{display:inline}
     .cr-cost-tier{grid-template-columns:1fr!important;gap:8px!important}
     .cr-cost-tool{margin-left:0!important}
     .cr-cost-tiles{grid-template-columns:1fr 1fr!important}
   }`;
 
 // ---- shared bits ----
+
+function measurementGlyph(size: number): string {
+  return `<span class="cr-measurement-glyph" role="img" aria-label="Mobile measurement conditions" title="Mobile measurement conditions" style="display:inline-flex; width:${size}px; height:${Math.round(size * 1.5)}px; flex:none; color:#6f665c; vertical-align:-2px">${PHONE_GLYPH}</span>`;
+}
 
 function masthead(m: ClientReportModel): string {
   return `  <div style="display:flex; align-items:center; gap:9px; margin-bottom:38px">
@@ -401,7 +414,12 @@ function masthead(m: ClientReportModel): string {
   </div>
 
   <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:#9b9286; margin-bottom:14px">How your site performs for real visitors</div>
-  <h1 style="font-size:40px; line-height:1.08; letter-spacing:-.02em; font-weight:800; margin:0 0 16px; max-width:18ch">${esc(m.domain)}</h1>
+  <h1 style="font-size:40px; line-height:1.08; letter-spacing:-.02em; font-weight:800; margin:0 0 12px; max-width:18ch">${esc(m.domain)}</h1>
+  <div id="cr-measurement-conditions" class="cr-measurement-badge" style="display:inline-flex; align-items:center; gap:7px; max-width:100%; overflow-x:auto; white-space:nowrap; border:1px solid #d8d0c3; border-radius:999px; background:#f0ece4; color:#4a443c; padding:6px 10px; margin:0 0 18px; font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.3; letter-spacing:.01em">
+    <span aria-hidden="true" style="display:inline-flex; width:12px; height:18px; flex:none; color:#4a443c">${PHONE_GLYPH}</span>
+    <span class="cr-measurement-full">${esc(m.measurementConditions)}</span>
+    <span class="cr-measurement-compact">${esc(m.compactMeasurementConditions)}</span>
+  </div>
   <p style="font-size:18px; line-height:1.55; color:#4a443c; margin:0 0 6px; max-width:60ch">${esc(m.lede)}</p>
   ${m.dateStr ? `<p style="font-size:14px; color:#9b9286; margin:10px 0 0; max-width:60ch">A snapshot of the live site on ${esc(m.dateStr)}. If the site has changed since, this may no longer reflect it.</p>` : ''}`;
 }
@@ -415,6 +433,9 @@ function bottomLine(m: ClientReportModel): string {
 
 function tile(t: ClientReportTile): string {
   const p = t.blocked ? NEUTRAL : PAL[t.status];
+  const metric = t.usesMobileMeasurementConditions
+    ? `<div style="display:flex; align-items:center; gap:7px; font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">${esc(t.metric)}${measurementGlyph(11)}</div>`
+    : `<div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">${esc(t.metric)}</div>`;
   const benchmark = t.benchmarkHtml || t.benchmarkTx
     ? `\n        <div style="font-size:12.5px; line-height:1.35; color:#6f665c; margin:-1px 0 5px">${t.benchmarkHtml ?? esc(t.benchmarkTx!)}</div>`
     : '';
@@ -424,7 +445,7 @@ function tile(t: ClientReportTile): string {
   return `      <button type="button" data-jump="${t.target}" class="cr-tile" style="--soft:${p.soft}; text-align:left; cursor:pointer; appearance:none; font-family:inherit; background:#ffffff; border:1px solid ${p.line}; border-top:3px solid ${p.fg}; border-radius:14px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:0">
         <div style="font-size:12px; font-weight:600; letter-spacing:.02em; color:#9b9286; margin-bottom:11px">${esc(t.kicker)}</div>
         <div style="font-size:23px; font-weight:800; letter-spacing:-.02em; color:${p.fg}; line-height:1.05; margin-bottom:13px">${esc(t.wordTx)}</div>
-        <div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">${esc(t.metric)}</div>${benchmark}${problemTx}
+        ${metric}${benchmark}${problemTx}
         <div style="font-size:12.5px; color:#9b9286; margin-bottom:13px">${esc(t.metricSub)}</div>
         <div style="font-size:13.5px; line-height:1.5; color:#4a443c">${esc(t.conseq)}</div>
       </button>`;
@@ -821,9 +842,10 @@ function verdictHead(
   score?: number,
   cost?: ClientReportCostBlock,
   scoreLabel = 'score',
+  usesMobileMeasurementConditions = false,
 ): string {
   const p = blocked ? NEUTRAL : PAL[status];
-  const badge = blocked ? '' : scoreBadge(score, scoreLabel);
+  const badge = blocked ? '' : scoreBadge(score, scoreLabel, usesMobileMeasurementConditions);
   return `    <div style="margin-bottom:30px">
       <div style="font-size:13.5px; font-weight:600; letter-spacing:.01em; color:#9b9286; margin-bottom:6px">${esc(question)}</div>
       <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:10px">
@@ -935,7 +957,7 @@ function perfVideo(c: ClientReportPerfCard): string {
 function perfCard(c: ClientReportPerfCard, index: number): string {
   const p = PAL[c.status];
   const facts = c.facts
-    .map((ft) => `            <div style="font-size:13px; color:#6f665c; background:#f4f1ea; border-radius:8px; padding:6px 11px; white-space:nowrap"><b style="font-weight:700; color:${PAL[ft.status].fg}">${esc(ft.val)}</b> ${esc(ft.label)}</div>`)
+    .map((ft) => `            <div style="font-size:13px; color:#6f665c; background:#f4f1ea; border-radius:8px; padding:6px 11px; white-space:nowrap"><b style="font-weight:700; color:${PAL[ft.status].fg}">${esc(ft.val)}</b>${ft.usesMobileMeasurementConditions ? ` ${measurementGlyph(9)}` : ''} ${esc(ft.label)}</div>`)
     .join('\n');
   const prompt = copyPromptControl(c.copyPrompt, costId('cr', 'perf-card', index, c.id), true);
   const video = perfVideo(c);
@@ -996,7 +1018,7 @@ ${items}
 
 function perfPanel(m: ClientReportModel, multi: boolean, first: boolean): string {
   const needs = m.perfCards.length;
-  const body = `${verdictHead('Is your site fast enough on a phone?', m.perfStatus, m.narrative.perf, m.perfCouldNotMeasure, m.perfScore, m.perfCost)}
+  const body = `${verdictHead('Is your site fast enough on a phone?', m.perfStatus, m.narrative.perf, m.perfCouldNotMeasure, m.perfScore, m.perfCost, 'score', true)}
 ${needs ? sectionKicker(`Needs attention &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.perfCards.map(perfCard).join('\n')}
 ${perfFineList(m.perfFine)}`;
@@ -1027,11 +1049,14 @@ function a11yShot(fr: ClientReportA11yFrame): string {
         </figure>`;
 }
 
-function scoreBadge(score: number | undefined, label = 'score'): string {
+function scoreBadge(score: number | undefined, label = 'score', usesMobileMeasurementConditions = false): string {
   if (typeof score !== 'number' || !Number.isFinite(score)) return '';
   const p = PAL[scoreStatus(score)];
+  const scoreValue = usesMobileMeasurementConditions
+    ? `<div style="display:flex; align-items:center; justify-content:center; gap:5px; font-size:24px; font-weight:800; color:${p.fg}; line-height:1">${score}${measurementGlyph(9)}</div>`
+    : `<div style="font-size:24px; font-weight:800; color:${p.fg}; line-height:1">${score}</div>`;
   return `<div style="flex:none; text-align:center; border:1px solid ${p.line}; background:${p.bg}; border-radius:11px; padding:7px 13px; min-width:62px">
-            <div style="font-size:24px; font-weight:800; color:${p.fg}; line-height:1">${score}</div>
+            ${scoreValue}
             <div style="font-size:9.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#9b9286; margin-top:3px">${esc(label)}</div>
           </div>`;
 }

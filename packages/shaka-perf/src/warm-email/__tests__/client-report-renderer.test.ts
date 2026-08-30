@@ -767,9 +767,11 @@ function model(over: Partial<ClientReportModel> = {}): ClientReportModel {
     domain: 'www.example.com',
     dateStr: 'June 24, 2026',
     faviconLinkTag: '',
+    measurementConditions: 'Emulated mid-range phone · 390x844 mobile viewport · Slow-4G · Google PageSpeed profile',
+    compactMeasurementConditions: 'Mid-range phone emulation · Slow-4G · Google PageSpeed',
     lede: 'We loaded 6 pages.',
     tiles: [
-      { target: 'perf', kicker: 'Mobile speed', status: 'poor', wordTx: 'Slow on phones', metric: '5.3s', metricSub: 'typical wait', conseq: 'They leave.' },
+      { target: 'perf', kicker: 'Mobile speed', status: 'poor', wordTx: 'Slow on phones', metric: '5.3s', metricSub: 'typical wait', conseq: 'They leave.', usesMobileMeasurementConditions: true },
       { target: 'agent', kicker: 'AI visibility', status: 'good', wordTx: 'Good', metric: '85', metricSub: 'out of 100', conseq: 'Ahead.' },
     ],
     hasPerf: true,
@@ -793,7 +795,7 @@ function model(over: Partial<ClientReportModel> = {}): ClientReportModel {
           { key: true, blank: false, beat: 'shift', label: 'Biggest piece', time: '8.2s', imgUri: 'data:image/avif;base64,D', boxes: [{ left: '10%', top: '20%', width: '30%', height: '5%' }] },
         ],
         totalFrames: 10,
-        facts: [{ val: '1.3 MB', label: 'downloaded first', status: 'poor' }, { val: '42/100', label: 'speed score', status: 'poor' }],
+        facts: [{ val: '1.3 MB', label: 'downloaded first', status: 'poor' }, { val: '42/100', label: 'speed score', status: 'poor', usesMobileMeasurementConditions: true }],
         plain: 'Loads extremely slowly.',
       },
     ],
@@ -852,6 +854,14 @@ function renderedPanel(html: string, target: 'perf' | 'a11y' | 'agent'): string 
   return html.slice(start, end);
 }
 
+function renderedMeasurementBadge(html: string): string {
+  const start = html.indexOf('<div id="cr-measurement-conditions"');
+  expect(start).toBeGreaterThanOrEqual(0);
+  const end = html.indexOf('</div>', start);
+  expect(end).toBeGreaterThanOrEqual(0);
+  return html.slice(start, end + '</div>'.length);
+}
+
 function threeTabHeaderModel(over: Partial<ClientReportModel> = {}): ClientReportModel {
   return model({
     hasA11y: true,
@@ -876,6 +886,36 @@ function threeTabHeaderModel(over: Partial<ClientReportModel> = {}): ClientRepor
 }
 
 describe('renderClientReport perf tile assembly', () => {
+  it('puts default mobile measurement conditions near the start when the profile is absent', async () => {
+    const { html, model: reportModel } = await renderClientReport(writePerfResults({
+      LCP: 5300,
+      FCP: 1800,
+      'LH Score': 42,
+    }));
+    const badge = renderedMeasurementBadge(html);
+    const profileOffset = html.indexOf('Slow-4G');
+
+    expect(reportModel.measurementConditions).toBe(
+      'Emulated mid-range phone · mobile viewport · Slow-4G · Google PageSpeed profile',
+    );
+    expect(badge).toContain(reportModel.measurementConditions);
+    expect(badge).not.toContain('<span></span>');
+    expect(profileOffset).toBeGreaterThanOrEqual(0);
+    expect(profileOffset / html.length).toBeLessThan(0.15);
+  });
+
+  it('omits Google PageSpeed from the badge for a custom network profile', async () => {
+    const { html } = await renderClientReport(writePerfResults({
+      LCP: 5300,
+      FCP: 1800,
+      'LH Score': 42,
+    }, { throttleProfile: 'Fast-3G' }));
+    const badge = renderedMeasurementBadge(html);
+
+    expect(badge).toContain('Fast-3G profile');
+    expect(badge).not.toContain('Google PageSpeed');
+  });
+
   it('uses measured numbers when ai_summary is missing and lets AI copy replace the fallback', async () => {
     const metrics = { LCP: 8200, FCP: 1200, TBT: 750, CLS: 31, 'LH Score': 55 };
     const withoutAi = await renderClientReport(writePerfResults(metrics));
@@ -1014,13 +1054,15 @@ describe('renderClientReport perf tile assembly', () => {
         absent: 'A bit slow on phones',
       },
     ],
-  ] as const)('renders the %s dominant problem through the final perf tile', async (_kind, metrics, expected) => {
+  ] as const)('renders the %s dominant problem through the final perf tile', async (kind, metrics, expected) => {
     const { html } = await renderClientReport(writePerfResults(metrics));
     const perfTile = renderedTile(html, 'perf');
     const perfPanelHtml = renderedPanel(html, 'perf');
     expect(perfTile).toContain(expected.kicker);
     expect(perfTile).toContain(expected.wordTx);
-    const metricHtml = `>${expected.metric}</div>`;
+    const metricHtml = kind === 'layout-shift'
+      ? `>${expected.metric}</div>`
+      : `>${expected.metric}<span class="cr-measurement-glyph"`;
     expect(perfTile).toContain(metricHtml);
     if ('benchmarkHtml' in expected) {
       expect(perfTile).toContain(`${metricHtml}
@@ -1040,7 +1082,7 @@ describe('renderClientReport perf tile assembly', () => {
     const perfTile = renderedTile(html, 'perf');
     expect(perfTile).toContain('Mobile speed');
     expect(perfTile).toContain('Fine on phones');
-    expect(perfTile).toContain('>1.9s</div>');
+    expect(perfTile).toContain('>1.9s<span class="cr-measurement-glyph"');
     expect(perfTile).toContain('typical wait before a page is usable');
     expect(perfTile).not.toContain('font-size:13px; line-height:1.35; font-weight:700;');
     expect(perfTile).not.toContain('jumps around');
@@ -1078,6 +1120,7 @@ describe('renderClientReport perf tile assembly', () => {
 
     expect(perfTile).toContain('Layout jumps');
     expect(perfTile).toContain('the layout jumps around');
+    expect(perfTile).not.toContain('cr-measurement-glyph');
     expect(perfTile).not.toContain('Main content is late');
     expect(perfTile).not.toContain('biggest piece takes 3.0s to load');
   });
@@ -1087,7 +1130,7 @@ describe('renderClientReport perf tile assembly', () => {
     const perfTile = renderedTile(html, 'perf');
 
     expect(perfTile).toContain('Slow to react');
-    expect(perfTile).toContain('>0.7s</div>');
+    expect(perfTile).toContain('>0.7s<span class="cr-measurement-glyph"');
     expect(perfTile).toContain('slow to react to taps');
     expect(perfTile).not.toContain('Main content is late');
     expect(perfTile).not.toContain('biggest piece takes 3.5s to load');
@@ -1122,7 +1165,7 @@ describe('renderClientReport perf tile assembly', () => {
 
   it('keeps a zero performance score in the tab header', async () => {
     const { html } = await renderClientReport(writePerfResults({ 'LH Score': 0 }));
-    expect(renderedPanel(html, 'perf')).toContain('<div style="font-size:24px; font-weight:800; color:#c0271f; line-height:1">0</div>');
+    expect(renderedPanel(html, 'perf')).toContain('font-size:24px; font-weight:800; color:#c0271f; line-height:1">0<span class="cr-measurement-glyph"');
   });
 
   it('uses the worst page metric on the tile and labels the site average separately', async () => {
@@ -1131,7 +1174,7 @@ describe('renderClientReport perf tile assembly', () => {
       { id: 'products', name: 'Products', startingPath: '/products', metrics: { LCP: 15400, FCP: 1200, 'LH Score': 35 } },
     ]));
     const perfTile = renderedTile(html, 'perf');
-    expect(perfTile).toContain('>15.4s</div>');
+    expect(perfTile).toContain('>15.4s<span class="cr-measurement-glyph"');
     expect(perfTile).toContain('biggest piece takes 15.4s to load');
     expect(perfTile).toContain('worst page LCP; average LCP is 8.7s');
   });
@@ -1144,7 +1187,7 @@ describe('renderClientReport perf tile assembly', () => {
     const perfTile = renderedTile(html, 'perf');
     const perfPanelHtml = renderedPanel(html, 'perf');
 
-    expect(perfTile).toContain('>15.4s</div>');
+    expect(perfTile).toContain('>15.4s<span class="cr-measurement-glyph"');
     expect(perfTile).toContain('biggest piece takes 15.4s to load');
     expect(perfPanelHtml).toContain('15.4s before your main content appears on a mid-range phone');
     expect(perfPanelHtml).toContain('>Measured</div>');
@@ -1743,26 +1786,53 @@ describe('renderClientReportHtml', () => {
     expect(html).toContain('data-jump="agent"');
   });
 
+  it('renders the one-line measurement badge directly below the domain heading', () => {
+    const m = model();
+    const html = renderClientReportHtml(m);
+    const headingEnd = html.indexOf('</h1>') + '</h1>'.length;
+    const badgeStart = html.indexOf('<div id="cr-measurement-conditions"');
+    const ledeStart = html.indexOf('<p style="font-size:18px;', headingEnd);
+    const badge = renderedMeasurementBadge(html);
+
+    expect(badgeStart).toBeGreaterThan(headingEnd);
+    expect(badgeStart).toBeLessThan(ledeStart);
+    expect(badge).toContain('class="cr-measurement-badge"');
+    expect(badge).toContain('white-space:nowrap');
+    expect(badge).toContain(m.measurementConditions);
+    expect(badge).toContain(m.compactMeasurementConditions);
+    expect(badge).toContain('<svg viewBox="0 0 12 18" aria-hidden="true"');
+    expect(html).toContain('@media print{.cr-measurement-badge{display:inline-flex!important}.cr-measurement-full{display:inline!important}.cr-measurement-compact{display:none!important}');
+    expect(html).not.toMatch(/cr-measurement-badge\{[^}]*display:none/);
+  });
+
+  it('uses short accessible phone glyphs beside time and speed numbers', () => {
+    const html = renderClientReportHtml(model({ perfScore: 42 }));
+    const perfTile = renderedTile(html, 'perf');
+    const perfPanelHtml = renderedPanel(html, 'perf');
+
+    expect(perfTile.match(/class="cr-measurement-glyph"/g)).toHaveLength(1);
+    expect(perfPanelHtml.match(/class="cr-measurement-glyph"/g)).toHaveLength(2);
+    expect(html.match(/aria-label="Mobile measurement conditions"/g)).toHaveLength(3);
+    expect(html).not.toContain(`aria-label="${model().measurementConditions}"`);
+  });
+
   it('renders a perf tile problem phrase between the metric and sub-label', () => {
     const m = model();
     m.tiles[0] = { ...m.tiles[0], problemTx: 'biggest piece takes 15.4s to load' };
     const perfTile = renderedTile(renderClientReportHtml(m), 'perf');
     expect(perfTile).toContain('biggest piece takes 15.4s to load');
-    expect(perfTile).toContain(`<div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">5.3s</div>
-        <div style="font-size:13px; line-height:1.35; font-weight:700; color:#c0271f; margin:2px 0 4px">biggest piece takes 15.4s to load</div>
-        <div style="font-size:12.5px; color:#9b9286; margin-bottom:13px">typical wait</div>`);
+    expect(perfTile).toContain('>5.3s<span class="cr-measurement-glyph"');
+    expect(perfTile.indexOf('cr-measurement-glyph')).toBeLessThan(perfTile.indexOf('biggest piece takes 15.4s to load'));
+    expect(perfTile.indexOf('biggest piece takes 15.4s to load')).toBeLessThan(perfTile.indexOf('typical wait'));
   });
 
-  it('leaves the perf tile byte-identical when no problem phrase is present', () => {
+  it('keeps a problem-free perf tile compact around its measurement glyph', () => {
     const perfTile = renderedTile(renderClientReportHtml(model()), 'perf');
     expect(perfTile).not.toContain('biggest piece takes');
-    expect(perfTile).toBe(`<button type="button" data-jump="perf" class="cr-tile" style="--soft:#fdf0ee; text-align:left; cursor:pointer; appearance:none; font-family:inherit; background:#ffffff; border:1px solid #f0c4bd; border-top:3px solid #c0271f; border-radius:14px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:0">
-        <div style="font-size:12px; font-weight:600; letter-spacing:.02em; color:#9b9286; margin-bottom:11px">Mobile speed</div>
-        <div style="font-size:23px; font-weight:800; letter-spacing:-.02em; color:#c0271f; line-height:1.05; margin-bottom:13px">Slow on phones</div>
-        <div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">5.3s</div>
-        <div style="font-size:12.5px; color:#9b9286; margin-bottom:13px">typical wait</div>
-        <div style="font-size:13.5px; line-height:1.5; color:#4a443c">They leave.</div>
-      </button>`);
+    expect(perfTile.match(/class="cr-measurement-glyph"/g)).toHaveLength(1);
+    expect(perfTile).toContain('>5.3s<span class="cr-measurement-glyph"');
+    expect(perfTile).toContain('>typical wait</div>');
+    expect(perfTile).toContain('>They leave.</div>');
   });
 
   it('shows a tab bar with one button per present section', () => {
@@ -1802,7 +1872,7 @@ describe('renderClientReportHtml', () => {
     expect(html.match(/>Lighthouse<\/div>/g)).toHaveLength(1);
 
     expect(renderedPanel(html, 'perf')).toContain('display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:10px');
-    expect(renderedPanel(html, 'perf')).toContain('<div style="font-size:24px; font-weight:800; color:#c0271f; line-height:1">42</div>');
+    expect(renderedPanel(html, 'perf')).toContain('font-size:24px; font-weight:800; color:#c0271f; line-height:1">42<span class="cr-measurement-glyph"');
     expect(renderedPanel(html, 'a11y')).toContain('<div style="font-size:24px; font-weight:800; color:#2f7d4f; line-height:1">95</div>');
     expect(renderedPanel(html, 'agent')).toContain('<div style="font-size:24px; font-weight:800; color:#a85f00; line-height:1">85</div>');
   });
@@ -1882,7 +1952,7 @@ describe('renderClientReportHtml', () => {
     }
     expect(html).toContain('.cr-cost-chip .cr-disclosure-indicator{width:9px;height:6px}');
     expect(html).toContain('[data-disclose][aria-expanded="true"] .cr-disclosure-indicator{transform:rotate(180deg)}');
-    expect(html).toContain('@media print{.cr-disclosure-indicator{display:none!important}');
+    expect(html).toContain('@media print{.cr-measurement-badge{display:inline-flex!important}.cr-measurement-full{display:inline!important}.cr-measurement-compact{display:none!important}.cr-disclosure-indicator{display:none!important}');
   });
 
   it('synchronizes disclosure controls and retains keyboard focus in the rendered script', () => {

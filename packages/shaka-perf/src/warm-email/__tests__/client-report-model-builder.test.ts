@@ -68,7 +68,9 @@ function input(overrides: Partial<ClientReportReportInput> = {}): ClientReportRe
     avgLabel: '3.1s',
     slowCount: 2,
     jumpyCount: 0,
-    footnoteThrottle: 'Slow-4G',
+    measurementConditions: 'Emulated mid-range phone · 390x844 mobile viewport · Slow-4G · Google PageSpeed profile',
+    compactMeasurementConditions: 'Mid-range phone emulation · Slow-4G · Google PageSpeed',
+    footnoteThrottle: 'the Slow-4G profile Google PageSpeed uses',
     perf: perf(),
     a11y: a11y(),
     hasAgent: true,
@@ -124,5 +126,26 @@ describe('assembleClientReportModel', () => {
     const result = assembleClientReportModel(input(), null);
 
     expect(result.footnote).toContain('Measured on your site - every number links to its source.');
+  });
+
+  it('keeps measurement conditions deterministic when narrative copy changes', () => {
+    const deterministic = assembleClientReportModel(input(), null);
+    const withNarrativeOverlay = assembleClientReportModel(input(), {
+      bottomLine: 'AI supplied bottom line.',
+      perf: { verdictWord: 'AI supplied verdict.' },
+    });
+
+    expect(withNarrativeOverlay.measurementConditions).toBe(deterministic.measurementConditions);
+    expect(withNarrativeOverlay.compactMeasurementConditions).toBe(deterministic.compactMeasurementConditions);
+    expect(withNarrativeOverlay.measurementConditions).toBe(
+      'Emulated mid-range phone · 390x844 mobile viewport · Slow-4G · Google PageSpeed profile',
+    );
+    expect(withNarrativeOverlay.compactMeasurementConditions).toBe(
+      'Mid-range phone emulation · Slow-4G · Google PageSpeed',
+    );
+    expect(withNarrativeOverlay.tiles.find((tile) => tile.target === 'perf')).toMatchObject({
+      metric: '3.1s',
+      usesMobileMeasurementConditions: true,
+    });
   });
 });
