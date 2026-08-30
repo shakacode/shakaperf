@@ -17,6 +17,7 @@ function perf(overrides: Partial<ClientReportPerformanceSection> = {}): ClientRe
   return {
     hasPerf: true,
     perfStatus: 'fair',
+    perfScore: 72,
     perfCouldNotMeasure: false,
     perfCards: [],
     perfFine: [],
@@ -68,7 +69,9 @@ function input(overrides: Partial<ClientReportReportInput> = {}): ClientReportRe
     avgLabel: '3.1s',
     slowCount: 2,
     jumpyCount: 0,
-    footnoteThrottle: 'Slow-4G',
+    measurementConditions: 'Emulated mid-range phone · 390x844 mobile viewport · Slow-4G · Google PageSpeed profile',
+    compactMeasurementConditions: 'Emulated phone · Slow-4G · PageSpeed profile',
+    footnoteThrottle: 'the Slow-4G profile Google PageSpeed uses',
     perf: perf(),
     a11y: a11y(),
     hasAgent: true,
@@ -124,5 +127,37 @@ describe('assembleClientReportModel', () => {
     const result = assembleClientReportModel(input(), null);
 
     expect(result.footnote).toContain('Measured on your site - every number links to its source.');
+  });
+
+  it('keeps measurement conditions deterministic when narrative copy changes', () => {
+    const deterministic = assembleClientReportModel(input(), null);
+    const withNarrativeOverlay = assembleClientReportModel(input(), {
+      bottomLine: 'AI supplied bottom line.',
+      perf: { verdictWord: 'AI supplied verdict.' },
+    });
+
+    expect(withNarrativeOverlay.measurementConditions).toBe(deterministic.measurementConditions);
+    expect(withNarrativeOverlay.compactMeasurementConditions).toBe(deterministic.compactMeasurementConditions);
+    expect(withNarrativeOverlay.measurementConditions).toBe(
+      'Emulated mid-range phone · 390x844 mobile viewport · Slow-4G · Google PageSpeed profile',
+    );
+    expect(withNarrativeOverlay.compactMeasurementConditions).toBe(
+      'Emulated phone · Slow-4G · PageSpeed profile',
+    );
+    expect(withNarrativeOverlay.perfScoreUsesMobileMeasurementConditions).toBe(true);
+    expect(withNarrativeOverlay.tiles.find((tile) => tile.target === 'perf')).toMatchObject({
+      metric: '3.1s',
+      usesMobileMeasurementConditions: true,
+    });
+  });
+
+  it('keeps score glyph policy in the assembled model', () => {
+    const measured = assembleClientReportModel(input(), null);
+    const blocked = assembleClientReportModel(input({
+      perf: perf({ perfCouldNotMeasure: true }),
+    }), null);
+
+    expect(measured.perfScoreUsesMobileMeasurementConditions).toBe(true);
+    expect(blocked.perfScoreUsesMobileMeasurementConditions).toBe(false);
   });
 });

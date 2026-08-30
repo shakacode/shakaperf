@@ -97,6 +97,7 @@ import { buildAgentSection, type AgentPromptContext, type AgentSection } from '.
 import {
   assembleClientReportModel,
   buildClientReportNarrativeFacts,
+  usesMobileMeasurementConditions,
   type ClientReportReportInput,
 } from './client-report-model/report';
 import { dashSafe, liveUrlFor, stripTags } from './client-report-model/shared';
@@ -1319,7 +1320,12 @@ function perfCardModel(rp: RenderedPage, siteUrl: string, promptCtx: PerfPromptC
   const facts: ClientReportPerfCard['facts'] = [];
   if (beforeLcpKb !== undefined) facts.push({ val: mb(beforeLcpKb), label: 'downloaded first', status: cardStatus });
   else if (totalKb !== undefined) facts.push({ val: mb(totalKb), label: 'page weight', status: cardStatus });
-  if (score !== undefined) facts.push({ val: `${Math.round(score)}/100`, label: 'speed score', status: scoreStatus(score) });
+  if (score !== undefined) facts.push({
+    val: `${Math.round(score)}/100`,
+    label: 'speed score',
+    status: scoreStatus(score),
+    usesMobileMeasurementConditions: usesMobileMeasurementConditions('speed-score'),
+  });
   if (clsV !== undefined && clsV > CLS_GOOD) facts.push({ val: (clsV / 100).toFixed(2), label: 'layout-shift score', status: clsStatus(clsV) });
 
   const poster = (rp.shots.find((s) => s.isLcp) ?? rp.shots[rp.shots.length - 1])?.dataUri;
@@ -1503,10 +1509,28 @@ function sameAsPsiDefaultProfile(profile: string | undefined): boolean {
   return normalizedProfile(profile) === normalizedProfile(PSI_DEFAULT_THROTTLE_PROFILE);
 }
 
-function footnoteThrottlePhrase(profile: string): string {
-  return sameAsPsiDefaultProfile(profile)
+function throttlePhrase(profile: string, context: 'badge' | 'compact-badge' | 'footnote'): string {
+  const usesPageSpeedProfile = sameAsPsiDefaultProfile(profile);
+  if (context === 'badge') {
+    return usesPageSpeedProfile ? `${profile} · Google PageSpeed profile` : `${profile} profile`;
+  }
+  if (context === 'compact-badge') {
+    return usesPageSpeedProfile ? `${profile} · PageSpeed profile` : `${profile} profile`;
+  }
+  return usesPageSpeedProfile
     ? `the ${profile} profile Google PageSpeed uses`
     : `the ${profile} profile`;
+}
+
+function footnoteThrottlePhrase(profile: string): string {
+  return throttlePhrase(profile, 'footnote');
+}
+
+function measurementConditionsLabels(ctx: PerfPromptContext): { full: string; compact: string } {
+  return {
+    full: `Emulated mid-range phone · ${ctx.viewportLabel} · ${throttlePhrase(ctx.throttleProfile, 'badge')}`,
+    compact: `Emulated phone · ${throttlePhrase(ctx.throttleProfile, 'compact-badge')}`,
+  };
 }
 
 function perfPageUrl(siteUrl: string, page: PagePerf): string {
@@ -1700,6 +1724,7 @@ async function buildClientReportModel(
     }
   }
 
+  const measurementConditions = measurementConditionsLabels(perfPromptCtx);
   const reportInput: ClientReportReportInput = {
     domain,
     dateStr,
@@ -1709,6 +1734,8 @@ async function buildClientReportModel(
     avgLabel: ctx.avgLabel,
     slowCount: ctx.slowCount,
     jumpyCount: ctx.jumpyCount,
+    measurementConditions: measurementConditions.full,
+    compactMeasurementConditions: measurementConditions.compact,
     footnoteThrottle: footnoteThrottlePhrase(perfPromptCtx.throttleProfile),
     perf,
     a11y,

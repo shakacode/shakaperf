@@ -36,11 +36,22 @@ export interface ClientReportReportInput {
   avgLabel: string;
   slowCount: number;
   jumpyCount: number;
+  measurementConditions: string;
+  compactMeasurementConditions: string;
   footnoteThrottle: string;
   perf: ClientReportPerformanceSection;
   a11y: A11ySection;
   hasAgent: boolean;
   agent: AgentSection;
+}
+
+export type ClientReportMeasurementMetric = 'time' | 'speed-score' | 'other';
+
+export function usesMobileMeasurementConditions(
+  metric: ClientReportMeasurementMetric,
+  measured = true,
+): boolean {
+  return measured && (metric === 'time' || metric === 'speed-score');
 }
 
 export function buildClientReportNarrativeFacts(input: ClientReportReportInput): NarrativeFacts {
@@ -107,6 +118,10 @@ export function assembleClientReportModel(
   const { perf, a11y, agent } = input;
   const narrative = composeNarrative(buildClientReportNarrativeFacts(input), overlay);
   const tiles: ClientReportTile[] = [];
+  const perfScoreUsesMobileMeasurementConditions = usesMobileMeasurementConditions(
+    'speed-score',
+    perf.hasPerf && !perf.perfCouldNotMeasure && perf.perfScore !== undefined,
+  );
   if (perf.hasPerf) {
     const defaultPerfMetricSub = 'typical wait before a page is usable';
     const defaultPerfConseq = perf.perfStatus === 'good'
@@ -120,6 +135,14 @@ export function assembleClientReportModel(
     const perfMetricSub = perf.perfCouldNotMeasure
       ? 'no usable mobile speed data'
       : dominantPerfTileCopy?.metricSub(input.avgMs !== undefined ? input.avgLabel : undefined) ?? defaultPerfMetricSub;
+    const perfMetric = perf.perfProblemMetricTx ?? (input.avgMs !== undefined ? input.avgLabel : 'n/a');
+    const perfMetricMeasurementKind: ClientReportMeasurementMetric = perf.perfProblemMetricTx !== undefined
+      ? perf.tilePerfProblem?.problem.kind === 'layout-shift' ? 'other' : 'time'
+      : input.avgMs !== undefined ? 'time' : 'other';
+    const perfMetricUsesMobileMeasurementConditions = usesMobileMeasurementConditions(
+      perfMetricMeasurementKind,
+      !perf.perfCouldNotMeasure,
+    );
     const perfConseq = perf.perfCouldNotMeasure
       ? 'The audit did not return enough mobile speed data to make a speed claim.'
       : dominantPerfTileCopy?.conseq ?? defaultPerfConseq;
@@ -128,12 +151,13 @@ export function assembleClientReportModel(
       kicker: perfKicker,
       status: perf.perfStatus,
       wordTx: perfWordTx,
-      metric: perf.perfProblemMetricTx ?? (input.avgMs !== undefined ? input.avgLabel : 'n/a'),
+      metric: perfMetric,
       ...(dominantPerfTileCopy?.benchmarkTx ? { benchmarkTx: dominantPerfTileCopy.benchmarkTx } : {}),
       ...(dominantPerfTileCopy?.benchmarkHtml ? { benchmarkHtml: dominantPerfTileCopy.benchmarkHtml } : {}),
       ...(perf.perfProblemTx ? { problemTx: perf.perfProblemTx } : {}),
       metricSub: perfMetricSub,
       conseq: perfConseq,
+      ...(perfMetricUsesMobileMeasurementConditions ? { usesMobileMeasurementConditions: true } : {}),
       ...(perf.perfCouldNotMeasure ? { blocked: true } : {}),
     });
   }
@@ -208,12 +232,15 @@ export function assembleClientReportModel(
     domain: input.domain,
     dateStr: input.dateStr,
     faviconLinkTag: input.faviconLinkTag,
+    measurementConditions: input.measurementConditions,
+    compactMeasurementConditions: input.compactMeasurementConditions,
     lede,
     tiles,
     tabOrder,
     hasPerf: perf.hasPerf,
     perfStatus: perf.perfStatus,
     ...(perf.perfScore !== undefined ? { perfScore: perf.perfScore } : {}),
+    perfScoreUsesMobileMeasurementConditions,
     perfCouldNotMeasure: perf.perfCouldNotMeasure,
     perfCards: perf.perfCards,
     perfFine: perf.perfFine,
