@@ -15,7 +15,7 @@ import { composeNarrative, type Dim, type NarrativeFacts, type NarrativeOverlay 
 import { dimSeverityRank, type PerfCostAssembly, type PerfCostPage } from './cost';
 import type { A11ySection } from './a11y';
 import type { AgentSection } from './ai';
-import { perfProblemTileCopy } from './perf';
+import { PERF_SECTION_KICKER, perfProblemTileCopy } from './perf';
 import { stripTags } from './shared';
 
 export interface ClientReportPerformanceSection extends PerfCostAssembly {
@@ -128,7 +128,6 @@ export function assembleClientReportModel(
       ? 'Pages load fine on a phone, so visitors are not lost to waiting.'
       : `Phone visitors wait around ${input.avgMs !== undefined ? input.avgLabel : 'several seconds'} - long enough that many leave first.`;
     const dominantPerfTileCopy = perf.tilePerfProblem ? perfProblemTileCopy(perf.tilePerfProblem.problem) : undefined;
-    const perfKicker = dominantPerfTileCopy?.kicker ?? 'Mobile speed';
     const perfWordTx = perf.perfCouldNotMeasure
       ? 'Could not measure'
       : dominantPerfTileCopy?.wordTx ?? narrative.perf.verdictWord;
@@ -148,7 +147,7 @@ export function assembleClientReportModel(
       : dominantPerfTileCopy?.conseq ?? defaultPerfConseq;
     tiles.push({
       target: 'perf',
-      kicker: perfKicker,
+      kicker: PERF_SECTION_KICKER,
       status: perf.perfStatus,
       wordTx: perfWordTx,
       metric: perfMetric,

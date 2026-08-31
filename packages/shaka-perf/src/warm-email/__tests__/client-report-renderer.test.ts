@@ -565,8 +565,8 @@ describe('perfProblemTileCopy', () => {
     [
       'slow-lcp',
       {
-        kicker: 'Mobile loading',
-        wordTx: 'Main content is late',
+        kicker: 'Performance',
+        wordTx: 'Loading: Main content is late',
         metricSub: 'worst page LCP; average LCP is 5.3s',
         conseq: 'The page starts, but the main content lands late enough that visitors may give up.',
       },
@@ -574,8 +574,8 @@ describe('perfProblemTileCopy', () => {
     [
       'layout-shift',
       {
-        kicker: 'Mobile stability',
-        wordTx: 'Layout jumps',
+        kicker: 'Performance',
+        wordTx: 'Stability: Layout jumps',
         benchmarkTx: 'Google target: 0.10 or less; poor over 0.25.',
         benchmarkHtml: 'Google target: <span style="color:#2f7d4f; font-weight:700">0.10</span> or less; poor over <span style="color:#c0271f; font-weight:700">0.25</span>.',
         metricSub: 'worst page layout-shift score; average LCP is 5.3s',
@@ -585,8 +585,8 @@ describe('perfProblemTileCopy', () => {
     [
       'blank',
       {
-        kicker: 'Mobile loading',
-        wordTx: 'Blank screen first',
+        kicker: 'Performance',
+        wordTx: 'Loading: Blank screen first',
         metricSub: 'worst page first paint; average LCP is 5.3s',
         conseq: 'A visitor sees nothing at first, which can read as a broken page.',
       },
@@ -594,8 +594,8 @@ describe('perfProblemTileCopy', () => {
     [
       'late-paint',
       {
-        kicker: 'Mobile loading',
-        wordTx: 'Slow first paint',
+        kicker: 'Performance',
+        wordTx: 'Loading: Slow first paint',
         metricSub: 'worst page first paint; average LCP is 5.3s',
         conseq: 'The first pixels arrive late, so the page feels stalled before it starts.',
       },
@@ -603,8 +603,8 @@ describe('perfProblemTileCopy', () => {
     [
       'sluggish',
       {
-        kicker: 'Mobile response',
-        wordTx: 'Slow to react',
+        kicker: 'Performance',
+        wordTx: 'Response: Slow to react',
         metricSub: 'worst page blocking time; average LCP is 5.3s',
         conseq: 'The page may look loaded, but taps and scrolls can lag behind the visitor.',
       },
@@ -771,7 +771,7 @@ function model(over: Partial<ClientReportModel> = {}): ClientReportModel {
     compactMeasurementConditions: 'Emulated phone · Slow-4G · PageSpeed profile',
     lede: 'We loaded 6 pages.',
     tiles: [
-      { target: 'perf', kicker: 'Mobile speed', status: 'poor', wordTx: 'Slow on phones', metric: '5.3s', metricSub: 'typical wait', conseq: 'They leave.', usesMobileMeasurementConditions: true },
+      { target: 'perf', kicker: 'Performance', status: 'poor', wordTx: 'Loading: Slow on phones', metric: '5.3s', metricSub: 'typical wait', conseq: 'They leave.', usesMobileMeasurementConditions: true },
       { target: 'agent', kicker: 'AI visibility', status: 'good', wordTx: 'Good', metric: '85', metricSub: 'out of 100', conseq: 'Ahead.' },
     ],
     hasPerf: true,
@@ -878,7 +878,7 @@ function threeTabHeaderModel(over: Partial<ClientReportModel> = {}): ClientRepor
     agentBlocked: [],
     agentCouldNotMeasure: false,
     tiles: [
-      { target: 'perf', kicker: 'Mobile speed', status: 'poor', wordTx: 'Slow on phones', metric: '5.3s', metricSub: 'typical wait', conseq: 'They leave.' },
+      { target: 'perf', kicker: 'Performance', status: 'poor', wordTx: 'Loading: Slow on phones', metric: '5.3s', metricSub: 'typical wait', conseq: 'They leave.' },
       { target: 'a11y', kicker: 'Accessibility', status: 'fair', wordTx: 'Needs work', metric: '2', metricSub: 'high-impact issues', conseq: 'Some visitors struggle.' },
       { target: 'agent', kicker: 'AI visibility', status: 'good', wordTx: 'Good', metric: '85', metricSub: 'out of 100', conseq: 'Ahead.' },
     ],
@@ -1008,8 +1008,8 @@ describe('renderClientReport perf tile assembly', () => {
       'slow-lcp',
       { LCP: 15400, FCP: 1500, 'LH Score': 35 },
       {
-        kicker: 'Mobile loading',
-        wordTx: 'Main content is late',
+        kicker: 'Performance',
+        wordTx: 'Loading: Main content is late',
         metric: '15.4s',
         problemTx: 'biggest piece takes 15.4s to load',
         metricSub: 'worst page LCP; average LCP is 15.4s',
@@ -1020,8 +1020,8 @@ describe('renderClientReport perf tile assembly', () => {
       'layout-shift',
       { LCP: 1800, FCP: 900, CLS: 45, 'LH Score': 91 },
       {
-        kicker: 'Mobile stability',
-        wordTx: 'Layout jumps',
+        kicker: 'Performance',
+        wordTx: 'Stability: Layout jumps',
         metric: '0.45',
         benchmarkTx: 'Google target: 0.10 or less; poor over 0.25.',
         benchmarkHtml: 'Google target: <span style="color:#2f7d4f; font-weight:700">0.10</span> or less; poor over <span style="color:#c0271f; font-weight:700">0.25</span>.',
@@ -1034,8 +1034,8 @@ describe('renderClientReport perf tile assembly', () => {
       'blank',
       { LCP: 9800, FCP: 9200, 'LH Score': 30 },
       {
-        kicker: 'Mobile loading',
-        wordTx: 'Blank screen first',
+        kicker: 'Performance',
+        wordTx: 'Loading: Blank screen first',
         metric: '9.2s',
         problemTx: 'screen stays blank for 9.2s',
         metricSub: 'worst page first paint; average LCP is 9.8s',
@@ -1046,8 +1046,8 @@ describe('renderClientReport perf tile assembly', () => {
       'late-paint',
       { LCP: 4300, FCP: 4100, 'LH Score': 55 },
       {
-        kicker: 'Mobile loading',
-        wordTx: 'Slow first paint',
+        kicker: 'Performance',
+        wordTx: 'Loading: Slow first paint',
         metric: '4.1s',
         problemTx: 'nothing appears for 4.1s',
         metricSub: 'worst page first paint; average LCP is 4.3s',
@@ -1058,15 +1058,15 @@ describe('renderClientReport perf tile assembly', () => {
       'sluggish',
       { LCP: 1900, FCP: 900, TBT: 2000, 'LH Score': 88 },
       {
-        kicker: 'Mobile response',
-        wordTx: 'Slow to react',
+        kicker: 'Performance',
+        wordTx: 'Response: Slow to react',
         metric: '2.0s',
         problemTx: 'slow to react to taps',
         metricSub: 'worst page blocking time; average LCP is 1.9s',
         absent: 'A bit slow on phones',
       },
     ],
-  ] as const)('renders the %s dominant problem through the final perf tile', async (kind, metrics, expected) => {
+  ] as const)('renders the %s dominant problem below the shared Performance kicker', async (kind, metrics, expected) => {
     const { html } = await renderClientReport(writePerfResults(metrics));
     const perfTile = renderedTile(html, 'perf');
     const perfPanelHtml = renderedPanel(html, 'perf');
@@ -1092,7 +1092,7 @@ describe('renderClientReport perf tile assembly', () => {
   it('keeps a clean assembled perf tile generic and without a problem line', async () => {
     const { html } = await renderClientReport(writePerfResults({ LCP: 1900, FCP: 800, CLS: 1, TBT: 50, 'LH Score': 98 }));
     const perfTile = renderedTile(html, 'perf');
-    expect(perfTile).toContain('Mobile speed');
+    expect(perfTile).toContain('Performance');
     expect(perfTile).toContain('Fine on phones');
     expect(perfTile).toContain('>1.9s<span class="cr-measurement-glyph"');
     expect(perfTile).toContain('typical wait before a page is usable');
@@ -1108,7 +1108,7 @@ describe('renderClientReport perf tile assembly', () => {
     expect(html).toContain('The biggest piece of the page takes <strong>3.7s</strong> to appear');
     expect(html).toContain('page cards still show');
     expect(html).not.toContain('Every check we could run looks healthy');
-    expect(perfTile).toContain('Mobile speed');
+    expect(perfTile).toContain('Performance');
     expect(perfTile).toContain('Fine on phones');
     expect(perfTile).toContain('Pages load fine on a phone');
     expect(perfTile).not.toContain('Main content is late');
@@ -1164,7 +1164,7 @@ describe('renderClientReport perf tile assembly', () => {
     const { html } = await renderClientReport(writePerfResults({}));
     const perfTile = renderedTile(html, 'perf');
     const perfPanelHtml = renderedPanel(html, 'perf');
-    expect(perfTile).toContain('Mobile speed');
+    expect(perfTile).toContain('Performance');
     expect(perfTile).toContain('Could not measure');
     expect(perfTile).toContain('>n/a</div>');
     expect(perfTile).toContain('no usable mobile speed data');
@@ -1848,8 +1848,8 @@ describe('renderClientReportHtml', () => {
     expect(perfTile).not.toContain('biggest piece takes');
     expect(perfTile.match(/class="cr-measurement-glyph"/g)).toHaveLength(1);
     expect(perfTile).toBe(`<button type="button" data-jump="perf" class="cr-tile" style="--soft:#fdf0ee; text-align:left; cursor:pointer; appearance:none; font-family:inherit; background:#ffffff; border:1px solid #f0c4bd; border-top:3px solid #c0271f; border-radius:14px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:0">
-        <div style="font-size:12px; font-weight:600; letter-spacing:.02em; color:#9b9286; margin-bottom:11px">Mobile speed</div>
-        <div style="font-size:23px; font-weight:800; letter-spacing:-.02em; color:#c0271f; line-height:1.05; margin-bottom:13px">Slow on phones</div>
+        <div style="font-size:12px; font-weight:600; letter-spacing:.02em; color:#9b9286; margin-bottom:11px">Performance</div>
+        <div style="font-size:23px; font-weight:800; letter-spacing:-.02em; color:#c0271f; line-height:1.05; margin-bottom:13px">Loading: Slow on phones</div>
         <div style="display:flex; align-items:center; gap:7px; font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">5.3s${glyph}</div>
         <div style="font-size:12.5px; color:#9b9286; margin-bottom:13px">typical wait</div>
         <div style="font-size:13.5px; line-height:1.5; color:#4a443c">They leave.</div>
@@ -2130,7 +2130,7 @@ describe('renderClientReportHtml', () => {
       a11yBlocked: [{ name: 'Homepage', path: '/' }, { name: 'Album', path: '/albums/x' }],
       a11yCouldNotMeasure: true,
       tiles: [
-        { target: 'perf', kicker: 'Mobile speed', status: 'poor', wordTx: 'Slow on phones', metric: '5.3s', metricSub: 'typical wait', conseq: 'They leave.' },
+        { target: 'perf', kicker: 'Performance', status: 'poor', wordTx: 'Loading: Slow on phones', metric: '5.3s', metricSub: 'typical wait', conseq: 'They leave.' },
         { target: 'a11y', kicker: 'Accessibility', status: 'good', wordTx: 'Could not measure', metric: 'n/a', metricSub: '2 pages blocked by bot protection', conseq: 'Bot protection served a challenge page.', blocked: true },
       ],
       narrative: {
@@ -2159,7 +2159,7 @@ describe('renderClientReportHtml', () => {
       agentBlocked: [{ name: 'Homepage', path: '/' }],
       agentCouldNotMeasure: true,
       tiles: [
-        { target: 'perf', kicker: 'Mobile speed', status: 'poor', wordTx: 'Slow on phones', metric: '5.3s', metricSub: 'typical wait', conseq: 'They leave.' },
+        { target: 'perf', kicker: 'Performance', status: 'poor', wordTx: 'Loading: Slow on phones', metric: '5.3s', metricSub: 'typical wait', conseq: 'They leave.' },
         { target: 'agent', kicker: 'AI visibility', status: 'good', wordTx: 'Could not measure', metric: 'n/a', metricSub: '1 page blocked by bot protection', conseq: 'Bot protection served a challenge page.', blocked: true },
       ],
       narrative: {
