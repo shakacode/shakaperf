@@ -72,6 +72,28 @@ describe('accessibility compare classification', () => {
     });
   });
 
+  it('renders no artifact when the comparison found nothing to report', () => {
+    const stage = new AccessibilityCompareStage(TEST_STAGE_CONFIG);
+    const control = scan('control', []);
+    const experiment = scan('experiment', []);
+    const measurement = {
+      control,
+      experiment,
+      effectiveConfig: { tags: ['wcag2aa'], disableRules: [], includeRules: null },
+      failOnViolation: true,
+      findings: [],
+      summary: summarizeFindings([], control, experiment),
+    };
+
+    // An empty element here would render as a blank section inside an
+    // otherwise empty card; null lets the report drop both.
+    expect(stage.renderArtifacts([{ measurement, viewport: DESKTOP_VIEWPORT }])).toBeNull();
+    expect(stage.renderArtifacts([{
+      measurement: { ...measurement, findings: [compareFinding({ ruleId: 'button-name', tags: [] })] },
+      viewport: DESKTOP_VIEWPORT,
+    }])).not.toBeNull();
+  });
+
   it('applies to every test — opting out is testTypes-owned', () => {
     const stage = new AccessibilityCompareStage(TEST_STAGE_CONFIG);
 

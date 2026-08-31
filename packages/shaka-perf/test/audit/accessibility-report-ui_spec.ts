@@ -10,7 +10,12 @@ import * as path from 'path';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
-import { App, buildStageFilterOptions } from '../../report-shell/src/App';
+import {
+  App,
+  buildStageFilterOptions,
+  isEmptiedByStageFilter,
+  stagesThatRender,
+} from '../../report-shell/src/App';
 import { toggleStageInSelection } from '../../report-shell/src/components/StageFilter';
 import type { ReportData } from '../../src/pipeline/report';
 import {
@@ -66,6 +71,55 @@ describe('accessibility report UI filters', () => {
     expect(html).toContain('build_annotated_timeline is not present in this report');
     expect(html).toContain('ai_summary is not present in this report');
     expect(html).toContain('disabled=""');
+  });
+
+  it('drops a card once the report-sections filter hides every section it has', () => {
+    const data = reportData(accessibilityResult({
+      violations: [violation('button-name', ['wcag2a'])],
+    }));
+    const rendered = stagesThatRender(data.meta, data.tests[0]);
+    const sections = new Set(['accessibility']);
+
+    expect([...rendered]).toEqual(['accessibility']);
+    expect(isEmptiedByStageFilter(rendered, sections, sections)).toBe(false);
+    expect(isEmptiedByStageFilter(rendered, new Set(), sections)).toBe(true);
+  });
+
+  it('counts a skipped stage as no section, so leaving it checked cannot save a card', () => {
+    const data = reportData(accessibilityResult({
+      violations: [violation('button-name', ['wcag2a'])],
+    }));
+    data.tests[0].outcomes.push({
+      kind: 'skipped',
+      stage: 'audit',
+      viewport: DESKTOP_VIEWPORT,
+      reason: 'skipped by --categories accessibility',
+    });
+    const rendered = stagesThatRender(data.meta, data.tests[0]);
+
+    expect([...rendered]).toEqual(['accessibility']);
+    expect(isEmptiedByStageFilter(
+      rendered,
+      new Set(['audit']),
+      new Set(['accessibility', 'audit']),
+    )).toBe(true);
+  });
+
+  it('keeps a card that renders nothing for reasons other than the sections filter', () => {
+    const data = reportData(accessibilityResult({
+      violations: [violation('button-name', ['wcag2a'])],
+    }));
+    // Nothing renders at all, so the filter cannot be what emptied this card.
+    data.tests[0].outcomes = [{
+      kind: 'skipped',
+      stage: 'audit',
+      viewport: DESKTOP_VIEWPORT,
+      reason: 'skipped by --categories accessibility',
+    }];
+    const rendered = stagesThatRender(data.meta, data.tests[0]);
+
+    expect([...rendered]).toEqual([]);
+    expect(isEmptiedByStageFilter(rendered, new Set(), new Set(['accessibility']))).toBe(false);
   });
 
   it('fails loud for an unreconstructable pipeline rather than silently degrading', () => {
