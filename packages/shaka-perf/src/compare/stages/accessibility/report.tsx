@@ -490,16 +490,27 @@ interface RuleFindingGroup {
   tags: string[];
 }
 
+/**
+ * The viewports worth showing: a comparison that found nothing renders no
+ * section at all. The stage checks this before building the element so the
+ * report can tell an empty section from a missing one.
+ */
+export function accessibilityCompareRows(
+  measurements: readonly StageRenderEntry<AccessibilityCompareResult>[],
+): readonly StageRenderEntry<AccessibilityCompareResult>[] {
+  return measurements.filter((entry) =>
+    entry.measurement.summary.errors > 0 ||
+    entry.measurement.summary.blocked > 0 ||
+    entry.measurement.findings.length > 0,
+  );
+}
+
 export function AccessibilityCompareArtifactView({
   measurements,
 }: {
   measurements: readonly StageRenderEntry<AccessibilityCompareResult>[];
 }) {
-  const rows = measurements.filter((entry) =>
-    entry.measurement.summary.errors > 0 ||
-    entry.measurement.summary.blocked > 0 ||
-    entry.measurement.findings.length > 0,
-  );
+  const rows = accessibilityCompareRows(measurements);
   if (rows.length === 0) return null;
 
   return (
