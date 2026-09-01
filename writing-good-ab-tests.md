@@ -497,3 +497,23 @@ abTest('Consumer App Menu - Material Menu Tabs Layout Tab Switch', /* … */);
 
 When you add a variant of an existing test, rename the original rather than extending its name.
 
+
+## Declare the viewport you need; never resize mid-test
+
+Dynamic resizing causes all kinds of flakiness and kill LH measurements.
+
+### BAD — grow the viewport at runtime to trip lazy loading
+
+```typescript
+const viewport = page.viewportSize();
+await page.setViewportSize({ width: viewport.width, height: 6000 }); // everything reflows
+await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+await page.setViewportSize(viewport);                                // and reflows back
+```
+
+### GOOD — declare it once, so both sides render at that size from the first paint
+
+```typescript
+// abtests.config.ts
+viewportDefinitions: [{ ...DESKTOP_VIEWPORT, height: 6000 }, { ...PHONE_VIEWPORT, height: 6000 }],
+```
