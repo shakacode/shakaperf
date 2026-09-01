@@ -30,6 +30,7 @@ import type { WorkerPool } from '../../../pipeline/worker-pool';
 import { StageFailureError, findFailureMediaName } from '../../../stage/stage-failure';
 import type { ArtifactScope } from '../../../pipeline/artifact-store';
 import { safeReaddir } from '../../../pipeline/path-utils';
+import { generatePerformanceProfileTimeline } from './performance-profile-timeline';
 import { classifyMetric, levelForMetric } from './metrics';
 import type { AuditMetric, AuditResult, AuditStageConfig } from './stage';
 import { realChromeUsesNativeIdentity } from '../../real-chrome';
@@ -184,6 +185,7 @@ export async function runAuditStage(
   return readAuditArtifact({
     artifacts: ctx.artifacts,
     metrics,
+    title: `${ctx.test.name} · ${ctx.viewport.label}`,
   });
 }
 
@@ -224,6 +226,7 @@ function printAuditLevels(ctx: TestContext, metrics: readonly AuditMetric[]): vo
 interface ReadAuditArtifactOptions {
   artifacts: ArtifactScope;
   metrics: AuditMetric[];
+  title: string;
 }
 
 async function readAuditArtifact(opts: ReadAuditArtifactOptions): Promise<AuditResult> {
@@ -232,6 +235,24 @@ async function readAuditArtifact(opts: ReadAuditArtifactOptions): Promise<AuditR
   const artifact: AuditResult = {
     metrics: opts.metrics,
   };
+
+  const profileTrace = files.find((f) => f === 'experiment_performance_profile.json');
+  if (profileTrace) {
+    const timelineFile = 'experiment_performance_profile_timeline.html';
+    try {
+      generatePerformanceProfileTimeline({
+        profilePath: path.join(opts.artifacts.dir, profileTrace),
+        outputPath: path.join(opts.artifacts.dir, timelineFile),
+        title: opts.title,
+      });
+      artifact.performanceProfileHref = opts.artifacts.pathFor(timelineFile);
+    } catch (err) {
+      // A trace we cannot parse costs the report one button, not the run.
+      console.log(chalk.dim(`performance profile timeline skipped: ${(err as Error).message}`));
+    }
+  }
+  const networkActivity = files.find((f) => f === 'experiment_network_activity.txt');
+  if (networkActivity) artifact.networkActivityHref = opts.artifacts.pathFor(networkActivity);
 
   if (experimentLh) {
     const fullPath = path.join(opts.artifacts.dir, experimentLh);
