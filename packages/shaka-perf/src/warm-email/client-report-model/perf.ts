@@ -226,7 +226,6 @@ export type PerfProblemKind = typeof PERF_PROBLEM_KINDS[number];
 export const PROBLEM_KINDS: ReadonlySet<ProblemKind> = new Set<ProblemKind>(PERF_PROBLEM_KINDS);
 
 export interface PerfProblemTileCopy {
-  kicker: string;
   wordTx: string;
   benchmarkTx?: string;
   benchmarkHtml?: string;
@@ -234,7 +233,7 @@ export interface PerfProblemTileCopy {
   conseq: string;
 }
 
-interface PerfProblemCopy extends Omit<PerfProblemTileCopy, 'kicker'> {
+interface PerfProblemCopy extends PerfProblemTileCopy {
   phrase: (page: PagePerf) => string | undefined;
   metric: (page: PagePerf) => string | undefined;
 }
@@ -320,7 +319,6 @@ export function perfProblemTileCopy(lead: Problem): PerfProblemTileCopy | undefi
   if (!isPerfProblemKind(lead.kind)) return undefined;
   const copy = PERF_PROBLEM_COPY[lead.kind];
   return {
-    kicker: PERF_SECTION_KICKER,
     wordTx: copy.wordTx,
     ...(copy.benchmarkTx ? { benchmarkTx: copy.benchmarkTx } : {}),
     ...(copy.benchmarkHtml ? { benchmarkHtml: copy.benchmarkHtml } : {}),

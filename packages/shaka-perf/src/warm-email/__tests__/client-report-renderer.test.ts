@@ -50,6 +50,7 @@ import {
   type ClientReportPagePerfStatusInput,
 } from '../client-report';
 import {
+  PERF_SECTION_KICKER,
   isPerfCostProblem,
   perfAffectsProse,
   perfCostCopyPromptEnabled,
@@ -565,7 +566,6 @@ describe('perfProblemTileCopy', () => {
     [
       'slow-lcp',
       {
-        kicker: 'Performance',
         wordTx: 'Loading: Main content is late',
         metricSub: 'worst page LCP; average LCP is 5.3s',
         conseq: 'The page starts, but the main content lands late enough that visitors may give up.',
@@ -574,7 +574,6 @@ describe('perfProblemTileCopy', () => {
     [
       'layout-shift',
       {
-        kicker: 'Performance',
         wordTx: 'Stability: Layout jumps',
         benchmarkTx: 'Google target: 0.10 or less; poor over 0.25.',
         benchmarkHtml: 'Google target: <span style="color:#2f7d4f; font-weight:700">0.10</span> or less; poor over <span style="color:#c0271f; font-weight:700">0.25</span>.',
@@ -585,7 +584,6 @@ describe('perfProblemTileCopy', () => {
     [
       'blank',
       {
-        kicker: 'Performance',
         wordTx: 'Loading: Blank screen first',
         metricSub: 'worst page first paint; average LCP is 5.3s',
         conseq: 'A visitor sees nothing at first, which can read as a broken page.',
@@ -594,7 +592,6 @@ describe('perfProblemTileCopy', () => {
     [
       'late-paint',
       {
-        kicker: 'Performance',
         wordTx: 'Loading: Slow first paint',
         metricSub: 'worst page first paint; average LCP is 5.3s',
         conseq: 'The first pixels arrive late, so the page feels stalled before it starts.',
@@ -603,7 +600,6 @@ describe('perfProblemTileCopy', () => {
     [
       'sluggish',
       {
-        kicker: 'Performance',
         wordTx: 'Response: Slow to react',
         metricSub: 'worst page blocking time; average LCP is 5.3s',
         conseq: 'The page may look loaded, but taps and scrolls can lag behind the visitor.',
@@ -840,6 +836,15 @@ function renderedTile(html: string, target: 'perf' | 'a11y' | 'agent'): string {
   const start = html.indexOf(`<button type="button" data-jump="${target}"`);
   expect(start).toBeGreaterThanOrEqual(0);
   const close = '      </button>';
+  const end = html.indexOf(close, start);
+  expect(end).toBeGreaterThanOrEqual(0);
+  return html.slice(start, end + close.length);
+}
+
+function renderedTab(html: string, target: 'perf' | 'a11y' | 'agent'): string {
+  const start = html.indexOf(`<button type="button" class="cr-tab" data-tab="${target}"`);
+  expect(start).toBeGreaterThanOrEqual(0);
+  const close = '    </button>';
   const end = html.indexOf(close, start);
   expect(end).toBeGreaterThanOrEqual(0);
   return html.slice(start, end + close.length);
@@ -1858,7 +1863,8 @@ describe('renderClientReportHtml', () => {
 
   it('shows a tab bar with one button per present section', () => {
     const html = renderClientReportHtml(model());
-    expect(html).toContain('data-tab="perf"');
+    expect(renderedTab(html, 'perf')).toContain(`</span>${PERF_SECTION_KICKER}`);
+    expect(renderedTile(html, 'perf')).toContain(`>${PERF_SECTION_KICKER}</div>`);
     expect(html).toContain('data-tab="agent"');
     expect(html).not.toContain('data-tab="a11y"'); // a11y absent in this model
   });

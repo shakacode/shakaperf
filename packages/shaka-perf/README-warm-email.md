@@ -27,7 +27,7 @@ The same saved audit feeds two reports:
 ### Design
 
 `client-report` renders the current product-owner-first report: a one-line
-"bottom line", three status tiles (Mobile speed / Accessibility / AI
+"bottom line", three status tiles (Performance / Accessibility / AI
 visibility), and three tabs whose cards lead with a plain-language verdict before
 any numbers. It reuses the saved audit data (frames, video, a11y crops + scores,
 agent factors, and the per-page AI summaries) - no new metrics are collected.
