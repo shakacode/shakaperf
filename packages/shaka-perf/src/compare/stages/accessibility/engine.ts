@@ -170,6 +170,7 @@ async function scanSide(
 interface GroupedFinding {
   ruleId: string;
   side: AccessibilityFindingSide;
+  stableSignature: string;
 }
 
 export function compareScans(
@@ -178,10 +179,10 @@ export function compareScans(
 ): AccessibilityCompareFinding[] {
   const controlMap = groupViolations(control.violations);
   const experimentMap = groupViolations(experiment.violations);
-  const signatures = [...new Set([...controlMap.keys(), ...experimentMap.keys()])].sort();
-  return signatures.map((signature) => {
-    const controlEntry = controlMap.get(signature);
-    const experimentEntry = experimentMap.get(signature);
+  return matchSignatures(controlMap, experimentMap).map((pair) => {
+    const controlEntry = pair.control == null ? undefined : controlMap.get(pair.control);
+    const experimentEntry = pair.experiment == null ? undefined : experimentMap.get(pair.experiment);
+    const signature = pair.experiment ?? pair.control!;
     const ruleId = experimentEntry?.ruleId ?? controlEntry!.ruleId;
     const status = !controlEntry
       ? 'new'
@@ -207,12 +208,65 @@ export function compareScans(
   });
 }
 
+interface SignaturePair {
+  control?: string;
+  experiment?: string;
+}
+
+/**
+ * Pairs each control finding with its experiment counterpart. Exact target
+ * matches are taken first; only what is left over is paired on the stable
+ * key, so a generated class name no longer splits one violation into a
+ * phantom `fixed` + `new`, while two distinct elements that merely look alike
+ * once their generated names are stripped stay separate.
+ */
+function matchSignatures(
+  controlMap: Map<string, GroupedFinding>,
+  experimentMap: Map<string, GroupedFinding>,
+): SignaturePair[] {
+  const pairs: SignaturePair[] = [];
+  const controlLeft = new Set([...controlMap.keys()].sort());
+  const experimentLeft = new Set([...experimentMap.keys()].sort());
+
+  for (const signature of [...controlLeft]) {
+    if (!experimentLeft.has(signature)) continue;
+    pairs.push({ control: signature, experiment: signature });
+    controlLeft.delete(signature);
+    experimentLeft.delete(signature);
+  }
+
+  const experimentByStableKey = new Map<string, string[]>();
+  for (const signature of experimentLeft) {
+    const key = experimentMap.get(signature)!.stableSignature;
+    const bucket = experimentByStableKey.get(key);
+    if (bucket) bucket.push(signature);
+    else experimentByStableKey.set(key, [signature]);
+  }
+
+  for (const signature of controlLeft) {
+    const key = controlMap.get(signature)!.stableSignature;
+    const match = experimentByStableKey.get(key)?.shift();
+    if (match == null) {
+      pairs.push({ control: signature });
+      continue;
+    }
+    experimentLeft.delete(match);
+    pairs.push({ control: signature, experiment: match });
+  }
+  for (const signature of experimentLeft) pairs.push({ experiment: signature });
+
+  return pairs.sort((a, b) =>
+    (a.experiment ?? a.control!).localeCompare(b.experiment ?? b.control!),
+  );
+}
+
 function groupViolations(violations: AccessibilityViolation[]): Map<string, GroupedFinding> {
   const grouped = new Map<string, GroupedFinding>();
   for (const violation of violations) {
     for (const node of violation.nodes) {
       const signature = `${violation.ruleId}|${targetKey(node.target)}`;
       const existing = grouped.get(signature);
+      const stableSignature = `${violation.ruleId}|${stableTargetKey(node.target)}`;
       const side = existing?.side ?? {
         impact: violation.impact,
         help: violation.help,
@@ -231,6 +285,7 @@ function groupViolations(violations: AccessibilityViolation[]): Map<string, Grou
       grouped.set(signature, {
         ruleId: violation.ruleId,
         side,
+        stableSignature,
       });
     }
   }
@@ -245,16 +300,67 @@ function findingChanged(control: AccessibilityFindingSide, experiment: Accessibi
 
 function normalizedNodePayload(nodes: AccessibilityFindingSide['nodes']): string {
   return JSON.stringify(nodes.map((node) => ({
-    html: normalizeText(node.html),
+    html: normalizeHtml(node.html),
     failureSummary: normalizeText(node.failureSummary),
   })).sort((a, b) =>
     a.html.localeCompare(b.html) || a.failureSummary.localeCompare(b.failureSummary),
   ));
 }
 
+/**
+ * CSS-in-JS class names carry a build-order counter or content hash — JSS
+ * `jss162`, emotion `css-1q2w3e`, styled-components `sc-bdVaJa`. Control and
+ * experiment mount a different number of components before the element, so
+ * the same node gets a different name on each side. Axe's target and html
+ * then differ, the finding fails to match itself, and one unchanged violation
+ * is reported as a phantom `fixed` + `new` pair — every page with a styled
+ * violation reads as an accessibility regression.
+ */
+const GENERATED_CLASS = /^(?:jss\d+|css-[0-9a-z]{4,}|sc-[0-9a-zA-Z]{5,})$/;
+const GENERATED_CLASS_PLACEHOLDER = 'generated-class';
+
+function stableClassToken(token: string): string {
+  return GENERATED_CLASS.test(token) ? GENERATED_CLASS_PLACEHOLDER : token;
+}
+
+/**
+ * Both sides derive the key the same way, so this only ever has to be
+ * consistent — it is a matching key, never the target shown in the report.
+ * Classes are sorted because the same element's compound selector can list
+ * them in either order (`.MuiCollapse-root.MuiCollapse-entered` one side,
+ * reversed on the other).
+ */
+function normalizeSelector(value: string): string {
+  return normalizeText(value).replace(/(?:\.[-\w]+)+/g, (run) => {
+    const classes = run.split('.').filter(Boolean).map(stableClassToken).sort();
+    return `.${classes.join('.')}`;
+  });
+}
+
+function normalizeHtml(value: string): string {
+  return normalizeText(value).replace(
+    /(\sclass=)(["'])(.*?)\2/g,
+    (_match, prefix: string, quote: string, classList: string) => {
+      const classes = classList.split(/\s+/).filter(Boolean).map(stableClassToken).sort();
+      return `${prefix}${quote}${classes.join(' ')}${quote}`;
+    },
+  );
+}
+
 function targetKey(target: AccessibilityViolation['nodes'][number]['target']): string {
   return JSON.stringify(target.map((segment) =>
     Array.isArray(segment) ? segment.map(normalizeText) : normalizeText(segment),
+  ));
+}
+
+/**
+ * The same target with generated class names and class order collapsed. Only
+ * ever used to pair leftovers after exact matching, so two genuinely distinct
+ * elements that share a stable key stay separate findings.
+ */
+function stableTargetKey(target: AccessibilityViolation['nodes'][number]['target']): string {
+  return JSON.stringify(target.map((segment) =>
+    Array.isArray(segment) ? segment.map(normalizeSelector) : normalizeSelector(segment),
   ));
 }
 
