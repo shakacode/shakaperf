@@ -72,6 +72,70 @@ describe('accessibility compare classification', () => {
     });
   });
 
+  it('matches a violation across sides when only generated class names differ', () => {
+    // Real popmenu case: the same MUI box is `.jss162` on control and
+    // `.jss192` on experiment because JSS numbers classes in mount order.
+    const findings = compareScans(
+      scan('control', [violation(
+        'region',
+        ['.jss192'],
+        'moderate',
+        '<div class="MuiBox-root jss192 jss188">',
+      )]),
+      scan('experiment', [violation(
+        'region',
+        ['.jss162'],
+        'moderate',
+        '<div class="MuiBox-root jss162 jss158">',
+      )]),
+    );
+
+    expect(findings.map((finding) => finding.status)).toEqual(['unchanged']);
+  });
+
+  it('matches a violation whose compound selector lists its classes in either order', () => {
+    const findings = compareScans(
+      scan('control', [violation(
+        'landmark-unique',
+        ['.MuiCollapse-root.MuiCollapse-entered > div[role="region"]'],
+        'moderate',
+      )]),
+      scan('experiment', [violation(
+        'landmark-unique',
+        ['.MuiCollapse-entered.MuiCollapse-root > div[role="region"]'],
+        'moderate',
+      )]),
+    );
+
+    expect(findings.map((finding) => finding.status)).toEqual(['unchanged']);
+  });
+
+  it('keeps distinct elements apart when only their generated names told them apart', () => {
+    // Three separate regions, each identified solely by its JSS class. They
+    // must stay three findings, not collapse into one because the stable key
+    // cannot tell them apart.
+    const sides = (offset: number) => [
+      violation('region', [`.jss${offset + 1}`], 'moderate', `<div class="jss${offset + 1}">`),
+      violation('region', [`.jss${offset + 2}`], 'moderate', `<div class="jss${offset + 2}">`),
+      violation('region', [`.jss${offset + 3}`], 'moderate', `<div class="jss${offset + 3}">`),
+    ];
+    const findings = compareScans(scan('control', sides(190)), scan('experiment', sides(160)));
+
+    expect(findings).toHaveLength(3);
+    expect(findings.map((finding) => finding.status)).toEqual(
+      ['unchanged', 'unchanged', 'unchanged'],
+    );
+  });
+
+  it('still reports a genuinely new violation on a stable selector', () => {
+    const findings = compareScans(
+      scan('control', []),
+      scan('experiment', [violation('button-name', ['.checkout-submit'], 'serious')]),
+    );
+
+    expect(findings.map((finding) => finding.status)).toEqual(['new']);
+  });
+
   it('renders no artifact when the comparison found nothing to report', () => {
     const stage = new AccessibilityCompareStage(TEST_STAGE_CONFIG);
     const control = scan('control', []);

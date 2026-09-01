@@ -222,6 +222,30 @@ abTest('Autonavigate', { startingPath: '/order?location=main', testTypes: ['perf
   });
 ```
 
+## Never branch the test body on `isControl`
+
+Control is not a fixed baseline — it is the merge-base today and your merged work tomorrow —
+so `if (!isControl)` will cause false regressions.
+
+### BAD — the wait is skipped on control, and silently on both sides after the merge
+
+```typescript
+
+  await openCartDrawer(page);
+  // A new element was just introduced, to fix the fail, we only check it in experiment.
+  if (!isControl) {
+    await page.locator('[data-section-id="cart-upsell"]').waitFor({ state: 'visible' });
+  }
+```
+
+### GOOD — one journey, gated on state both sides reach
+
+```typescript
+  await openCartDrawer(page);
+  // Wait unconditionally. Initial failure against master is expected.
+  await page.locator('[data-section-id="cart-upsell"]').waitFor({ state: 'visible' });
+```
+
 ## Compose per-test `beforeNavigate` setup explicitly
 
 A per-test `config.shared.beforeNavigate` **replaces** the file-level hook. It does not run after it automatically. Put global setup in a callable function and invoke it from overrides.
