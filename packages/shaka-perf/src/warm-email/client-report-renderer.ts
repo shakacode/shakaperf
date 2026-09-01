@@ -49,7 +49,7 @@ import {
   type CostStakes,
   type StrongPageGroup,
 } from './client-report-model/cost';
-import { scoreStatus } from './client-report-model/perf';
+import { PERF_SECTION_KICKER, scoreStatus } from './client-report-model/perf';
 
 // Client report renderer: pure templating over a fully-assembled
 // `ClientReportModel` (built in ./client-report.ts, which does all the IO).
@@ -494,7 +494,7 @@ function tabButton(target: string, label: string, status: ClientReportStatus, ac
 
 function tabs(m: ClientReportModel): string {
   const present = orderedSections(m).map((target) => {
-    if (target === 'perf') return { target, label: 'Performance', status: m.perfStatus, blocked: m.perfCouldNotMeasure };
+    if (target === 'perf') return { target, label: PERF_SECTION_KICKER, status: m.perfStatus, blocked: m.perfCouldNotMeasure };
     if (target === 'a11y') return { target, label: 'Accessibility', status: m.a11yStatus, blocked: m.a11yCouldNotMeasure };
     return { target, label: 'AI visibility', status: m.agentStatus, blocked: m.agentCouldNotMeasure };
   });

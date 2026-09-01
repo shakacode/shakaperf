@@ -226,7 +226,6 @@ export type PerfProblemKind = typeof PERF_PROBLEM_KINDS[number];
 export const PROBLEM_KINDS: ReadonlySet<ProblemKind> = new Set<ProblemKind>(PERF_PROBLEM_KINDS);
 
 export interface PerfProblemTileCopy {
-  kicker: string;
   wordTx: string;
   benchmarkTx?: string;
   benchmarkHtml?: string;
@@ -239,6 +238,7 @@ interface PerfProblemCopy extends PerfProblemTileCopy {
   metric: (page: PagePerf) => string | undefined;
 }
 
+export const PERF_SECTION_KICKER = 'Performance';
 const avgLcpSuffix = (avgLabel: string | undefined): string => avgLabel ? `; average LCP is ${avgLabel}` : '';
 const CLS_BENCHMARK_TX = 'Google target: 0.10 or less; poor over 0.25.';
 const CLS_BENCHMARK_HTML = 'Google target: <span style="color:#2f7d4f; font-weight:700">0.10</span> or less; poor over <span style="color:#c0271f; font-weight:700">0.25</span>.';
@@ -249,8 +249,7 @@ const metricSecs = (page: PagePerf, label: string): string | undefined => {
 
 const PERF_PROBLEM_COPY: Record<PerfProblemKind, PerfProblemCopy> = {
   'slow-lcp': {
-    kicker: 'Mobile loading',
-    wordTx: 'Main content is late',
+    wordTx: 'Loading: Main content is late',
     phrase: (page) => {
       const lcp = metricSecs(page, 'LCP');
       return lcp === undefined ? undefined : `biggest piece takes ${lcp} to load`;
@@ -260,8 +259,7 @@ const PERF_PROBLEM_COPY: Record<PerfProblemKind, PerfProblemCopy> = {
     conseq: 'The page starts, but the main content lands late enough that visitors may give up.',
   },
   'layout-shift': {
-    kicker: 'Mobile stability',
-    wordTx: 'Layout jumps',
+    wordTx: 'Stability: Layout jumps',
     benchmarkTx: CLS_BENCHMARK_TX,
     benchmarkHtml: CLS_BENCHMARK_HTML,
     phrase: () => 'the layout jumps around',
@@ -273,8 +271,7 @@ const PERF_PROBLEM_COPY: Record<PerfProblemKind, PerfProblemCopy> = {
     conseq: 'Content moves while the page loads, so visitors can lose their place or tap the wrong thing.',
   },
   blank: {
-    kicker: 'Mobile loading',
-    wordTx: 'Blank screen first',
+    wordTx: 'Loading: Blank screen first',
     phrase: (page) => {
       const fcp = metricSecs(page, 'FCP');
       return fcp === undefined ? undefined : `screen stays blank for ${fcp}`;
@@ -284,8 +281,7 @@ const PERF_PROBLEM_COPY: Record<PerfProblemKind, PerfProblemCopy> = {
     conseq: 'A visitor sees nothing at first, which can read as a broken page.',
   },
   'late-paint': {
-    kicker: 'Mobile loading',
-    wordTx: 'Slow first paint',
+    wordTx: 'Loading: Slow first paint',
     phrase: (page) => {
       const fcp = metricSecs(page, 'FCP');
       return fcp === undefined ? undefined : `nothing appears for ${fcp}`;
@@ -295,8 +291,7 @@ const PERF_PROBLEM_COPY: Record<PerfProblemKind, PerfProblemCopy> = {
     conseq: 'The first pixels arrive late, so the page feels stalled before it starts.',
   },
   sluggish: {
-    kicker: 'Mobile response',
-    wordTx: 'Slow to react',
+    wordTx: 'Response: Slow to react',
     phrase: () => 'slow to react to taps',
     metric: (page) => metricSecs(page, 'TBT'),
     metricSub: (avgLabel) => `worst page blocking time${avgLcpSuffix(avgLabel)}`,
@@ -324,7 +319,6 @@ export function perfProblemTileCopy(lead: Problem): PerfProblemTileCopy | undefi
   if (!isPerfProblemKind(lead.kind)) return undefined;
   const copy = PERF_PROBLEM_COPY[lead.kind];
   return {
-    kicker: copy.kicker,
     wordTx: copy.wordTx,
     ...(copy.benchmarkTx ? { benchmarkTx: copy.benchmarkTx } : {}),
     ...(copy.benchmarkHtml ? { benchmarkHtml: copy.benchmarkHtml } : {}),
