@@ -9,19 +9,18 @@ import type { Browser } from 'playwright-core';
 import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool';
 import type { TestContext } from '../../../stage/stage';
 import {
-  getLatestTestAnnotation,
-  messageWithLatestTestAnnotation,
-} from '../../../test-annotation';
-import {
   type AccessibilityEffectiveConfig,
   type AccessibilityStageConfig,
 } from '../../../audit/stages/accessibility/config';
 import {
   AccessibilityPageScanError,
-  captureAccessibilityScreenshotIfPossible,
+  captureAccessibilityFailureMedia,
   launchAccessibilityBrowser,
   scanAccessibilityPage,
 } from '../../../audit/stages/accessibility/scan';
+import { StageFailureError } from '../../../stage/stage-failure';
+import { formatLogPrefix } from '../../../pipeline/log-prefix-format';
+import { withLogPrefix } from '../../../visreg/core/util/testContext';
 import type {
   AccessibilityViolation,
 } from '../../../audit/stages/accessibility/types';
@@ -77,7 +76,7 @@ async function scanAccessibilityComparison(
     scanSide(ctx, browser, effective, config, 'control', ctx.controlURL),
     scanSide(ctx, browser, effective, config, 'experiment', ctx.experimentURL),
   ]);
-  const findings = control.error || experiment.error || control.blocked || experiment.blocked
+  const findings = control.blocked || experiment.blocked
     ? []
     : compareScans(control, experiment);
   const result = projectCompareResultForReport({
@@ -100,7 +99,24 @@ async function scanAccessibilityComparison(
   return result;
 }
 
-async function scanSide(
+// Each side runs under its own log-prefix column, so a failure thrown from
+// inside names the side it came from — the same way visreg labels a failing
+// side rather than its concurrent sibling.
+function scanSide(
+  ctx: TestContext,
+  browser: Browser,
+  effective: AccessibilityEffectiveConfig,
+  config: AccessibilityStageConfig,
+  side: AccessibilityCompareSide,
+  url: string,
+): Promise<AccessibilitySideScan> {
+  return withLogPrefix(
+    formatLogPrefix(side),
+    () => scanSideUnprefixed(ctx, browser, effective, config, side, url),
+  );
+}
+
+async function scanSideUnprefixed(
   ctx: TestContext,
   browser: Browser,
   effective: AccessibilityEffectiveConfig,
@@ -114,10 +130,10 @@ async function scanSide(
       isControl: side === 'control',
       screenshotFilename: `${side}-accessibility-screenshot.png`,
       captureFailure: async ({ page }) => ({
-        screenshot: await captureAccessibilityScreenshotIfPossible(
+        media: await captureAccessibilityFailureMedia(
           ctx,
           page,
-          `${side}-failure-accessibility-screenshot.png`,
+          `${side}-accessibility-failure-screenshot.png`,
         ),
       }),
     });
@@ -143,27 +159,15 @@ async function scanSide(
       blocked: result.blocked,
     };
   } catch (err) {
-    const scanError = err instanceof AccessibilityPageScanError ? err : null;
-    const cause = scanError?.cause ?? err;
-    const error = messageWithLatestTestAnnotation(
-      (cause as Error).message || String(cause),
-      getLatestTestAnnotation(cause),
-    );
-    const rawFilename = `${side}-accessibility-error.json`;
-    const rawArtifactHref = await ctx.artifacts.writeJson(rawFilename, {
-      side,
-      testName: ctx.test.name,
-      url,
-      error,
-    }).catch(() => undefined);
-    return {
-      side,
-      url,
-      ...(rawArtifactHref ? { rawArtifactHref } : {}),
-      screenshot: scanError?.artifacts.screenshot,
-      violations: [],
-      error,
-    };
+    // Unwrapped so the report names the real cause, and re-wrapped as a stage
+    // failure only when there is a screenshot to attach — like the audit stage.
+    if (err instanceof AccessibilityPageScanError) {
+      if (err.artifacts.media) {
+        throw new StageFailureError(err.cause, { media: err.artifacts.media });
+      }
+      throw err.cause;
+    }
+    throw err;
   }
 }
 
@@ -378,7 +382,6 @@ export function summarizeFindings(
     fixed: 0,
     changed: 0,
     unchanged: 0,
-    errors: (control.error ? 1 : 0) + (experiment.error ? 1 : 0),
     blocked: (control.blocked ? 1 : 0) + (experiment.blocked ? 1 : 0),
     newByImpact: {},
     fixedByImpact: {},
