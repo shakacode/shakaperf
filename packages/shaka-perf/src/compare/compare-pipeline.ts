@@ -327,15 +327,6 @@ type AccessibilityChipResult = AccessibilityCompareResult;
 function accessibilityChips(entries: ChipStageResults<AccessibilityChipResult>): ChipDescriptor[] {
   const summary = combineAccessibilitySummaries(entries);
   const chips: ChipDescriptor[] = [];
-  if (summary.errors > 0) {
-    chips.push({
-      tag: 'accessibility error',
-      text: `accessibility error: ${summary.errors}`,
-      color: 'red',
-      sortingWeight: 5,
-      tooltip: 'One or both accessibility scans failed, so no control-vs-experiment comparison was produced.',
-    });
-  }
   if (summary.blocked > 0) {
     chips.push({
       tag: 'accessibility blocked',
@@ -400,16 +391,6 @@ function accessibilitySorts(entries: ChipStageResults<AccessibilityChipResult>):
       color: 'red',
     });
   }
-  if (summary.errors > 0) {
-    sorts.push({
-      tag: 'a11y-errors',
-      label: 'a11y errors',
-      value: summary.errors,
-      display: `${summary.errors}`,
-      higherIsWorse: true,
-      color: 'red',
-    });
-  }
   if (summary.blocked > 0) {
     sorts.push({
       tag: 'a11y-blocked',
@@ -441,7 +422,6 @@ function combineAccessibilitySummaries(
     fixed: 0,
     changed: 0,
     unchanged: 0,
-    errors: 0,
     blocked: 0,
     newByImpact: {},
     fixedByImpact: {},
@@ -453,7 +433,6 @@ function combineAccessibilitySummaries(
     out.fixed += summary.fixed;
     out.changed += summary.changed;
     out.unchanged += summary.unchanged;
-    out.errors += summary.errors;
     out.blocked += summary.blocked ?? 0;
     mergeImpactCounts(out.newByImpact, summary.newByImpact);
     mergeImpactCounts(out.fixedByImpact, summary.fixedByImpact);
