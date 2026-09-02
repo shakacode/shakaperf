@@ -272,6 +272,26 @@ describe('applyPerTestConfigOverrides validation', function () {
     assert.deepEqual(labelsFor(effective, 'visreg'), ['desktop', 'phone']);
   });
 
+  it('lets a per-test viewportDefinitions drop a label only the shared default names', function () {
+    const DESKTOP = {
+      label: 'desktop', width: 1280, height: 800,
+      formFactor: 'desktop', deviceScaleFactor: 1,
+    };
+    const PHONE_TALL = {
+      label: 'phone-tall', width: 375, height: 1001,
+      formFactor: 'mobile', deviceScaleFactor: 3,
+    };
+    const pinned = { viewports: ['desktop', 'phone-tall'] };
+
+    const effective = applyPerTestConfigOverrides(fileConfig(), testDef('Upsell', {
+      shared: { viewportDefinitions: [DESKTOP, PHONE_TALL] },
+      visreg: pinned, perf: pinned, audit: pinned, accessibility: pinned,
+    }));
+
+    assert.deepEqual(labelsFor(effective, 'visreg'), ['desktop', 'phone-tall']);
+    assert.equal(viewportsForCategory(effective, 'visreg')[1].height, 1001);
+  });
+
   it("lets a per-test category viewports outrank the test's own shared.viewports", function () {
     const effective = applyPerTestConfigOverrides(fileConfig(), testDef('Home', {
       shared: { viewports: ['phone'] },
