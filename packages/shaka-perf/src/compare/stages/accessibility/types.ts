@@ -25,7 +25,6 @@ export interface AccessibilitySideScan {
   rawArtifactHref?: string;
   screenshot?: AccessibilityCompareScreenshot;
   violations: AccessibilityViolation[];
-  error?: string;
   blocked?: boolean;
 }
 
@@ -57,7 +56,6 @@ export interface AccessibilityCompareSummary {
   fixed: number;
   changed: number;
   unchanged: number;
-  errors: number;
   blocked: number;
   newByImpact: Record<string, number>;
   fixedByImpact: Record<string, number>;
