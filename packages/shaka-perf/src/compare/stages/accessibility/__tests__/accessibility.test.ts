@@ -54,6 +54,7 @@ const TEST_STAGE_CONFIG: AccessibilityStageConfig = {
 };
 import { collectFilterOptions, isFindingVisible, primaryCompareTags } from '../report';
 import { AccessibilityCompareStage } from '../stage';
+import { StageFailureError } from '../../../../stage/stage-failure';
 import type { AccessibilityCompareFinding, AccessibilitySideScan } from '../types';
 import type { AccessibilityViolation } from '../../../../audit/stages/accessibility/types';
 import { DESKTOP_VIEWPORT, type AbTestDefinition, type Viewport } from 'shaka-shared';
@@ -201,26 +202,10 @@ describe('accessibility compare classification', () => {
         fixed: 1,
         changed: 1,
         unchanged: 1,
-        errors: 0,
         newByImpact: { serious: 1 },
         fixedByImpact: { critical: 1 },
         changedByImpact: { serious: 1 },
       });
-  });
-
-  it('summarizes side scan errors without implying accessibility deltas', () => {
-    const summary = summarizeFindings([], {
-      ...scan('control', []),
-      error: 'control failed',
-    }, scan('experiment', [violation('color-contrast', ['.price'], 'serious')]));
-
-    expect(summary).toMatchObject({
-      new: 0,
-      fixed: 0,
-      changed: 0,
-      unchanged: 0,
-      errors: 1,
-    });
   });
 
   it('summarizes bot-blocked side scans without implying accessibility deltas', () => {
@@ -234,7 +219,6 @@ describe('accessibility compare classification', () => {
       fixed: 0,
       changed: 0,
       unchanged: 0,
-      errors: 0,
       blocked: 1,
     });
   });
@@ -383,6 +367,24 @@ describe('accessibility compare engine', () => {
     expect(result.findings).toEqual([]);
   });
 
+  it('fails the unit with the failing side\'s screenshot attached, like other stages', async () => {
+    const browser = fakeBrowser({ failNavigationFor: 'experiment' });
+    mockChromiumLaunch.mockResolvedValue(browser);
+    mockAxeAnalyze.mockResolvedValue({ url: 'http://localhost/scan', violations: [] });
+
+    const run = runAccessibilityCompareStage(fakeContext({}), fakeWorkerPool(), TEST_STAGE_CONFIG);
+
+    await expect(run).rejects.toBeInstanceOf(StageFailureError);
+    await expect(run).rejects.toMatchObject({
+      // The side runs under its own log-prefix column, so the failure names it.
+      message: expect.stringContaining('experiment'),
+      failureArtifacts: {
+        media: 'checkout-desktop/artifacts/experiment-accessibility-failure-screenshot.png',
+      },
+    });
+    await expect(run).rejects.toMatchObject({ cause: { message: 'net::ERR_CONNECTION_REFUSED' } });
+  });
+
   it('keeps completed scans with persisted screenshot paths', async () => {
     const browser = fakeBrowser();
     mockChromiumLaunch.mockResolvedValue(browser);
@@ -392,7 +394,6 @@ describe('accessibility compare engine', () => {
       TEST_STAGE_CONFIG,
     );
 
-    expect(result.summary.errors).toBe(0);
     expect(result.control.screenshot).toEqual({
       width: 100,
       height: 80,
@@ -540,6 +541,7 @@ function mobileViewport(): Viewport {
 
 function fakeBrowser(options: {
   probeBySide?: Partial<Record<AccessibilitySideScan['side'], { title: string; html: string }>>;
+  failNavigationFor?: AccessibilitySideScan['side'];
 } = {}) {
   let contextIndex = 0;
   const sides: AccessibilitySideScan['side'][] = ['control', 'experiment'];
@@ -552,7 +554,9 @@ function fakeBrowser(options: {
       const page = {
         setDefaultTimeout: jest.fn(),
         setDefaultNavigationTimeout: jest.fn(),
-        goto: jest.fn(async () => {}),
+        goto: jest.fn(async () => {
+          if (options.failNavigationFor === side) throw new Error('net::ERR_CONNECTION_REFUSED');
+        }),
         waitForTimeout: jest.fn(async () => {}),
         evaluate: jest.fn(async (_fn: unknown, arg?: unknown) => {
           if (Array.isArray(arg)) {
