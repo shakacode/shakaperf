@@ -98,6 +98,15 @@ describe('bisect report App rendering', () => {
     expect(homepageGroup).not.toContain('misMatchPercentage');
   });
 
+  it('offers the re-run commands on each card, collapsed like the source', () => {
+    const html = renderApp(ordinaryReport());
+    const card = cardMarkup(html, 'Product page');
+
+    expect(card).toContain('▸ troubleshoot');
+    // Collapsed, so the commands themselves are not in the initial markup.
+    expect(card).not.toContain('shaka-perf troubleshoot --filter');
+  });
+
   it('omits the bisect navigator from an ordinary report', () => {
     const html = renderApp(ordinaryReport());
 

@@ -8,6 +8,7 @@
 import type { PipelineReport } from '../pipeline/pipeline';
 import type { ReportMeta, TestResult } from '../pipeline/report';
 import type { StageArtifactTestMeta } from '../pipeline/stage-report-components';
+import { troubleshootCommandFor } from '../troubleshoot/command';
 
 function renderHeaderUrls(meta: ReportMeta) {
   return (
@@ -75,4 +76,5 @@ export const comparePipelineReport: PipelineReport = {
   renderHeaderUrls,
   renderTestCardUrls,
   renderDialogMetaUrls,
+  troubleshootCommand: troubleshootCommandFor,
 };
