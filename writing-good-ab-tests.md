@@ -175,6 +175,39 @@ await page.getByRole('heading', { name: 'Your cart is empty' }).waitFor({ state:
 
 This is causal waiting, not defensive waiting: the remove request is invalid until the add request has committed.
 
+## Do not hide app bugs. Fail loudly.
+
+Flakiness can eihter be a test flaw, or an app bug. Never dence around the latter. Do not patch the app to stabilize it,
+add expectations and create a bug with reproduction steps `shaka-perf --categories=visreg --filter="<Test Name>" --burn 5`
+
+### BAD — pin the page, hide the highlight, re-pin the strip until the screenshots match
+
+```typescript
+await waitForScrollSettled(page);
+await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+await stabilizeForVisreg(page);
+await neutralizeActiveSectionChip(page);
+await pinSectionChipStripToEnd(page);
+await waitForStableActiveSectionChip(page);
+await pinSectionChipStripToEnd(page);
+```
+
+### GOOD — add the expectation; its failure message is the bug's reproduction
+
+```typescript
+await annotate('clicking the last section chip (Specials)');
+await page.locator('[aria-label="menu sections"] a:has-text("Specials")').first().click();
+await page.getByRole('heading', { name: 'Tuscan Butter Shrimp' }).waitFor({ state: 'visible' });
+await stabilizeForVisreg(page);
+const active = await page.locator('[aria-label="menu sections"] [aria-current="true"]').textContent();
+if (active?.trim() !== 'Specials') {
+  throw new Error(
+    `APP BUG: tapped Specials, active chip is "${active}". ` +
+    'Repro: shaka-perf compare --categories=visreg --filter="Popmenu Order - Menu Section Last Chip Into View" --burn 5',
+  );
+}
+```
+
 ## Never alter the database; intercept writes
 
 A/B tests may read seeded data, but they must not create, update, or delete persistent database state. Any example in this guide that triggers a writing interaction assumes its request is intercepted. Cleanup afterward is not sufficient: the other twin, a retry, or a later test can observe the intermediate write.
