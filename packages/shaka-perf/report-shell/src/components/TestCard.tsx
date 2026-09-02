@@ -11,7 +11,10 @@ import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
 import { AnsiLog, firstElapsedSeconds } from './AnsiLog';
 import { Dialog, StageArtifactProvider, TestMeta } from '../../../src/pipeline/stage-report-components';
-import { renderPipelineTestCardUrls } from '../../../src/pipeline/pipeline-artifacts';
+import {
+  pipelineTroubleshootCommands,
+  renderPipelineTestCardUrls,
+} from '../../../src/pipeline/pipeline-artifacts';
 
 // Full-word units so "12m" isn't mistaken for "12 months" — especially
 // relevant in merged --report-only views where artifacts can be weeks old.
@@ -86,6 +89,30 @@ function outcomeGroups(test: TestResult, visibleStages: ReadonlySet<string>): Re
     group.push(outcome);
   }
   return groups;
+}
+
+/**
+ * How to re-run this test on its own, beside its source — the card names the
+ * failure, this names the way back into it. One line per viewport it measured.
+ */
+function TroubleshootCommands({ meta, test }: { meta: ReportMeta; test: TestResult }) {
+  const [open, setOpen] = useState(false);
+  const viewports = [...new Set(test.outcomes.map((outcome) => outcome.viewport.label))];
+  const commands = pipelineTroubleshootCommands(meta, test.name, viewports);
+  if (commands.length === 0) return null;
+  return (
+    <div>
+      <button
+        type="button"
+        className="card__code-toggle"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+      >
+        {open ? '▾ troubleshoot' : '▸ troubleshoot'}
+      </button>
+      {open ? <pre className="card__code">{commands.join('\n')}</pre> : null}
+    </div>
+  );
 }
 
 function compareChips(a: ChipDescriptor, b: ChipDescriptor): number {
@@ -189,6 +216,8 @@ export function TestCard({
             {codeOpen ? <pre className="card__code">{test.code}</pre> : null}
           </div>
         ) : null}
+
+        <TroubleshootCommands meta={meta} test={test} />
 
         {test.viewportArtifactPaths && test.viewportArtifactPaths.length > 0 ? (
           <div>
