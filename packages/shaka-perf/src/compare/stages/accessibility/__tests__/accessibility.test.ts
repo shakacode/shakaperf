@@ -54,6 +54,7 @@ const TEST_STAGE_CONFIG: AccessibilityStageConfig = {
 };
 import { collectFilterOptions, isFindingVisible, primaryCompareTags } from '../report';
 import { AccessibilityCompareStage } from '../stage';
+import { StageFailureError } from '../../../../stage/stage-failure';
 import type { AccessibilityCompareFinding, AccessibilitySideScan } from '../types';
 import type { AccessibilityViolation } from '../../../../audit/stages/accessibility/types';
 import { DESKTOP_VIEWPORT, type AbTestDefinition, type Viewport } from 'shaka-shared';
@@ -70,6 +71,92 @@ describe('accessibility compare classification', () => {
       control: { rawArtifactHref: true },
       experiment: { rawArtifactHref: true },
     });
+  });
+
+  it('matches a violation across sides when only generated class names differ', () => {
+    // Real popmenu case: the same MUI box is `.jss162` on control and
+    // `.jss192` on experiment because JSS numbers classes in mount order.
+    const findings = compareScans(
+      scan('control', [violation(
+        'region',
+        ['.jss192'],
+        'moderate',
+        '<div class="MuiBox-root jss192 jss188">',
+      )]),
+      scan('experiment', [violation(
+        'region',
+        ['.jss162'],
+        'moderate',
+        '<div class="MuiBox-root jss162 jss158">',
+      )]),
+    );
+
+    expect(findings.map((finding) => finding.status)).toEqual(['unchanged']);
+  });
+
+  it('matches a violation whose compound selector lists its classes in either order', () => {
+    const findings = compareScans(
+      scan('control', [violation(
+        'landmark-unique',
+        ['.MuiCollapse-root.MuiCollapse-entered > div[role="region"]'],
+        'moderate',
+      )]),
+      scan('experiment', [violation(
+        'landmark-unique',
+        ['.MuiCollapse-entered.MuiCollapse-root > div[role="region"]'],
+        'moderate',
+      )]),
+    );
+
+    expect(findings.map((finding) => finding.status)).toEqual(['unchanged']);
+  });
+
+  it('keeps distinct elements apart when only their generated names told them apart', () => {
+    // Three separate regions, each identified solely by its JSS class. They
+    // must stay three findings, not collapse into one because the stable key
+    // cannot tell them apart.
+    const sides = (offset: number) => [
+      violation('region', [`.jss${offset + 1}`], 'moderate', `<div class="jss${offset + 1}">`),
+      violation('region', [`.jss${offset + 2}`], 'moderate', `<div class="jss${offset + 2}">`),
+      violation('region', [`.jss${offset + 3}`], 'moderate', `<div class="jss${offset + 3}">`),
+    ];
+    const findings = compareScans(scan('control', sides(190)), scan('experiment', sides(160)));
+
+    expect(findings).toHaveLength(3);
+    expect(findings.map((finding) => finding.status)).toEqual(
+      ['unchanged', 'unchanged', 'unchanged'],
+    );
+  });
+
+  it('still reports a genuinely new violation on a stable selector', () => {
+    const findings = compareScans(
+      scan('control', []),
+      scan('experiment', [violation('button-name', ['.checkout-submit'], 'serious')]),
+    );
+
+    expect(findings.map((finding) => finding.status)).toEqual(['new']);
+  });
+
+  it('renders no artifact when the comparison found nothing to report', () => {
+    const stage = new AccessibilityCompareStage(TEST_STAGE_CONFIG);
+    const control = scan('control', []);
+    const experiment = scan('experiment', []);
+    const measurement = {
+      control,
+      experiment,
+      effectiveConfig: { tags: ['wcag2aa'], disableRules: [], includeRules: null },
+      failOnViolation: true,
+      findings: [],
+      summary: summarizeFindings([], control, experiment),
+    };
+
+    // An empty element here would render as a blank section inside an
+    // otherwise empty card; null lets the report drop both.
+    expect(stage.renderArtifacts([{ measurement, viewport: DESKTOP_VIEWPORT }])).toBeNull();
+    expect(stage.renderArtifacts([{
+      measurement: { ...measurement, findings: [compareFinding({ ruleId: 'button-name', tags: [] })] },
+      viewport: DESKTOP_VIEWPORT,
+    }])).not.toBeNull();
   });
 
   it('applies to every test — opting out is testTypes-owned', () => {
@@ -115,26 +202,10 @@ describe('accessibility compare classification', () => {
         fixed: 1,
         changed: 1,
         unchanged: 1,
-        errors: 0,
         newByImpact: { serious: 1 },
         fixedByImpact: { critical: 1 },
         changedByImpact: { serious: 1 },
       });
-  });
-
-  it('summarizes side scan errors without implying accessibility deltas', () => {
-    const summary = summarizeFindings([], {
-      ...scan('control', []),
-      error: 'control failed',
-    }, scan('experiment', [violation('color-contrast', ['.price'], 'serious')]));
-
-    expect(summary).toMatchObject({
-      new: 0,
-      fixed: 0,
-      changed: 0,
-      unchanged: 0,
-      errors: 1,
-    });
   });
 
   it('summarizes bot-blocked side scans without implying accessibility deltas', () => {
@@ -148,7 +219,6 @@ describe('accessibility compare classification', () => {
       fixed: 0,
       changed: 0,
       unchanged: 0,
-      errors: 0,
       blocked: 1,
     });
   });
@@ -297,6 +367,24 @@ describe('accessibility compare engine', () => {
     expect(result.findings).toEqual([]);
   });
 
+  it('fails the unit with the failing side\'s screenshot attached, like other stages', async () => {
+    const browser = fakeBrowser({ failNavigationFor: 'experiment' });
+    mockChromiumLaunch.mockResolvedValue(browser);
+    mockAxeAnalyze.mockResolvedValue({ url: 'http://localhost/scan', violations: [] });
+
+    const run = runAccessibilityCompareStage(fakeContext({}), fakeWorkerPool(), TEST_STAGE_CONFIG);
+
+    await expect(run).rejects.toBeInstanceOf(StageFailureError);
+    await expect(run).rejects.toMatchObject({
+      // The side runs under its own log-prefix column, so the failure names it.
+      message: expect.stringContaining('experiment'),
+      failureArtifacts: {
+        media: 'checkout-desktop/artifacts/experiment-accessibility-failure-screenshot.png',
+      },
+    });
+    await expect(run).rejects.toMatchObject({ cause: { message: 'net::ERR_CONNECTION_REFUSED' } });
+  });
+
   it('keeps completed scans with persisted screenshot paths', async () => {
     const browser = fakeBrowser();
     mockChromiumLaunch.mockResolvedValue(browser);
@@ -306,7 +394,6 @@ describe('accessibility compare engine', () => {
       TEST_STAGE_CONFIG,
     );
 
-    expect(result.summary.errors).toBe(0);
     expect(result.control.screenshot).toEqual({
       width: 100,
       height: 80,
@@ -454,6 +541,7 @@ function mobileViewport(): Viewport {
 
 function fakeBrowser(options: {
   probeBySide?: Partial<Record<AccessibilitySideScan['side'], { title: string; html: string }>>;
+  failNavigationFor?: AccessibilitySideScan['side'];
 } = {}) {
   let contextIndex = 0;
   const sides: AccessibilitySideScan['side'][] = ['control', 'experiment'];
@@ -466,7 +554,9 @@ function fakeBrowser(options: {
       const page = {
         setDefaultTimeout: jest.fn(),
         setDefaultNavigationTimeout: jest.fn(),
-        goto: jest.fn(async () => {}),
+        goto: jest.fn(async () => {
+          if (options.failNavigationFor === side) throw new Error('net::ERR_CONNECTION_REFUSED');
+        }),
         waitForTimeout: jest.fn(async () => {}),
         evaluate: jest.fn(async (_fn: unknown, arg?: unknown) => {
           if (Array.isArray(arg)) {

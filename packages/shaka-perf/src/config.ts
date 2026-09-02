@@ -338,6 +338,34 @@ export const BisectConfigSchema = z.object({
   rebuildContainer: z.boolean().default(false),
 }).strict();
 
+interface ViewportLabelSources {
+  shared: { viewports: readonly string[] };
+  visreg: { viewports?: readonly string[] };
+  perf: { viewports?: readonly string[] };
+  audit: { viewports?: readonly string[] };
+  accessibility: { viewports?: readonly string[] };
+}
+
+const VIEWPORT_LABEL_SECTION: Record<TestType, keyof Omit<ViewportLabelSources, 'shared'>> = {
+  visreg: 'visreg',
+  perf: 'perf',
+  audit: 'audit',
+  accessibility: 'accessibility',
+  // Coverage rides along with the visreg run, so it runs at visreg's viewports.
+  code_coverage: 'visreg',
+};
+
+function viewportLabelsForCategory(
+  config: ViewportLabelSources,
+  category: TestType,
+): readonly [section: string, labels: readonly string[]] {
+  const section = VIEWPORT_LABEL_SECTION[category];
+  const labels = config[section].viewports;
+  return labels === undefined
+    ? ['shared', config.shared.viewports]
+    : [section, labels];
+}
+
 export const AbTestsConfigSchema = z
   .object({
     shared: SharedConfigSchema,
@@ -351,25 +379,18 @@ export const AbTestsConfigSchema = z
   })
   .strict()
   .superRefine((cfg, ctx) => {
-    // Cross-schema: every viewport label — the shared default list and each
-    // category's own — must be defined in `shared.viewportDefinitions`. Catches
-    // typos ("dekstop") and wrong references at parse time rather than
-    // "no viewport matched" at run time.
     const knownLabels = new Set(cfg.shared.viewportDefinitions.map((v) => v.label));
-    const lists: Array<[path: [string, string], labels: readonly string[] | undefined]> = [
-      [['shared', 'viewports'], cfg.shared.viewports],
-      ...(['visreg', 'perf', 'audit', 'accessibility'] as const)
-        .map((category) => [[category, 'viewports'], cfg[category].viewports] as
-          [[string, string], readonly string[] | undefined]),
-    ];
-    for (const [path, labels] of lists) {
-      // An unset category list is not an error — it falls back to
-      // `shared.viewports`, which this same loop already validated.
-      for (const label of labels ?? []) {
+    const lists = new Map<string, readonly string[]>();
+    for (const category of ['visreg', 'perf', 'audit', 'accessibility'] as const) {
+      const [section, labels] = viewportLabelsForCategory(cfg, category);
+      lists.set(section, labels);
+    }
+    for (const [section, labels] of lists) {
+      for (const label of labels) {
         if (!knownLabels.has(label)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            path,
+            path: [section, 'viewports'],
             message:
               `unknown viewport label "${label}" — ` +
               `define it in shared.viewportDefinitions or drop it here. ` +
@@ -437,34 +458,23 @@ export function resolveViewports(
   });
 }
 
-const CATEGORY_VIEWPORT_LABELS: Record<TestType, (config: AbTestsConfig) => readonly string[]> = {
-  visreg: (config) => config.visreg.viewports ?? config.shared.viewports,
-  perf: (config) => config.perf.viewports ?? config.shared.viewports,
-  audit: (config) => config.audit.viewports ?? config.shared.viewports,
-  accessibility: (config) => config.accessibility.viewports ?? config.shared.viewports,
-  code_coverage: (config) => config.visreg.viewports ?? config.shared.viewports,
-};
-
 /**
  * The viewports one stage category runs at, under one (already per-test-merged)
- * config. THE single site of the `<category>.viewports ?? shared.viewports`
- * fallback — every caller that needs a category's viewports goes through here,
- * so the precedence lives in exactly one place:
+ * config. Category lists override the shared list; per-test values already
+ * override file values through `applyPerTestConfigOverrides`.
  *
  *   test `config.<category>.viewports`   (most specific)
  *   file `<category>.viewports`
  *   test `config.shared.viewports`
  *   file `shared.viewports`              (least specific)
- *
- * Test-over-file at each level is the per-test deep merge's doing
- * (`applyPerTestConfigOverrides`); category-over-shared is the table above.
  */
 export function viewportsForCategory(
   config: AbTestsConfig,
   category: TestType,
 ): readonly Viewport[] {
+  const [, labels] = viewportLabelsForCategory(config, category);
   return resolveViewports(
-    CATEGORY_VIEWPORT_LABELS[category](config),
+    labels,
     config.shared.viewportDefinitions,
   );
 }

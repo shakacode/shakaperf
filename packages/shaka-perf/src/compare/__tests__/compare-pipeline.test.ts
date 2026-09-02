@@ -104,7 +104,6 @@ describe('compare accessibility pipeline integration', () => {
       fixed: 1,
       changed: 1,
       unchanged: 3,
-      errors: 0,
       blocked: 0,
       newByImpact: { critical: 1, serious: 1 },
       fixedByImpact: { moderate: 1 },
@@ -165,7 +164,6 @@ describe('compare accessibility pipeline integration', () => {
           fixed: 0,
           changed: 0,
           unchanged: 0,
-          errors: 0,
           blocked: 0,
           newByImpact: { serious: 1 },
           fixedByImpact: {},
@@ -184,52 +182,6 @@ describe('compare accessibility pipeline integration', () => {
     });
   });
 
-  it('emits accessibility error chips and sort dimensions for incomplete scans', () => {
-    const pipeline = createComparePipeline(baseConfig());
-    const test = testDefinition();
-    const result = accessibilityResult({
-      new: 0,
-      fixed: 0,
-      changed: 0,
-      unchanged: 0,
-      errors: 1,
-      blocked: 0,
-      newByImpact: {},
-      fixedByImpact: {},
-      changedByImpact: {},
-    });
-
-    const chips = pipeline.chipsForAllTests([{
-      test,
-      results: {
-        visreg: [],
-        accessibility: [entry(result)],
-        'perf-warmup': [],
-        perf: [],
-        'perf-low-noise': [],
-      },
-    }]).get(test) ?? [];
-    expect(chips[0]).toMatchObject({
-      tag: 'accessibility error',
-      color: 'red',
-      text: 'accessibility error: 1',
-    });
-
-    const sorts = pipeline.sortsForAllTests([{
-      test,
-      results: {
-        visreg: [],
-        accessibility: [entry(result)],
-        'perf-warmup': [],
-        perf: [],
-        'perf-low-noise': [],
-      },
-    }]).get(test) ?? [];
-    expect(sorts.map((sort) => [sort.tag, sort.value])).toEqual([
-      ['a11y-errors', 1],
-    ]);
-  });
-
   it('emits accessibility blocked chips and sort dimensions for bot-protected scans', () => {
     const pipeline = createComparePipeline(baseConfig());
     const test = testDefinition();
@@ -238,7 +190,6 @@ describe('compare accessibility pipeline integration', () => {
       fixed: 0,
       changed: 0,
       unchanged: 0,
-      errors: 0,
       blocked: 1,
       newByImpact: {},
       fixedByImpact: {},

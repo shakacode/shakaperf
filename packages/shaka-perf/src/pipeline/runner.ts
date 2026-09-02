@@ -53,6 +53,7 @@ import { viewportsForCategory } from '../config';
 import type { AbTestsConfig } from '../config';
 import {
   type Pipeline,
+  type PipelineReport,
   type PipelineWorkerPool,
   type ChipResultMap,
   type ChipStageResult,
@@ -672,6 +673,7 @@ async function runConfiguredPipelineWithSelection(
             stageIndex: executableStages.indexOf(step.stage) + 1,
             totalStages: executableStages.length,
             renderSticky,
+            troubleshootCommand: pipeline.report.troubleshootCommand,
           });
           runtimePool.stageExecutions.push(execution);
           runtimePool.pending.push(execution.promise);
@@ -870,6 +872,7 @@ interface ScheduleStageExecutionOptions {
   stageIndex: number;
   totalStages: number;
   renderSticky(): void;
+  troubleshootCommand: PipelineReport['troubleshootCommand'];
 }
 
 function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecution {
@@ -884,6 +887,7 @@ function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecu
     stageIndex,
     totalStages,
     renderSticky,
+    troubleshootCommand,
   } = opts;
   const progress: StageProgress = {
     queued: units.length,
@@ -929,6 +933,7 @@ function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecu
         durations: execution.durations,
         renderSticky,
         testAndViewportId: id,
+        troubleshootCommand,
       }));
     runtimePool.unitChains.set(id, run.catch(() => undefined));
     return run;
@@ -959,6 +964,7 @@ interface ExecuteStageForUnitOptions {
   durations: number[];
   renderSticky(): void;
   testAndViewportId: string;
+  troubleshootCommand: PipelineReport['troubleshootCommand'];
 }
 
 async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<void> {
@@ -1084,7 +1090,13 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
         taskProgressSink,
         () => stageTaskLimitsStorage.run(
           runtimePool.taskLimits(ctx.config),
-          () => runWithTestAnnotationContext(() => stage.run(ctx, runtimePool.pool)),
+          () => runWithTestAnnotationContext(() => {
+            // First line of every unit's log, so a failure carries the way back
+            // to itself: one test, one viewport, browsers left open.
+            const command = opts.troubleshootCommand?.(unit.test.name, unit.viewport.label);
+            if (command) console.log(`to troubleshoot this line run ${chalk.green(command)}`);
+            return stage.run(ctx, runtimePool.pool);
+          }),
         ),
       ),
     );

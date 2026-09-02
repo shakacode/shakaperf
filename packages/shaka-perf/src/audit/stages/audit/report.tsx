@@ -83,7 +83,7 @@ function MetricTable({
   viewportLabel: string;
 }) {
   const metrics = audit.metrics ?? [];
-  if (metrics.length === 0 && !audit.lighthouseHref) return null;
+  if (metrics.length === 0 && !hasArtifacts(audit)) return null;
   return (
     <div className="stage-section">
       <div className="stage-section__head">{viewportLabel}</div>
@@ -101,7 +101,30 @@ function MetricTable({
           </FullReportOnly>
         ) : null}
       </div>
+      <ArtifactLinks audit={audit} />
     </div>
+  );
+}
+
+// The single-side halves of compare's "profile diff" / "network diff" — the
+// profile timeline this stage renders, and the network log every run already
+// wrote but nothing surfaced.
+function ArtifactLinks({ audit }: { audit: AuditResult }) {
+  const links = [
+    audit.performanceProfileHref ? ['performance profile', audit.performanceProfileHref] : null,
+    audit.networkActivityHref ? ['network activity', audit.networkActivityHref] : null,
+  ].filter((link): link is string[] => link !== null);
+  if (links.length === 0) return null;
+  return (
+    <FullReportOnly>
+      <div className="artifact-links">
+        {links.map(([label, href]) => (
+          <DetailedArtifactDialog key={label} href={href} label={label}>
+            {label}
+          </DetailedArtifactDialog>
+        ))}
+      </div>
+    </FullReportOnly>
   );
 }
 
@@ -170,6 +193,12 @@ const LIGHTHOUSE_THUMB_STYLE: CSSProperties = {
   height: 'auto',
 };
 
+function hasArtifacts(audit: AuditResult): boolean {
+  return audit.lighthouseHref != null ||
+    audit.performanceProfileHref != null ||
+    audit.networkActivityHref != null;
+}
+
 function hasRenderableData(audit: AuditResult): boolean {
-  return (audit.metrics?.length ?? 0) > 0 || audit.lighthouseHref != null;
+  return (audit.metrics?.length ?? 0) > 0 || hasArtifacts(audit);
 }

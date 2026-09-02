@@ -490,16 +490,26 @@ interface RuleFindingGroup {
   tags: string[];
 }
 
+/**
+ * The viewports worth showing: a comparison that found nothing renders no
+ * section at all. The stage checks this before building the element so the
+ * report can tell an empty section from a missing one.
+ */
+export function accessibilityCompareRows(
+  measurements: readonly StageRenderEntry<AccessibilityCompareResult>[],
+): readonly StageRenderEntry<AccessibilityCompareResult>[] {
+  return measurements.filter((entry) =>
+    entry.measurement.summary.blocked > 0 ||
+    entry.measurement.findings.length > 0,
+  );
+}
+
 export function AccessibilityCompareArtifactView({
   measurements,
 }: {
   measurements: readonly StageRenderEntry<AccessibilityCompareResult>[];
 }) {
-  const rows = measurements.filter((entry) =>
-    entry.measurement.summary.errors > 0 ||
-    entry.measurement.summary.blocked > 0 ||
-    entry.measurement.findings.length > 0,
-  );
+  const rows = accessibilityCompareRows(measurements);
   if (rows.length === 0) return null;
 
   return (
@@ -539,9 +549,6 @@ function AccessibilityCompareViewport({
             {result.summary.unchanged > 0 ? (
               <StatusPill color="var(--fg-muted)" count={result.summary.unchanged} label="unchanged" />
             ) : null}
-            {result.summary.errors > 0 ? (
-              <StatusPill color="#b91c1c" count={result.summary.errors} label="scan error" />
-            ) : null}
             {result.summary.blocked > 0 ? (
               <StatusPill color="#92400e" count={result.summary.blocked} label="bot blocked" />
             ) : null}
@@ -562,10 +569,9 @@ function AccessibilityCompareViewport({
           ) : null}
         </div>
 
-        {result.control.error || result.experiment.error ? <ScanErrors result={result} /> : null}
         {result.control.blocked || result.experiment.blocked ? <BlockedScans result={result} /> : null}
 
-        {result.findings.length === 0 && result.summary.errors === 0 && result.summary.blocked === 0 ? (
+        {result.findings.length === 0 && result.summary.blocked === 0 ? (
           <StageNote body="No accessibility difference between control and experiment." />
         ) : null}
       </div>
@@ -990,7 +996,6 @@ function CompareScreenshotPanel({
         <span style={{ color: 'var(--fg-muted)' }}>{subtitle}</span>
       </div>
       <div style={{ color: 'var(--fg-muted)', overflowWrap: 'anywhere' }}>{sideScan.url}</div>
-      {sideScan.error ? <StageNote label={title} body={sideScan.error} /> : null}
       {sideScan.blocked ? (
         <StageNote label={title} body="Bot protection served a challenge page, so this side could not be measured." />
       ) : null}
@@ -1026,9 +1031,9 @@ function CompareScreenshotPanel({
             ))}
           </div>
         </div>
-      ) : !sideScan.error ? (
+      ) : (
         <StageNote body={sideCleanText(result, side)} />
-      ) : null}
+      )}
       <FullReportOnly>
         {sideRawArtifactHref(result, side) ? (
           <a href={sideRawArtifactHref(result, side)} target="_blank" rel="noreferrer">raw JSON</a>
@@ -1360,15 +1365,6 @@ function nodeCountText(count: number): string {
   return `${count} node${count === 1 ? '' : 's'}`;
 }
 
-function ScanErrors({ result }: { result: AccessibilityCompareResult }) {
-  return (
-    <div style={{ display: 'grid', gap: 6 }}>
-      {result.control.error ? <StageNote label="control" body={result.control.error} /> : null}
-      {result.experiment.error ? <StageNote label="experiment" body={result.experiment.error} /> : null}
-    </div>
-  );
-}
-
 function BlockedScans({ result }: { result: AccessibilityCompareResult }) {
   return (
     <div style={{ display: 'grid', gap: 6 }}>
@@ -1415,7 +1411,6 @@ function firstFindingTarget(finding: AccessibilityCompareFinding): Accessibility
 }
 
 function headlineText(result: AccessibilityCompareResult): string {
-  if (result.summary.errors > 0) return 'Accessibility scan did not complete';
   if (result.summary.blocked > 0) return 'Accessibility could not be measured';
   if (result.summary.new > 0) return 'Accessibility regressed in experiment';
   if (result.summary.changed > 0) return 'Accessibility changed between versions';
@@ -1443,7 +1438,6 @@ function sideSubtitle(
 }
 
 function sideCleanText(result: AccessibilityCompareResult, side: AccessibilityCompareSide): string {
-  if (result.summary.errors > 0) return 'No screenshot findings available because this side did not scan cleanly.';
   if (result.summary.blocked > 0) return 'No screenshot findings available because bot protection blocked measurement.';
   if (side === 'control' && result.summary.new > 0) return 'No control-side match. These findings are new in experiment.';
   if (side === 'experiment' && result.summary.fixed > 0) return 'No experiment-side match. These findings were fixed.';

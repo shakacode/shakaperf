@@ -28,6 +28,7 @@ import { SearchBar } from './components/SearchBar';
 import { ChipFilter, type ChipFilterOption } from './components/ChipFilter';
 import { SortChips, type SortChipOption, type SortDirection } from './components/SortChips';
 import { TestCard } from './components/TestCard';
+import { stageSection } from './components/OutcomeSlot';
 import { ErrorBanner } from './components/ErrorBanner';
 import { MissingArtifactsCard } from './components/MissingArtifactsCard';
 import { SkippedChips } from './components/SkippedChips';
@@ -223,9 +224,48 @@ function reportStages(meta: ReportMeta): ReportStage[] {
     .filter((stage) => !HIDDEN_STAGE_FILTERS.has(stage.name));
 }
 
-function outcomeRendersSection(outcome: ReportOutcome): boolean {
-  return outcome.kind === 'error' ||
-    (outcome.kind === 'ok' && outcome.measurement != null);
+/**
+ * The stages this test actually draws a section for — asked of the same
+ * renderer the card uses, so a stage whose outcomes are all skips, or whose
+ * measurements produce no artifact, does not count. Both the section counts
+ * and the empty-card rule read this, so the filter never offers (or blames) a
+ * section the card was never going to show.
+ */
+export function stagesThatRender(meta: ReportMeta, test: TestResult): Set<string> {
+  const byStage = new Map<string, ReportOutcome[]>();
+  for (const outcome of test.outcomes) {
+    const group = byStage.get(outcome.stage);
+    if (group) group.push(outcome);
+    else byStage.set(outcome.stage, [outcome]);
+  }
+  const rendered = new Set<string>();
+  for (const [stage, outcomes] of byStage) {
+    if (stageSection(meta, outcomes) != null) rendered.add(stage);
+  }
+  return rendered;
+}
+
+function intersects(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  for (const value of a) {
+    if (b.has(value)) return true;
+  }
+  return false;
+}
+
+/**
+ * True when the report-sections filter hid everything this card had to show,
+ * leaving a bare shell — such a card drops out of the grid. `unfilteredStages`
+ * is what the card would show with every section checked, so cards that render
+ * nothing for other reasons (a bisect selection that owns none of their
+ * stages) stay put.
+ */
+export function isEmptiedByStageFilter(
+  renderedStages: ReadonlySet<string>,
+  visibleStages: ReadonlySet<string>,
+  unfilteredStages: ReadonlySet<string>,
+): boolean {
+  return intersects(renderedStages, unfilteredStages) &&
+    !intersects(renderedStages, visibleStages);
 }
 
 function hasReportableOutcomes(test: TestResult, includePersistedOutcomes: boolean): boolean {
@@ -237,11 +277,8 @@ function hasReportableOutcomes(test: TestResult, includePersistedOutcomes: boole
 export function buildStageFilterOptions(meta: ReportMeta, tests: readonly TestResult[]): StageFilterOption[] {
   const counts = new Map<string, number>();
   for (const test of tests) {
-    const seen = new Set<string>();
-    for (const outcome of test.outcomes) {
-      if (!outcomeRendersSection(outcome) || seen.has(outcome.stage)) continue;
-      seen.add(outcome.stage);
-      counts.set(outcome.stage, (counts.get(outcome.stage) ?? 0) + 1);
+    for (const stage of stagesThatRender(meta, test)) {
+      counts.set(stage, (counts.get(stage) ?? 0) + 1);
     }
   }
   // `label` rides along on each stage, so it's a guaranteed `string` here — no
@@ -335,6 +372,10 @@ export function App({
     () => buildStageFilterOptions(data.meta, cardTests),
     [cardTests, data.meta],
   );
+  const renderedStagesByTest = useMemo(
+    () => new Map(cardTests.map((test) => [test.id, stagesThatRender(data.meta, test)])),
+    [cardTests, data.meta],
+  );
   const visibleStages = useMemo(
     () => normalizeStageSelection(visibleStageOverride, stageFilterOptions),
     [stageFilterOptions, visibleStageOverride],
@@ -351,10 +392,18 @@ export function App({
       : selectionCategories(data.bisect, bisectSelection),
     [bisectSelection, data.bisect],
   );
-  const effectiveVisibleStages = useMemo(() => {
-    if (data.bisect == null || bisectSelection.kind === 'all') return visibleStages;
-    return stageNamesForCategories(reportStages(data.meta), visibleStages, bisectCategories);
-  }, [bisectCategories, bisectSelection.kind, data.bisect, data.meta, visibleStages]);
+  const narrowToBisectSelection = useCallback((stages: ReadonlySet<string>) => {
+    if (data.bisect == null || bisectSelection.kind === 'all') return stages;
+    return stageNamesForCategories(reportStages(data.meta), stages, bisectCategories);
+  }, [bisectCategories, bisectSelection.kind, data.bisect, data.meta]);
+  const effectiveVisibleStages = useMemo(
+    () => narrowToBisectSelection(visibleStages),
+    [narrowToBisectSelection, visibleStages],
+  );
+  const unfilteredStages = useMemo(
+    () => narrowToBisectSelection(enabledStageNames(stageFilterOptions)),
+    [narrowToBisectSelection, stageFilterOptions],
+  );
   const setVisibleStageSelection = useCallback((update: StageFilterSelectionUpdate) => {
     setVisibleStageOverride((previous) => {
       const current = normalizeStageSelection(previous, stageFilterOptions);
@@ -404,6 +453,8 @@ export function App({
     const out: { test: TestResult; dimmed: boolean }[] = [];
     for (const t of cardTests) {
       if (!matchesQuery(t, query)) continue;
+      const rendered = renderedStagesByTest.get(t.id) ?? new Set<string>();
+      if (isEmptiedByStageFilter(rendered, effectiveVisibleStages, unfilteredStages)) continue;
       const excludedByBisect = data.bisect != null &&
         bisectSelection.kind !== 'all' &&
         !bisectTestIds.has(t.id);
@@ -422,7 +473,19 @@ export function App({
       );
     });
     return out;
-  }, [bisectSelection.kind, bisectTestIds, cardTests, data.bisect, visibleTestIds, query, sort, sortValues]);
+  }, [
+    bisectSelection.kind,
+    bisectTestIds,
+    cardTests,
+    data.bisect,
+    effectiveVisibleStages,
+    renderedStagesByTest,
+    unfilteredStages,
+    visibleTestIds,
+    query,
+    sort,
+    sortValues,
+  ]);
 
   const selectChip = (key: string, additive: boolean) => {
     const chipTests = chipTestSets.get(key) ?? new Set<string>();

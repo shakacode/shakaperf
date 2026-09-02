@@ -100,6 +100,13 @@ export interface PipelineReport {
   renderHeaderUrls(meta: ReportMeta): ReactNode;
   renderTestCardUrls(test: TestResult): ReactNode;
   renderDialogMetaUrls(test: StageArtifactTestMeta): ReactNode;
+  /**
+   * The command that re-runs this one test at this one viewport for debugging.
+   * Printed at the head of every unit's log and shown on the report card, so
+   * the way back to a failing measurement travels with the measurement itself.
+   * Omitted by a pipeline with no such command — troubleshoot is already it.
+   */
+  troubleshootCommand?(testName: string, viewportLabel: string): string;
 }
 
 export interface PipelineMachineReportMeta {

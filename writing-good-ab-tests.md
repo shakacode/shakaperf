@@ -1,5 +1,48 @@
 # Writing Good AB Tests
 
+Canonical list of test code rules. Both `discover-abtests` (when writing new tests) and this skill (when grading existing tests) read from this file.
+
+A visreg test exists to **fail loudly** when the UI changes. Control flow that hides "the element wasn't there" or "the action didn't happen" defeats the whole point — a green test that silently did nothing is worse than no test. So:
+
+1. **No error swallowing.** Never wrap an action in `try/catch` to keep going, and never `.catch(() => {})` a promise. A failed click, fill, or wait *is* the finding — let it throw so the report shows "Failed while \<annotation\>". "It might not be there" is a reason to assert it (rule 3), not to guard it.
+
+2. **No loops.** No `for` / `while` / `forEach` / `for await` in a test body. Steps stay explicit and linear, so a failure points at one action and the run is reproducible.
+   - Don't loop to "click through" N items — that's N separate tests, or one snapshot of the container. Split it.
+   - Never write a `while (!atBottom)` scroll loop — it hangs in this harness (`window.scrollY` doesn't update in the Playwright context). Use `scrollIntoViewIfNeeded()` on a known bottom element (see the lazy-load pattern in `discover-abtests/references/patterns.md`).
+
+3. **No `if` — assert the expectation instead.** Don't branch on page state (`if (await locator.isVisible())`, `if (await locator.count())`, `if (el) …`). A branch means the test quietly takes the "do nothing" path *exactly when* the thing you're testing has regressed. State what you expect and let Playwright's auto-waiting throw when it's wrong — these are your assertions:
+   - `await page.waitForSelector(sel, { state: 'visible' })` — the element must appear.
+   - `await page.waitForURL('**/path')` — navigation must happen.
+   - Need different behaviour per viewport? Don't branch on `viewport.label` — write a separate `abTest` scoped to that viewport via `config: { visreg: { viewports: [...] } }` (see "Viewport-conditional selectors" in `patterns.md`). Each test stays linear.
+
+4. **Wait for conditions, not the clock.** Use `waitUntilPageSettled(page)` and `waitForSelector(sel, { state })` to wait. `page.waitForTimeout(ms)` is a guess — flaky when short, slow when long. A short fixed delay (≤500ms) is acceptable *only* to let a confirmed animation/transition finish where there's no event to wait on, never to "hope" content loads.
+
+5. **Prefer user-facing locators.** `getByRole`, `getByLabel`, `getByText` express intent and survive refactors better than brittle CSS/XPath; fall back to a stable selector (`[data-cy=…]`, a semantic class) when there's no accessible handle. (Section *captures* still use CSS selectors — see Selectors strategy in `patterns.md`.)
+
+6. **Deterministic inputs *and* content.** Fill fixed values — a fixed date, name, count — never `Date.now()`, randomness, or "today". When the *page itself* renders nondeterministic content (timestamps, "2 minutes ago", live counters, randomized ordering, today's date, ads), **alter the page to force it deterministic** rather than raising `config.visreg.mismatchThreshold` to hide it — a raised threshold isn't determinism, it just blinds the test to real diffs. In order of preference:
+   - **Freeze it at the source** in `beforeNavigate`, before the page loads, so it renders identically every run and on both sides:
+     ```typescript
+     beforeNavigate: async ({ context }) => {
+       await context.addInitScript(() => {
+         const FIXED = new Date('2026-01-01T00:00:00Z').getTime();
+         Date.now = () => FIXED;            // also stub the Date constructor if the app uses `new Date()`
+         Math.random = () => 0.42;          // pin shuffles / randomized order
+       });
+     },
+     ```
+   - **Overwrite the rendered text** in `testFn` before capture (it runs before the screenshot). Annotate it, and don't guard it — if the element is gone, let it throw:
+     ```typescript
+     annotate('pinning the relative timestamp');
+     await page.locator('.posted-at').evaluate((el) => { el.textContent = 'Jan 1, 2026'; });
+     ```
+   - **Drop it from the capture** in the test body when the dynamic element isn't what this test is about (e.g. an ad slot inside a section you're snapshotting): `await page.locator('.ad-slot').evaluateAll((els) => els.forEach((el) => el.remove()))`.
+   - **Stub images** with `interceptImages(page)` (call before `page.goto`) and freeze animations/background images with `overrideCSS(page)`.
+
+7. **Each test stands alone.** It starts from its `startingPath` and assumes nothing from any other test — no shared state, no ordering. One behaviour (one section, one interaction) per `abTest`, so a failure pinpoints what broke.
+
+And keep annotating: an `annotate(...)` immediately before each user action is what turns a thrown assertion into a readable "Failed while \<doing X\>".
+
+
 ## What to do when the component you want to capture is below the viewport? Avoid scrolling.
 
 1. Script an interaction only when the interaction *is* the test. On a virtualized page this is not a style preference: as sections mount, estimated heights are replaced by measured ones and `scrollHeight` moves under you (18,669 → 8,940 px on a real menu page), so fraction-based scrolling overshoots and unmounts everything you meant to assert on.
@@ -191,6 +234,85 @@ abTest('Like a dish', {
 ```
 
 Keep stubs narrow: continue unmatched GraphQL operations and return the complete response shape the UI reads. Use the same interception pattern for nondeterministic third-party APIs such as geocoders, which can rank results differently or time out. For merely blocking resources in perf runs, prefer `installRequestBlocking(context, patterns)`; general Playwright routing disables Chromium's HTTP cache and can distort the measurement.
+
+## Do not hand-roll counters for what the run already records
+
+The trace behind every perf run already carries each network request as a span,
+and same-origin `/graphql` POSTs are keyed by their `operationName`. A repeated
+request is therefore visible as repeated bars on one side of the timeline strip.
+Counting the same requests yourself adds a listener that can only agree with the
+trace, and asserting on the count turns a measurement into a pass/fail gate that
+hides the numbers when it trips. Reproduce the condition and let the comparison
+report it.
+
+### BAD — count requests in the test and throw
+
+```typescript
+abTest('Autonavigate', { startingPath: '/order?location=main', testTypes: ['perf'] },
+  async ({ browserContext, page }) => {
+    const updates = cartUpdateMutationCount(browserContext); // duplicates the trace
+    if (updates > 2) throw new Error(`sent ${updates} cart updates`);
+  });
+```
+
+### GOOD — drive the page to the state and let the trace show the requests
+
+```typescript
+abTest('Autonavigate', { startingPath: '/order?location=main', testTypes: ['perf'] },
+  async ({ page }) => {
+    await page.waitForURL('**/order/main/menus/**');
+    await waitUntilPageSettled(page);
+  });
+```
+
+## Never branch on page state
+
+A branch or swallowed rejection makes the test pass when expected UI is missing. State the
+expected journey and let Playwright throw when it cannot complete it.
+
+### BAD — silently works whether the element exists or not
+
+```typescript
+  if (await toast.count()) {
+    await toast.click();
+  }
+
+  await trigger.click().catch(() => undefined);
+```
+
+### GOOD — one expected journey
+
+```typescript
+  await toast.click();
+  await trigger.click();
+```
+
+If the toast matters, click it unconditionally; otherwise omit it. For viewport-specific
+journeys, use separate viewport-scoped tests.
+
+## Never branch the test body on `isControl`
+
+Control is not a fixed baseline — it is the merge-base today and your merged work tomorrow —
+so `if (!isControl)` will cause false regressions.
+
+### BAD — the wait is skipped on control, and silently on both sides after the merge
+
+```typescript
+
+  await openCartDrawer(page);
+  // A new element was just introduced, to fix the fail, we only check it in experiment.
+  if (!isControl) {
+    await page.locator('[data-section-id="cart-upsell"]').waitFor({ state: 'visible' });
+  }
+```
+
+### GOOD — one journey, gated on state both sides reach
+
+```typescript
+  await openCartDrawer(page);
+  // Wait unconditionally. Initial failure against master is expected.
+  await page.locator('[data-section-id="cart-upsell"]').waitFor({ state: 'visible' });
+```
 
 ## Compose per-test `beforeNavigate` setup explicitly
 
@@ -517,3 +639,39 @@ await page.setViewportSize(viewport);                                // and refl
 // abtests.config.ts
 viewportDefinitions: [{ ...DESKTOP_VIEWPORT, height: 6000 }, { ...PHONE_VIEWPORT, height: 6000 }],
 ```
+
+## Make the viewport bigger than the element you capture
+
+A screenshot is cropped to the viewport, so a subject taller than the window comes back
+clipped or full of capture artifacts (fixed chrome mid-image, unmounted lazy content).
+Check the subject's height and pick a viewport it fits inside — the tall trio
+(`desktop-tall`, `tablet-tall`, `phone-tall`: same widths, 3000 px) exists for this.
+Phone is the worst case: 667 px tall, and columns restack into one long strip.
+
+### BAD — a ~2,200 px footer at phone's 667 px
+
+```typescript
+abTest('Footer locations', {
+  startingPath: '/custom-form',
+  visregSelectors: ['footer'],
+}, async ({ page }) => {
+  await waitUntilPageSettled(page);
+});
+```
+
+### GOOD — a viewport the footer fits inside
+
+```typescript
+const MEASURED = ['desktop-tall', 'tablet-tall', 'phone-tall'] satisfies [string, ...string[]];
+
+abTest('Footer locations', {
+  startingPath: '/custom-form',
+  visregSelectors: ['footer'],
+  config: {
+    visreg: { viewports: MEASURED },
+  },
+}, async ({ page }) => {
+  await waitUntilPageSettled(page);
+});
+```
+
