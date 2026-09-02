@@ -127,6 +127,34 @@ describe('shared.viewports as the per-category default', () => {
       shared: { ...baseConfig().shared, viewports: ['watch'] },
     }))).toThrow('shared.viewports: unknown viewport label "watch"');
   });
+
+  const TABLET_ONLY = {
+    label: 'tablet', width: 768, height: 1024,
+    formFactor: 'mobile' as const, deviceScaleFactor: 2,
+  };
+  const everyCategoryPinnedToTablet = {
+    shared: { ...baseConfig().shared, viewportDefinitions: [TABLET_ONLY] },
+    visreg: { viewports: ['tablet'] },
+    perf: { viewports: ['tablet'] },
+    audit: { viewports: ['tablet'] },
+    accessibility: { viewports: ['tablet'] },
+  };
+
+  it('leaves an unresolvable shared.viewports alone when no category reads it', () => {
+    const config = buildAbTestsConfig(baseConfig(everyCategoryPinnedToTablet));
+
+    expect(config.shared.viewports).toEqual(['desktop', 'phone']);
+    for (const category of ['visreg', 'perf', 'audit', 'accessibility'] as const) {
+      expect(viewportsForCategory(config, category).map((v) => v.label)).toEqual(['tablet']);
+    }
+  });
+
+  it('rejects the same shared.viewports once a category falls back to it', () => {
+    const { accessibility: _dropped, ...withAccessibilityUnset } = everyCategoryPinnedToTablet;
+
+    expect(() => buildAbTestsConfig(baseConfig(withAccessibilityUnset)))
+      .toThrow('shared.viewports: unknown viewport label "desktop"');
+  });
 });
 
 describe('perf config', () => {
