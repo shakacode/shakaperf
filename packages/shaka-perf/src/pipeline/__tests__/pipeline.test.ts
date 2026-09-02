@@ -82,6 +82,8 @@ function pipeline(): Pipeline {
       renderHeaderUrls: () => null,
       renderTestCardUrls: () => null,
       renderDialogMetaUrls: () => null,
+      troubleshootCommand: (testName, viewportLabel) =>
+        `run-me --filter '${testName}' --viewport ${viewportLabel}`,
     },
   }, (builder) => {
     const pool = builder.registerWorkerPool(2);
@@ -244,6 +246,28 @@ describe('runPipeline', () => {
 
     expect(loadTests).not.toHaveBeenCalled();
   });
+
+  // eslint-disable-next-line no-control-regex
+  const ANSI = /\u001b\[[0-9;]*m/g;
+  const stripAnsi = (text: string) => text.replace(ANSI, '');
+
+  it('opens every measurement log with the command that re-runs it alone', async () => {
+    const result = await runWithFrozenTest({ skipReport: true });
+    const logs = result.testResults[0]!.outcomes
+      .filter((outcome) => outcome.logs)
+      .map((outcome) => outcome.logs!);
+
+    expect(logs.length).toBeGreaterThan(0);
+    for (const log of logs) {
+      // The command is printed green, so compare against the text underneath.
+      expect(stripAnsi(log)).toContain(
+        `to troubleshoot this line run run-me --filter '${frozenTest.name}' --viewport`,
+      );
+      expect(log).toContain(`\u001b[32mrun-me --filter`);
+    }
+    // Drives a whole pipeline, like its neighbours; the default 5s is marginal
+    // for that on a loaded machine.
+  }, 30_000);
 
   it('exposes assembled test results when skipping report generation', async () => {
     const result = await runWithFrozenTest({ skipReport: true });

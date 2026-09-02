@@ -71,6 +71,21 @@ export function renderPipelineDialogMetaUrls(test: StageArtifactTestMeta): React
   return pipelineForReport(test.pipelineName, test.pipelineConfig).report.renderDialogMetaUrls(test);
 }
 
+/**
+ * The debug commands for one test's card: one per viewport it measured, deduped
+ * because a pipeline whose command takes no viewport (audit) returns the same
+ * string for every row. Empty when the pipeline has no such command.
+ */
+export function pipelineTroubleshootCommands(
+  meta: ReportMeta,
+  testName: string,
+  viewportLabels: readonly string[],
+): string[] {
+  const build = pipelineForReport(meta.pipelineName, meta.pipelineConfig).report.troubleshootCommand;
+  if (!build) return [];
+  return [...new Set(viewportLabels.map((label) => build(testName, label)))];
+}
+
 export function pipelineReportLabel(meta: ReportMeta): string {
   return pipelineForReport(meta.pipelineName, meta.pipelineConfig).report.reportLabel;
 }
