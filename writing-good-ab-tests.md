@@ -175,6 +175,39 @@ await page.getByRole('heading', { name: 'Your cart is empty' }).waitFor({ state:
 
 This is causal waiting, not defensive waiting: the remove request is invalid until the add request has committed.
 
+## Do not hide app bugs. Fail loudly.
+
+Flakiness can eihter be a test flaw, or an app bug. Never dence around the latter. Do not patch the app to stabilize it,
+add expectations and create a bug with reproduction steps `shaka-perf --categories=visreg --filter="<Test Name>" --burn 5`
+
+### BAD — pin the page, hide the highlight, re-pin the strip until the screenshots match
+
+```typescript
+await waitForScrollSettled(page);
+await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+await stabilizeForVisreg(page);
+await neutralizeActiveSectionChip(page);
+await pinSectionChipStripToEnd(page);
+await waitForStableActiveSectionChip(page);
+await pinSectionChipStripToEnd(page);
+```
+
+### GOOD — add the expectation; its failure message is the bug's reproduction
+
+```typescript
+await annotate('clicking the last section chip (Specials)');
+await page.locator('[aria-label="menu sections"] a:has-text("Specials")').first().click();
+await page.getByRole('heading', { name: 'Tuscan Butter Shrimp' }).waitFor({ state: 'visible' });
+await stabilizeForVisreg(page);
+const active = await page.locator('[aria-label="menu sections"] [aria-current="true"]').textContent();
+if (active?.trim() !== 'Specials') {
+  throw new Error(
+    `APP BUG: tapped Specials, active chip is "${active}". ` +
+    'Repro: shaka-perf compare --categories=visreg --filter="Popmenu Order - Menu Section Last Chip Into View" --burn 5',
+  );
+}
+```
+
 ## Never alter the database; intercept writes
 
 A/B tests may read seeded data, but they must not create, update, or delete persistent database state. Any example in this guide that triggers a writing interaction assumes its request is intercepted. Cleanup afterward is not sufficient: the other twin, a retry, or a later test can observe the intermediate write.
@@ -404,14 +437,16 @@ Put an annotation immediately before its user action so the timeline chip marks 
 
 ## Capture presence, not absence
 
-Shaka-perf is a snapshot-heavy framework: the captured artifact should contain the UI that proves the state under test. Do not use it for behavior whose only result is that an element is gone. A screenshot of the page after a dialog closes provides no meaningful evidence about the dialog or its close button.
+Shaka-perf is not your regular testing framework like Cypress and Playwright! It is a tool based on screenshot comparison: the captured artifact should contain the UI. Do not use it for testing behavior whose only result is that an element is gone. A screenshot of the page after a dialog closes provides no meaningful evidence about the looks and the speed of the dialog or its close button.
+
+Shaka-perf is not meant to hunt edge cases. If you are trying to achieve 100% code coverage with it, you are using the wrong tool. Use Playwright/Cypress instead!
 
 ### BAD — close the visual subject before capture
 
 ```typescript
 abTest('Close item dialog', {
   startingPath: '/menus/dinner-menu',
-  testTypes: ['visreg', 'accessibility'],
+  testTypes: ['visreg', 'accessibility', 'perf'],
   visregSelectors: ['viewport'],
 }, async ({ page }) => {
   await page.getByRole('button', { name: /Curly Fries/ }).first().click();
@@ -426,22 +461,22 @@ abTest('Close item dialog', {
 ### GOOD — capture the dialog and its meaningful contents
 
 ```typescript
-const ITEM_DIALOG = '[role="dialog"][aria-label*="Curly Fries"]';
-
 abTest('Item dialog', {
   startingPath: '/menus/dinner-menu',
-  testTypes: ['visreg', 'accessibility'],
-  visregSelectors: [ITEM_DIALOG],
+  testTypes: ['visreg', 'accessibility', 'perf'],
+  visregSelectors: ['viewport'],
 }, async ({ page }) => {
   await page.getByRole('button', { name: /Curly Fries/ }).first().click();
-  const dialog = page.locator(ITEM_DIALOG);
+  const dialog = page.getByRole('dialog', { name: /Curly Fries/ });
   await dialog.waitFor({ state: 'visible' });
   await dialog.getByRole('button', { name: 'Add to order' }).waitFor({ state: 'visible' });
   await waitForStableElementSize(dialog);
 });
 ```
 
-If the requirement is “the Close button dismisses the dialog,” write that as a behavioral assertion in vanilla Playwright or Cypress. Keep the shaka-perf test focused on the presence and rendered quality of the open dialog.
+You would ask, "What about performance? Surely the GOOD example covers fewer scenarios? Isn't it important to make sure that closing the dialog does not freeze the page or cause CLS issues? The BAD example provides a sharper perspective on the page's performance. Right?"
+Wrong. Performance tests are ridiculously expensive. You can't have perf tests for every single edge case. You can't have perf tests even for all of your happy paths. Shaka-perf is not suitable for **code coverage**. It is only suitable for **screenshot coverage** of happy paths. If you want **code coverage**, write other types of tests (they are cheaper and less flaky).
+
 
 ## Capture the final component, not unstable surroundings
 
