@@ -225,7 +225,7 @@ function accessibilityGotoOptions(playwrightOptions: PlaywrightOptions): PageGot
   if (candidate && typeof candidate === 'object') {
     return candidate as PageGotoOptions;
   }
-  return { waitUntil: 'networkidle' };
+  return {};
 }
 
 // Resolve every node's box in one in-page pass. The old per-node parallel
