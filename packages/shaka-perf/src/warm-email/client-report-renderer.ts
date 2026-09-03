@@ -25,7 +25,6 @@ import {
   COST_STATE_MATRIX,
   INDUSTRY_DATA,
   MULTIPLES_FLOORED_NOTE,
-  PAGESPEED_FIELD_VS_LAB_PREEMPT,
   VIEW_INSTRUCTIONS,
   WHAT_THIS_COSTS_YOU,
   aiHomepageReadableLine,
@@ -276,7 +275,6 @@ export interface ClientReportCostBlock extends CostBlockExtras {
   // Presentation slots added by the C renderer. Builder waves may omit them;
   // the renderer then leaves the corresponding visual detail out.
   scale?: Pick<BenchmarkScaleGeometry, 'axisMaxDisplay' | 'zones' | 'goodLinePercent' | 'poorLinePercent' | 'markerPercent'>;
-  pageSpeedUrl?: string;
   aiTiles?: {
     pagePath: string;
     invisiblePercent: number;
@@ -612,7 +610,7 @@ function headlineColor(state: CostState): string {
   return state === 'measured' ? PAL.poor.fg : INK;
 }
 
-function urlFromCheckLine(checkLine: string | undefined, prefix: 'https://pagespeed.web.dev/analysis?' | 'view-source:'): string | undefined {
+function urlFromCheckLine(checkLine: string | undefined, prefix: 'view-source:'): string | undefined {
   if (!checkLine) return undefined;
   const start = checkLine.indexOf(prefix);
   if (start < 0) return undefined;
@@ -643,7 +641,6 @@ function performanceMeasuredRow(cost: ClientReportCostBlock): string {
   }
   const gap = cost.gap;
   const numbersId = costId('cr', 'perf', 'cost-numbers');
-  const pageSpeedUrl = cost.pageSpeedUrl;
   const detailLines = [
     ...(cost.gapSubLines ?? []),
     ...(cost.bookingLine ? [cost.bookingLine] : []),
@@ -651,10 +648,9 @@ function performanceMeasuredRow(cost: ClientReportCostBlock): string {
   ];
   const numbers = gap && (detailLines.length > 0 || gap.lineUrl)
     ? `<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px">
-              ${pageSpeedUrl ? `<a class="cr-cost-chip" href="${esc(pageSpeedUrl)}" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:5px; border:1px solid #e0d9cd; background:#f4f1ea; border-radius:999px; padding:5px 11px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:#4a443c; text-decoration:none">Check it yourself - PageSpeed &#8599;</a>` : ''}
               ${costChipButton(numbersId, 'the numbers')}
             </div>
-            ${costDetailsPanel(numbersId, `<div style="font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.7; color:#5e5549">${detailLines.map(esc).join('<br>')}${detailLines.length ? '<br>' : ''}${pageSpeedUrl ? `${esc(PAGESPEED_FIELD_VS_LAB_PREEMPT)}<br>` : ''}benchmark: <a href="${esc(gap.lineUrl)}" target="_blank" rel="noopener" style="color:#5e5549; font-weight:600; text-decoration:underline">${esc(gap.lineOwner)}</a><br>${esc(MULTIPLES_FLOORED_NOTE)}</div>`)}`
+            ${costDetailsPanel(numbersId, `<div style="font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.7; color:#5e5549">${detailLines.map(esc).join('<br>')}${detailLines.length ? '<br>' : ''}benchmark: <a href="${esc(gap.lineUrl)}" target="_blank" rel="noopener" style="color:#5e5549; font-weight:600; text-decoration:underline">${esc(gap.lineOwner)}</a><br>${esc(MULTIPLES_FLOORED_NOTE)}</div>`)}`
     : '';
   return costGrammarRow('Measured', `
             ${headline ? `<div style="font-size:19px; line-height:1.3; font-weight:800; letter-spacing:-.01em; color:#26221d"><span style="color:${headlineColor(cost.state)}">${esc(headline)}</span></div>` : ''}

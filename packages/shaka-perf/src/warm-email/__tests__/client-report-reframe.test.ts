@@ -222,9 +222,10 @@ describe('cost-of-pain reframe model', () => {
         lineOwner: "Google's Lighthouse benchmark - first contentful paint",
       },
       scale: { axisMaxDisplay: 4, markerPercent: 75 },
-      pageSpeedUrl: 'https://pagespeed.web.dev/analysis?url=http%3A%2F%2Flocalhost%3A1%2F',
       scoreBadgePolicy: 'score-status',
     });
+    expect(perf).not.toHaveProperty('checkLine');
+    expect(perf).not.toHaveProperty('pageSpeedUrl');
     expect(perf?.gapSubLines).toEqual([
       'slowest page: Platform, 3.4s - 1.8x the line',
       'next slowest: Home, 3.0s - 1.6x the line',
@@ -321,8 +322,9 @@ describe('cost-of-pain reframe model', () => {
     expect(result.model.perfCost).toMatchObject({
       state: 'measured',
       gap: { metricLabel: 'First content', measuredLabel: '3.0s' },
-      pageSpeedUrl: 'https://pagespeed.web.dev/analysis?url=http%3A%2F%2Flocalhost%3A1%2Fpricing',
     });
+    expect(result.model.perfCost).not.toHaveProperty('checkLine');
+    expect(result.model.perfCost).not.toHaveProperty('pageSpeedUrl');
     expect(result.model.perfCost?.sitePrompts?.perf).toBeDefined();
   });
 
@@ -505,7 +507,8 @@ describe('cost-of-pain reframe model', () => {
       },
     });
     expect(cost?.headline).toContain('4.2s before your main content appears');
-    expect(cost?.checkLine).toContain('url=http%3A%2F%2Flocalhost%3A1%2Fbook');
+    expect(cost).not.toHaveProperty('checkLine');
+    expect(cost).not.toHaveProperty('pageSpeedUrl');
     expect(cost?.gapSubLines).toEqual([
       'slowest page: Book now, 12.0s - 4.8x the line',
       'site average: 6.2s - 2.4x the line',
