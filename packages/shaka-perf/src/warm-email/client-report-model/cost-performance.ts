@@ -352,12 +352,10 @@ export interface BuildPerfCostInput {
   measured: readonly PerfCostPage[];
   rankedCarded: readonly PerfCostPage[];
   siteUrl: string;
-  throttleProfile?: string;
   promptCtx: PerfCostPromptContext;
   moneyPage?: string;
   pageUrl: (page: PagePerf) => string;
   copyPromptForPage: (page: PagePerf) => string | undefined;
-  sameAsPsiDefaultProfile: (profile: string | undefined) => boolean;
 }
 
 // Keep callbacks explicit so extracted state modules need only type back-imports.

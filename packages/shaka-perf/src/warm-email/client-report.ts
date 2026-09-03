@@ -1663,12 +1663,10 @@ async function buildClientReportModel(
       measured: ctx.measured,
       rankedCarded,
       siteUrl: sc.url,
-      throttleProfile: sc.throttleProfile,
       promptCtx: perfPromptCtx,
       moneyPage: opts.moneyPage,
       pageUrl: (page) => perfPageUrl(sc.url, page),
       copyPromptForPage: (page) => perfCopyPromptForPage(page, sc.url, perfPromptCtx),
-      sameAsPsiDefaultProfile,
     }),
   };
 

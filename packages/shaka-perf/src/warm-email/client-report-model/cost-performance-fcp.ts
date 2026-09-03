@@ -6,7 +6,6 @@
  */
 
 import type { ClientReportCostBlock } from '../client-report-renderer';
-import { buildPageSpeedUrl, perfCheckLine } from '../cost-strings';
 import { buildPerfSitePrompt } from '../copy-prompt';
 import type { PagePerf } from '../synthesis';
 import { metricVal, perfAffectsProse, SCORE_BADGE_POLICY, type ClientReportPerfProblemCandidate } from './perf';
@@ -95,9 +94,6 @@ export function buildFcpMeasuredPerfCost(
   if (!fcpCostAnchor || !fcpCostIsDominant) return undefined;
 
   const anchorPage = fcpCostAnchor.page;
-  const anchorUrl = input.pageUrl(anchorPage);
-  const pageSpeedUrl = buildPageSpeedUrl(anchorUrl);
-  const checkProfile = input.throttleProfile || 'a profile not recorded in this audit';
   const perfFactPages = input.measured.map(({ page }) => ({
     name: page.name,
     lcpMs: metricVal(page, 'LCP'),
@@ -153,8 +149,6 @@ export function buildFcpMeasuredPerfCost(
     state: 'measured',
     headline: gap ? `nothing for the first ${gap.measuredLabel}` : 'first content is slow on this page',
     chip: 'measured',
-    checkLine: perfCheckLine(anchorUrl, input.sameAsPsiDefaultProfile(input.throttleProfile), checkProfile),
-    pageSpeedUrl,
     affectsProse: perfAffectsProse({ kind: 'late-paint', status: 'fair', severity: 0, headline: '', chip: '' }),
     ...(perfHandoff ? { sitePrompts: { perf: perfHandoff } } : {}),
     ...(gap ? { gap } : {}),

@@ -38,7 +38,6 @@ import {
   COPY_FIX_INSTRUCTIONS,
   COPY_SITE_FIX_INSTRUCTIONS,
   MULTIPLES_FLOORED_NOTE,
-  PAGESPEED_FIELD_VS_LAB_PREEMPT,
   VIEW_INSTRUCTIONS,
   a11yNoNumberLine,
   aiCheckLine,
@@ -55,7 +54,6 @@ import {
   calcAddValueLine,
   calcTinyResultLine,
   findBannedWords,
-  perfCheckLine,
   perfGapHeadline,
   perfMoreThanMultipleLine,
   perfHeadline,
@@ -174,14 +172,8 @@ describe('canonical cost copy', () => {
     expect(aiHomepageReadableLine(100)).toBe('Homepage (/): 100% of its text is readable to AI.');
   });
 
-  it('builds performance headline and profile-aware PSI check lines', () => {
+  it('builds the performance headline', () => {
     expect(perfHeadline('6.2s', 'Home')).toBe('6.2s before your main content appears on a mid-range phone');
-    expect(perfCheckLine('https://example.com/a?b=1', true)).toBe(
-      'check it yourself: run PageSpeed Insights on this page - same phone and network profile we used: https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fexample.com%2Fa%3Fb%3D1',
-    );
-    expect(perfCheckLine('https://example.com/a', false, '4G Fast / Moto G4')).toContain(
-      "(Google's standard phone profile; we used 4G Fast / Moto G4, so numbers may differ)",
-    );
   });
 
   it('exports shared labels and footer guardrails', () => {
@@ -218,9 +210,6 @@ describe('canonical cost copy', () => {
       "Google's good line is 1.8 seconds - you are more than 1.6x past it.",
     );
     expect(MULTIPLES_FLOORED_NOTE).toBe('multiples are floored, never rounded up');
-    expect(PAGESPEED_FIELD_VS_LAB_PREEMPT).toBe(
-      "may open with Google's own summary of real user data from the last 28 days when one exists for this address, which is a different check; use the lab test on that page for comparison, noting that it runs on Google's own phone and network settings",
-    );
     expect(AI_STUDIES_OTHER_SITES_CAVEAT).toBe(
       'The click studies ran on other sites - direction and rough size only, not your number.',
     );
@@ -264,7 +253,6 @@ describe('canonical cost copy', () => {
       CALC_HONESTY_FOOTER,
       perfMoreThanMultipleLine('1.8 seconds', '1.6x'),
       MULTIPLES_FLOORED_NOTE,
-      PAGESPEED_FIELD_VS_LAB_PREEMPT,
       AI_STUDIES_OTHER_SITES_CAVEAT,
       aiSiteWideContextLine(77, 'homepage'),
       AI_READABILITY_TARGET,

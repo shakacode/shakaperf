@@ -6,7 +6,6 @@
  */
 
 import type { ClientReportCostBlock } from '../client-report-renderer';
-import { buildPageSpeedUrl, perfCheckLine } from '../cost-strings';
 import {
   isPerfCostProblem,
   metricVal,
@@ -63,15 +62,10 @@ export function buildProblemMeasuredPerfCost(
     ? supportingProblem.problem
     : perfCostAnchor.problem;
   const anchorPage = perfCostAnchor.page;
-  // Keep the visible PageSpeed chip on the headline anchor; the legacy check line follows the supporting problem.
-  const anchorUrl = input.pageUrl(anchorPage);
-  const pageSpeedUrl = buildPageSpeedUrl(anchorUrl);
   const anchorProblemTx = perfProblemPhrase(perfCostAnchor.problem, anchorPage);
   const anchorProblemMetricTx = perfProblemMetric(perfCostAnchor.problem, anchorPage);
   const anchorProblemLabel = anchorProblemMetricTx ?? anchorProblemTx ?? perfCostAnchor.problem.chip;
   const anchorProblemPhrase = anchorProblemTx ?? perfCostAnchor.problem.chip;
-  const problemUrl = input.pageUrl(supportingProblem.page);
-  const checkProfile = input.throttleProfile || 'a profile not recorded in this audit';
   const perfFactPages = input.measured.map(({ page }) => ({
     name: page.name,
     lcpMs: metricVal(page, 'LCP'),
@@ -105,8 +99,6 @@ export function buildProblemMeasuredPerfCost(
     state: 'measured',
     headline: perfCostHeadline(perfCostAnchor.problem, anchorProblemLabel, anchorProblemPhrase, anchorPage),
     chip: 'measured',
-    checkLine: perfCheckLine(problemUrl, input.sameAsPsiDefaultProfile(input.throttleProfile), checkProfile),
-    pageSpeedUrl,
     affectsProse: perfAffectsProse(supportingPerfProblem),
     sitePrompt: perfCostCopyPromptEnabled(supportingPerfProblem)
       ? input.copyPromptForPage(supportingProblem.page)

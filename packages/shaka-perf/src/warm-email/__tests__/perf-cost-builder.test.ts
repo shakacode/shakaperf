@@ -51,7 +51,6 @@ function input(overrides: Partial<BuildPerfCostInput> = {}): BuildPerfCostInput 
     measured,
     rankedCarded: measured,
     siteUrl: 'https://example.com',
-    throttleProfile: 'Slow-4G',
     promptCtx: {
       host: 'example.com',
       date: 'July 10, 2026',
@@ -60,7 +59,6 @@ function input(overrides: Partial<BuildPerfCostInput> = {}): BuildPerfCostInput 
     },
     pageUrl: (pageValue: PagePerf) => `https://example.com${pageValue.startingPath}`,
     copyPromptForPage: () => undefined,
-    sameAsPsiDefaultProfile: (profile: string | undefined) => profile === 'Slow-4G',
     ...overrides,
   };
 }
@@ -72,7 +70,6 @@ describe('buildPerfCost', () => {
     expect(result.perfCost).toMatchObject({
       state: 'measured',
       headline: 'nothing for the first 3.0s',
-      pageSpeedUrl: 'https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fexample.com%2F',
       gap: {
         measuredLabel: '3.0s',
         goodLabel: '1.8s',
@@ -82,6 +79,8 @@ describe('buildPerfCost', () => {
       scale: { axisMaxDisplay: 4, markerPercent: 75 },
       calculator: { inquiryNoun: 'inquiry' },
     });
+    expect(result.perfCost).not.toHaveProperty('checkLine');
+    expect(result.perfCost).not.toHaveProperty('pageSpeedUrl');
     expect(result.perfCost?.gapSubLines).toEqual([
       'slowest page: Platform, 3.4s - 1.8x the line',
       'next slowest: Home, 3.0s - 1.6x the line',
@@ -98,12 +97,11 @@ describe('buildPerfCost', () => {
     expect(result.perfCost?.gapSubLines).toEqual(['slowest page: Home, 3.0s - 1.6x the line']);
   });
 
-  it('omits PageSpeed from the good state because there is no adverse gap to reproduce', () => {
+  it('returns the honest zero state for good performance', () => {
     const good = perfPage(page('Home', '/', { LCP: 2400, FCP: 1700, CLS: 1, TBT: 50 }));
     const result = buildPerfCost(input({ perfStatus: 'good', measured: [good], rankedCarded: [good] }));
 
     expect(result.perfCost).toEqual({ tab: 'perf', state: 'zero' });
-    expect(result.perfCost?.pageSpeedUrl).toBeUndefined();
   });
 
   it('uses slow FCP when every measured page lead is clean but the site status is fair', () => {
@@ -174,50 +172,8 @@ describe('buildPerfCost', () => {
     const result = buildPerfCost(input({ perfStatus: 'poor', measured: [measured], rankedCarded: [measured] }));
 
     expect(result.perfCost?.scale).toMatchObject(scale);
-    expect(result.perfCost?.pageSpeedUrl).toBe(
-      'https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fexample.com%2F',
-    );
-  });
-
-  it('uses the cost headline page for the visible PageSpeed URL', () => {
-    const supporting = perfPage(
-      page('Contact', '/contact', { LCP: 8000, FCP: 900, CLS: 2, TBT: 50 }),
-      { kind: 'slow-lcp', status: 'poor', severity: 1, headline: '', chip: 'slow-lcp' },
-    );
-    const homepage = perfPage(
-      page('Home', '/', { LCP: 5000, FCP: 900, CLS: 2, TBT: 50 }),
-      { kind: 'slow-lcp', status: 'poor', severity: 0.8, headline: '', chip: 'slow-lcp' },
-    );
-
-    const result = buildPerfCost(input({
-      perfStatus: 'poor',
-      measured: [supporting, homepage],
-      rankedCarded: [supporting, homepage],
-    }));
-
-    expect(result.perfCost?.pageSpeedUrl).toBe(
-      'https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fexample.com%2F',
-    );
-    expect(result.perfCost?.checkLine).toContain(
-      'https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fexample.com%2Fcontact',
-    );
-  });
-
-  it('encodes a query string in the measured problem anchor URL', () => {
-    const shopping = perfPage(
-      page('Shopping', '/shopping?lh=1', { LCP: 8000, FCP: 900, CLS: 2, TBT: 50 }),
-      { kind: 'slow-lcp', status: 'poor', severity: 1, headline: '', chip: 'slow-lcp' },
-    );
-
-    const result = buildPerfCost(input({
-      perfStatus: 'poor',
-      measured: [shopping],
-      rankedCarded: [shopping],
-    }));
-
-    expect(result.perfCost?.pageSpeedUrl).toBe(
-      'https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fexample.com%2Fshopping%3Flh%3D1',
-    );
+    expect(result.perfCost).not.toHaveProperty('checkLine');
+    expect(result.perfCost).not.toHaveProperty('pageSpeedUrl');
   });
 
   it('adds an FCP scale for a late-paint branch-3 fallback', () => {
