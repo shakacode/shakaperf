@@ -326,25 +326,27 @@ describe('agentReadiness config', () => {
   });
 });
 
-describe('codeCoverage config', () => {
+describe('audit.screenshotCoveragePlugin', () => {
   const plugin = { name: 'stamped', locate: (element: Element) => element.getAttribute('data-source') };
 
-  it('defaults to no screenshot-coverage plugin', () => {
-    expect(buildAbTestsConfig(baseConfig()).codeCoverage).toEqual({});
+  it('defaults to no plugin', () => {
+    expect(buildAbTestsConfig(baseConfig()).audit.screenshotCoveragePlugin).toBeUndefined();
   });
 
-  it("accepts the built-in 'react19' by name and a custom plugin by object", () => {
-    expect(buildAbTestsConfig(baseConfig({ codeCoverage: { screenshotCoveragePlugin: 'react19' } }))
-      .codeCoverage.screenshotCoveragePlugin).toBe('react19');
-    expect(buildAbTestsConfig(baseConfig({ codeCoverage: { screenshotCoveragePlugin: plugin } }))
-      .codeCoverage.screenshotCoveragePlugin).toBe(plugin);
+  it('accepts the built-ins by name and a custom plugin by object', () => {
+    expect(buildAbTestsConfig(baseConfig({ audit: { screenshotCoveragePlugin: 'react18' } }))
+      .audit.screenshotCoveragePlugin).toBe('react18');
+    expect(buildAbTestsConfig(baseConfig({ audit: { screenshotCoveragePlugin: 'react19' } }))
+      .audit.screenshotCoveragePlugin).toBe('react19');
+    expect(buildAbTestsConfig(baseConfig({ audit: { screenshotCoveragePlugin: plugin } }))
+      .audit.screenshotCoveragePlugin).toBe(plugin);
   });
 
   it('rejects anything else, naming what it wanted', () => {
-    expect(() => buildAbTestsConfig(baseConfig({ codeCoverage: { screenshotCoveragePlugin: 'react18' } })))
-      .toThrow(/codeCoverage\.screenshotCoveragePlugin: expected 'react19' or a plugin object/);
-    expect(() => buildAbTestsConfig(baseConfig({ codeCoverage: { screenshotCoveragePlugin: { name: 'x' } } })))
-      .toThrow(/codeCoverage\.screenshotCoveragePlugin/);
+    expect(() => buildAbTestsConfig(baseConfig({ audit: { screenshotCoveragePlugin: 'react17' } })))
+      .toThrow(/audit\.screenshotCoveragePlugin: expected 'react18', 'react19', or a plugin object/);
+    expect(() => buildAbTestsConfig(baseConfig({ audit: { screenshotCoveragePlugin: { name: 'x' } } })))
+      .toThrow(/audit\.screenshotCoveragePlugin/);
   });
 });
 

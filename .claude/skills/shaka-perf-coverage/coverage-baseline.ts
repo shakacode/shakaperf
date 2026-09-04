@@ -166,7 +166,7 @@ function buildScaffold(patterns: string[], resultsDir: string, outDir: string): 
 // --- screenshot coverage: the cells, from each unit's visibility map -------------------------
 //
 // The maps score every element of a finished page against the test's capture region and —
-// when the audit ran with `codeCoverage.screenshotCoveragePlugin` against a development build
+// when the audit ran with `audit.screenshotCoveragePlugin` against a development build
 // — end each row in `@ path:line[:col]`, where in the app source the element was written.
 // That is the join: source line → the tests whose screenshots showed the element, and how much.
 // A cell lands on the ELEMENT's own line, one per test that executed the statement drawing it,
@@ -213,7 +213,7 @@ function assertMapsUsable(maps: Maps, resultsDir: string): void {
   if (!maps.located) {
     throw new Error(
       `the maps under ${resultsDir} name no element sources, so screenshot coverage cannot be estimated. ` +
-      'Set codeCoverage.screenshotCoveragePlugin in abtests.config.ts and audit a DEVELOPMENT build; ' +
+      'Set audit.screenshotCoveragePlugin in abtests.config.ts and audit a DEVELOPMENT build; ' +
       'each map\'s "# source plugin" header says why nothing was located.',
     );
   }

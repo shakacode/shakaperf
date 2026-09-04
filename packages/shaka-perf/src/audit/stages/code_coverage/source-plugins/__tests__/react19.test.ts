@@ -6,11 +6,8 @@
  */
 
 import type { SourceResolveContext } from 'shaka-shared';
-import {
-  isAppSourceByDefault,
-  normalizeSourcePath,
-  react19ScreenshotCoveragePlugin,
-} from '../react19';
+import { react19ScreenshotCoveragePlugin } from '../react19';
+import { isAppSourceByDefault, normalizeSourcePath } from '../source-paths';
 import { encodeMappings } from './encode-mappings';
 
 // --- the page half -----------------------------------------------------------

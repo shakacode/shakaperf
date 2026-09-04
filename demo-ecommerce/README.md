@@ -27,7 +27,7 @@ Things you may want to cover:
 
 `shaka-perf audit --categories code_coverage` drains the client bundle's
 istanbul coverage (the rspack config instruments every build) and writes a
-visibility map per test and viewport. With `codeCoverage.screenshotCoveragePlugin:
+visibility map per test and viewport. With `audit.screenshotCoveragePlugin:
 'react19'` set in `abtests.config.ts`, each map row also names the app source line
 that rendered the element — read from React's development-build debug info
 (`fiber._debugStack`) and resolved through the bundle's source map. That join is
