@@ -135,6 +135,16 @@ export interface AuditConfigInput {
   // Raw Lighthouse flags (see `PerfConfigInput.lighthouseConfig`).
   lighthouseConfig?: Record<string, unknown>;
   limitVideoFramesCount?: number;
+  /**
+   * `--categories code_coverage`: stamps each visibility-map row with the app
+   * source line that rendered its element, read from React's DEVELOPMENT-build
+   * debug info: `'react18'` for React 16–18 built with the JSX source transform
+   * (`@babel/preset-react` `development: true`), `'react19'` for React >= 19.1
+   * served with a fetchable source map. An object is a custom
+   * `ScreenshotCoveragePlugin`. Run-level: one build per run, so one plugin —
+   * not overridable per test.
+   */
+  screenshotCoveragePlugin?: 'react18' | 'react19' | ScreenshotCoveragePlugin;
 }
 
 export interface AccessibilityConfigInput {
@@ -155,16 +165,6 @@ export interface AgentReadinessConfigInput {
    * BREAKING_CHANGES.md.
    */
   enabled?: boolean;
-}
-
-export interface CodeCoverageConfigInput {
-  /**
-   * Stamps each visibility-map row with the app source line that rendered its
-   * element. `'react19'` reads React's debug info, present only in a
-   * DEVELOPMENT React >= 19.1 build served with a fetchable source map; an
-   * object is a custom `ScreenshotCoveragePlugin`.
-   */
-  screenshotCoveragePlugin?: 'react19' | ScreenshotCoveragePlugin;
 }
 
 export interface SetupCommandInput {
@@ -239,7 +239,6 @@ export interface AbTestsConfigInput {
   audit?: AuditConfigInput;
   accessibility?: AccessibilityConfigInput;
   agentReadiness?: AgentReadinessConfigInput;
-  codeCoverage?: CodeCoverageConfigInput;
   twinServers?: TwinServersConfigInput;
   bisect?: BisectConfigInput;
 }
@@ -252,14 +251,14 @@ export interface AbTestsConfigInput {
  * It exposes every section EXCEPT the ones that are inherently run-level and
  * make no sense scoped to a single test: `twinServers` (the Docker A/B servers
  * are one pair for the whole run), `bisect` (a run-level search), and
- * `codeCoverage` (one build per run, so one plugin). Everything else is fair
- * game; settings the engines resolve once
- * per run (e.g. shared `parallelism`) simply won't vary if overridden, but
- * nothing is off-limits by type — the merge (`applyPerTestConfigOverrides`)
- * applies whatever is set.
+ * `audit.screenshotCoveragePlugin` (one build per run, so one plugin).
+ * Everything else is fair game; settings the engines resolve once per run
+ * (e.g. shared `parallelism`) simply won't vary if overridden, but nothing is
+ * off-limits by type — the merge (`applyPerTestConfigOverrides`) applies
+ * whatever is set.
  */
 export type PerTestConfig = {
-  [K in keyof Omit<AbTestsConfigInput, 'twinServers' | 'bisect' | 'codeCoverage'>]?: K extends 'shared'
+  [K in keyof Omit<AbTestsConfigInput, 'twinServers' | 'bisect'>]?: K extends 'shared'
     // `shared.playwrightOptions` is a required, browser-mandatory block at the
     // file level, but a per-test override merges per-key — so here it is a
     // partial like every other override.
@@ -267,7 +266,9 @@ export type PerTestConfig = {
         playwrightOptions?: Partial<PlaywrightOptionsInput>;
         browserConsole?: Partial<BrowserConsoleConfigInput>;
       }
-    : Partial<AbTestsConfigInput[K]>;
+    : K extends 'audit'
+      ? Partial<Omit<AuditConfigInput, 'screenshotCoveragePlugin'>>
+      : Partial<AbTestsConfigInput[K]>;
 };
 
 /**
