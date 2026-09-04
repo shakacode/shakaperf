@@ -14,6 +14,7 @@ import {
   type TestContext,
 } from '../../../stage/stage';
 import type { WorkerPool } from '../../../pipeline/worker-pool';
+import type { SourceAttribution } from '../../../bench/core/visibility-map';
 import { CodeCoverageArtifactView } from './report';
 
 export interface CodeCoverageResult {
@@ -33,6 +34,8 @@ export interface CodeCoverageResult {
   visibilityMapHref?: string;
   /** Report-relative path to one shot of the page that map describes. */
   screenshotHref?: string;
+  /** What the configured `screenshotCoveragePlugin` located; absent without one. */
+  sourceAttribution?: SourceAttribution;
 }
 
 /**
@@ -98,6 +101,7 @@ export class CodeCoverageStage implements Stage<CodeCoverageResult> {
       ...(measurement.coverageHref ? { coverageHref: measurement.coverageHref } : {}),
       ...(measurement.visibilityMapHref ? { visibilityMapHref: measurement.visibilityMapHref } : {}),
       ...(measurement.screenshotHref ? { screenshotHref: measurement.screenshotHref } : {}),
+      ...(measurement.sourceAttribution ? { sourceAttribution: measurement.sourceAttribution } : {}),
     };
   }
 }

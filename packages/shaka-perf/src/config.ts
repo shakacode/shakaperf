@@ -10,8 +10,10 @@ import {
   DESKTOP_VIEWPORT,
   PHONE_VIEWPORT,
   TABLET_VIEWPORT,
+  isScreenshotCoveragePlugin,
   type AbTestsConfigInput,
   type BeforeNavigateHook,
+  type ScreenshotCoveragePlugin,
   type TestType,
   type Viewport,
 } from 'shaka-shared';
@@ -332,6 +334,18 @@ export const AgentReadinessConfigSchema = z
   })
   .strict();
 
+export const CodeCoverageConfigSchema = z
+  .object({
+    // Shape-checked only, like `beforeNavigate`: a plugin's behaviour is the user's.
+    screenshotCoveragePlugin: z
+      .custom<'react19' | ScreenshotCoveragePlugin>(
+        (value) => value === 'react19' || isScreenshotCoveragePlugin(value),
+        { message: "expected 'react19' or a plugin object { name, locate(element), resolve?(raws, context) }" },
+      )
+      .optional(),
+  })
+  .strict();
+
 const BisectRepairCommandSchema = z.object({
   description: z.string().trim().min(1, 'description is required'),
   command: z.string().trim().min(1, 'command is required'),
@@ -394,6 +408,7 @@ export const AbTestsConfigSchema = z
     audit: AuditConfigSchema.optional().default({}),
     accessibility: AccessibilityConfigSchema.optional().default({}),
     agentReadiness: AgentReadinessConfigSchema.optional().default({}),
+    codeCoverage: CodeCoverageConfigSchema.optional().default({}),
     twinServers: TwinServersConfigSchema.optional(),
     bisect: BisectConfigSchema.optional().default({}),
   })
@@ -450,6 +465,7 @@ export type PerfConfig = z.infer<typeof PerfConfigSchema>;
 export type AuditConfig = z.infer<typeof AuditConfigSchema>;
 export type AccessibilityConfig = z.infer<typeof AccessibilityConfigSchema>;
 export type AgentReadinessConfig = z.infer<typeof AgentReadinessConfigSchema>;
+export type CodeCoverageConfig = z.infer<typeof CodeCoverageConfigSchema>;
 export type BrowserConsoleConfig = z.infer<typeof BrowserConsoleConfigSchema>;
 export type BisectConfig = z.infer<typeof BisectConfigSchema>;
 
@@ -525,6 +541,7 @@ export interface AbTestsConfig {
   audit: AuditConfig;
   accessibility: AccessibilityConfig;
   agentReadiness: AgentReadinessConfig;
+  codeCoverage: CodeCoverageConfig;
   twinServers?: AbTestsConfigParsed['twinServers'];
   bisect: BisectConfig;
 }
@@ -600,6 +617,7 @@ export function buildAbTestsConfig(raw: unknown, origin?: string): AbTestsConfig
     audit: parsed.audit,
     accessibility: parsed.accessibility,
     agentReadiness: parsed.agentReadiness,
+    codeCoverage: parsed.codeCoverage,
     twinServers: parsed.twinServers,
     bisect: parsed.bisect,
   };

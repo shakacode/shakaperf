@@ -6,6 +6,8 @@
  */
 
 import type { Page } from 'playwright-core';
+import type { ScreenshotCoveragePlugin, SourceLocation } from 'shaka-shared';
+import { pageFunctionSource } from './page-function-source';
 
 /**
  * A depth-first snapshot of what the finished page actually shows, scored
@@ -53,7 +55,16 @@ export interface VisibilityNode {
    * so anything scrolled out of view is left unmeasured rather than guessed.
    */
   unobscured: number | null;
+  /** Set by the `screenshotCoveragePlugin` when it could place the element. */
+  source?: SourceLocation;
 }
+
+export type SourceAttribution = {
+  plugin: string;
+  located: number;
+  elements: number;
+  warnings: string[];
+};
 
 export interface VisibilitySnapshot {
   url: string;
@@ -66,6 +77,8 @@ export interface VisibilitySnapshot {
   nodes: VisibilityNode[];
   /** True when the walk hit `MAX_NODES` and stopped early. */
   truncated: boolean;
+  /** Present only when a `screenshotCoveragePlugin` ran over this page. */
+  sourceAttribution?: SourceAttribution;
 }
 
 /** Why an element scores below 100%. */
@@ -231,6 +244,14 @@ export function formatVisibilityMap(snapshot: VisibilitySnapshot): string {
     '# Occlusion is sampled by hit-testing a 3x3 grid, which only works inside the',
     '#   current viewport — an element scrolled out of view is scored without it.',
   ];
+  const attribution = snapshot.sourceAttribution;
+  if (attribution) {
+    lines.push(
+      `# source plugin: ${attribution.plugin} — ${attribution.located} of ${attribution.elements} elements located`,
+      '#   A row ending in `@ path:line[:col]` names where in the app source its element was written.',
+      ...attribution.warnings.map((warning) => `#   ${warning.replace(/\s*\n\s*/g, ' ')}`),
+    );
+  }
   if (snapshot.truncated) {
     lines.push(`# TRUNCATED: walk stopped at ${MAX_NODES} elements; the tail of the page is missing.`);
   }
@@ -239,10 +260,16 @@ export function formatVisibilityMap(snapshot: VisibilitySnapshot): string {
     const score = scoreVisibility(node, snapshot.regions);
     lines.push(
       `${'  '.repeat(node.depth)}${label} => ${formatRect(node.rect)} ` +
-      `${score.percent}% visible${score.reason ? ` (${score.reason})` : ''}`,
+      `${score.percent}% visible${score.reason ? ` (${score.reason})` : ''}` +
+      `${node.source ? ` @ ${formatSourceLocation(node.source)}` : ''}`,
     );
   }
   return `${lines.join('\n')}\n`;
+}
+
+/** `app/javascript/Nav.tsx:41:7`, or `…:41` when the map had no column detail. */
+export function formatSourceLocation(source: SourceLocation): string {
+  return `${source.path}:${source.line}${source.column !== undefined ? `:${source.column}` : ''}`;
 }
 
 interface CollectorInput {
@@ -258,6 +285,8 @@ interface CollectedSnapshot {
   regions: VisibilityRect[];
   nodes: VisibilityNode[];
   truncated: boolean;
+  /** What the plugin's `locate` returned, one entry per node. */
+  sourceRaws: unknown[];
 }
 
 /**
@@ -267,8 +296,12 @@ interface CollectedSnapshot {
  *
  * Each selector arrives with its capture kind already resolved (see
  * `captureKindForSelector`); this only turns a kind into a rectangle.
+ * `locate` is the plugin's page half, spliced in by source text.
  */
-function collectVisibility(input: CollectorInput): CollectedSnapshot {
+function collectVisibility(
+  input: CollectorInput,
+  locate: ((element: Element) => unknown) | null,
+): CollectedSnapshot {
   const round = (value: number): number => Math.round(value);
   const toDocRect = (rect: DOMRect): VisibilityRect => ({
     x: round(rect.x + window.scrollX),
@@ -350,6 +383,7 @@ function collectVisibility(input: CollectorInput): CollectedSnapshot {
   const skip = new Set(input.skipTags);
   const leaf = new Set(input.leafTags);
   const nodes: VisibilityNode[] = [];
+  const sourceRaws: unknown[] = [];
   let truncated = false;
 
   const walk = (element: Element, depth: number, clip: VisibilityRect | null): void => {
@@ -391,6 +425,7 @@ function collectVisibility(input: CollectorInput): CollectedSnapshot {
       // those keeps a normal page to a few hundred hit-tests.
       unobscured: clipped && !hiddenByCss ? sampleUnobscured(element, clipped) : null,
     });
+    if (locate) sourceRaws.push(locate(element));
     // Nothing under an unrendered element can reach a screenshot, and its
     // subtree is where the bulk of a hidden menu/modal's markup lives.
     if (!rendered || leaf.has(tagName)) return;
@@ -404,13 +439,15 @@ function collectVisibility(input: CollectorInput): CollectedSnapshot {
   const root = document.body ?? document.documentElement;
   for (const child of Array.from(root.children)) walk(child, 0, null);
 
-  return { url: window.location.href, regions, nodes, truncated };
+  return { url: window.location.href, regions, nodes, truncated, sourceRaws };
 }
 
 export interface VisibilityMapOptions {
   selectors: readonly string[] | undefined;
   testName: string;
   viewportLabel: string;
+  /** The configured `codeCoverage.screenshotCoveragePlugin`, already resolved. */
+  sourcePlugin?: ScreenshotCoveragePlugin;
 }
 
 /**
@@ -432,17 +469,66 @@ export async function captureVisibilitySnapshot(
   // Defaulting matches `convertAbTestToScenario`: no `visregSelectors` means
   // visreg screenshots the whole document.
   const selectors = options.selectors?.length ? [...options.selectors] : ['document'];
-  const collected = await page.evaluate(collectVisibility, {
+  const input: CollectorInput = {
     selectors: selectors.map((selector) => ({ selector, kind: captureKindForSelector(selector) })),
     maxNodes: MAX_NODES,
     skipTags: SKIP_TAGS,
     leafTags: LEAF_TAGS,
     identifyingAttributes: IDENTIFYING_ATTRIBUTES,
-  });
+  };
+  const plugin = options.sourcePlugin;
+  // A string expression rather than `evaluate(fn, arg)`, so the plugin's page
+  // half can be spliced in by source text.
+  const locate = plugin
+    ? pageFunctionSource(plugin.locate, `screenshotCoveragePlugin "${plugin.name}".locate`)
+    : 'null';
+  const { sourceRaws, ...collected } = await page.evaluate<CollectedSnapshot>(
+    `(${collectVisibility.toString()})(${JSON.stringify(input)}, ${locate})`,
+  );
+  const sourceAttribution = plugin
+    ? await attributeSources(plugin, sourceRaws, collected.nodes, page, collected.url)
+    : undefined;
   return {
     ...collected,
     testName: options.testName,
     viewportLabel: options.viewportLabel,
     selectors,
+    ...(sourceAttribution ? { sourceAttribution } : {}),
   };
+}
+
+async function attributeSources(
+  plugin: ScreenshotCoveragePlugin,
+  raws: readonly unknown[],
+  nodes: VisibilityNode[],
+  page: Page,
+  pageUrl: string,
+): Promise<SourceAttribution> {
+  const warnings: string[] = [];
+  const locations = plugin.resolve
+    ? await plugin.resolve(raws, {
+      pageUrl,
+      fetchText: (url) => fetchTextViaPage(page, url),
+      warn: (message) => { warnings.push(message); },
+    })
+    : (raws as readonly (SourceLocation | null)[]);
+  let located = 0;
+  locations.forEach((location, index) => {
+    if (!location) return;
+    nodes[index].source = location;
+    located += 1;
+  });
+  return { plugin: plugin.name, located, elements: nodes.length, warnings };
+}
+
+// The browser context's own request client, so a dev server behind a cookie or
+// proxy answers the way it answered the page.
+async function fetchTextViaPage(page: Page, url: string): Promise<string | null> {
+  if (!/^https?:\/\//.test(url)) return null;
+  try {
+    const response = await page.context().request.get(url, { maxRedirects: 5, timeout: 30_000 });
+    return response.ok() ? await response.text() : null;
+  } catch {
+    return null;
+  }
 }
