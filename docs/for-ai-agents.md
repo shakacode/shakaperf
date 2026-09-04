@@ -23,7 +23,7 @@ yarn shaka-perf init
 
 `init` creates:
 
-- **`abtests.config.ts`** - the single project config (sections: `shared`, `visreg`, `perf`, `audit`, `twinServers`), every field annotated with its default. `accessibility` is supported but not scaffolded; its `failOnViolation` default is `true`. Coverage has no config section: `--categories code_coverage` runs the opt-in audit stage that drains instrumented-JS coverage and maps what each finished page shows inside its capture region.
+- **`abtests.config.ts`** - the single project config (sections: `shared`, `visreg`, `perf`, `audit`, `twinServers`), every field annotated with its default. `accessibility` is supported but not scaffolded; its `failOnViolation` default is `true`. Coverage is the opt-in `--categories code_coverage` audit stage, which drains instrumented-JS coverage and maps what each finished page shows inside its capture region; its one config knob, `codeCoverage.screenshotCoveragePlugin` (`'react19'` or a custom plugin object), stamps each map row with the app source line that rendered the element, and needs a development build of the app to read.
 - **Seven Claude Code skills** under `.claude/skills/` (they ship inside the npm package):
 
 | Skill | What it does |
