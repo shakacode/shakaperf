@@ -167,7 +167,7 @@ async function writeVisibilityMap(
       selectors: ctx.test.visregSelectors,
       testName: ctx.test.name,
       viewportLabel: ctx.viewport.label,
-      sourcePlugin: resolveScreenshotCoveragePlugin(ctx.config.codeCoverage.screenshotCoveragePlugin),
+      sourcePlugin: resolveScreenshotCoveragePlugin(ctx.config.audit.screenshotCoveragePlugin),
     });
     const attribution = snapshot.sourceAttribution;
     if (attribution) {

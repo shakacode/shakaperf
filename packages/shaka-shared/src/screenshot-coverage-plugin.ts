@@ -25,7 +25,7 @@ export interface SourceResolveContext {
 }
 
 /**
- * `config.codeCoverage.screenshotCoveragePlugin`: names the source location of
+ * `config.audit.screenshotCoveragePlugin`: names the source location of
  * each element in a visibility map. Two halves, because the evidence lives in
  * the page and the means to read it (source maps) live in Node.
  */

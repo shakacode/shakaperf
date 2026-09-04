@@ -307,6 +307,15 @@ export const AuditConfigSchema = z
     // the per-task timeout, so the raw stream is evenly downsampled to this cap
     // before dedupe. Defaults to 700.
     limitVideoFramesCount: z.number().int().positive().default(700),
+    // `--categories code_coverage`: names the app source line behind each
+    // visibility-map row. Shape-checked only, like `beforeNavigate`: a plugin's
+    // behaviour is the user's.
+    screenshotCoveragePlugin: z
+      .custom<'react18' | 'react19' | ScreenshotCoveragePlugin>(
+        (value) => value === 'react18' || value === 'react19' || isScreenshotCoveragePlugin(value),
+        { message: "expected 'react18', 'react19', or a plugin object { name, locate(element), resolve?(raws, context) }" },
+      )
+      .optional(),
   })
   .strict();
 
@@ -331,18 +340,6 @@ export const AgentReadinessConfigSchema = z
     // just scores their `startingPath` cold. Recommended usage: enable per-test
     // (`config.agentReadiness.enabled`) on the landing pages that matter.
     enabled: z.boolean().default(false),
-  })
-  .strict();
-
-export const CodeCoverageConfigSchema = z
-  .object({
-    // Shape-checked only, like `beforeNavigate`: a plugin's behaviour is the user's.
-    screenshotCoveragePlugin: z
-      .custom<'react19' | ScreenshotCoveragePlugin>(
-        (value) => value === 'react19' || isScreenshotCoveragePlugin(value),
-        { message: "expected 'react19' or a plugin object { name, locate(element), resolve?(raws, context) }" },
-      )
-      .optional(),
   })
   .strict();
 
@@ -386,7 +383,6 @@ export const AbTestsConfigSchema = z
     audit: AuditConfigSchema.optional().default({}),
     accessibility: AccessibilityConfigSchema.optional().default({}),
     agentReadiness: AgentReadinessConfigSchema.optional().default({}),
-    codeCoverage: CodeCoverageConfigSchema.optional().default({}),
     twinServers: TwinServersConfigSchema.optional(),
     bisect: BisectConfigSchema.optional().default({}),
   })
@@ -436,7 +432,6 @@ export type PerfConfig = z.infer<typeof PerfConfigSchema>;
 export type AuditConfig = z.infer<typeof AuditConfigSchema>;
 export type AccessibilityConfig = z.infer<typeof AccessibilityConfigSchema>;
 export type AgentReadinessConfig = z.infer<typeof AgentReadinessConfigSchema>;
-export type CodeCoverageConfig = z.infer<typeof CodeCoverageConfigSchema>;
 export type BrowserConsoleConfig = z.infer<typeof BrowserConsoleConfigSchema>;
 export type BisectConfig = z.infer<typeof BisectConfigSchema>;
 
@@ -500,7 +495,6 @@ export interface AbTestsConfig {
   audit: AuditConfig;
   accessibility: AccessibilityConfig;
   agentReadiness: AgentReadinessConfig;
-  codeCoverage: CodeCoverageConfig;
   twinServers?: AbTestsConfigParsed['twinServers'];
   bisect: BisectConfig;
 }
@@ -576,7 +570,6 @@ export function buildAbTestsConfig(raw: unknown, origin?: string): AbTestsConfig
     audit: parsed.audit,
     accessibility: parsed.accessibility,
     agentReadiness: parsed.agentReadiness,
-    codeCoverage: parsed.codeCoverage,
     twinServers: parsed.twinServers,
     bisect: parsed.bisect,
   };

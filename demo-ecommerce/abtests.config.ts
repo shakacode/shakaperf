@@ -98,10 +98,6 @@ export default defineConfig({
     failOnViolation: false,
   },
 
-  // Needs a development build; twin-servers serve production ones and locate
-  // nothing. See README.md, "Screenshot coverage".
-  codeCoverage: { screenshotCoveragePlugin: 'react19' },
-
   perf: {
     // No `viewports` — perf inherits shared.viewports (desktop + phone).
     // `formFactor` and `screenEmulation` are NOT set here — the viewport
@@ -114,6 +110,9 @@ export default defineConfig({
 
   audit: {
     lighthouseConfig: LIGHTHOUSE_CONFIG,
+    // Needs a development build; twin-servers serve production ones and locate
+    // nothing. See README.md, "Screenshot coverage".
+    screenshotCoveragePlugin: 'react19',
   },
 
   twinServers: {
