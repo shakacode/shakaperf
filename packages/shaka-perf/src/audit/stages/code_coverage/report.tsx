@@ -79,6 +79,12 @@ export function CodeCoverageArtifactView({
                   Statements executed: {m.coveredStatements}/{m.totalStatements} ({percent}%)
                 </li>
                 <li>Instrumented files loaded: {m.files}</li>
+                {m.sourceAttribution ? (
+                  <li>
+                    Elements traced to a source line: {m.sourceAttribution.located}/{m.sourceAttribution.elements}
+                    {' '}({m.sourceAttribution.plugin})
+                  </li>
+                ) : null}
                 {m.visibilityMapHref ? (
                   <FullReportOnly>
                     <li>

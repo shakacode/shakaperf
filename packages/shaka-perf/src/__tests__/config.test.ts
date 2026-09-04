@@ -222,6 +222,28 @@ describe('agentReadiness config', () => {
   });
 });
 
+describe('codeCoverage config', () => {
+  const plugin = { name: 'stamped', locate: (element: Element) => element.getAttribute('data-source') };
+
+  it('defaults to no screenshot-coverage plugin', () => {
+    expect(buildAbTestsConfig(baseConfig()).codeCoverage).toEqual({});
+  });
+
+  it("accepts the built-in 'react19' by name and a custom plugin by object", () => {
+    expect(buildAbTestsConfig(baseConfig({ codeCoverage: { screenshotCoveragePlugin: 'react19' } }))
+      .codeCoverage.screenshotCoveragePlugin).toBe('react19');
+    expect(buildAbTestsConfig(baseConfig({ codeCoverage: { screenshotCoveragePlugin: plugin } }))
+      .codeCoverage.screenshotCoveragePlugin).toBe(plugin);
+  });
+
+  it('rejects anything else, naming what it wanted', () => {
+    expect(() => buildAbTestsConfig(baseConfig({ codeCoverage: { screenshotCoveragePlugin: 'react18' } })))
+      .toThrow(/codeCoverage\.screenshotCoveragePlugin: expected 'react19' or a plugin object/);
+    expect(() => buildAbTestsConfig(baseConfig({ codeCoverage: { screenshotCoveragePlugin: { name: 'x' } } })))
+      .toThrow(/codeCoverage\.screenshotCoveragePlugin/);
+  });
+});
+
 describe('shared.browserConsole config', () => {
   it('requires the section and both of its fields', () => {
     const base = baseConfig();

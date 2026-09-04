@@ -27,6 +27,7 @@ import {
   mirrorCoverageToNycOutput,
   summarizeCoverage,
 } from './coverage-artifacts';
+import { resolveScreenshotCoveragePlugin } from './source-plugins';
 import type { CodeCoverageResult } from './stage';
 
 interface CodeCoverageSlotState extends PoolWorkerState {
@@ -160,18 +161,29 @@ async function drainCoverage(ctx: TestContext, page: Page): Promise<CoverageMeas
 async function writeVisibilityMap(
   ctx: TestContext,
   page: Page,
-): Promise<{ visibilityMapHref?: string }> {
+): Promise<Pick<CodeCoverageResult, 'visibilityMapHref' | 'sourceAttribution'>> {
   try {
     const snapshot = await captureVisibilitySnapshot(page, {
       selectors: ctx.test.visregSelectors,
       testName: ctx.test.name,
       viewportLabel: ctx.viewport.label,
+      sourcePlugin: resolveScreenshotCoveragePlugin(ctx.config.codeCoverage.screenshotCoveragePlugin),
     });
+    const attribution = snapshot.sourceAttribution;
+    if (attribution) {
+      for (const warning of attribution.warnings) {
+        console.warn(chalk.yellow(`[shaka-perf visibility] ${attribution.plugin}: ${warning}`));
+      }
+      console.log(chalk.dim(
+        `sources: ${attribution.located}/${attribution.elements} elements located via ${attribution.plugin}`,
+      ));
+    }
     return {
       visibilityMapHref: await ctx.artifacts.writeFile(
         VISIBILITY_MAP_FILENAME,
         formatVisibilityMap(snapshot),
       ),
+      ...(attribution ? { sourceAttribution: attribution } : {}),
     };
   } catch (err) {
     // A map we could not take must not sink coverage we already drained.

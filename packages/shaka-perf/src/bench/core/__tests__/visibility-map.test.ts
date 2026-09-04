@@ -148,4 +148,30 @@ describe('formatVisibilityMap', () => {
   it('flags a truncated walk instead of passing off a partial tree as the page', () => {
     expect(formatVisibilityMap({ ...snapshot, truncated: true })).toContain('# TRUNCATED');
   });
+
+  it('writes nothing about sources when no plugin ran, so the bytes are unchanged', () => {
+    const text = formatVisibilityMap(snapshot);
+    expect(text).not.toContain('source plugin');
+    expect(text).not.toContain(' @ ');
+  });
+
+  it('ends a row in @ path:line[:col] when the plugin placed its element, and says how many it placed', () => {
+    const attributed: VisibilitySnapshot = {
+      ...snapshot,
+      nodes: [
+        node({ x: 0, y: 0, w: 100, h: 50 }, {
+          tag: 'nav', selector: '#navbar', source: { path: 'app/javascript/Nav.tsx', line: 41, column: 7 },
+        }),
+        node({ x: 0, y: 50, w: 100, h: 100 }, { tag: 'p', selector: '.cheap', source: { path: 'app/javascript/P.tsx', line: 9 } }),
+        node({ x: 0, y: 90, w: 100, h: 10 }, { tag: 'i', selector: '.unplaced' }),
+      ],
+      sourceAttribution: { plugin: 'react19', located: 2, elements: 3, warnings: ['one bundle had\nno map'] },
+    };
+    const lines = formatVisibilityMap(attributed).split('\n');
+    expect(lines).toContain('# source plugin: react19 — 2 of 3 elements located');
+    expect(lines).toContain('#   one bundle had no map');
+    expect(lines).toContain('nav #navbar => 0,0,100,50 100% visible @ app/javascript/Nav.tsx:41:7');
+    expect(lines).toContain('p .cheap => 0,50,100,100 50% visible (outside capture) @ app/javascript/P.tsx:9');
+    expect(lines).toContain('i .unplaced => 0,90,100,10 100% visible');
+  });
 });

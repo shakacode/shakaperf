@@ -146,6 +146,16 @@ export default defineConfig({
   // (`config: { agentReadiness: { enabled: true } }`) rather than globally here.
   // agentReadiness: { enabled: true },
 
+  // `--categories code_coverage`: stamp each visibility-map row with the app
+  // source line that rendered the element, so the shaka-perf-coverage skill
+  // joins screenshots to code without hand-written anchors. 'react19' reads
+  // React's debug info, present only in a DEVELOPMENT React >= 19.1 build with
+  // a fetchable source map (devtool 'source-map' / 'cheap-module-source-map');
+  // point the coverage run at a dev build. A custom plugin is an object (see
+  // ScreenshotCoveragePlugin in shaka-shared), or
+  // `react19ScreenshotCoveragePlugin({ isAppSource })` from shaka-perf.
+  // codeCoverage: { screenshotCoveragePlugin: 'react19' },
+
   // Twin-servers (Docker A/B testing infra). `ports` reuses the constants
   // above so the host-port mapping, the URLs visreg/perf hit, and
   // `servers notify-server-started` all stay in sync. Run `shaka-perf servers`
