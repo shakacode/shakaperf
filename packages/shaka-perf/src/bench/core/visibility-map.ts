@@ -446,7 +446,7 @@ export interface VisibilityMapOptions {
   selectors: readonly string[] | undefined;
   testName: string;
   viewportLabel: string;
-  /** The configured `codeCoverage.screenshotCoveragePlugin`, already resolved. */
+  /** The configured `audit.screenshotCoveragePlugin`, already resolved. */
   sourcePlugin?: ScreenshotCoveragePlugin;
 }
 

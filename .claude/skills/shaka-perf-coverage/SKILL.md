@@ -29,7 +29,7 @@ shaka-perf audit --categories code_coverage --url <dev build> --filter <relevant
 Two things must hold, and both are the user's to fix, not yours to work around:
 
 - **The bundle is instrumented.** The stage fails a unit whose page has no `window.__coverage__`. If it did, STOP and say so: the fix is `babel-plugin-istanbul`, `nyc instrument`, or `swc-plugin-coverage-instrument` (see `demo-ecommerce/config/rspack/clientWebpackConfig.js`). Never estimate around it — a visibility map alone says what is on screen, not which test's code put it there.
-- **The build carries sources.** `codeCoverage.screenshotCoveragePlugin` is set in `abtests.config.ts`, and the audited URL serves a build the plugin can read (`'react19'` needs a DEVELOPMENT React build with a real source map; twin-servers serve production builds, so point `--url` at a dev server of the same code). `save` refuses a run whose maps locate no elements and quotes the map header that says why. Report that to the user; do not fall back to anything by hand.
+- **The build carries sources.** `audit.screenshotCoveragePlugin` is set in `abtests.config.ts`, and the audited URL serves a build the plugin can read: a DEVELOPMENT React build — `'react18'` needs the JSX source transform (`@babel/preset-react` `development: true`), `'react19'` a fetchable source map. Twin-servers serve production builds, so point `--url` at a dev server of the same code. `save` refuses a run whose maps locate no elements and quotes the map header that says why. Report that to the user; do not fall back to anything by hand.
 
 ## The loop
 

@@ -50,7 +50,6 @@ export type {
   PerfConfigInput,
   AuditConfigInput,
   AccessibilityConfigInput,
-  CodeCoverageConfigInput,
   PlaywrightOptionsInput,
   ResembleOutputOptionsInput,
   TwinServersConfigInput,

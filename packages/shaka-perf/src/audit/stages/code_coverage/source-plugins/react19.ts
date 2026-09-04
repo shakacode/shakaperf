@@ -11,6 +11,7 @@ import type {
   SourceResolveContext,
 } from 'shaka-shared';
 import { SourceMapLookup } from './source-map-lookup';
+import { isAppSourceByDefault, normalizeSourcePath } from './source-paths';
 import { parseStackFrame } from './stack-frames';
 
 /**
@@ -58,24 +59,6 @@ function locateReactElement(element: Element): unknown {
     fiber = fiber._debugOwner || undefined;
   }
   return sawStack ? frames : 'react19:no-debug-stack';
-}
-
-/** `webpack://demo/./app/javascript/Nav.tsx?1234` → `app/javascript/Nav.tsx`. */
-export function normalizeSourcePath(source: string): string {
-  let path = source;
-  const bang = path.lastIndexOf('!');
-  if (bang !== -1) path = path.slice(bang + 1);
-  path = path.replace(/^webpack:\/\/[^/]*\//, '').replace(/[?#].*$/, '');
-  while (path.startsWith('./')) path = path.slice(2);
-  return path;
-}
-
-export function isAppSourceByDefault(path: string): boolean {
-  return path !== ''
-    && !/(^|\/)node_modules\//.test(path)
-    && !/(^|\/)\.yarn\//.test(path)
-    && !/^\(?(webpack|rspack)\)?[/:]/.test(path)
-    && !path.startsWith('external ');
 }
 
 export function react19ScreenshotCoveragePlugin(
