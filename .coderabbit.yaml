@@ -19,6 +19,7 @@ reviews:
   enable_prompt_for_ai_agents: false
   auto_review:
     enabled: false
+    drafts: true
     labels:
       - coderabbit:first-pass
       - coderabbit:ready
