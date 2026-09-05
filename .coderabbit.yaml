@@ -1,9 +1,10 @@
 # Keep CodeRabbit quiet by default. Request a one-off review with
 # `@coderabbitai review` on the pull request.
 reviews:
-  profile: quiet
+  profile: chill
   high_level_summary: false
   review_status: false
+  review_progress: false
   review_details: false
   collapse_walkthrough: true
   changed_files_summary: false
@@ -18,6 +19,9 @@ reviews:
   enable_prompt_for_ai_agents: false
   auto_review:
     enabled: false
+    labels:
+      - coderabbit:first-pass
+      - coderabbit:ready
     auto_incremental_review: false
     ignore_usernames:
       - Romex91
