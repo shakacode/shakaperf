@@ -296,7 +296,7 @@ describe('configured bisect repair runtime', () => {
       prepareCommands: [],
       cleanupCommands: [],
       registeredAt: 'registered',
-      source: 'config',
+      source: 'manifest',
       ...overrides,
     };
   }

@@ -101,6 +101,8 @@ export interface MenuController {
    * (75) exit on the client side.
    */
   runOneOff<T>(verb: string, runner: () => Promise<T>): Promise<T>;
+  /** Read lease ownership without taking the menu action lock. */
+  bisectStatus(): Promise<{ activeSessionId: string | null }>;
   /** Reject unrelated lifecycle actions while bisect owns the session. */
   beginBisectSession(sessionId: string, ownerPid: number): Promise<void>;
   /** Reload the experiment side for the currently active bisect session. */
@@ -731,6 +733,7 @@ export async function runServersMenu(
     restartServers: () => runProxiedAction('restarting servers', runRestartServers),
     stopContainersAndExit: () => runProxiedAction('stopping containers', runStopContainersAndExit),
     runOneOff: (verb, runner) => runProxiedAction(verb, runner),
+    bisectStatus: async () => ({ activeSessionId: state.bisectSession.activeSessionId }),
     beginBisectSession: (sessionId, ownerPid) => runProxiedAction(
       'beginning bisect session',
       async () => {

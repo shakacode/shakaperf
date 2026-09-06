@@ -225,42 +225,6 @@ export default defineConfig({
   },
   bisect: {
     rebuildContainer: false,
-    repairs: [
-      {
-        id: 'backport-checkout-test',
-        kind: 'test-harness',
-        purpose: 'Keep the frozen checkout test runnable on older commits',
-        patch: './bisect-repairs/backport-checkout-test.patch',
-        appliesTo: { through: 'historical-test-migration' },
-        prepareCommands: [],
-        cleanupCommands: [],
-      },
-      {
-        id: 'seed-legacy-schema',
-        kind: 'data',
-        purpose: 'Create and remove seed data required by legacy candidates',
-        patch: './bisect-repairs/legacy-seed-hook.patch',
-        appliesTo: {
-          from: 'legacy-schema-start',
-          through: 'legacy-schema-end',
-        },
-        prepareCommands: [
-          { description: 'Seed legacy data', command: 'yarn seed:legacy' },
-        ],
-        cleanupCommands: [
-          { description: 'Remove legacy data', command: 'yarn seed:legacy:clean' },
-        ],
-      },
-      {
-        id: 'package-manager-compatibility',
-        kind: 'build',
-        purpose: 'Keep every evaluated commit compatible with the runner image',
-        patch: './bisect-repairs/package-manager-compatibility.patch',
-        appliesTo: { all: true },
-        prepareCommands: [],
-        cleanupCommands: [],
-      },
-    ],
   },
 });
 ```
@@ -276,49 +240,58 @@ export default defineConfig({
   candidate, recreates the experiment container, and records the fallback in
   `session.json`. Control remains untouched.
 
-### Preconfigured Repair Patches
+### Managed Repair Patches
 
-Use `bisect.repairs` when commits in the search range need a known compatibility
-change to remain measurable—for example, backporting a frozen test, repairing a
-historical build API, or adding candidate-specific seed setup. This is normal
-project configuration and works when the published `shaka-perf` CLI is run in
-another repository; it is not tied to the demo app.
+Use the packaged patch commands when historical candidates need a known test,
+build, or data compatibility change:
 
-- `patch` is resolved relative to the directory containing
-  `abtests.config.ts`. At the start of a fresh run, its exact bytes are copied
-  into `compare-bisect-results/patches/` and hashed before old result artifacts
-  are cleared.
-- `appliesTo.commits` names one or more exact refs. Alternatively,
-  `{ from?, through }` selects an inclusive first-parent interval; an omitted
-  `from` means the primary good commit. `{ all: true }` applies to every SHA
-  measured by the session, including endpoints, primary and queued candidates,
-  merge second parents, and merge child candidates. The three selector shapes
-  are mutually exclusive. Refs are resolved to immutable SHAs when the session
-  starts.
-- Repairs apply in array order and are removed in reverse order. `kind` is
-  descriptive metadata only; all kinds use the same SHA-selected transaction.
-- Patches affect only the experiment checkout. They are present for refresh and
-  compare, then cleanup commands run and patches are reversed before Git can
-  receive a verdict or advance to another candidate.
-- `prepareCommands` and `cleanupCommands` run inside the experiment container
-  under the active bisect lease. A `data` repair with preparation
-  commands requires cleanup commands unless every candidate rebuilds its
-  container.
-- A patch, preparation, comparison, cleanup, reversal, or final clean-check
-  failure leaves the attempt incomplete. The candidate is not marked good or
-  bad, native bisect is reset, and the original experiment checkout is restored.
+```bash
+shaka-perf bisect patch create backport-checkout-test \
+  --source-commit historical-test-migration \
+  --kind test-harness \
+  --purpose "Keep the frozen checkout test runnable on older commits" \
+  --through historical-test-migration \
+  -- path/to/checkout.abtest.ts
+```
 
-When a repair applies to the bad ref, `--reuse-current-results` is rejected
-because ordinary compare artifacts do not carry the repair-set fingerprint.
-Run bad-ref discovery through bisect so it can apply and record the
-repair.
+Running only `patch create <id>` starts an interactive workflow. Fully
+specified commands never prompt. Creation supports current uncommitted work
+with `--working-tree`, changes introduced by `--source-commit <ref>`, or exact
+bytes from `--patch-file <path>`.
 
-Repair kinds currently do not select behavior, and there are no CLI repair
-flags. This first iteration supports only repairs declared before a fresh run.
-It does not capture a patch after a failure or add, change, remove, or supersede
-repairs in an existing session. A test-harness repair can backport a frozen test
-to older commits, but the test must still be discoverable from the invocation
-checkout when the run begins.
+The CLI stores registrations and hash-verified artifacts in
+`bisect-repairs/manifest.json` next to `abtests.config.ts`. This manifest is the
+sole registration source; `bisect.repairs` is rejected. Projects that need a
+different location may set `bisect.patchesManifest` to one alternate manifest
+path.
+
+Selectors are `--all`, an inclusive `--from/--through` first-parent interval,
+or repeated exact `--at` refs. `--all` covers endpoints, primary and queued
+candidates, and merge-investigation candidates. Matching patches apply in
+manifest order and unwind in reverse order. Kind is descriptive metadata only.
+
+Manage existing registrations with:
+
+```bash
+shaka-perf bisect patch list --verbose
+shaka-perf bisect patch show <id>
+shaka-perf bisect patch update <id>
+shaka-perf bisect patch edit <id> --working-tree -- path/to/file
+shaka-perf bisect patch verify <id> <good-ref> <bad-ref>
+shaka-perf bisect patch apply <id> --check
+shaka-perf bisect patch remove <id>
+```
+
+`update` interactively reviews metadata with existing values prefilled and
+never changes patch bytes. `edit` replaces bytes from one of the three creation
+sources while retaining metadata. Verification uses disposable worktrees;
+manual apply/check/reverse targets the experiment checkout by registered ID.
+
+At the start of a fresh run, exact patch bytes and resolved selectors are
+snapshotted into `compare-bisect-results/`. Resume uses only that snapshot, so
+later source-manifest edits affect only a fresh session. Patch, command,
+cleanup, reversal, or clean-check failures produce no Git verdict. The normal
+twin-server auto-sync path remains the only patched-file copy mechanism.
 
 ## Algorithm
 
@@ -525,7 +498,7 @@ rules in one twin-server implementation.
 ### Refresh Strategy
 
 Compare bisect uses the active `shaka-perf servers` menu as the process manager. For each
-session, it acquires a compare-bisect lease from that menu. The lease rejects
+session, it acquires a bisect lease from that menu. The lease rejects
 unrelated menu lifecycle actions until bisect cleanup releases it, while source
 propagation remains owned by the menu's normal auto-sync machinery. For each
 candidate, the leased session either:
