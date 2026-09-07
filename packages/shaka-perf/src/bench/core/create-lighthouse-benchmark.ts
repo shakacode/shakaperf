@@ -318,6 +318,8 @@ function assertLighthouseWorkerSampleState(sampleState: unknown): LighthouseWork
   throw new Error('Invalid Lighthouse worker sample state');
 }
 
+const WORKER_MAX_OLD_SPACE_MB = 4096;
+
 export default function createLighthouseBenchmark(
   group: Group,
   testDef: AbTestDefinition,
@@ -351,6 +353,7 @@ export default function createLighthouseBenchmark(
       try {
         worker = fork(workerPath, [], {
           stdio: ['inherit', 'inherit', 'inherit', 'ipc', barrierSynchronizationFd],
+          execArgv: [...process.execArgv, `--max-old-space-size=${WORKER_MAX_OLD_SPACE_MB}`],
           env: {
             ...process.env,
             ...workerEnvironment,

@@ -15,6 +15,7 @@
 // fails compilation if the shapes disagree.
 
 import type { BeforeNavigateHook, Viewport } from './ab-test-registry';
+import type { ScreenshotCoveragePlugin } from './screenshot-coverage-plugin';
 
 /**
  * Browser-launch options, one shape for every stage. REQUIRED on
@@ -134,6 +135,16 @@ export interface AuditConfigInput {
   // Raw Lighthouse flags (see `PerfConfigInput.lighthouseConfig`).
   lighthouseConfig?: Record<string, unknown>;
   limitVideoFramesCount?: number;
+  /**
+   * `--categories code_coverage`: stamps each visibility-map row with the app
+   * source line that rendered its element, read from React's DEVELOPMENT-build
+   * debug info: `'react18'` for React 16–18 built with the JSX source transform
+   * (`@babel/preset-react` `development: true`), `'react19'` for React >= 19.1
+   * served with a fetchable source map. An object is a custom
+   * `ScreenshotCoveragePlugin`. Run-level: one build per run, so one plugin —
+   * not overridable per test.
+   */
+  screenshotCoveragePlugin?: 'react18' | 'react19' | ScreenshotCoveragePlugin;
 }
 
 export interface AccessibilityConfigInput {
@@ -216,12 +227,14 @@ export interface AbTestsConfigInput {
  * that test alone. It mirrors the `abtests.config.ts` section shape (same keys,
  * same types) with every field optional, so a test overrides just what it needs.
  *
- * It exposes every section EXCEPT the two that are inherently run/infra-level and
+ * It exposes every section EXCEPT the ones that are inherently run-level and
  * make no sense scoped to a single test: `twinServers` (the Docker A/B servers
- * are one pair for the whole run) and `bisect` (a run-level search). Everything
- * else is fair game; settings the engines resolve once per run (e.g. shared
- * `parallelism`) simply won't vary if overridden, but nothing is off-limits by
- * type — the merge (`applyPerTestConfigOverrides`) applies whatever is set.
+ * are one pair for the whole run), `bisect` (a run-level search), and
+ * `audit.screenshotCoveragePlugin` (one build per run, so one plugin).
+ * Everything else is fair game; settings the engines resolve once per run
+ * (e.g. shared `parallelism`) simply won't vary if overridden, but nothing is
+ * off-limits by type — the merge (`applyPerTestConfigOverrides`) applies
+ * whatever is set.
  */
 export type PerTestConfig = {
   [K in keyof Omit<AbTestsConfigInput, 'twinServers' | 'bisect'>]?: K extends 'shared'
@@ -232,7 +245,9 @@ export type PerTestConfig = {
         playwrightOptions?: Partial<PlaywrightOptionsInput>;
         browserConsole?: Partial<BrowserConsoleConfigInput>;
       }
-    : Partial<AbTestsConfigInput[K]>;
+    : K extends 'audit'
+      ? Partial<Omit<AuditConfigInput, 'screenshotCoveragePlugin'>>
+      : Partial<AbTestsConfigInput[K]>;
 };
 
 /**

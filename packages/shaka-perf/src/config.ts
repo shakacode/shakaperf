@@ -10,8 +10,10 @@ import {
   DESKTOP_VIEWPORT,
   PHONE_VIEWPORT,
   TABLET_VIEWPORT,
+  isScreenshotCoveragePlugin,
   type AbTestsConfigInput,
   type BeforeNavigateHook,
+  type ScreenshotCoveragePlugin,
   type TestType,
   type Viewport,
 } from 'shaka-shared';
@@ -307,6 +309,15 @@ export const AuditConfigSchema = z
     // the per-task timeout, so the raw stream is evenly downsampled to this cap
     // before dedupe. Defaults to 700.
     limitVideoFramesCount: z.number().int().positive().default(700),
+    // `--categories code_coverage`: names the app source line behind each
+    // visibility-map row. Shape-checked only, like `beforeNavigate`: a plugin's
+    // behaviour is the user's.
+    screenshotCoveragePlugin: z
+      .custom<'react18' | 'react19' | ScreenshotCoveragePlugin>(
+        (value) => value === 'react18' || value === 'react19' || isScreenshotCoveragePlugin(value),
+        { message: "expected 'react18', 'react19', or a plugin object { name, locate(element), resolve?(raws, context) }" },
+      )
+      .optional(),
   })
   .strict();
 

@@ -77,7 +77,8 @@
     }
   },
   "scripts": {
-    "build": "yarn build-report-shell && tsc && node scripts/copy-assets.mjs",
+    "build": "yarn build-report-shell && tsc && node scripts/copy-assets.mjs && yarn build-native",
+    "build-native": "node-gyp rebuild",
     "build-report-shell": "vite build --config report-shell/vite.config.ts",
     "dev-report-shell": "vite --config report-shell/vite.config.ts",
     "typecheck": "tsc -p tsconfig.test.json",

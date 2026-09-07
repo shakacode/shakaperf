@@ -110,6 +110,9 @@ export default defineConfig({
 
   audit: {
     lighthouseConfig: LIGHTHOUSE_CONFIG,
+    // Needs a development build; twin-servers serve production ones and locate
+    // nothing. See README.md, "Screenshot coverage".
+    screenshotCoveragePlugin: 'react19',
   },
 
   twinServers: {

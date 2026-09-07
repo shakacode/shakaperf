@@ -19,3 +19,14 @@ export type { AbTestDefinition, AbTestConfig } from './bench/core/ab-test-regist
 // Twin-servers exports
 export { defineConfig as defineTwinServersConfig } from './twin-servers/config';
 export type { TwinServersConfig, TwinServersConfigInput, ResolvedConfig } from './twin-servers/types';
+
+// `audit.screenshotCoveragePlugin`; `'react18'` / `'react19'` are these factories with defaults.
+export {
+  react18ScreenshotCoveragePlugin,
+  react19ScreenshotCoveragePlugin,
+} from './audit/stages/code_coverage/source-plugins';
+export type {
+  React18SourcePluginOptions,
+  React19SourcePluginOptions,
+} from './audit/stages/code_coverage/source-plugins';
+export type { ScreenshotCoveragePlugin, SourceLocation, SourceResolveContext } from 'shaka-shared';

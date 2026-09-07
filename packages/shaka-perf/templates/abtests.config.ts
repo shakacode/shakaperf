@@ -137,6 +137,18 @@ export default defineConfig({
 
   audit: {
     lighthouseConfig: LIGHTHOUSE_CONFIG,
+    // `--categories code_coverage`: stamp each visibility-map row with the app
+    // source line that rendered the element, so the shaka-perf-coverage skill
+    // joins screenshots to code without hand-written anchors. Both built-ins
+    // read React's DEVELOPMENT-build debug info, so point the coverage run at
+    // a dev build: 'react18' for React 16–18 transpiled with the JSX source
+    // transform (@babel/preset-react `development: true`; no source map
+    // needed), 'react19' for React >= 19.1 with a fetchable source map
+    // (devtool 'source-map' / 'cheap-module-source-map'). A custom plugin is an
+    // object (see ScreenshotCoveragePlugin in shaka-shared), or
+    // `react18ScreenshotCoveragePlugin` / `react19ScreenshotCoveragePlugin({
+    // isAppSource })` from shaka-perf. Run-level: not overridable per test.
+    // screenshotCoveragePlugin: 'react19',
   },
 
   // Agent-readiness (AI-legibility scan → the client report's "Agent Ready"

@@ -222,6 +222,30 @@ describe('agentReadiness config', () => {
   });
 });
 
+describe('audit.screenshotCoveragePlugin', () => {
+  const plugin = { name: 'stamped', locate: (element: Element) => element.getAttribute('data-source') };
+
+  it('defaults to no plugin', () => {
+    expect(buildAbTestsConfig(baseConfig()).audit.screenshotCoveragePlugin).toBeUndefined();
+  });
+
+  it('accepts the built-ins by name and a custom plugin by object', () => {
+    expect(buildAbTestsConfig(baseConfig({ audit: { screenshotCoveragePlugin: 'react18' } }))
+      .audit.screenshotCoveragePlugin).toBe('react18');
+    expect(buildAbTestsConfig(baseConfig({ audit: { screenshotCoveragePlugin: 'react19' } }))
+      .audit.screenshotCoveragePlugin).toBe('react19');
+    expect(buildAbTestsConfig(baseConfig({ audit: { screenshotCoveragePlugin: plugin } }))
+      .audit.screenshotCoveragePlugin).toBe(plugin);
+  });
+
+  it('rejects anything else, naming what it wanted', () => {
+    expect(() => buildAbTestsConfig(baseConfig({ audit: { screenshotCoveragePlugin: 'react17' } })))
+      .toThrow(/audit\.screenshotCoveragePlugin: expected 'react18', 'react19', or a plugin object/);
+    expect(() => buildAbTestsConfig(baseConfig({ audit: { screenshotCoveragePlugin: { name: 'x' } } })))
+      .toThrow(/audit\.screenshotCoveragePlugin/);
+  });
+});
+
 describe('shared.browserConsole config', () => {
   it('requires the section and both of its fields', () => {
     const base = baseConfig();

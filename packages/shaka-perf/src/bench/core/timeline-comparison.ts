@@ -2385,7 +2385,16 @@ export async function loadScreenshotsFromVideo(
       '-of', 'default=noprint_wrappers=1:nokey=1',
       videoPath,
     ]);
-    const fpsRaw = probe.stdout.toString().trim(); // e.g. "60/1"
+    if (probe.error) {
+      if ((probe.error as NodeJS.ErrnoException).code === 'ENOENT') {
+        throw new Error(
+          'shaka-perf: ffprobe not found on PATH — it ships with ffmpeg and is needed to read the ' +
+          'screencast frame rate (e.g. `brew install ffmpeg` / `apt install ffmpeg`)',
+        );
+      }
+      throw new Error(`shaka-perf: failed to spawn ffprobe: ${probe.error.message}`);
+    }
+    const fpsRaw = (probe.stdout ?? '').toString().trim(); // e.g. "60/1"
     const [num, den] = fpsRaw.split('/').map(Number);
     const fps = (Number.isFinite(num) && Number.isFinite(den) && den > 0) ? num / den : 60;
     const files = fs.readdirSync(tmpDir).filter((f) => f.endsWith('.jpg')).sort();
