@@ -5,3 +5,4 @@
 ramezweissa/demo-app-login-and-carousel
 #
 # Docs: https://github.com/shakacode/shaka-perf/blob/main/docs/resolving-bundle-size-issues.md
+
