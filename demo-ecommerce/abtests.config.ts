@@ -114,17 +114,6 @@ export default defineConfig({
 
   bisect: {
     rebuildContainer: false,
-    repairs: [
-      {
-        id: 'backport-deals-abtest',
-        kind: 'test-harness',
-        purpose: 'Keep the frozen deals AB test available on historical candidates',
-        patch: './bisect-repairs/backport-deals-abtest.patch',
-        appliesTo: { all: true },
-        prepareCommands: [],
-        cleanupCommands: [],
-      },
-    ],
   },
 
   twinServers: {

@@ -5,9 +5,10 @@
  * License in LICENSE.md.
  */
 
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { BisectRepairConfig } from '../../../config';
+import type { BisectPatchManifestEntry } from '../patch-manifest';
 import { runBisect } from '../session';
 import type {
   E2eDependencyHarness,
@@ -1117,7 +1118,7 @@ describe('bisect black-box E2E', () => {
       await expect(runBisect({ ...fixture.runOptions, dependencies: interrupted.dependencies }))
         .rejects.toThrow(/stubbed compare failure/i);
       assertExperimentRestored(fixture);
-      fs.rmSync(path.resolve(fixture.rootDir, configured.patch));
+      fs.rmSync(path.join(fixture.rootDir, 'bisect-repairs', configured.filename));
 
       const observedHashes: string[] = [];
       const resumedHarness = createE2eDependencies({
@@ -1161,23 +1162,30 @@ function expectCommitsSkippedByBinarySearch(
 
 function configureRepairs(
   fixture: E2eRepositoryFixture,
-  repairs: BisectRepairConfig[],
+  repairs: BisectPatchManifestEntry[],
 ): void {
-  fixture.runOptions.config.bisect.repairs = repairs;
+  const manifestDirectory = path.join(fixture.rootDir, 'bisect-repairs');
+  fs.mkdirSync(manifestDirectory, { recursive: true });
+  fs.writeFileSync(
+    path.join(manifestDirectory, 'manifest.json'),
+    `${JSON.stringify({ version: 1, patches: repairs }, null, 2)}\n`,
+  );
 }
 
 function repair(
   fixture: E2eRepositoryFixture,
-  options: Pick<BisectRepairConfig, 'id' | 'purpose' | 'appliesTo'> & {
+  options: Pick<BisectPatchManifestEntry, 'id' | 'appliesTo'> & {
+    purpose?: string;
     patch: string;
-    kind?: BisectRepairConfig['kind'];
-    prepareCommands?: BisectRepairConfig['prepareCommands'];
-    cleanupCommands?: BisectRepairConfig['cleanupCommands'];
+    kind?: BisectPatchManifestEntry['kind'];
+    prepareCommands?: BisectPatchManifestEntry['prepareCommands'];
+    cleanupCommands?: BisectPatchManifestEntry['cleanupCommands'];
   },
-): BisectRepairConfig {
-  const patchDirectory = path.join(fixture.rootDir, 'repair-sources');
+): BisectPatchManifestEntry {
+  const patchDirectory = path.join(fixture.rootDir, 'bisect-repairs');
   fs.mkdirSync(patchDirectory, { recursive: true });
-  const patchPath = path.join(patchDirectory, `${options.id}.patch`);
+  const filename = `${options.id}.patch`;
+  const patchPath = path.join(patchDirectory, filename);
   fs.writeFileSync(patchPath, options.patch, 'utf8');
   return {
     id: options.id,
@@ -1186,7 +1194,9 @@ function repair(
     kind: options.kind ?? 'other',
     prepareCommands: options.prepareCommands ?? [],
     cleanupCommands: options.cleanupCommands ?? [],
-    patch: path.relative(fixture.rootDir, patchPath),
+    filename,
+    sha256: createHash('sha256').update(options.patch).digest('hex'),
+    source: { kind: 'patch-file', importedFromBasename: filename },
   };
 }
 

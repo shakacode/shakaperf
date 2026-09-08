@@ -167,7 +167,6 @@ describe('bisect config', () => {
   it('defaults container rebuilding', () => {
     expect(buildAbTestsConfig(baseConfig()).bisect).toEqual({
       rebuildContainer: false,
-      repairs: [],
     });
   });
 
@@ -178,112 +177,31 @@ describe('bisect config', () => {
       },
     })).bisect).toEqual({
       rebuildContainer: true,
-      repairs: [],
     });
   });
 
-  it('parses ordered repair definitions and their defaults', () => {
+  it('preserves a custom patch manifest locator', () => {
     expect(buildAbTestsConfig(baseConfig({
       bisect: {
-        repairs: [
-          {
-            id: 'backport-test',
-            purpose: 'Restore a test on older commits',
-            patch: './patches/backport-test.patch',
-            appliesTo: { through: 'feature^' },
-          },
-          {
-            id: 'seed-data',
-            kind: 'data',
-            purpose: 'Seed the legacy checkout',
-            patch: './patches/seed-data.patch',
-            appliesTo: { commits: ['abc123', 'def456'] },
-            prepareCommands: [{ description: 'Seed', command: 'bin/seed' }],
-            cleanupCommands: [{ description: 'Unseed', command: 'bin/unseed' }],
-          },
-          {
-            id: 'universal-build-fix',
-            kind: 'build',
-            purpose: 'Keep every evaluated commit buildable',
-            patch: './patches/universal-build-fix.patch',
-            appliesTo: { all: true },
-          },
-        ],
+        patchesManifest: './custom/bisect-patches.json',
       },
-    })).bisect.repairs).toEqual([
-      {
-        id: 'backport-test',
-        kind: 'other',
-        purpose: 'Restore a test on older commits',
-        patch: './patches/backport-test.patch',
-        appliesTo: { through: 'feature^' },
-        prepareCommands: [],
-        cleanupCommands: [],
-      },
-      {
-        id: 'seed-data',
-        kind: 'data',
-        purpose: 'Seed the legacy checkout',
-        patch: './patches/seed-data.patch',
-        appliesTo: { commits: ['abc123', 'def456'] },
-        prepareCommands: [{ description: 'Seed', command: 'bin/seed' }],
-        cleanupCommands: [{ description: 'Unseed', command: 'bin/unseed' }],
-      },
-      {
-        id: 'universal-build-fix',
-        kind: 'build',
-        purpose: 'Keep every evaluated commit buildable',
-        patch: './patches/universal-build-fix.patch',
-        appliesTo: { all: true },
-        prepareCommands: [],
-        cleanupCommands: [],
-      },
-    ]);
+    })).bisect).toEqual({
+      rebuildContainer: false,
+      patchesManifest: './custom/bisect-patches.json',
+    });
   });
 
-  it.each([
-    {
-      name: 'duplicate ids',
-      repairs: [
-        repair({ id: 'same' }),
-        repair({ id: 'same', patch: './second.patch' }),
-      ],
-      error: /duplicate repair id/i,
-    },
-    {
-      name: 'unsafe ids',
-      repairs: [repair({ id: '../escape' })],
-      error: /filesystem-safe identifier/i,
-    },
-    {
-      name: 'empty paths',
-      repairs: [repair({ patch: ' ' })],
-      error: /patch is required/i,
-    },
-    {
-      name: 'mixed selectors',
-      repairs: [repair({ appliesTo: { commits: ['abc'], through: 'def' } })],
-      error: /unrecognized key|invalid input/i,
-    },
-    {
-      name: 'mixed all selector',
-      repairs: [repair({ appliesTo: { all: true, commits: ['abc'] } })],
-      error: /unrecognized key|invalid input/i,
-    },
-    {
-      name: 'disabled all selector',
-      repairs: [repair({ appliesTo: { all: false } })],
-      error: /invalid input/i,
-    },
-    {
-      name: 'unknown fields',
-      repairs: [repair({ legacyRange: 'abc..def' })],
-      error: /unrecognized key/i,
-    },
-  ])('rejects $name in repair configuration', ({ repairs, error }) => {
-    expect(() => buildAbTestsConfig(baseConfig({ bisect: { repairs } }))).toThrow(error);
+  it('rejects an empty custom manifest locator', () => {
+    expect(() => buildAbTestsConfig(baseConfig({
+      bisect: { patchesManifest: ' ' },
+    }))).toThrow();
   });
 
+  it('rejects the removed bisect.repairs configuration as an unknown key', () => {
+    expect(() => buildAbTestsConfig(baseConfig({
+      bisect: { repairs: [] },
+    }))).toThrow(/bisect.*unrecognized key.*repairs/i);
+  });
 });
 
 describe('agentReadiness config', () => {

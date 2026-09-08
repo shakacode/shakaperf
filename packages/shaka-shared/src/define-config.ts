@@ -161,29 +161,10 @@ export interface SetupCommandInput {
   description: string;
 }
 
-export interface BisectRepairCommandInput {
-  description: string;
-  command: string;
-}
-
-export type BisectRepairSelectorInput =
-  | { commits: [string, ...string[]] }
-  | { from?: string; through: string }
-  | { all: true };
-
-export interface BisectRepairConfigInput {
-  id: string;
-  kind?: 'test-harness' | 'build' | 'data' | 'other';
-  purpose: string;
-  patch: string;
-  appliesTo: BisectRepairSelectorInput;
-  prepareCommands?: BisectRepairCommandInput[];
-  cleanupCommands?: BisectRepairCommandInput[];
-}
-
 export interface BisectConfigInput {
   rebuildContainer?: boolean;
-  repairs?: BisectRepairConfigInput[];
+  /** Path to the sole patch manifest, relative to abtests.config.ts. */
+  patchesManifest?: string;
 }
 
 export interface CopyIgnoreConfigInput {

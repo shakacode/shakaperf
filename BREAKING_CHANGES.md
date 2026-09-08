@@ -12,6 +12,36 @@ version being released and updates the "Current version" line at the bottom.
 
 ---
 
+## Unreleased
+
+### `bisect.repairs` moved to the managed patch registry
+
+`bisect.repairs` is no longer accepted in `abtests.config.ts`. Bisect repair
+metadata and patch hashes now live in `bisect-repairs/manifest.json`, managed
+through `shaka-perf bisect patch` commands.
+
+For each existing repair, remove its object from `bisect.repairs` and import the
+patch with the same ID, kind, purpose, selector, and commands. If the source
+patch is already named `bisect-repairs/<id>.patch`, move it out of the managed
+directory before importing because the registry creates that destination:
+
+```bash
+mv bisect-repairs/backport-checkout-test.patch /tmp/backport-checkout-test.patch
+shaka-perf bisect patch create backport-checkout-test \
+  --patch-file /tmp/backport-checkout-test.patch \
+  --kind test-harness \
+  --purpose "Keep the frozen checkout test runnable on older commits" \
+  --through historical-test-migration \
+  --no-interactive
+rm /tmp/backport-checkout-test.patch
+```
+
+Repeat `--prepare-command` with its matching `--prepare-description`, and
+`--cleanup-command` with its matching `--cleanup-description`, for repairs that
+used those arrays. Commit the generated manifest and managed `.patch` files.
+Saved bisect sessions containing config-based repairs cannot be resumed; start
+a fresh bisect after migrating.
+
 ## 0.2.4 — 2026-08-11
 
 ### `SHAKA_PERF_NODE` removed, and the CLI no longer pins a Node version

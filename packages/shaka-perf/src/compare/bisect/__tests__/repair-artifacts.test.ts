@@ -8,13 +8,14 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { BisectRepairConfig } from '../../../config';
 import type { PreparedGitRange } from '../git';
+import type { BisectPatchManifestEntry } from '../patch-manifest';
 import {
-  prepareConfiguredRepairs,
+  prepareManifestRepairs,
   repairArtifactPath,
   verifyPersistedRepairArtifacts,
   writePreparedRepairArtifacts,
@@ -54,16 +55,14 @@ describe('bisect repair artifacts', () => {
     fs.rmSync(rootDir, { recursive: true, force: true });
   });
 
-  it('resolves config-relative patches and inclusive primary intervals', async () => {
-    fs.mkdirSync(path.join(configDirectory, 'patches'));
-    fs.writeFileSync(path.join(configDirectory, 'patches', 'compat.patch'), 'patch bytes\n');
+  it('resolves manifest-relative patches and inclusive primary intervals', async () => {
+    writePatch();
 
-    const prepared = await prepareConfiguredRepairs({
-      repairs: [repair({
-        patch: './patches/compat.patch',
+    const prepared = await prepareManifestRepairs({
+      patches: [repair({
         appliesTo: { from: range.orderedCommits[1]!, through: 'HEAD' },
       })],
-      configDirectory,
+      manifestDirectory: configDirectory,
       experimentDir: repoDir,
       range,
       registeredAt: '2026-07-27T00:00:00.000Z',
@@ -82,12 +81,12 @@ describe('bisect repair artifacts', () => {
   });
 
   it('freezes explicit refs to unique immutable SHAs outside interval semantics', async () => {
-    fs.writeFileSync(path.join(configDirectory, 'compat.patch'), 'patch bytes\n');
-    const prepared = await prepareConfiguredRepairs({
-      repairs: [repair({
+    writePatch();
+    const prepared = await prepareManifestRepairs({
+      patches: [repair({
         appliesTo: { commits: ['HEAD', range.badSha, range.goodSha] },
       })],
-      configDirectory,
+      manifestDirectory: configDirectory,
       experimentDir: repoDir,
       range,
       registeredAt: 'registered',
@@ -99,10 +98,10 @@ describe('bisect repair artifacts', () => {
   });
 
   it('persists an all selector without limiting it to the primary range', async () => {
-    fs.writeFileSync(path.join(configDirectory, 'compat.patch'), 'patch bytes\n');
-    const prepared = await prepareConfiguredRepairs({
-      repairs: [repair({ appliesTo: { all: true } })],
-      configDirectory,
+    writePatch();
+    const prepared = await prepareManifestRepairs({
+      patches: [repair({ appliesTo: { all: true } })],
+      manifestDirectory: configDirectory,
       experimentDir: repoDir,
       range,
       registeredAt: 'registered',
@@ -116,24 +115,24 @@ describe('bisect repair artifacts', () => {
   });
 
   it('rejects reversed intervals and unsafe data setup', async () => {
-    fs.writeFileSync(path.join(configDirectory, 'compat.patch'), 'patch bytes\n');
-    await expect(prepareConfiguredRepairs({
-      repairs: [repair({
+    writePatch();
+    await expect(prepareManifestRepairs({
+      patches: [repair({
         appliesTo: { from: range.badSha, through: range.goodSha },
       })],
-      configDirectory,
+      manifestDirectory: configDirectory,
       experimentDir: repoDir,
       range,
       registeredAt: 'registered',
       rebuildContainer: false,
     })).rejects.toThrow(/interval is reversed/i);
 
-    await expect(prepareConfiguredRepairs({
-      repairs: [repair({
+    await expect(prepareManifestRepairs({
+      patches: [repair({
         kind: 'data',
         prepareCommands: [{ description: 'Seed', command: 'bin/seed' }],
       })],
-      configDirectory,
+      manifestDirectory: configDirectory,
       experimentDir: repoDir,
       range,
       registeredAt: 'registered',
@@ -142,10 +141,10 @@ describe('bisect repair artifacts', () => {
   });
 
   it('atomically snapshots repairs and validates their persisted hashes', async () => {
-    fs.writeFileSync(path.join(configDirectory, 'compat.patch'), 'patch bytes\n');
-    const prepared = await prepareConfiguredRepairs({
-      repairs: [repair()],
-      configDirectory,
+    writePatch();
+    const prepared = await prepareManifestRepairs({
+      patches: [repair()],
+      manifestDirectory: configDirectory,
       experimentDir: repoDir,
       range,
       registeredAt: 'registered',
@@ -163,6 +162,18 @@ describe('bisect repair artifacts', () => {
       .toThrow(/artifact "compat" changed/i);
   });
 
+  it('rejects a patch whose bytes do not match the manifest hash', async () => {
+    writePatch('changed patch bytes\n');
+    await expect(prepareManifestRepairs({
+      patches: [repair()],
+      manifestDirectory: configDirectory,
+      experimentDir: repoDir,
+      range,
+      registeredAt: 'registered',
+      rebuildContainer: false,
+    })).rejects.toThrow(/hash does not match manifest/i);
+  });
+
   it('rejects persisted filenames outside the patch artifact directory', () => {
     expect(() => repairArtifactPath(resultsDirectory, '../escape.patch')).toThrow(/invalid/i);
     expect(() => repairArtifactPath(resultsDirectory, 'patches/not-a-patch.txt')).toThrow(/invalid/i);
@@ -178,14 +189,25 @@ describe('bisect repair artifacts', () => {
     git(['commit', '-m', label]);
     return git(['rev-parse', 'HEAD']);
   }
+
+  function writePatch(contents = PATCH_BYTES): void {
+    fs.writeFileSync(path.join(configDirectory, 'compat.patch'), contents);
+  }
 });
 
-function repair(overrides: Partial<BisectRepairConfig> = {}): BisectRepairConfig {
+const PATCH_BYTES = 'patch bytes\n';
+const PATCH_HASH = createHash('sha256').update(PATCH_BYTES).digest('hex');
+
+function repair(
+  overrides: Partial<BisectPatchManifestEntry> = {},
+): BisectPatchManifestEntry {
   return {
     id: 'compat',
     kind: 'build',
     purpose: 'Keep historical commits buildable',
-    patch: './compat.patch',
+    filename: 'compat.patch',
+    sha256: PATCH_HASH,
+    source: { kind: 'patch-file', importedFromBasename: 'compat.patch' },
     appliesTo: { through: 'HEAD' },
     prepareCommands: [],
     cleanupCommands: [],
