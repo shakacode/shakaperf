@@ -2,3 +2,10 @@
 
 /demo-ecommerce/test/acknowledge-bundle-size.txt @rameziophobia
 
+# AI review bots are disabled on purpose. Changes to bot config, workflows,
+# or this file need Roman's approval.
+/.github/CODEOWNERS @Romex91
+/.github/workflows/ @Romex91
+/.coderabbit.yaml @Romex91
+/.greptile/ @Romex91
+/scripts/pest-control.sh @Romex91
