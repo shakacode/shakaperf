@@ -38,6 +38,35 @@ export async function runLighthouse(
   // runner level. No third backstop here — one knob per level.
   const runnerResult = await runPatchedLighthouse(url, lhSettings, { canStopTracking });
 
+  // FIRST, before anything touches the artifacts. A runtimeError means Lighthouse
+  // produced no Trace, so every artifact reader below would throw
+  // "Cannot read properties of undefined (reading 'traceEvents')" and bury the
+  // actual reason the page failed. Report the reason, not the symptom.
+  if (runnerResult.lhr.runtimeError) {
+    throw new Error(
+      `Lighthouse encountered runtime error when running ${url}: ${JSON.stringify(
+        runnerResult.lhr.runtimeError,
+        null,
+        2
+      )}`
+    );
+  }
+
+  // No runtimeError, yet the artifacts a perf sample is made of are absent.
+  // That is not a page problem and must not be papered over — the sample would
+  // silently carry no network metrics. Name what is missing instead of letting
+  // the readers below die on `undefined.traceEvents` / `undefined.DevtoolsLog`.
+  const missing = ([
+    ['Trace', runnerResult.artifacts?.Trace],
+    ['DevtoolsLog', runnerResult.artifacts?.DevtoolsLog],
+  ] as const).filter(([, value]) => !value).map(([name]) => name);
+  if (missing.length) {
+    throw new Error(
+      `Lighthouse returned no ${missing.join(' or ')} artifact for ${url}, ` +
+      `and reported no runtimeError. Cannot build a perf sample from this run.`,
+    );
+  }
+
   const namePrefix = join(resultsFolder, group);
 
   if (saveArtifacts) {
@@ -63,15 +92,6 @@ export async function runLighthouse(
     lcpTs,
   );
 
-  if (runnerResult.lhr.runtimeError) {
-    throw new Error(
-      `Lighthouse encountered runtime error when running ${url}: ${JSON.stringify(
-        runnerResult.lhr.runtimeError,
-        null,
-        2
-      )}`
-    );
-  }
   // Console messages are no longer read off Lighthouse's `ConsoleMessages`
   // artifact here. They are captured uniformly by the `console.*` patch that
   // `setUpContextForNavigation` installs, and turned into a verdict by
