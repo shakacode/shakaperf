@@ -29,6 +29,7 @@ on:
         default: '500'
 
 permissions:
+  contents: read
   pull-requests: write
   issues: write
 
