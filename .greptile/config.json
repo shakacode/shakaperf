@@ -4,12 +4,12 @@
     "logic"
   ],
   "includeAuthors": [
-    "justin808"
+    "greptile-disabled"
   ],
   "triggerOnUpdates": false,
   "fixWithAI": false,
   "hideFooter": true,
-  "statusCheck": true,
+  "statusCheck": false,
   "statusCommentsEnabled": false,
   "summarySection": {
     "included": false,

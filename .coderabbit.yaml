@@ -1,5 +1,6 @@
-# Keep CodeRabbit quiet by default. Request a one-off review with
-# `@coderabbitai review` on the pull request.
+# CodeRabbit is disabled. Automatic reviews never run; nothing triggers them
+# (no labels, no drafts). A one-off review can still be requested manually
+# with `@coderabbitai review` on the pull request.
 reviews:
   profile: chill
   high_level_summary: false
@@ -19,10 +20,5 @@ reviews:
   enable_prompt_for_ai_agents: false
   auto_review:
     enabled: false
-    drafts: true
-    labels:
-      - coderabbit:first-pass
-      - coderabbit:ready
+    drafts: false
     auto_incremental_review: false
-    ignore_usernames:
-      - Romex91
