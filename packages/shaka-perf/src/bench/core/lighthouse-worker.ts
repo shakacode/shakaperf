@@ -315,7 +315,10 @@ class LighthouseWorkerSampler {
     sampleLabel: string,
     saveArtifacts: boolean,
   ): Promise<{ phases: PhaseSample[]; accessibilityScore: number | null }> {
-    const browser = await chromium.connectOverCDP(`http://localhost:${this.chrome!.port}`);
+    const browser = await chromium.connectOverCDP(
+      `http://localhost:${this.chrome!.port}`,
+      { timeout: 120_000 },
+    );
     let livePage: Page | null = null;
     const resultsFolder = options.resultsFolder ?? './tracerbench-results';
 
@@ -355,6 +358,13 @@ class LighthouseWorkerSampler {
         return null;
       }
     };
+
+    // Hoisted so the `catch` below can read them: these hold the rejection of
+    // EACH side, so the one that loses the `Promise.all` race is still reported.
+    let lighthouseError: unknown;
+    let playwrightError: unknown;
+    let lighthouseSettled = false;
+    let playwrightSettled = false;
 
     try {
       const context = browser.contexts()[0];
@@ -470,12 +480,26 @@ class LighthouseWorkerSampler {
           if (!this.keepBrowserOpen) releaseTracking();
         });
 
-      // Abandon (don't await) the underlying work if abort wins the race;
-      // attach no-op catches so their eventual rejection — once the browser is
-      // torn down in `finally` — doesn't surface as an unhandled rejection and
-      // kill the worker via `reportFatal`.
-      void lighthousePromise.catch(() => {});
-      void playwrightPromise.catch(() => {});
+      // Abandon (don't await) the underlying work if abort wins the race, and
+      // keep its eventual rejection from surfacing as an unhandled rejection
+      // that would kill the worker via `reportFatal`.
+      //
+      // RECORD, don't discard. These were no-op catches, which destroyed
+      // whichever side LOST the `Promise.all` race below. When Lighthouse and
+      // the test script fail at nearly the same instant — which is what a page
+      // teardown does — `Promise.all` reports only the first rejection and the
+      // other is gone. In practice the survivor was Lighthouse's
+      // "Protocol error (Page.enable): Session closed", a symptom, while the
+      // error that explained WHY was silently dropped. Keep both so the failure
+      // path can report the pair (see `describeSiblingFailure`).
+      void lighthousePromise.then(
+        () => { lighthouseSettled = true; },
+        (err) => { lighthouseSettled = true; lighthouseError = err; },
+      );
+      void playwrightPromise.then(
+        () => { playwrightSettled = true; },
+        (err) => { playwrightSettled = true; playwrightError = err; },
+      );
       const [{ phases, runnerResult }, inp] = await Promise.race([
         Promise.all([lighthousePromise, playwrightPromise]),
         abortSignal,
@@ -535,7 +559,28 @@ class LighthouseWorkerSampler {
       // drop the just-encoded video/screenshot from the report. Normalize to an
       // Error so the captured media always rides to the parent's IPC handler.
       // The Error case keeps the original reference, preserving metadata.
+      // Give the sibling a brief moment to settle, then fold its error into the
+      // message. Without this the pair is racy: whichever rejected first is all
+      // anyone ever sees, and a teardown makes BOTH reject microseconds apart.
+      const siblingDeadline = Date.now() + 2000;
+      while ((!lighthouseSettled || !playwrightSettled) && Date.now() < siblingDeadline) {
+        await new Promise((r) => setTimeout(r, 25));
+      }
       const error = err instanceof Error ? err : new Error(String(err));
+      const sibling = err === lighthouseError ? playwrightError
+        : err === playwrightError ? lighthouseError
+        : undefined;
+      if (sibling !== undefined && sibling !== err) {
+        const sideOfErr = err === lighthouseError ? 'lighthouse' : 'playwright';
+        const sideOfSibling = sideOfErr === 'lighthouse' ? 'playwright' : 'lighthouse';
+        const siblingMsg = sibling instanceof Error
+          ? (sibling.stack ?? sibling.message)
+          : String(sibling);
+        error.message =
+          `${error.message}\n\n` +
+          `[shaka-perf] the above is the ${sideOfErr} side. The ${sideOfSibling} ` +
+          `side ALSO failed and used to be discarded — it is often the real cause:\n${siblingMsg}`;
+      }
       if (mediaName) {
         (error as Error & { failureMediaName?: string }).failureMediaName = mediaName;
       }

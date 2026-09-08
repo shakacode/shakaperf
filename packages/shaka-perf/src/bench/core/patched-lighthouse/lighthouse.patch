@@ -11,7 +11,36 @@
  /** @typedef {import('./network-monitor.js').NetworkMonitorEvent} NetworkMonitorEvent */
  
  /**
-@@ -467,11 +469,25 @@
+@@ -233,7 +235,7 @@
+    * @param {() => void} resolve
+    * @return {Promise<void>}
+    */
+-  async function checkForQuiet(executionContext, resolve) {
++  async function checkForQuiet(executionContext, resolve, reject) {
+     if (canceled) return;
+     const timeSinceLongTask =
+       await executionContext.evaluate(
+@@ -247,7 +249,9 @@
+       } else {
+         log.verbose('waitFor', `CPU has been idle for ${timeSinceLongTask} ms`);
+         const timeToWait = waitForCPUQuiet - timeSinceLongTask;
+-        lastTimeout = setTimeout(() => checkForQuiet(executionContext, resolve), timeToWait);
++        // PATCH (shaka-perf): a re-scheduled poll that fails (page gone) must
++        // reject the poller, not float as an unhandled rejection.
++        lastTimeout = setTimeout(() => checkForQuiet(executionContext, resolve, reject).catch(reject), timeToWait);
+       }
+     }
+   }
+@@ -261,7 +265,7 @@
+   /** @type {Promise<void>} */
+   const promise = new Promise((resolve, reject) => {
+     executionContext.evaluate(registerPerformanceObserverInPage, {args: [], useIsolation: true})
+-      .then(() => checkForQuiet(executionContext, resolve))
++      .then(() => checkForQuiet(executionContext, resolve, reject))
+       .catch(reject);
+     cancel = () => {
+       if (canceled) return;
+@@ -467,11 +471,25 @@
      resolveOnFcp.promise,
      resolveOnLoadEvent.promise,
      resolveOnNetworkIdle.promise,
@@ -37,7 +66,7 @@
      /** @return {Promise<{timedOut: boolean}>} */
      const cleanupFn = async function() {
        log.verbose('waitFor', 'loadEventFired and network considered idle');
-@@ -493,4 +509,13 @@
+@@ -493,4 +511,13 @@
    const maxTimeoutPromise = new Promise((resolve, reject) => {
      maxTimeoutHandle = setTimeout(resolve, maxWaitForLoadedMs);
 -  }).then(_ => {
@@ -52,3 +81,14 @@
 +      await globalThis.__shakaperfHoldGather;
 +    }
      return async () => {
+@@ -538,6 +565,10 @@
+   resolveOnFcp.cancel();
+   resolveOnLoadEvent.cancel();
+   resolveOnNetworkIdle.cancel();
++  // PATCH (shaka-perf): Lighthouse cancels every gate but this one. Left armed,
++  // it resolves after the race and the load branch then creates a cpu-idle
++  // poller nothing cancels — its next poll hits the closed page (unhandled).
++  resolveOnCriticalNetworkIdle.cancel();
+   resolveOnCPUIdle.cancel();
+ 
+   return cleanupFn();
