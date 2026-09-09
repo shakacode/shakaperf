@@ -98,7 +98,7 @@ node <skill-dir>/coverage-baseline.ts diff <older-dir> <newer-dir>
 ```
 
 1. Choose a narrow comma-separated `relevant-sources` regex list. Reuse the exact same string for every save; changing it makes the diff meaningless.
-2. `save` writes a timestamped SCAFFOLD **directory** under `coverage-baselines/` — one file per source, mirroring its path under `app/javascript`, plus `legend.txt`. It never overwrites. **A scaffold is not a baseline**: the screenshot field is empty until step 5, and you type into the saved files IN PLACE, never into chat or a scratch file, because `diff` reads the directory and nothing else.
+2. `save` writes a timestamped SCAFFOLD **directory** under `audit-results/coverage-baselines/` — one file per source, mirroring its path under `app/javascript`, plus `legend.txt`. It never overwrites. **A scaffold is not a baseline**: the screenshot field is empty until step 5, and you type into the saved files IN PLACE, never into chat or a scratch file, because `diff` reads the directory and nothing else.
 
 ### The format
 
