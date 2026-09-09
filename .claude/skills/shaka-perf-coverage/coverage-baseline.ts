@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The one command you run. A snapshot is a directory under `coverage-baselines/`.
+// The one command you run. A snapshot is a directory under `audit-results/coverage-baselines/`.
 //
 //   save "<sources>"        write a scaffold from the latest audit run
 //   fill [<dir>]            fill its screenshot field from <dir>/anchors.json
@@ -19,7 +19,7 @@ const path = require('node:path');
 const { build, tally } = require('./snapshot');
 const { fill } = require('./fill-visibility');
 
-const DIR = 'coverage-baselines';
+const DIR = path.join('audit-results', 'coverage-baselines');
 const HEADER = '# sources: ';
 const results = (): string => process.env.AUDIT_ROOT || 'audit-results';
 
