@@ -1,0 +1,8 @@
+# sources: components/pages/HomePage\.tsx,components/pages/ProductListPage\.tsx,components/shared/ProductCard\.tsx
+# audit: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results
+#
+# format:  <source line>  // <tests that executed it> | <what a screenshot showed>
+#   0 = a statement no test reached; blank = no statement starts here.
+#
+A = Homepage
+B = Products List

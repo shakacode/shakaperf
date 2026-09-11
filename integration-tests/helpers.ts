@@ -174,9 +174,9 @@ export function waitForPort(port: number, timeout = 180_000): Promise<void> {
   });
 }
 
-const PUMA_CMD = 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000';
+export const PUMA_CMD = 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000';
 
-function portIsResponding(port: number): boolean {
+export function portIsResponding(port: number): boolean {
   try {
     execSync(`curl -sf -o /dev/null --max-time 2 http://localhost:${port}/`, { stdio: 'ignore' });
     return true;
