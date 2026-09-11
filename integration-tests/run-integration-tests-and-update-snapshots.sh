@@ -31,6 +31,9 @@
 #       full-page render of the report — separate per-HTML screenshots would
 #       only duplicate these dialog/overview shots (and the self-contained
 #       report variant always duplicates the full report).
+#   - audit-results/screenshot-coverage-baseline/
+#                       — @audit coverage snapshot (one file per source +
+#       legend.txt), written by the analyze-diffs command, not the specs
 #   - troubleshoot-results/01-sides.png — @troubleshoot
 #       Not a report shot: the four frozen troubleshoot browsers (visreg +
 #       perf, each control and experiment) screenshotted over CDP straight
