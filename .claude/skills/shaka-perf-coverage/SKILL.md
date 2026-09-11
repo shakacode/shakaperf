@@ -29,7 +29,10 @@ shaka-perf audit --categories code_coverage --url <dev build> --filter <relevant
 Two things must hold, and both are the user's to fix, not yours to work around:
 
 - **The bundle is instrumented.** The stage fails a unit whose page has no `window.__coverage__`. If it did, STOP and say so: the fix is `babel-plugin-istanbul`, `nyc instrument`, or `swc-plugin-coverage-instrument` (see `demo-ecommerce/config/rspack/clientWebpackConfig.js`). Never estimate around it — a visibility map alone says what is on screen, not which test's code put it there.
-- **The build carries sources.** `audit.screenshotCoveragePlugin` is set in `abtests.config.ts`, and the audited URL serves a build the plugin can read: a DEVELOPMENT React build — `'react18'` needs the JSX source transform (`@babel/preset-react` `development: true`), `'react19'` a fetchable source map. Twin-servers serve production builds, so point `--url` at a dev server of the same code. `save` refuses a run whose maps locate no elements and quotes the map header that says why. Report that to the user; do not fall back to anything by hand.
+- **The build carries sources.** `audit.screenshotCoveragePlugin` is set in `abtests.config.ts`, and the audited URL serves a DEVELOPMENT React build — `'react18'` needs the JSX source transform (`@babel/preset-react` `development: true`), `'react19'` a fetchable source map. Twin-servers serve production builds, so point `--url` at a dev server of the same code.
+  For other frameworks, introduce a custom screenshot coverage plugin; if the framework makes that impossible, manually tag the tested components and assess screenshot coverage by those unique identifiers.
+
+If either fails (the stage reports no `window.__coverage__`, or `save` says `impossible to estimate`), HALT and use the AskUserQuestion tool to offer the fixes: instrument the bundle (`babel-plugin-istanbul` / `nyc instrument` / `swc-plugin-coverage-instrument`); set `audit.screenshotCoveragePlugin` and audit a dev server; write a custom plugin; or manually tag the components. Wait for the answer.
 
 ## The loop
 
@@ -42,9 +45,9 @@ node <skill-dir>/coverage-baseline.ts diff                          # the last t
 node <skill-dir>/coverage-baseline.ts diff <older-dir> <newer-dir>
 ```
 
-`<relevant-sources>` is a comma-separated list of regexes matched against paths under `app/javascript`. Choosing it is the judgement this skill leaves to you: narrow enough to name the components in question, and **reused verbatim for every save** — changing it makes the diff meaningless. A regex that matches nothing fails loudly rather than reporting good news.
+`<relevant-sources>` is a comma-separated list of regexes matched against paths under `app/javascript`: narrow enough to name the components in question, and **reused verbatim for every save** — changing it makes the diff meaningless.
 
-`save` writes a timestamped directory under `audit-results/coverage-baselines/` — one file per source, mirroring its path, plus `legend.txt` mapping test letters to test names — and it is finished when the command returns. It never overwrites.
+`save` writes a timestamped directory under `audit-results/coverage-baselines/` — one file per source, mirroring its path, plus `legend.txt` mapping test letters to test names. It never overwrites.
 
 To snapshot a run whose `audit-results/` has since been overwritten: `AUDIT_ROOT=<stashed-dir> node <skill-dir>/coverage-baseline.ts save "<relevant-sources>"`.
 
@@ -64,7 +67,7 @@ Each line is the source line, then its measurements as a trailing comment:
 ```
 
 - The coverage field sits on statement lines: `A+B` executed it, `0` no test reached it, blank means no statement starts there, `never loaded` means nothing fetched the chunk.
-- The screenshot field sits on the ELEMENT's own line, one cell per test that executed the statement drawing it: the MAX share of the element a screenshot of that test showed, across its viewports — coverage asks whether ANY screenshot shows it. `0%` is a test that ran the code and showed none of the element. Below 100%, the dominant reason rides along:
+- The screenshot field sits on the ELEMENT's own line, one cell per test that executed the statement drawing it: the MAX share of the element any screenshot of that test showed, across its viewports. `0%` is a test that ran the code and showed none of the element. Below 100%, the dominant reason rides along:
 
 | reason | what happened | what to do about it |
 | --- | --- | --- |
@@ -74,7 +77,6 @@ Each line is the source line, then its measurements as a trailing comment:
 | `outside-capture` | it falls outside this test's `visregSelectors` region | widen `visregSelectors`, or use a taller viewport if it is below the fold |
 | `obscured` | something is painted on top: modal, sticky bar, cookie banner (sampled, so approximate) | dismiss the overlay in the test body, or accept that this test cannot cover it |
 
-- Source first, so the left of `//` is byte-identical between runs of the same commit; the coverage field is padded to the widest gutter in the run, so a line gaining a letter cannot move its neighbours. Together those make a diff show only the cells that changed.
 - A source with high statement coverage and no element line above `0%` is the signature this skill exists to catch: the component runs and paints nothing. Chase the gate — a rollout flag, missing data, an early `return null` — before believing the coverage number.
 
 ### Reading a diff
@@ -97,16 +99,7 @@ Each line is the source line, then its measurements as a trailing comment:
 Two tests that appear together on every line and never apart walked the same code — likely one rendered state under two names.
 
 ```
-  A+B │     <Chip label={section.name} …
+    <Chip label={section.name} …    // A+B   |
 ```
 
 A signal, not a verdict: different states can share code paths, so diff the captures before acting. Prefer making the states differ over deleting. A test that is the only letter on some line carries unique coverage — leave it.
-
-## Common mistakes
-
-- Reporting a code-coverage delta as the headline. The screenshot numbers are the finding; statements are the supporting detail.
-- Producing any estimate when `coverage.json` is missing or the maps locate nothing, instead of stopping and telling the user what the build lacks.
-- Expanding `relevant-sources` between the baseline and the current run.
-- Averaging viewports, which hides that one valid screenshot fully covers an element.
-- Reading a stale `audit-results/<dir>` picked by name instead of the ids in `report.json` — the directory names are not chronological.
-- Reading `visibility-map.txt` files by hand. The snapshot already holds what they say about your sources.
