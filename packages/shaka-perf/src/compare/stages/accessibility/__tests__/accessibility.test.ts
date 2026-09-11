@@ -128,6 +128,32 @@ describe('accessibility compare classification', () => {
     );
   });
 
+  it('collapses emotion and styled-components hashes too', () => {
+    const findings = compareScans(
+      scan('control', [
+        violation('region', ['.css-1q2w3e'], 'moderate', '<div class="css-1q2w3e">'),
+        violation('region', ['.sc-bdVaJa'], 'moderate', '<div class="sc-bdVaJa">'),
+      ]),
+      scan('experiment', [
+        violation('region', ['.css-9z8y7x'], 'moderate', '<div class="css-9z8y7x">'),
+        violation('region', ['.sc-gZMcBi'], 'moderate', '<div class="sc-gZMcBi">'),
+      ]),
+    );
+
+    expect(findings.map((finding) => finding.status)).toEqual(['unchanged', 'unchanged']);
+  });
+
+  it('leaves hand-written css-/sc- class names alone, so a moved violation stays a regression', () => {
+    // A contrast failure fixed in the header but introduced in the footer is
+    // two findings, not one unchanged element with a renamed class.
+    const findings = compareScans(
+      scan('control', [violation('color-contrast', ['.sc-header a'], 'serious')]),
+      scan('experiment', [violation('color-contrast', ['.css-footer a'], 'serious')]),
+    );
+
+    expect(findings.map((finding) => finding.status).sort()).toEqual(['fixed', 'new']);
+  });
+
   it('still reports a genuinely new violation on a stable selector', () => {
     const findings = compareScans(
       scan('control', []),

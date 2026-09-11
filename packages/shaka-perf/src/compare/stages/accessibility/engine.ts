@@ -319,8 +319,14 @@ function normalizedNodePayload(nodes: AccessibilityFindingSide['nodes']): string
  * then differ, the finding fails to match itself, and one unchanged violation
  * is reported as a phantom `fixed` + `new` pair — every page with a styled
  * violation reads as an accessibility regression.
+ *
+ * Hand-written names share these prefixes (`css-grid`, `sc-header`), and
+ * collapsing one of those could pair two different elements and hide a real
+ * regression. So an emotion hash must carry a digit and a styled-components
+ * hash an uppercase letter; a hash that happens to lack one only falls back to
+ * the loud phantom pair.
  */
-const GENERATED_CLASS = /^(?:jss\d+|css-[0-9a-z]{4,}|sc-[0-9a-zA-Z]{5,})$/;
+const GENERATED_CLASS = /^(?:jss\d+|css-(?=[0-9a-z]*\d)[0-9a-z]{4,}|sc-(?=[0-9a-zA-Z]*[A-Z])[0-9a-zA-Z]{5,})$/;
 const GENERATED_CLASS_PLACEHOLDER = 'generated-class';
 
 function stableClassToken(token: string): string {
