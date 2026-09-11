@@ -232,8 +232,13 @@ function reportStages(meta: ReportMeta): ReportStage[] {
  * section the card was never going to show.
  */
 export function stagesThatRender(meta: ReportMeta, test: TestResult): Set<string> {
+  // A persisted outcome may name a stage this build no longer registers (a
+  // merged or --report-only report); the renderer throws on those, and the card
+  // never shows them anyway.
+  const known = new Set(reportStages(meta).map((stage) => stage.name));
   const byStage = new Map<string, ReportOutcome[]>();
   for (const outcome of test.outcomes) {
+    if (!known.has(outcome.stage)) continue;
     const group = byStage.get(outcome.stage);
     if (group) group.push(outcome);
     else byStage.set(outcome.stage, [outcome]);

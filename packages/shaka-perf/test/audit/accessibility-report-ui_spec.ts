@@ -105,6 +105,20 @@ describe('accessibility report UI filters', () => {
     )).toBe(true);
   });
 
+  it('ignores a persisted outcome for a stage this build no longer registers', () => {
+    const data = reportData(accessibilityResult({
+      violations: [violation('button-name', ['wcag2a'])],
+    }));
+    data.tests[0].outcomes.push({
+      kind: 'ok',
+      stage: 'retired-stage',
+      viewport: DESKTOP_VIEWPORT,
+      measurement: { anything: true },
+    } as unknown as ReportData['tests'][number]['outcomes'][number]);
+
+    expect([...stagesThatRender(data.meta, data.tests[0])]).toEqual(['accessibility']);
+  });
+
   it('keeps a card that renders nothing for reasons other than the sections filter', () => {
     const data = reportData(accessibilityResult({
       violations: [violation('button-name', ['wcag2a'])],

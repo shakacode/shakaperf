@@ -77,7 +77,7 @@ export async function runVisregUnit(
       experimentURL: ctx.experimentURL,
       stageUnitUrls: { controlURL: ctx.controlURL, experimentURL: ctx.experimentURL },
       testPathPattern: testPathPatternForSingleTest(ctx.test, testPathPattern),
-      filter: exactTestNameFilter(ctx.test),
+      filter: exactTestNameFilter(ctx.test.name),
     }, {
       captureFailure: async (err, page, isControl) => {
         const media = await captureFailureScreenshot(

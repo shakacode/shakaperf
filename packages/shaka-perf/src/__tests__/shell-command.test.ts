@@ -29,15 +29,15 @@ describe('pipelineTroubleshootCommands', () => {
 
   it('gives compare one command per viewport', () => {
     expect(pipelineTroubleshootCommands(meta('compare'), 'Cart', ['desktop', 'phone'])).toEqual([
-      `shaka-perf troubleshoot --filter 'Cart' --viewport desktop`,
-      `shaka-perf troubleshoot --filter 'Cart' --viewport phone`,
+      `shaka-perf troubleshoot --filter '^Cart$' --viewport desktop`,
+      `shaka-perf troubleshoot --filter '^Cart$' --viewport phone`,
     ]);
   });
 
   it('points an audit at the same command — the tests are the same files', () => {
     expect(pipelineTroubleshootCommands(meta('audit'), 'Cart', ['desktop', 'phone'])).toEqual([
-      `shaka-perf troubleshoot --filter 'Cart' --viewport desktop`,
-      `shaka-perf troubleshoot --filter 'Cart' --viewport phone`,
+      `shaka-perf troubleshoot --filter '^Cart$' --viewport desktop`,
+      `shaka-perf troubleshoot --filter '^Cart$' --viewport phone`,
     ]);
   });
 });
@@ -45,11 +45,16 @@ describe('pipelineTroubleshootCommands', () => {
 describe('troubleshoot commands', () => {
   it('names the one test and the one viewport for compare', () => {
     expect(comparePipelineReport.troubleshootCommand!('Cart Drawer', 'phone'))
-      .toBe(`shaka-perf troubleshoot --filter 'Cart Drawer' --viewport phone`);
+      .toBe(`shaka-perf troubleshoot --filter '^Cart Drawer$' --viewport phone`);
+  });
+
+  it('anchors and escapes the name, since --filter is matched as a regex', () => {
+    expect(comparePipelineReport.troubleshootCommand!('Home (v2) . Cart', 'phone'))
+      .toBe(`shaka-perf troubleshoot --filter '^Home \\(v2\\) \\. Cart$' --viewport phone`);
   });
 
   it('gives an audit the same command as a comparison', () => {
     expect(auditPipelineReport.troubleshootCommand!('Homepage', 'desktop'))
-      .toBe(`shaka-perf troubleshoot --filter 'Homepage' --viewport desktop`);
+      .toBe(`shaka-perf troubleshoot --filter '^Homepage$' --viewport desktop`);
   });
 });
