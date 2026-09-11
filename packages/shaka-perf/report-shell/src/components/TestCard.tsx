@@ -91,10 +91,6 @@ function outcomeGroups(test: TestResult, visibleStages: ReadonlySet<string>): Re
   return groups;
 }
 
-/**
- * How to re-run this test on its own, beside its source — the card names the
- * failure, this names the way back into it. One line per viewport it measured.
- */
 function TroubleshootCommands({ meta, test }: { meta: ReportMeta; test: TestResult }) {
   const [open, setOpen] = useState(false);
   const viewports = [...new Set(test.outcomes.map((outcome) => outcome.viewport.label))];

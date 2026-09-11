@@ -77,9 +77,9 @@ function OutcomeError({ outcome }: { outcome: ReportOutcome }) {
 /**
  * The section one stage's outcomes render, or null when they render nothing —
  * a stage whose measurements produce no artifact (an accessibility comparison
- * that found no differences) is as absent as one that never ran. The report
- * shell asks this before laying out a card, so a card left with no section at
- * all can leave the grid instead of rendering as a bare shell.
+ * that found no differences) is as absent as one that never ran. Null here
+ * means the stage is absent for every purpose: section counts, the sections
+ * filter, and the card itself.
  */
 export function stageSection(
   meta: ReportMeta,

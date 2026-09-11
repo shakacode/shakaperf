@@ -490,11 +490,7 @@ interface RuleFindingGroup {
   tags: string[];
 }
 
-/**
- * The viewports worth showing: a comparison that found nothing renders no
- * section at all. The stage checks this before building the element so the
- * report can tell an empty section from a missing one.
- */
+/** The viewports worth showing: a comparison that found nothing renders no section. */
 export function accessibilityCompareRows(
   measurements: readonly StageRenderEntry<AccessibilityCompareResult>[],
 ): readonly StageRenderEntry<AccessibilityCompareResult>[] {
