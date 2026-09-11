@@ -324,6 +324,23 @@ describe('audit.screenshotCoveragePlugin', () => {
     expect(() => buildAbTestsConfig(baseConfig({ audit: { screenshotCoveragePlugin: { name: 'x' } } })))
       .toThrow(/audit\.screenshotCoveragePlugin/);
   });
+
+  it('lets a per-test override replace the file plugin', () => {
+    const effective = applyPerTestConfigOverrides(
+      buildAbTestsConfig(baseConfig({ audit: { screenshotCoveragePlugin: 'react18' } })),
+      {
+        name: 'Legacy page',
+        startingPath: '/legacy',
+        file: null,
+        line: null,
+        testTypes: null,
+        testFn: async () => {},
+        config: { audit: { screenshotCoveragePlugin: plugin } },
+      },
+    );
+
+    expect(effective.audit.screenshotCoveragePlugin).toEqual(plugin);
+  });
 });
 
 describe('shared.browserConsole config', () => {

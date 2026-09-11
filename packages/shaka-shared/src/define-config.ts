@@ -141,8 +141,8 @@ export interface AuditConfigInput {
    * debug info: `'react18'` for React 16–18 built with the JSX source transform
    * (`@babel/preset-react` `development: true`), `'react19'` for React >= 19.1
    * served with a fetchable source map. An object is a custom
-   * `ScreenshotCoveragePlugin`. Run-level: one build per run, so one plugin —
-   * not overridable per test.
+   * `ScreenshotCoveragePlugin`. Overridable per test, for a page whose
+   * framework or build differs from the rest of the site.
    */
   screenshotCoveragePlugin?: BuiltInScreenshotCoveragePlugin | ScreenshotCoveragePlugin;
 }
@@ -250,8 +250,7 @@ export interface AbTestsConfigInput {
  *
  * It exposes every section EXCEPT the ones that are inherently run-level and
  * make no sense scoped to a single test: `twinServers` (the Docker A/B servers
- * are one pair for the whole run), `bisect` (a run-level search), and
- * `audit.screenshotCoveragePlugin` (one build per run, so one plugin).
+ * are one pair for the whole run) and `bisect` (a run-level search).
  * Everything else is fair game; settings the engines resolve once per run
  * (e.g. shared `parallelism`) simply won't vary if overridden, but nothing is
  * off-limits by type — the merge (`applyPerTestConfigOverrides`) applies
@@ -266,9 +265,7 @@ export type PerTestConfig = {
         playwrightOptions?: Partial<PlaywrightOptionsInput>;
         browserConsole?: Partial<BrowserConsoleConfigInput>;
       }
-    : K extends 'audit'
-      ? Partial<Omit<AuditConfigInput, 'screenshotCoveragePlugin'>>
-      : Partial<AbTestsConfigInput[K]>;
+    : Partial<AbTestsConfigInput[K]>;
 };
 
 /**
