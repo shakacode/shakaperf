@@ -107,18 +107,19 @@ async function drainCoverage(
   const coverage = await page.evaluate(
     () => (globalThis as { __coverage__?: unknown }).__coverage__,
   );
-  if (!coverage || typeof coverage !== 'object') {
+  const summary = summarizeCoverage(coverage);
+  if (summary.files === 0) {
     // Nobody runs this category by accident, so "you asked for coverage and
     // there is none" is a failed measurement, not a note. Reporting zeros (or
     // the visibility map alone) would read downstream as "this test executed
-    // nothing", which is a different — and false — statement.
+    // nothing", which is a different — and false — statement. An object with
+    // no file entries is the same nothing wearing braces.
     throw new Error(
-      `window.__coverage__ is missing on ${ctx.experimentURL}: the served bundle is not ` +
-      'instrumented. Instrument the build (babel-plugin-istanbul, `nyc instrument`, or ' +
+      `window.__coverage__ is ${coverage ? 'empty' : 'missing'} on ${ctx.experimentURL}: the served ` +
+      'bundle is not instrumented. Instrument the build (babel-plugin-istanbul, `nyc instrument`, or ' +
       'swc-plugin-coverage-instrument) or drop code_coverage from --categories.',
     );
   }
-  const summary = summarizeCoverage(coverage);
   const coverageHref = await ctx.artifacts.writeFile(
     COVERAGE_FILENAME,
     JSON.stringify(coverage),
@@ -139,40 +140,42 @@ async function drainCoverage(
 // a visreg screenshot of this test would keep. Read alongside the code gutters
 // (see the `shaka-perf-coverage` skill) — a statement a test executed whose
 // element is 0% visible is a hole no coverage percentage can show.
+//
+// The map is half the measurement, so a map that could not be taken fails the
+// unit the same way missing coverage does. A unit that stayed `ok` without one
+// would be read downstream as "this test showed none of these elements" — a
+// measured 0% hole that was never measured.
 async function writeVisibilityMap(
   ctx: TestContext,
   page: Page,
 ): Promise<Pick<CodeCoverageResult, 'visibilityMapHref' | 'sourceAttribution'>> {
+  let snapshot;
   try {
-    const snapshot = await captureVisibilitySnapshot(page, {
+    snapshot = await captureVisibilitySnapshot(page, {
       selectors: ctx.test.visregSelectors,
       testName: ctx.test.name,
       viewportLabel: ctx.viewport.label,
       sourcePlugin: resolveScreenshotCoveragePlugin(ctx.config.audit.screenshotCoveragePlugin),
     });
-    const attribution = snapshot.sourceAttribution;
-    if (attribution) {
-      for (const warning of attribution.warnings) {
-        console.warn(chalk.yellow(`[shaka-perf visibility] ${attribution.plugin}: ${warning}`));
-      }
-      console.log(chalk.dim(
-        `sources: ${attribution.located}/${attribution.elements} elements located via ${attribution.plugin}`,
-      ));
-    }
-    return {
-      visibilityMapHref: await ctx.artifacts.writeFile(
-        VISIBILITY_MAP_FILENAME,
-        formatVisibilityMap(snapshot),
-      ),
-      ...(attribution ? { sourceAttribution: attribution } : {}),
-    };
   } catch (err) {
-    // A map we could not take must not sink coverage we already drained.
-    console.warn(chalk.yellow(
-      `[shaka-perf visibility] could not snapshot ${ctx.experimentURL}: ${errorMessage(err)}`,
-    ));
-    return {};
+    throw new Error(`could not snapshot visibility on ${ctx.experimentURL}: ${errorMessage(err)}`, { cause: err });
   }
+  const attribution = snapshot.sourceAttribution;
+  if (attribution) {
+    for (const warning of attribution.warnings) {
+      console.warn(chalk.yellow(`[shaka-perf visibility] ${attribution.plugin}: ${warning}`));
+    }
+    console.log(chalk.dim(
+      `sources: ${attribution.located}/${attribution.elements} elements located via ${attribution.plugin}`,
+    ));
+  }
+  return {
+    visibilityMapHref: await ctx.artifacts.writeFile(
+      VISIBILITY_MAP_FILENAME,
+      formatVisibilityMap(snapshot),
+    ),
+    ...(attribution ? { sourceAttribution: attribution } : {}),
+  };
 }
 
 function errorMessage(err: unknown): string {

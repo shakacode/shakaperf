@@ -83,15 +83,21 @@ const FILES: Record<string, string> = {
   'http://h/vendor.js.map': VENDOR_MAP,
   'http://h/cheap.js': `//# sourceMappingURL=data:application/json;charset=utf-8;base64,${Buffer.from(CHEAP_MAP).toString('base64')}`,
   'http://h/nomap.js': 'nothing to see',
+  'http://h/indexed.js': '//# sourceMappingURL=indexed.js.map',
+  'http://h/indexed.js.map': JSON.stringify({ version: 3, sections: [] }),
 };
 
-function harness() {
+// `failOnce`: URLs whose FIRST fetch fails the way a request that got no
+// answer does (fetchText rejects), and succeeds after that.
+function harness(failOnce: string[] = []) {
   const warnings: string[] = [];
   const fetched: string[] = [];
+  const pending = new Set(failOnce);
   const context: SourceResolveContext = {
     pageUrl: 'http://h/',
     fetchText: async (url) => {
       fetched.push(url);
+      if (pending.delete(url)) throw new Error(`net::ERR_CONNECTION_REFUSED at ${url}`);
       return FILES[url] ?? null;
     },
     warn: (message) => { warnings.push(message); },
@@ -153,6 +159,34 @@ describe('react19 resolve (runs in Node)', () => {
     const { context, warnings } = harness();
     await expect(plugin.resolve([['    at X (http://h/nomap.js:1:1)']], context)).resolves.toEqual([null]);
     expect(warnings).toEqual([expect.stringMatching(/no usable source map for http:\/\/h\/nomap\.js.*devtool/)]);
+  });
+
+  it('forgets a fetch that got no answer, so the next unit tries again, and says why this one could not', async () => {
+    const plugin = react19ScreenshotCoveragePlugin();
+    const { context, warnings, fetched } = harness(['http://h/app.js.map']);
+    // Two frames on the same bundle: the failure is tried once per unit, not per frame.
+    await expect(plugin.resolve([OWN_APP_FRAMES, OWN_APP_FRAMES], context)).resolves.toEqual([null, null]);
+    expect(fetched.filter((url) => url === 'http://h/app.js.map')).toHaveLength(1);
+    expect(warnings).toEqual([expect.stringMatching(
+      /source map of http:\/\/h\/app\.js could not be fetched this unit \(net::ERR_CONNECTION_REFUSED at http:\/\/h\/app\.js\.map\)/,
+    )]);
+    // The next unit: the map loads, nothing about the earlier failure remains.
+    const next = harness();
+    await expect(plugin.resolve([OWN_APP_FRAMES], next.context))
+      .resolves.toEqual([{ path: 'app/javascript/Card.tsx', line: 12, column: 7 }]);
+    expect(next.warnings).toEqual([]);
+  });
+
+  it('keeps a map it fetched but could not read as a definite answer, and names the parse error', async () => {
+    const plugin = react19ScreenshotCoveragePlugin();
+    const { context, warnings, fetched } = harness();
+    const frames = ['    at X (http://h/indexed.js:1:1)'];
+    await expect(plugin.resolve([frames], context)).resolves.toEqual([null]);
+    expect(warnings).toEqual([expect.stringMatching(
+      /no usable source map for http:\/\/h\/indexed\.js: http:\/\/h\/indexed\.js\.map is not a usable source map: indexed source maps/,
+    )]);
+    await plugin.resolve([frames], context);
+    expect(fetched.filter((url) => url === 'http://h/indexed.js.map')).toHaveLength(1);
   });
 
   it('fetches each bundle and its map once for the life of the plugin', async () => {

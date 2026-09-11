@@ -276,7 +276,6 @@ export function formatSourceLocation(source: SourceLocation): string {
 }
 
 interface CollectorInput {
-  selectors: Array<{ selector: string; kind: CaptureKind }>;
   maxNodes: number;
   skipTags: string[];
   leafTags: string[];
@@ -285,7 +284,6 @@ interface CollectorInput {
 
 interface CollectedSnapshot {
   url: string;
-  regions: VisibilityRect[];
   nodes: VisibilityNode[];
   truncated: boolean;
   /** What the plugin's `locate` returned, one entry per node. */
@@ -293,13 +291,10 @@ interface CollectedSnapshot {
 }
 
 /**
- * Read the finished page's element tree and the region a visreg capture of
- * this test would keep. Runs in the browser, so it stays a self-contained
- * function over plain data — no imports, no closure over module scope.
- *
- * Each selector arrives with its capture kind already resolved (see
- * `captureKindForSelector`); this only turns a kind into a rectangle.
- * `locate` is the plugin's page half, spliced in by source text.
+ * Read the finished page's element tree. Runs in the browser, so it stays a
+ * self-contained function over plain data — no imports, no closure over module
+ * scope. The capture regions are resolved in Node (`resolveCaptureRegions`),
+ * not here. `locate` is the plugin's page half, spliced in by source text.
  */
 function collectVisibility(
   input: CollectorInput,
@@ -310,12 +305,6 @@ function collectVisibility(
     y: Math.round(rect.y + window.scrollY),
     w: Math.round(rect.width),
     h: Math.round(rect.height),
-  });
-  const documentRect = (): VisibilityRect => ({
-    x: 0,
-    y: 0,
-    w: Math.round(Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth ?? 0)),
-    h: Math.round(Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight ?? 0)),
   });
   const clipRects = (a: VisibilityRect, b: VisibilityRect): VisibilityRect | null => {
     const x = Math.max(a.x, b.x);
@@ -332,24 +321,6 @@ function collectVisibility(
     w: Math.round(window.innerWidth),
     h: Math.round(window.innerHeight),
   };
-
-  const regionFor = (selector: string, kind: CaptureKind): VisibilityRect | null => {
-    if (kind === 'document') return documentRect();
-    if (kind === 'viewport') return viewport;
-    try {
-      const element = document.querySelector(selector);
-      return element ? toDocRect(element.getBoundingClientRect()) : null;
-    } catch {
-      return null;
-    }
-  };
-  // A selector that matches nothing — or matches something with no box, which
-  // makes visreg's `boundingBox()` null and its capture null — photographs
-  // nothing. Dropping it here is what lets an all-empty list report "nothing
-  // would be captured" instead of a 0x0 region nobody can read.
-  const regions = input.selectors
-    .map(({ selector, kind }) => regionFor(selector, kind))
-    .filter((rect): rect is VisibilityRect => rect !== null && rect.w > 0 && rect.h > 0);
 
   // Fraction of a 3x3 grid over `rect` where this element (or a descendant) is
   // the topmost painted thing. Hit-testing is viewport-only, so sample the part
@@ -433,7 +404,63 @@ function collectVisibility(
   const root = document.body ?? document.documentElement;
   for (const child of Array.from(root.children)) walk(child, 0, null);
 
-  return { url: window.location.href, regions, nodes, truncated, sourceRaws };
+  return { url: window.location.href, nodes, truncated, sourceRaws };
+}
+
+/**
+ * The area a visreg capture of each selector keeps, in document coordinates.
+ * Element selectors go through Playwright's own engine — `page.$`, scroll into
+ * view, box — the way `runCompareScenario`'s `captureScreenshot` resolves
+ * them, so `text=`, `>>` and `:has-text()` mean here what they mean there. A
+ * selector visreg could not photograph (nothing matched, or a box with no
+ * area) fails the snapshot the way it fails the visreg test, rather than being
+ * dropped so every element scores 0% against a region nobody asked about.
+ */
+async function resolveCaptureRegions(page: Page, selectors: readonly string[]): Promise<VisibilityRect[]> {
+  const regions: VisibilityRect[] = [];
+  for (const selector of selectors) {
+    const kind = captureKindForSelector(selector);
+    if (kind === 'document') {
+      regions.push(await page.evaluate(() => ({
+        x: 0,
+        y: 0,
+        w: Math.round(Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth ?? 0)),
+        h: Math.round(Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight ?? 0)),
+      })));
+      continue;
+    }
+    if (kind === 'viewport') {
+      regions.push(await page.evaluate(() => ({
+        x: Math.round(window.scrollX),
+        y: Math.round(window.scrollY),
+        w: Math.round(window.innerWidth),
+        h: Math.round(window.innerHeight),
+      })));
+      continue;
+    }
+    const handle = await page.$(selector);
+    if (handle) await handle.scrollIntoViewIfNeeded();
+    const rect = handle
+      ? await handle.evaluate((element) => {
+        if (element.getClientRects().length === 0) return null;
+        const box = element.getBoundingClientRect();
+        return {
+          x: Math.round(box.x + window.scrollX),
+          y: Math.round(box.y + window.scrollY),
+          w: Math.round(box.width),
+          h: Math.round(box.height),
+        };
+      })
+      : null;
+    if (!rect || rect.w <= 0 || rect.h <= 0) {
+      throw new Error(
+        `visregSelectors: "${selector}" ${handle ? 'has no box to capture' : 'matched nothing'} on ` +
+        `${page.url()} — a visreg screenshot of this test fails the same way`,
+      );
+    }
+    regions.push(rect);
+  }
+  return regions;
 }
 
 export interface VisibilityMapOptions {
@@ -463,8 +490,11 @@ export async function captureVisibilitySnapshot(
   // Defaulting matches `convertAbTestToScenario`: no `visregSelectors` means
   // visreg screenshots the whole document.
   const selectors = options.selectors?.length ? [...options.selectors] : ['document'];
+  // Before the walk: resolving an element selector scrolls it into view, as
+  // visreg does before its capture, and the walk's hit-testing reads the
+  // viewport it ends up at.
+  const regions = await resolveCaptureRegions(page, selectors);
   const input: CollectorInput = {
-    selectors: selectors.map((selector) => ({ selector, kind: captureKindForSelector(selector) })),
     maxNodes: MAX_NODES,
     skipTags: SKIP_TAGS,
     leafTags: LEAF_TAGS,
@@ -484,6 +514,7 @@ export async function captureVisibilitySnapshot(
     : undefined;
   return {
     ...collected,
+    regions,
     testName: options.testName,
     viewportLabel: options.viewportLabel,
     selectors,
@@ -518,13 +549,13 @@ async function attributeSources(
 }
 
 // The browser context's own request client, so a dev server behind a cookie or
-// proxy answers the way it answered the page.
+// proxy answers the way it answered the page. Null is the server's answer (a
+// 404 for a map that was never built); a request that never got an answer — a
+// timeout, a refused connection, a context that closed — rejects, so a plugin
+// can tell "this bundle has no map" from "this unit had bad luck" and not
+// remember the second as the first.
 async function fetchTextViaPage(page: Page, url: string): Promise<string | null> {
   if (!/^https?:\/\//.test(url)) return null;
-  try {
-    const response = await page.context().request.get(url, { maxRedirects: 5, timeout: 30_000 });
-    return response.ok() ? await response.text() : null;
-  } catch {
-    return null;
-  }
+  const response = await page.context().request.get(url, { maxRedirects: 5, timeout: 30_000 });
+  return response.ok() ? await response.text() : null;
 }

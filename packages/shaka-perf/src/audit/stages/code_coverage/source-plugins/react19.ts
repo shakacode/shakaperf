@@ -69,12 +69,23 @@ function locateReactElement(element: Element): Located {
   return sawStack ? frames : 'react19:no-debug-stack';
 }
 
+/**
+ * One bundle's map, or the definite reason it has none. A fetch that failed
+ * for a passing reason (timeout, refused connection, a context that closed)
+ * is neither: it rejects instead, and is not kept.
+ */
+type LoadedSourceMap =
+  | { lookup: SourceMapLookup; reason?: undefined }
+  | { lookup: null; reason: string };
+
 export function react19ScreenshotCoveragePlugin(
   options: React19SourcePluginOptions = {},
 ): ScreenshotCoveragePlugin {
   const isAppSource = options.isAppSource ?? isAppSourceByDefault;
-  // Source maps are cached per bundle URL for the life of the plugin (one run).
-  const lookups = new Map<string, Promise<SourceMapLookup | null>>();
+  // Per bundle URL for the life of the plugin (one run): parsed maps and the
+  // definite reasons a bundle has none. A rejected load is evicted, so the
+  // next unit fetches again rather than inheriting one unit's bad luck.
+  const lookups = new Map<string, Promise<LoadedSourceMap>>();
   return {
     name: 'react19',
     locate: locateReactElement,
@@ -86,14 +97,21 @@ async function resolveFrames(
   raws: readonly Located[],
   context: SourceResolveContext,
   isAppSource: (path: string) => boolean,
-  lookups: Map<string, Promise<SourceMapLookup | null>>,
+  lookups: Map<string, Promise<LoadedSourceMap>>,
 ): Promise<(SourceLocation | null)[]> {
-  const unmapped = new Set<string>();
-  const lookupFor = (url: string): Promise<SourceMapLookup | null> => {
+  // bundle URL → why it yielded no map this unit
+  const unmapped = new Map<string, string>();
+  // bundle URL → why its fetch failed this unit; tried once per unit, not per frame
+  const failed = new Map<string, string>();
+  const lookupFor = (url: string): Promise<LoadedSourceMap> => {
     let pending = lookups.get(url);
     if (!pending) {
-      pending = loadSourceMap(url, context.fetchText);
-      lookups.set(url, pending);
+      const load = loadSourceMap(url, context.fetchText);
+      pending = load;
+      lookups.set(url, load);
+      load.catch(() => {
+        if (lookups.get(url) === load) lookups.delete(url);
+      });
     }
     return pending;
   };
@@ -101,12 +119,19 @@ async function resolveFrames(
     for (const text of frames) {
       const frame = parseStackFrame(text);
       if (!frame || !/^https?:\/\//.test(frame.url)) continue;
-      const lookup = await lookupFor(frame.url);
-      if (!lookup) {
-        unmapped.add(frame.url);
+      if (failed.has(frame.url)) continue;
+      let loaded: LoadedSourceMap;
+      try {
+        loaded = await lookupFor(frame.url);
+      } catch (err) {
+        failed.set(frame.url, errorMessage(err));
         continue;
       }
-      const position = lookup.originalPositionFor(frame.line, frame.column - 1);
+      if (!loaded.lookup) {
+        unmapped.set(frame.url, loaded.reason);
+        continue;
+      }
+      const position = loaded.lookup.originalPositionFor(frame.line, frame.column - 1);
       if (!position) continue;
       const path = normalizeSourcePath(position.source);
       if (!isAppSource(path)) continue;
@@ -134,33 +159,77 @@ async function resolveFrames(
       'production React build, or React older than 19.1. Serve a DEVELOPMENT build to locate elements.',
     );
   }
-  if (unmapped.size > 0) {
-    const urls = [...unmapped];
+  for (const [reason, urls] of groupByValue(unmapped)) {
+    context.warn(`no usable source map for ${listOf(urls)}: ${reason}`);
+  }
+  for (const [message, urls] of groupByValue(failed)) {
     context.warn(
-      `no usable source map for ${urls.slice(0, 3).join(', ')}` +
-      `${urls.length > 3 ? ` and ${urls.length - 3} more` : ''}: build with devtool 'source-map' or ` +
-      "'cheap-module-source-map' (an eval-* devtool cannot be fetched)",
+      `the source map of ${listOf(urls)} could not be fetched this unit (${message}); ` +
+      'not cached, tried again on the next unit',
     );
   }
   return locations;
 }
 
+function groupByValue(byUrl: ReadonlyMap<string, string>): Map<string, string[]> {
+  const groups = new Map<string, string[]>();
+  for (const [url, value] of byUrl) {
+    const urls = groups.get(value) ?? [];
+    urls.push(url);
+    groups.set(value, urls);
+  }
+  return groups;
+}
+
+function listOf(urls: readonly string[]): string {
+  return `${urls.slice(0, 3).join(', ')}${urls.length > 3 ? ` and ${urls.length - 3} more` : ''}`;
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+const NO_REFERENCE = "no sourceMappingURL comment; build with devtool 'source-map' or "
+  + "'cheap-module-source-map' (an eval-* devtool cannot be fetched)";
+
+// Resolves to a definite answer; rejects when a fetch itself failed, so the
+// caller can keep the first and forget the second (see `lookups`).
 async function loadSourceMap(
   scriptUrl: string,
   fetchText: SourceResolveContext['fetchText'],
-): Promise<SourceMapLookup | null> {
+): Promise<LoadedSourceMap> {
   const script = await fetchText(scriptUrl);
-  if (script === null) return null;
+  if (script === null) return none('the bundle itself could not be fetched (the server answered with an error)');
   // The bundle's own comment is the last one; an inlined module may carry its own.
   const reference = [...script.matchAll(/\/\/[#@]\s*sourceMappingURL=(\S+)\s*$/gm)].at(-1)?.[1];
-  if (!reference) return null;
+  if (!reference) return none(NO_REFERENCE);
+  if (reference.startsWith('data:')) {
+    const label = 'its inline data: source map';
+    try {
+      const json = decodeDataUrl(reference);
+      return json === null ? none(`${label} could not be read`) : parsed(label, json);
+    } catch (err) {
+      return none(`${label} could not be read: ${errorMessage(err)}`);
+    }
+  }
+  let mapUrl: string;
   try {
-    const json = reference.startsWith('data:')
-      ? decodeDataUrl(reference)
-      : await fetchText(new URL(reference, scriptUrl).href);
-    return json === null ? null : SourceMapLookup.parse(json);
-  } catch {
-    return null;
+    mapUrl = new URL(reference, scriptUrl).href;
+  } catch (err) {
+    return none(`its sourceMappingURL comment could not be read: ${errorMessage(err)}`);
+  }
+  const json = await fetchText(mapUrl);
+  if (json === null) return none(`${mapUrl} could not be fetched (the server answered with an error)`);
+  return parsed(mapUrl, json);
+}
+
+const none = (reason: string): LoadedSourceMap => ({ lookup: null, reason });
+
+function parsed(label: string, json: string): LoadedSourceMap {
+  try {
+    return { lookup: SourceMapLookup.parse(json) };
+  } catch (err) {
+    return none(`${label} is not a usable source map: ${errorMessage(err)}`);
   }
 }
 

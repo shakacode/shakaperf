@@ -434,6 +434,7 @@ async function runConfiguredPipelineWithSelection(
   if (executableStages.length === 0 && !runtime.reportOnly) {
     throw new Error('No executable pipeline stages selected.');
   }
+  const reportedStages = reportedStagesFor(pipeline, stageSelection);
 
   const controlURL = runtime.controlURL;
   const experimentURL = runtime.experimentURL;
@@ -694,7 +695,7 @@ async function runConfiguredPipelineWithSelection(
     }
   }
   if (!runtime.reportOnly) {
-    persistCliSkippedStageOutcomes(store, reportTests, stageSelection, runtime.config);
+    persistCliSkippedStageOutcomes(store, reportTests, stageSelection, reportedStages, runtime.config);
   }
 
   console.log(
@@ -716,6 +717,7 @@ async function runConfiguredPipelineWithSelection(
         resultsRoot,
         store,
         categories,
+        reportedStages,
         reportOnly: runtime.reportOnly === true,
         config: runtime.config,
       });
@@ -827,7 +829,7 @@ async function runConfiguredPipelineWithSelection(
   writeMachineReport(
     path.join(resultsRoot, 'report.json'),
     reportTests,
-    (test) => viewportsForTestAcrossStages(test, pipeline.stages, runtime.config),
+    (test) => viewportsForTestAcrossStages(test, reportedStages, runtime.config),
     pipeline,
     data.meta,
     store,
@@ -1132,16 +1134,33 @@ function persistStageOutcome(
   unit.priorOutcomes.set(outcome.stage, leanPriorOutcome(outcome));
 }
 
+// The stages whose outcomes a report can carry: the ones this run executes
+// plus the ones `--restart-from-stage` retained from the previous run (the
+// only skipped entries without a persisted skip marker). A stage skipped by
+// `--categories` / `--skip-stages` is left out on purpose: its category must
+// contribute no viewports, or a default `audit` run — where `code_coverage`
+// is unselected but resolves to visreg's viewports — gains a row per
+// visreg-only breakpoint carrying nothing but that stage's skip marker.
+function reportedStagesFor(pipeline: Pipeline, stageSelection: StageSelection): Stage[] {
+  const retained = new Set(
+    stageSelection.skippedStages.filter((entry) => !entry.persistOutcome).map((entry) => entry.stage),
+  );
+  return pipeline.stages.filter((stage) => stageSelection.stages.includes(stage) || retained.has(stage));
+}
+
 function persistCliSkippedStageOutcomes(
   store: ArtifactStore,
   tests: AbTestDefinition[],
   stageSelection: StageSelection,
+  reportedStages: readonly Stage[],
   config: AbTestsConfig,
 ): void {
   const skippedStages = stageSelection.skippedStages.filter((entry) => entry.persistOutcome);
   if (skippedStages.length === 0) return;
   for (const test of tests) {
-    const viewports = viewportsForTestAcrossStages(test, skippedStages.map((entry) => entry.stage), config);
+    // Only at the viewports the report has rows for — a skip marker explains a
+    // stage's absence from a row, it must not create the row.
+    const viewports = viewportsForTestAcrossStages(test, reportedStages, config);
     for (const { stage, reason } of skippedStages) {
       for (const viewport of viewports) {
         store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason));
@@ -1341,6 +1360,8 @@ interface BuildTestResultOpts {
   resultsRoot: string;
   store: ArtifactStore;
   categories: StageCategory[];
+  /** See `reportedStagesFor`: the row set is derived from these, not every registered stage. */
+  reportedStages: readonly Stage[];
   reportOnly: boolean;
   config: AbTestsConfig;
 }
@@ -1362,6 +1383,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
     resultsRoot,
     store,
     categories,
+    reportedStages,
     reportOnly,
     config,
   } = opts;
@@ -1385,7 +1407,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
 
   const relFilePath = test.file ? path.relative(cwd, test.file) : '(unknown source)';
   const stagesByName = new Map(pipeline.stages.map((stage, index) => [stage.name, { stage, index }]));
-  const viewportOutcomes = viewportsForTestAcrossStages(test, pipeline.stages, config).flatMap((viewport) =>
+  const viewportOutcomes = viewportsForTestAcrossStages(test, reportedStages, config).flatMap((viewport) =>
     store.readOutcomesForViewport(test, viewport.label)
       // Drop stale on-disk outcomes from earlier runs at viewports this test's
       // effective config no longer runs the stage's category at.
@@ -1407,7 +1429,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
   const hasError = outcomes.some((outcome) => outcome.kind === 'error');
   const chipResults = chipResultsForOutcomes(pipeline, outcomes);
   const runId = newestRunId(outcomes);
-  const viewportArtifactPaths = viewportsForTestAcrossStages(test, pipeline.stages, config).map((vp) => ({
+  const viewportArtifactPaths = viewportsForTestAcrossStages(test, reportedStages, config).map((vp) => ({
     viewport: vp.label,
     path: store.unitDirForViewport(test, vp.label),
   }));
@@ -1430,7 +1452,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
       ),
       code: readTestSource(test.file, test.line),
       durationMs: 0,
-      measuredAt: freshestArtifactMtime(resultsRoot, test, pipeline.stages, config),
+      measuredAt: freshestArtifactMtime(resultsRoot, test, reportedStages, config),
       runId,
       outcomes,
       viewportArtifactPaths,

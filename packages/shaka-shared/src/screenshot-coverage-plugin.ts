@@ -18,7 +18,7 @@ export interface SourceLocation {
 export interface SourceResolveContext {
   /** URL of the page the elements came from. */
   pageUrl: string;
-  /** Fetches through the audited browser's network context; null on any failure. */
+  /** Fetches through the audited browser's network context; null on a non-OK response, rejects when the request itself fails. */
   fetchText(url: string): Promise<string | null>;
   /** Why elements went unlocated; printed and written into the map header. */
   warn(message: string): void;

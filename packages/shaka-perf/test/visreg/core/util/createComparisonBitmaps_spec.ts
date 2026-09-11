@@ -86,9 +86,28 @@ describe('createComparisonBitmaps', function () {
     jest.mock('node:fs/promises', () => ({
       writeFile: function () { return Promise.resolve(); },
     }));
-    const runPlaywrightMock = overrides?.runPlaywright || {
+    const runPlaywrightStubs = (overrides?.runPlaywright || {
       createPlaywrightBrowser: function () { return Promise.resolve({}); },
       disposePlaywrightBrowser: function () { return Promise.resolve(); },
+    }) as {
+      createPlaywrightBrowser: (config: unknown) => Promise<unknown>;
+      disposePlaywrightBrowser: (browser: unknown) => Promise<void>;
+    };
+    // The module under test goes through `withPlaywrightBrowser`; mirror the
+    // real helper over the stubs so the create/dispose assertions still see them.
+    const runPlaywrightMock = {
+      ...runPlaywrightStubs,
+      withPlaywrightBrowser: async function (
+        config: { keepBrowserOpen?: boolean },
+        run: (browser: unknown) => Promise<unknown>,
+      ) {
+        const browser = await runPlaywrightStubs.createPlaywrightBrowser(config);
+        try {
+          return await run(browser);
+        } finally {
+          if (!config.keepBrowserOpen) await runPlaywrightStubs.disposePlaywrightBrowser(browser);
+        }
+      },
     };
 
     jest.mock('../../../../src/visreg/core/util/runCompareScenario', () => runCompareScenarioMock);

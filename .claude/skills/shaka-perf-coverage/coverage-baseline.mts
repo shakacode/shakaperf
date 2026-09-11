@@ -18,7 +18,7 @@ const AUDIT = process.env.AUDIT_ROOT || 'audit-results';
 const SOURCES = '# sources: ';
 const NOTE = '# screenshot column: ';
 
-interface Test { id: string; name: string }
+interface Test { id: string; name: string; outcomes: Array<{ kind: string; stage?: string }> }
 interface Tally { seen: number; blind: number; statements: number; covered: number }
 interface Row { pct: number; reason: string | null; path: string; line: number }
 /** A grid line split at its markers: the source (with `//`), the code gutter, the screenshot cells. */
@@ -181,6 +181,9 @@ function readMaps(tests: Test[]): { byTest: Map<string, Row[]>; located: boolean
 // shown it; one that showed none of it is a measured 0% — the hole this exercise exists to find.
 function fillCells(dir: string, byTest: Map<string, Row[]>, letterOf: Map<string, string>): { elements: number; unattached: number } {
   const stats = { elements: 0, unattached: 0 };
+  // Only a test with a map can have measured anything; a letter without one gets no cell,
+  // never a 0%.
+  const mapped = new Set([...byTest.keys()].flatMap((name) => letterOf.get(name) ?? []));
   for (const full of sourceFiles(dir)) {
     const file = path.relative(dir, full);
     const lines = read(full);
@@ -199,7 +202,7 @@ function fillCells(dir: string, byTest: Map<string, Row[]>, letterOf: Map<string
       const here = parse(lines[lineNo - 1] ?? '');
       const statement = lines.slice(0, lineNo).map(parse).findLast((p) => p?.cover && p.cover !== '0');
       if (!here || !statement) { stats.unattached += 1; continue; }
-      const cells = statement.cover.split('+').map((letter) => {
+      const cells = statement.cover.split('+').filter((letter) => mapped.has(letter)).map((letter) => {
         const row = seen.get(letter);
         const why = row && row.pct < 100 && row.reason ? `:${row.reason.replace(/\s+/g, '-')}` : '';
         return `${letter}=${row?.pct ?? 0}%${why}`;
@@ -218,7 +221,15 @@ function save(sources?: string): void {
   if (!sources) throw new Error('save needs a source regex list, e.g. save "HorizonNav/.*\\.tsx"');
   const report = path.join(AUDIT, 'report.json');
   if (!fs.existsSync(report)) throw new Error(`no ${report} — run \`shaka-perf audit --categories code_coverage\` first`);
-  const { tests } = JSON.parse(fs.readFileSync(report, 'utf8')) as { tests: Test[] };
+  const { tests: all } = JSON.parse(fs.readFileSync(report, 'utf8')) as { tests: Test[] };
+  // Only units whose measurement succeeded: an errored unit may have written coverage.json
+  // before its map failed, and its letters would then read as measured 0% holes.
+  const tests = all.filter((t) => t.outcomes.some((o) => o.kind === 'ok' && o.stage === 'code_coverage'));
+  if (!tests.length) throw new Error(`no successful code_coverage unit in ${report} — audit with --categories code_coverage`);
+  const halfMeasured = tests.filter((t) => fs.existsSync(artifact(t, 'coverage.json')) && !fs.existsSync(artifact(t, 'visibility-map.txt')));
+  if (halfMeasured.length) {
+    throw new Error(`coverage.json without visibility-map.txt for ${halfMeasured.map((t) => t.id).join(', ')} — the screenshot half of the measurement is missing; re-audit`);
+  }
   // Maps before anything is written: a run without them leaves no half-snapshot behind.
   const maps = readMaps(tests);
   if (!maps.byTest.size) throw new Error(`no visibility maps under ${AUDIT} — audit with --categories code_coverage`);
@@ -263,7 +274,11 @@ function unifiedDiff(before: string, after: string): string {
     execFileSync('diff', ['-u', '--label', before, '--label', after, before, after], { encoding: 'utf8' });
     return '';
   } catch (err) {
-    return (err as { stdout?: string }).stdout ?? '';
+    // Only exit 1 means "the files differ". No `diff` on PATH or an unreadable file must not
+    // read as "no changes".
+    const { status, stdout } = err as { status?: number | null; stdout?: string | null };
+    if (status !== 1) throw err;
+    return stdout ?? '';
   }
 }
 

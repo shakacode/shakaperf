@@ -5,8 +5,10 @@
  * License in LICENSE.md.
  */
 
+import type { Page } from 'playwright-core';
 import {
   captureKindForSelector,
+  captureVisibilitySnapshot,
   formatVisibilityMap,
   scoreVisibility,
   type VisibilityNode,
@@ -173,5 +175,47 @@ describe('formatVisibilityMap', () => {
     expect(lines).toContain('nav #navbar => 0,0,100,50 100% visible @ app/javascript/Nav.tsx:41:7');
     expect(lines).toContain('p .cheap => 0,50,100,100 50% visible (outside capture) @ app/javascript/P.tsx:9');
     expect(lines).toContain('i .unplaced => 0,90,100,10 100% visible');
+  });
+});
+
+// A page whose selector engine is a lookup table: `handles` maps a selector to
+// the box its element reports, `null` for one that matches nothing. The walk
+// itself (the string evaluate) returns an empty tree; these tests are about
+// how the capture regions are resolved before it runs.
+function fakePage(handles: Record<string, VisibilityRect | null>) {
+  const queried: string[] = [];
+  const page = {
+    url: () => 'http://h/page',
+    $: async (selector: string) => {
+      queried.push(selector);
+      if (!(selector in handles)) return null;
+      return { scrollIntoViewIfNeeded: async () => undefined, evaluate: async () => handles[selector] };
+    },
+    evaluate: async (source: unknown) => (typeof source === 'string'
+      ? { url: 'http://h/page', nodes: [], truncated: false, sourceRaws: [] }
+      : CAPTURE),
+    context: () => ({ request: { get: async () => { throw new Error('no fetch expected'); } } }),
+  } as unknown as Page;
+  const capture = (selectors: string[]) => captureVisibilitySnapshot(page, { selectors, testName: 't', viewportLabel: 'v' });
+  return { capture, queried };
+}
+
+describe('captureVisibilitySnapshot capture regions', () => {
+  it('resolves element selectors through Playwright, so a text= selector means what it means to visreg', async () => {
+    const box = { x: 10, y: 400, w: 200, h: 40 };
+    const { capture, queried } = fakePage({ 'text=Buy now': box });
+    await expect(capture(['text=Buy now'])).resolves.toMatchObject({ selectors: ['text=Buy now'], regions: [box] });
+    expect(queried).toEqual(['text=Buy now']);
+  });
+
+  it('fails when a selector matches nothing, the way visreg fails the test, instead of scoring the page 0%', async () => {
+    const { capture } = fakePage({});
+    await expect(capture(['#missing'])).rejects.toThrow(/"#missing" matched nothing on http:\/\/h\/page/);
+  });
+
+  it('fails when the matched element has no box to capture', async () => {
+    const { capture } = fakePage({ '#ghost': null, '#flat': { x: 0, y: 0, w: 0, h: 10 } });
+    await expect(capture(['#ghost'])).rejects.toThrow(/"#ghost" has no box to capture/);
+    await expect(capture(['#flat'])).rejects.toThrow(/"#flat" has no box to capture/);
   });
 });

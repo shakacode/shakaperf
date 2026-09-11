@@ -449,6 +449,66 @@ describe('pre-run wipe', () => {
   });
 });
 
+describe('unselected categories', () => {
+  // demo-ecommerce's shape: visreg widens the shared default. A perf-only run
+  // used to persist visreg's "skipped by --categories" markers at desktop +
+  // tablet, and report assembly unioned every registered stage's viewports,
+  // so each test gained two rows the run never measured — rows the
+  // phone-framed client report renders as "we couldn't measure this page".
+  const homepage: AbTestDefinition = {
+    name: 'Homepage',
+    startingPath: '/',
+    file: null,
+    line: null,
+    testTypes: null,
+    testFn: async () => {},
+  };
+
+  let cwd: string;
+
+  beforeEach(() => {
+    jest.mocked(loadTests).mockReset();
+    cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-pipeline-unselected-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  });
+
+  it('contribute no viewports to skip markers or report rows', async () => {
+    const savedTmpdir = process.env.TMPDIR;
+    process.env.TMPDIR = cwd;
+    let result;
+    try {
+      result = await runPipeline(pipeline(), {
+        cwd,
+        config: buildAbTestsConfig({
+          shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, viewports: ['phone'] },
+          visreg: { viewports: ['phone', 'desktop', 'tablet'] },
+        }),
+        controlURL: 'http://control.test',
+        experimentURL: 'http://experiment.test',
+        retries: 0,
+        retryDelay: 0,
+        timeoutMs: 1_000,
+        tests: [homepage],
+        categories: 'perf',
+        skipReport: true,
+      });
+    } finally {
+      if (savedTmpdir === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = savedTmpdir;
+    }
+
+    const rows = result.testResults[0]!.outcomes.map((outcome) => outcome.viewport.label);
+    expect([...new Set(rows)]).toEqual(['phone']);
+    const store = new ArtifactStore(path.join(cwd, 'test-results'));
+    for (const label of ['desktop', 'tablet']) {
+      expect(fs.existsSync(store.unitDirForViewport(homepage, label))).toBe(false);
+    }
+  });
+});
+
 describe('per-side visreg failures', () => {
   const CONTROL_SCREENSHOT = Buffer.from('control');
   const EXPERIMENT_SCREENSHOT = Buffer.from('experiment');
