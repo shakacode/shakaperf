@@ -37,8 +37,14 @@ export type { TestAnnotate } from './TestAnnotation';
 export { defineConfig } from './define-config';
 export { assignPortsAutomatically } from './assign-ports';
 export type { AssignedPorts, AssignPortsOptions } from './assign-ports';
-export { isScreenshotCoveragePlugin } from './screenshot-coverage-plugin';
+export {
+  BUILT_IN_SCREENSHOT_COVERAGE_PLUGINS,
+  isBuiltInScreenshotCoveragePlugin,
+  isScreenshotCoveragePlugin,
+  isSourceLocation,
+} from './screenshot-coverage-plugin';
 export type {
+  BuiltInScreenshotCoveragePlugin,
   ScreenshotCoveragePlugin,
   SourceLocation,
   SourceResolveContext,

@@ -28,24 +28,37 @@ export interface SourceResolveContext {
  * `config.audit.screenshotCoveragePlugin`: names the source location of
  * each element in a visibility map. Two halves, because the evidence lives in
  * the page and the means to read it (source maps) live in Node.
+ *
+ * `Raw` is what `locate` hands to `resolve`. The config holds the erased
+ * `ScreenshotCoveragePlugin` (`Raw = unknown`); a plugin typed over its own
+ * `Raw` assigns to it directly because the two are declared as methods, whose
+ * parameters are checked bivariantly.
  */
-export interface ScreenshotCoveragePlugin {
+export interface ScreenshotCoveragePlugin<Raw = unknown> {
   /** Named in the visibility-map header. */
   name: string;
   /**
    * Runs IN THE PAGE, once per element, carried there by
-   * `Function.prototype.toString` — so no imports or closures. Returns what
-   * `resolve` needs, or without `resolve` a `SourceLocation`; null when none.
+   * `Function.prototype.toString` — so no imports or closures, and the result
+   * must survive a JSON round trip. Returns what `resolve` needs; null when none.
    */
-  locate: (element: Element) => unknown;
+  locate(element: Element): Raw;
   /**
    * Runs in Node over one page's `locate` results; returns the same length
    * and order, null where no source could be named.
    */
-  resolve?: (
-    raws: readonly unknown[],
+  resolve(
+    raws: readonly Raw[],
     context: SourceResolveContext,
-  ) => Promise<readonly (SourceLocation | null)[]>;
+  ): Promise<readonly (SourceLocation | null)[]>;
+}
+
+/** The plugins shaka-perf ships; a config may name one instead of passing an object. */
+export const BUILT_IN_SCREENSHOT_COVERAGE_PLUGINS = ['react18', 'react19'] as const;
+export type BuiltInScreenshotCoveragePlugin = (typeof BUILT_IN_SCREENSHOT_COVERAGE_PLUGINS)[number];
+
+export function isBuiltInScreenshotCoveragePlugin(value: unknown): value is BuiltInScreenshotCoveragePlugin {
+  return (BUILT_IN_SCREENSHOT_COVERAGE_PLUGINS as readonly unknown[]).includes(value);
 }
 
 export function isScreenshotCoveragePlugin(value: unknown): value is ScreenshotCoveragePlugin {
@@ -54,5 +67,14 @@ export function isScreenshotCoveragePlugin(value: unknown): value is ScreenshotC
   return typeof plugin.name === 'string'
     && plugin.name.length > 0
     && typeof plugin.locate === 'function'
-    && (plugin.resolve === undefined || typeof plugin.resolve === 'function');
+    && typeof plugin.resolve === 'function';
+}
+
+/** What `resolve` promised per element, checked because it is user code. */
+export function isSourceLocation(value: unknown): value is SourceLocation {
+  if (!value || typeof value !== 'object') return false;
+  const location = value as Partial<SourceLocation>;
+  return typeof location.path === 'string'
+    && typeof location.line === 'number'
+    && (location.column === undefined || typeof location.column === 'number');
 }

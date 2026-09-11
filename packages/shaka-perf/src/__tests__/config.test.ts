@@ -299,7 +299,11 @@ describe('agentReadiness config', () => {
 });
 
 describe('audit.screenshotCoveragePlugin', () => {
-  const plugin = { name: 'stamped', locate: (element: Element) => element.getAttribute('data-source') };
+  const plugin = {
+    name: 'stamped',
+    locate: (element: Element) => element.getAttribute('data-source'),
+    resolve: async () => [],
+  };
 
   it('defaults to no plugin', () => {
     expect(buildAbTestsConfig(baseConfig()).audit.screenshotCoveragePlugin).toBeUndefined();

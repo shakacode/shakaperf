@@ -11,13 +11,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
   DEMO_CWD, EXPERIMENT_CLONE_PATH, EXPERIMENT_PORT, ORIGINAL_REPO, PUMA_CMD,
-  env, loud, portIsResponding, run, stage, waitForPort,
+  env, loud, portIsResponding, readAuditReport, run, stage, waitForPort,
 } from './helpers';
 
 const AUDIT_RESULTS_DIR = path.join(DEMO_CWD, 'audit-results');
 const SNAPSHOT_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'snapshots', 'coverage-results');
 const COVERAGE_SCRIPT = path.join(
-  EXPERIMENT_CLONE_PATH, '.claude', 'skills', 'shaka-perf-coverage', 'coverage-baseline.ts',
+  EXPERIMENT_CLONE_PATH, '.claude', 'skills', 'shaka-perf-coverage', 'coverage-baseline.mts',
 );
 
 // Exercises the screenshot-coverage path end to end: the code_coverage stage
@@ -41,7 +41,7 @@ const SOURCE_FILES = [
   'components/pages/ProductListPage.tsx',
   'components/shared/ProductCard.tsx',
 ];
-const RELEVANT_SOURCES = SOURCE_FILES.map((f) => f.replace('.', '\\.')).join(',');
+const RELEVANT_SOURCES = SOURCE_FILES.map((f) => f.replace(/\./g, '\\.')).join(',');
 
 const PLUGIN_HEADER = /^# source plugin: (\S+) — (\d+) of (\d+) elements located/m;
 const CELL = /\b[A-Z]+=(\d+)%/g;
@@ -79,12 +79,7 @@ test('audit a development bundle and snapshot screenshot coverage per source @co
     );
   });
 
-  const report = JSON.parse(fs.readFileSync(path.join(AUDIT_RESULTS_DIR, 'report.json'), 'utf-8')) as {
-    tests: Array<{
-      name: string;
-      outcomes: Array<{ kind: string; stage?: string; summary?: { visibilityMapHref?: string } }>;
-    }>;
-  };
+  const report = readAuditReport(AUDIT_RESULTS_DIR);
   expect([...new Set(report.tests.map((t) => t.name))].sort(), 'the filter must select exactly the two tests')
     .toEqual(['Homepage', 'Products List']);
   const errored = report.tests.filter((t) => t.outcomes.some((o) => o.kind === 'error')).map((t) => t.name);
@@ -105,7 +100,7 @@ test('audit a development bundle and snapshot screenshot coverage per source @co
 
   // Run from the demo dir so the script resolves audit-results/ and
   // app/javascript/ relative to it, the way the skill documents.
-  const saved = await stage('Saving the coverage snapshot (coverage-baseline.ts save)', () => execFileSync(
+  const saved = await stage('Saving the coverage snapshot (coverage-baseline.mts save)', () => execFileSync(
     'node', [COVERAGE_SCRIPT, 'save', RELEVANT_SOURCES],
     { cwd: DEMO_CWD, env, encoding: 'utf-8', timeout: 2 * 60 * 1000 },
   ));

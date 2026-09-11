@@ -8,9 +8,9 @@
 // same commit, the gutter padded to the widest in the run so the `|` never moves — a diff then
 // shows only the cells that changed.
 
-const { execFileSync } = require('node:child_process');
-const fs = require('node:fs');
-const path = require('node:path');
+import { execFileSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 const DIR = path.join('audit-results', 'coverage-baselines');
 const ROOT = 'app/javascript';
@@ -21,24 +21,31 @@ const NOTE = '# screenshot column: ';
 interface Test { id: string; name: string }
 interface Tally { seen: number; blind: number; statements: number; covered: number }
 interface Row { pct: number; reason: string | null; path: string; line: number }
+/** A grid line split at its markers: the source (with `//`), the code gutter, the screenshot cells. */
+interface Parsed { head: string; cover: string; seen: string }
+/** The slice of an istanbul per-file entry this script reads. */
+interface FileCoverage { statementMap: Record<string, { start: { line: number } }>; s: Record<string, number> }
 
 const read = (file: string): string[] => fs.readFileSync(file, 'utf8').split('\n');
 const files = (dir: string): string[] => fs.readdirSync(dir, { recursive: true, withFileTypes: true })
-  .filter((e: any) => e.isFile()).map((e: any) => path.join(e.parentPath, e.name));
+  .filter((e) => e.isFile()).map((e) => path.join(e.parentPath, e.name));
 const sourceFiles = (dir: string): string[] => files(dir).filter((f) => path.basename(f) !== 'legend.txt');
 const artifact = (test: Test, name: string): string => path.join(AUDIT, test.id, 'artifacts', name);
 function at<K, V>(map: Map<K, V>, key: K, make: () => V): V {
-  if (!map.has(key)) map.set(key, make());
-  return map.get(key)!;
+  let value = map.get(key);
+  if (value === undefined) {
+    value = make();
+    map.set(key, value);
+  }
+  return value;
 }
 // A, B … Z, AA, AB …
 const label = (i: number): string => (i < 26 ? '' : label(Math.floor(i / 26) - 1)) + String.fromCharCode(65 + (i % 26));
 
 // --- the line format ----------------------------------------------------------------------
 
-// `{ head, cover, seen }` of a grid line, or null. Splits on the LAST `|` and the `//` before
-// it, because the source to their left is full of both.
-const parse = (line: string) => {
+// Splits on the LAST `|` and the `//` before it, because the source to their left is full of both.
+const parse = (line: string): Parsed | null => {
   const bar = line.lastIndexOf('|');
   const slash = line.lastIndexOf('//', bar);
   if (bar === -1 || slash === -1) return null;
@@ -51,9 +58,10 @@ const tally = (lines: string[]): Tally => {
   const parts = lines.flatMap((l) => parse(l) ?? []);
   const pcts = parts.flatMap((p) => p.seen.split(',')).flatMap((c) => /^[A-Z]+=(\d+)%/.exec(c)?.[1] ?? []).map(Number);
   const statements = parts.filter((p) => p.cover);
+  const seen = pcts.filter(Boolean).length;
   return {
-    seen: pcts.filter(Boolean).length,
-    blind: pcts.filter((n) => !n).length,
+    seen,
+    blind: pcts.length - seen,
     statements: statements.length,
     covered: statements.filter((p) => p.cover !== '0').length,
   };
@@ -69,7 +77,7 @@ const legendOf = (dir: string): { sources: string; note: string | null } => {
 
 // --- code coverage: the scaffold, from each unit's coverage.json ----------------------------
 
-interface Source { map: any; tests: Map<string, Set<string>> } // statement id → tests that ran it
+interface Source { map: FileCoverage['statementMap'] | null; tests: Map<string, Set<string>> } // statement id → tests that ran it
 
 // `note`, when the run cannot fill the screenshot column, goes into that column on each
 // source's first line and into the legend: a later diff then reads the empty column as "not
@@ -83,30 +91,34 @@ function scaffold(patterns: string[], dir: string, tests: Test[], note: string |
   if (!sources.length) throw new Error(`no file under ${ROOT} matched: ${patterns.join(', ')}`);
 
   const per = new Map<string, Source>(sources.map((s) => [s, { map: null, tests: new Map() }]));
+  const covering = new Set<string>();
   for (const test of tests.filter((t) => fs.existsSync(artifact(t, 'coverage.json')))) {
-    for (const [abs, entry] of Object.entries<any>(JSON.parse(fs.readFileSync(artifact(test, 'coverage.json'), 'utf8')))) {
+    const coverage = JSON.parse(fs.readFileSync(artifact(test, 'coverage.json'), 'utf8')) as Record<string, FileCoverage>;
+    for (const [abs, entry] of Object.entries(coverage)) {
       const source = sources.find((s) => abs.endsWith(s));
       if (!source) continue;
       const rec = per.get(source)!;
       rec.map ??= entry.statementMap;
-      for (const [statement, count] of Object.entries<number>(entry.s)) {
-        if (count) at(rec.tests, statement, () => new Set<string>()).add(test.name);
+      for (const [statement, count] of Object.entries(entry.s)) {
+        if (!count) continue;
+        at(rec.tests, statement, () => new Set<string>()).add(test.name);
+        covering.add(test.name);
       }
     }
   }
-  const covering = [...new Set([...per.values()].flatMap((r) => [...r.tests.values()].flatMap((s) => [...s])))].sort();
-  const letterOf = new Map(covering.map((name, i) => [name, label(i)]));
+  const letterOf = new Map([...covering].sort().map((name, i) => [name, label(i)]));
 
   // line → `A+C` of the tests that executed a statement starting there, `0` when none did
-  const gutters = ({ map, tests: ran }: Source): Map<number, string> => {
+  const gutters = (map: FileCoverage['statementMap'], ran: Source['tests']): Map<number, string> => {
     const byLine = new Map<number, Set<string>>();
-    for (const [statement, { start }] of Object.entries<any>(map)) {
+    for (const [statement, { start }] of Object.entries(map)) {
       const letters = at(byLine, start.line, () => new Set<string>());
       ran.get(statement)?.forEach((name) => letters.add(letterOf.get(name)!));
     }
     return new Map([...byLine].map(([line, l]) => [line, l.size ? [...l].sort().join('+') : '0']));
   };
-  const grids = new Map([...per].filter(([, r]) => r.map).map(([s, r]) => [s, gutters(r)]));
+  const grids = new Map<string, Map<number, string>>();
+  for (const [source, { map, tests: ran }] of per) if (map) grids.set(source, gutters(map, ran));
   const width = Math.max(1, ...[...grids.values()].flatMap((g) => [...g.values()].map((v) => v.length)));
 
   fs.mkdirSync(dir, { recursive: true });
@@ -117,7 +129,7 @@ function scaffold(patterns: string[], dir: string, tests: Test[], note: string |
     '# format:  <source line>  // <tests that executed it> | <what a screenshot showed>',
     '#   0 = a statement no test reached; blank = no statement starts here.',
     '#',
-    ...(covering.length ? covering.map((name, i) => `${label(i)} = ${name}`) : ['(no test in this run covered the matched sources)']),
+    ...(letterOf.size ? [...letterOf].map(([name, letter]) => `${letter} = ${name}`) : ['(no test in this run covered the matched sources)']),
     ...(note ? [`${NOTE}${note}`] : []),
     '',
   ].join('\n'));
@@ -128,7 +140,7 @@ function scaffold(patterns: string[], dir: string, tests: Test[], note: string |
     if (!grid) { fs.writeFileSync(dest, 'never loaded\n'); continue; }
     const text = read(path.join(ROOT, source));
     const srcWidth = Math.max(0, ...text.map((t) => t.length));
-    const gridLine = (line: string, i: number) => `${line.padEnd(srcWidth)}  // ${(grid.get(i + 1) || '').padEnd(width)} | ${i === 0 && note ? note : ''}`;
+    const gridLine = (line: string, i: number): string => `${line.padEnd(srcWidth)}  // ${(grid.get(i + 1) || '').padEnd(width)} | ${i === 0 && note ? note : ''}`;
     fs.writeFileSync(dest, `${text.map(gridLine).join('\n')}\n`);
   }
   return { count: sources.length, letterOf };
@@ -152,7 +164,7 @@ function readMaps(tests: Test[]): { byTest: Map<string, Row[]>; located: boolean
   const byTest = new Map<string, Row[]>();
   let plugin: string | null = null;
   for (const test of tests.filter((t) => fs.existsSync(artifact(t, 'visibility-map.txt')))) {
-    const rows = at(byTest, test.name, () => [] as Row[]);
+    const rows = at(byTest, test.name, (): Row[] => []);
     for (const line of read(artifact(test, 'visibility-map.txt'))) {
       if (line.startsWith('#')) { plugin = PLUGIN.exec(line)?.[1] ?? plugin; continue; }
       const m = ROW.exec(line);
@@ -206,7 +218,7 @@ function save(sources?: string): void {
   if (!sources) throw new Error('save needs a source regex list, e.g. save "HorizonNav/.*\\.tsx"');
   const report = path.join(AUDIT, 'report.json');
   if (!fs.existsSync(report)) throw new Error(`no ${report} — run \`shaka-perf audit --categories code_coverage\` first`);
-  const tests: Test[] = JSON.parse(fs.readFileSync(report, 'utf8')).tests;
+  const { tests } = JSON.parse(fs.readFileSync(report, 'utf8')) as { tests: Test[] };
   // Maps before anything is written: a run without them leaves no half-snapshot behind.
   const maps = readMaps(tests);
   if (!maps.byTest.size) throw new Error(`no visibility maps under ${AUDIT} — audit with --categories code_coverage`);
@@ -233,7 +245,7 @@ function save(sources?: string): void {
 
 // `.diff` folders live alongside the snapshots; they are results, not snapshots.
 const snapshots = (): string[] => (fs.existsSync(DIR) ? fs.readdirSync(DIR, { withFileTypes: true }) : [])
-  .filter((e: any) => e.isDirectory() && !e.name.endsWith('.diff')).map((e: any) => path.join(DIR, e.name)).sort();
+  .filter((e) => e.isDirectory() && !e.name.endsWith('.diff')).map((e) => path.join(DIR, e.name)).sort();
 
 function list(): void {
   const all = snapshots();
@@ -242,6 +254,16 @@ function list(): void {
     const total = totalOf(dir);
     const seen = legendOf(dir).note ?? `${total.seen} seen, ${total.blind} at 0%`;
     console.log(`${dir}  ${sourceFiles(dir).length} files  ${seen}  |  ${total.covered}/${total.statements} statements`);
+  }
+}
+
+// `diff -u` exits 1 when the files differ, with the hunks on stdout.
+function unifiedDiff(before: string, after: string): string {
+  try {
+    execFileSync('diff', ['-u', '--label', before, '--label', after, before, after], { encoding: 'utf8' });
+    return '';
+  } catch (err) {
+    return (err as { stdout?: string }).stdout ?? '';
   }
 }
 
@@ -257,15 +279,14 @@ function diff(older?: string, newer?: string): void {
   fs.rmSync(outDir, { recursive: true, force: true });
   fs.mkdirSync(outDir, { recursive: true });
 
-  const keys = (dir: string) => sourceFiles(dir).map((f) => path.relative(dir, f));
+  const keys = (dir: string): string[] => sourceFiles(dir).map((f) => path.relative(dir, f));
   const [beforeKeys, afterKeys] = [new Set(keys(before)), new Set(keys(after))];
   const mark = (n: number): string => (n ? `${n > 0 ? '+' : ''}${n}`.padEnd(3) : '   ');
   let changed = 0;
   const rows = [...new Set([...beforeKeys, ...afterKeys])].sort().map((key) => {
     if (!beforeKeys.has(key) || !afterKeys.has(key)) return { move: Infinity, line: `${beforeKeys.has(key) ? 'REMOVED' : 'ADDED'} ${key}` };
     const [beforeFile, afterFile] = [path.join(before, key), path.join(after, key)];
-    let body = '';
-    try { execFileSync('diff', ['-u', '--label', beforeFile, '--label', afterFile, beforeFile, afterFile], { encoding: 'utf8' }); } catch (err: any) { body = err.stdout || ''; }
+    const body = unifiedDiff(beforeFile, afterFile);
     // One .diff per CHANGED source only, so `ls` on the folder names exactly what moved.
     if (body) {
       changed += 1;
@@ -298,15 +319,15 @@ function diff(older?: string, newer?: string): void {
   console.log(`\n${changed} of ${afterKeys.size} sources changed — per-source diffs in ${outDir}/`);
 }
 
-const [command, ...rest] = process.argv.slice(2);
+const [command = '', ...rest] = process.argv.slice(2);
 const commands: Record<string, () => void> = { save: () => save(rest[0]), list, diff: () => diff(rest[0], rest[1]) };
 if (!commands[command]) {
-  console.log('usage: coverage-baseline.ts save "<sources>" | list | diff [<older> <newer>]');
+  console.log('usage: coverage-baseline.mts save "<sources>" | list | diff [<older> <newer>]');
   process.exit(1);
 }
 try {
   commands[command]();
 } catch (error) {
-  console.error((error as Error).message);
+  console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 }

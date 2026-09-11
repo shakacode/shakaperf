@@ -15,7 +15,7 @@
 // fails compilation if the shapes disagree.
 
 import type { BeforeNavigateHook, Viewport } from './ab-test-registry';
-import type { ScreenshotCoveragePlugin } from './screenshot-coverage-plugin';
+import type { BuiltInScreenshotCoveragePlugin, ScreenshotCoveragePlugin } from './screenshot-coverage-plugin';
 
 /**
  * Browser-launch options, one shape for every stage. REQUIRED on
@@ -144,7 +144,7 @@ export interface AuditConfigInput {
    * `ScreenshotCoveragePlugin`. Run-level: one build per run, so one plugin —
    * not overridable per test.
    */
-  screenshotCoveragePlugin?: 'react18' | 'react19' | ScreenshotCoveragePlugin;
+  screenshotCoveragePlugin?: BuiltInScreenshotCoveragePlugin | ScreenshotCoveragePlugin;
 }
 
 export interface AccessibilityConfigInput {

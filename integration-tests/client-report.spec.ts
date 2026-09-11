@@ -11,7 +11,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
   ORIGINAL_REPO, EXPERIMENT_CLONE_PATH, DEMO_CWD, CONTROL_PORT, EXPERIMENT_PORT,
-  assertPlainNonZeroExit, env, loud, stage, startServers, waitForPort,
+  assertPlainNonZeroExit, env, loud, readAuditReport, stage, startServers, waitForPort,
 } from './helpers';
 import {
   captureClientReportScreenshots,
@@ -106,21 +106,7 @@ test('audit filtered pages, render v2 client report, screenshot its states @audi
   // The non-zero exit must come from the ENGINEERED error alone. If any
   // other test errored (servers dying mid-audit, flaky engine), the baseline
   // would quietly become a report full of broken pages.
-  const auditReport = JSON.parse(
-    fs.readFileSync(path.join(AUDIT_RESULTS_DIR, 'report.json'), 'utf-8'),
-  ) as {
-    tests: Array<{
-      name: string;
-      viewport?: { label?: string };
-      outcomes: Array<{
-        kind: string;
-        stage?: string;
-        // report.json carries each stage's machineReadableSummary, never the
-        // raw measurement — see writeMachineReport.
-        summary?: { visibilityMapHref?: string; instrumented?: boolean };
-      }>;
-    }>;
-  };
+  const auditReport = readAuditReport(AUDIT_RESULTS_DIR);
   const erroredTests = [...new Set(
     auditReport.tests
       .filter((t) => t.outcomes.some((o) => o.kind === 'error'))

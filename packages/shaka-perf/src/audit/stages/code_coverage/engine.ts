@@ -24,6 +24,7 @@ import type { EngineBrowserConfig } from '../../../visreg/core/types';
 import {
   COVERAGE_FILENAME,
   COVERAGE_SCREENSHOT_FILENAME,
+  type CoverageSummary,
   mirrorCoverageToNycOutput,
   summarizeCoverage,
 } from './coverage-artifacts';
@@ -115,9 +116,10 @@ async function collectCoverage(ctx: TestContext, browser: Browser): Promise<Code
   }));
 }
 
-type CoverageMeasurement = Omit<CodeCoverageResult, 'visibilityMapHref'>;
-
-async function drainCoverage(ctx: TestContext, page: Page): Promise<CoverageMeasurement> {
+async function drainCoverage(
+  ctx: TestContext,
+  page: Page,
+): Promise<CoverageSummary & Pick<CodeCoverageResult, 'coverageHref'>> {
   const coverage = await page.evaluate(
     () => (globalThis as { __coverage__?: unknown }).__coverage__,
   );
@@ -146,12 +148,7 @@ async function drainCoverage(ctx: TestContext, page: Page): Promise<CoverageMeas
     `coverage: ${summary.coveredStatements}/${summary.totalStatements} statements ` +
     `across ${summary.files} instrumented files`,
   ));
-  return {
-    files: summary.files,
-    coveredStatements: summary.coveredStatements,
-    totalStatements: summary.totalStatements,
-    coverageHref,
-  };
+  return { ...summary, coverageHref };
 }
 
 // Screenshot coverage: what the finished page SHOWS, scored against the region
@@ -188,10 +185,14 @@ async function writeVisibilityMap(
   } catch (err) {
     // A map we could not take must not sink coverage we already drained.
     console.warn(chalk.yellow(
-      `[shaka-perf visibility] could not snapshot ${ctx.experimentURL}: ${(err as Error).message}`,
+      `[shaka-perf visibility] could not snapshot ${ctx.experimentURL}: ${errorMessage(err)}`,
     ));
     return {};
   }
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 // The map's evidence: one shot of the page it describes, so a reader can see
@@ -213,7 +214,7 @@ async function writeScreenshot(
   } catch (err) {
     // Same rule as the map: evidence is worth having, not worth failing over.
     console.warn(chalk.yellow(
-      `[shaka-perf visibility] could not screenshot ${ctx.experimentURL}: ${(err as Error).message}`,
+      `[shaka-perf visibility] could not screenshot ${ctx.experimentURL}: ${errorMessage(err)}`,
     ));
     return {};
   }

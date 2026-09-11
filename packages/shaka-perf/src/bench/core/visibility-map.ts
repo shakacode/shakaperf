@@ -6,7 +6,7 @@
  */
 
 import type { Page } from 'playwright-core';
-import type { ScreenshotCoveragePlugin, SourceLocation } from 'shaka-shared';
+import { isSourceLocation, type ScreenshotCoveragePlugin, type SourceLocation } from 'shaka-shared';
 import { pageFunctionSource } from './page-function-source';
 
 /**
@@ -59,6 +59,9 @@ export interface VisibilityNode {
   source?: SourceLocation;
 }
 
+// A type alias, not an interface: it is spread into a `JsonValue` by the
+// stage's machineReadableSummary, and only aliases carry the implicit index
+// signature that assignment needs.
 export type SourceAttribution = {
   plugin: string;
   located: number;
@@ -302,18 +305,17 @@ function collectVisibility(
   input: CollectorInput,
   locate: ((element: Element) => unknown) | null,
 ): CollectedSnapshot {
-  const round = (value: number): number => Math.round(value);
   const toDocRect = (rect: DOMRect): VisibilityRect => ({
-    x: round(rect.x + window.scrollX),
-    y: round(rect.y + window.scrollY),
-    w: round(rect.width),
-    h: round(rect.height),
+    x: Math.round(rect.x + window.scrollX),
+    y: Math.round(rect.y + window.scrollY),
+    w: Math.round(rect.width),
+    h: Math.round(rect.height),
   });
   const documentRect = (): VisibilityRect => ({
     x: 0,
     y: 0,
-    w: round(Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth ?? 0)),
-    h: round(Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight ?? 0)),
+    w: Math.round(Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth ?? 0)),
+    h: Math.round(Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight ?? 0)),
   });
   const clipRects = (a: VisibilityRect, b: VisibilityRect): VisibilityRect | null => {
     const x = Math.max(a.x, b.x);
@@ -325,37 +327,29 @@ function collectVisibility(
   };
 
   const viewport: VisibilityRect = {
-    x: round(window.scrollX),
-    y: round(window.scrollY),
-    w: round(window.innerWidth),
-    h: round(window.innerHeight),
+    x: Math.round(window.scrollX),
+    y: Math.round(window.scrollY),
+    w: Math.round(window.innerWidth),
+    h: Math.round(window.innerHeight),
   };
 
-  const regions: VisibilityRect[] = [];
+  const regionFor = (selector: string, kind: CaptureKind): VisibilityRect | null => {
+    if (kind === 'document') return documentRect();
+    if (kind === 'viewport') return viewport;
+    try {
+      const element = document.querySelector(selector);
+      return element ? toDocRect(element.getBoundingClientRect()) : null;
+    } catch {
+      return null;
+    }
+  };
   // A selector that matches nothing — or matches something with no box, which
   // makes visreg's `boundingBox()` null and its capture null — photographs
   // nothing. Dropping it here is what lets an all-empty list report "nothing
   // would be captured" instead of a 0x0 region nobody can read.
-  const addRegion = (rect: VisibilityRect): void => {
-    if (rect.w > 0 && rect.h > 0) regions.push(rect);
-  };
-  for (const { selector, kind } of input.selectors) {
-    if (kind === 'document') {
-      addRegion(documentRect());
-      continue;
-    }
-    if (kind === 'viewport') {
-      addRegion({ ...viewport });
-      continue;
-    }
-    let element: Element | null = null;
-    try {
-      element = document.querySelector(selector);
-    } catch {
-      element = null;
-    }
-    if (element) addRegion(toDocRect(element.getBoundingClientRect()));
-  }
+  const regions = input.selectors
+    .map(({ selector, kind }) => regionFor(selector, kind))
+    .filter((rect): rect is VisibilityRect => rect !== null && rect.w > 0 && rect.h > 0);
 
   // Fraction of a 3x3 grid over `rect` where this element (or a descendant) is
   // the topmost painted thing. Hit-testing is viewport-only, so sample the part
@@ -486,7 +480,7 @@ export async function captureVisibilitySnapshot(
     `(${collectVisibility.toString()})(${JSON.stringify(input)}, ${locate})`,
   );
   const sourceAttribution = plugin
-    ? await attributeSources(plugin, sourceRaws, collected.nodes, page, collected.url)
+    ? await attributeSources(plugin, page, sourceRaws, collected)
     : undefined;
   return {
     ...collected,
@@ -499,23 +493,25 @@ export async function captureVisibilitySnapshot(
 
 async function attributeSources(
   plugin: ScreenshotCoveragePlugin,
-  raws: readonly unknown[],
-  nodes: VisibilityNode[],
   page: Page,
-  pageUrl: string,
+  raws: readonly unknown[],
+  { nodes, url: pageUrl }: Pick<CollectedSnapshot, 'nodes' | 'url'>,
 ): Promise<SourceAttribution> {
   const warnings: string[] = [];
-  const locations = plugin.resolve
-    ? await plugin.resolve(raws, {
-      pageUrl,
-      fetchText: (url) => fetchTextViaPage(page, url),
-      warn: (message) => { warnings.push(message); },
-    })
-    : (raws as readonly (SourceLocation | null)[]);
+  const locations = await plugin.resolve(raws, {
+    pageUrl,
+    fetchText: (url) => fetchTextViaPage(page, url),
+    warn: (message) => { warnings.push(message); },
+  });
+  if (locations.length !== nodes.length) {
+    warnings.push(`${plugin.name} returned ${locations.length} locations for ${nodes.length} elements`);
+  }
   let located = 0;
-  locations.forEach((location, index) => {
-    if (!location) return;
-    nodes[index].source = location;
+  nodes.forEach((node, index) => {
+    // User code: checked, not assumed.
+    const location = locations[index];
+    if (!isSourceLocation(location)) return;
+    node.source = location;
     located += 1;
   });
   return { plugin: plugin.name, located, elements: nodes.length, warnings };

@@ -37,21 +37,38 @@ export interface React18SourcePluginOptions {
   root?: string;
 }
 
-// What `locate` returns for fibers without a debug source. The page half is
-// serialized by source text, so it repeats the literal instead of referencing this.
 const NO_DEBUG_SOURCE = 'react18:no-debug-source';
 
-// Runs in the page via `Function.prototype.toString`: no imports, no closures.
+/** A fiber's `_debugSource`, as the JSX source transform records it. */
+interface DebugSource {
+  fileName: string;
+  lineNumber: number;
+  columnNumber?: number;
+}
+
+/**
+ * What `locate` hands to `resolve`: the owner-chain debug sources, the marker
+ * for a React tree without any, or null for a non-React element.
+ */
+type Located = readonly DebugSource[] | typeof NO_DEBUG_SOURCE | null;
+
+/** The fields of a React 16–18 development fiber this plugin reads, before validation. */
+type DebugFiber = {
+  _debugSource?: { fileName?: unknown; lineNumber?: unknown; columnNumber?: unknown } | null;
+  _debugOwner?: DebugFiber | null;
+};
+
+// Runs in the page via `Function.prototype.toString`: no imports, no closures
+// over runtime values (types are erased, so the annotations cost nothing and
+// the return type checks the literal against NO_DEBUG_SOURCE).
 // The element's own source first, then its owners': DOM a library painted has
 // no `_debugSource` (libraries ship without the transform), and resolves to
 // the app component that used it. Styled/HOC layers can stack, hence the depth.
-function locateReact18Element(element: Element): unknown {
+function locateReact18Element(element: Element): Located {
   const fiberKey = Object.keys(element).find((key) => key.startsWith('__reactFiber$'));
   if (!fiberKey) return null;
-  type DebugSource = { fileName?: unknown; lineNumber?: unknown; columnNumber?: unknown };
-  type DebugFiber = { _debugSource?: DebugSource | null; _debugOwner?: DebugFiber | null };
   let fiber = (element as unknown as Record<string, DebugFiber | undefined>)[fiberKey];
-  const sources: Array<{ fileName: string; lineNumber: number; columnNumber?: number }> = [];
+  const sources: DebugSource[] = [];
   for (let hop = 0; fiber && hop < 12; hop += 1) {
     const source = fiber._debugSource;
     if (source && typeof source.fileName === 'string' && typeof source.lineNumber === 'number') {
@@ -74,27 +91,24 @@ export function react18ScreenshotCoveragePlugin(
   return {
     name: 'react18',
     locate: locateReact18Element,
-    resolve: async (raws, context) => resolveSources(raws, context, isAppSource, root),
+    resolve: async (raws: readonly Located[], context) => resolveSources(raws, context, isAppSource, root),
   };
 }
 
-interface RawSource { fileName?: unknown; lineNumber?: unknown; columnNumber?: unknown }
-
 function resolveSources(
-  raws: readonly unknown[],
+  raws: readonly Located[],
   context: SourceResolveContext,
   isAppSource: (path: string) => boolean,
   root: string,
 ): (SourceLocation | null)[] {
-  const firstAppSource = (sources: unknown[]): SourceLocation | null => {
-    for (const source of sources as RawSource[]) {
-      if (!source || typeof source.fileName !== 'string' || typeof source.lineNumber !== 'number') continue;
+  const firstAppSource = (sources: readonly DebugSource[]): SourceLocation | null => {
+    for (const source of sources) {
       const path = normalizeSourcePath(source.fileName, root);
       if (!isAppSource(path)) continue;
       return {
         path,
         line: source.lineNumber,
-        ...(typeof source.columnNumber === 'number' ? { column: source.columnNumber } : {}),
+        ...(source.columnNumber !== undefined ? { column: source.columnNumber } : {}),
       };
     }
     return null;

@@ -37,17 +37,17 @@ If either fails (the stage reports no `window.__coverage__`, or `save` says `imp
 ## Saving and diffing baselines
 
 ```
-node <skill-dir>/coverage-baseline.ts save "<relevant-sources>"
-node <skill-dir>/coverage-baseline.ts list
-node <skill-dir>/coverage-baseline.ts diff                          # the last two snapshots
-node <skill-dir>/coverage-baseline.ts diff <older-dir> <newer-dir>
+node <skill-dir>/coverage-baseline.mts save "<relevant-sources>"
+node <skill-dir>/coverage-baseline.mts list
+node <skill-dir>/coverage-baseline.mts diff                          # the last two snapshots
+node <skill-dir>/coverage-baseline.mts diff <older-dir> <newer-dir>
 ```
 
 `<relevant-sources>` is a comma-separated list of regexes matched against paths under `app/javascript`: narrow enough to name the components in question, and **reused verbatim for every save** — changing it makes the diff meaningless.
 
 `save` writes a timestamped directory under `audit-results/coverage-baselines/` — one file per source, mirroring its path, plus `legend.txt` mapping test letters to test names. It never overwrites.
 
-To snapshot a run whose `audit-results/` has since been overwritten: `AUDIT_ROOT=<stashed-dir> node <skill-dir>/coverage-baseline.ts save "<relevant-sources>"`.
+To snapshot a run whose `audit-results/` has since been overwritten: `AUDIT_ROOT=<stashed-dir> node <skill-dir>/coverage-baseline.mts save "<relevant-sources>"`.
 
 ### Reading a snapshot
 

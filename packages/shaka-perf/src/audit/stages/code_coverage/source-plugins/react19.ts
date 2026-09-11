@@ -31,22 +31,30 @@ export interface React19SourcePluginOptions {
   isAppSource?: (path: string) => boolean;
 }
 
-// What `locate` returns for fibers without a debug stack. The page half is
-// serialized by source text, so it repeats the literal instead of referencing this.
 const NO_DEBUG_STACK = 'react19:no-debug-stack';
 
-// Runs in the page via `Function.prototype.toString`: no imports, no closures.
+/**
+ * What `locate` hands to `resolve`: the owner-chain stack frames, the marker
+ * for a React element without a debug stack, or null for a non-React element.
+ */
+type Located = readonly string[] | typeof NO_DEBUG_STACK | null;
+
+/** The fields of a React 19 development fiber this plugin reads. */
+type DebugFiber = {
+  _debugStack?: { stack?: unknown } | null;
+  _debugOwner?: DebugFiber | null;
+};
+
+// Runs in the page via `Function.prototype.toString`: no imports, no closures
+// over runtime values (types are erased, so the annotations cost nothing and
+// the return type checks the literal against NO_DEBUG_STACK).
 // Stack line 0 is the message, 1 React's jsx() frame, 2 the JSX call site; a
 // couple more are kept in case a wrapper sits between. Owners are walked so
 // DOM a library painted resolves to the app component that used it — MUI
 // nests several styled layers per element, hence the depth.
-function locateReactElement(element: Element): unknown {
+function locateReactElement(element: Element): Located {
   const fiberKey = Object.keys(element).find((key) => key.startsWith('__reactFiber$'));
   if (!fiberKey) return null;
-  type DebugFiber = {
-    _debugStack?: { stack?: unknown } | null;
-    _debugOwner?: DebugFiber | null;
-  };
   let fiber = (element as unknown as Record<string, DebugFiber | undefined>)[fiberKey];
   const frames: string[] = [];
   let sawStack = false;
@@ -70,12 +78,12 @@ export function react19ScreenshotCoveragePlugin(
   return {
     name: 'react19',
     locate: locateReactElement,
-    resolve: (raws, context) => resolveFrames(raws, context, isAppSource, lookups),
+    resolve: (raws: readonly Located[], context) => resolveFrames(raws, context, isAppSource, lookups),
   };
 }
 
 async function resolveFrames(
-  raws: readonly unknown[],
+  raws: readonly Located[],
   context: SourceResolveContext,
   isAppSource: (path: string) => boolean,
   lookups: Map<string, Promise<SourceMapLookup | null>>,
@@ -89,9 +97,9 @@ async function resolveFrames(
     }
     return pending;
   };
-  const firstAppFrame = async (frames: unknown[]): Promise<SourceLocation | null> => {
+  const firstAppFrame = async (frames: readonly string[]): Promise<SourceLocation | null> => {
     for (const text of frames) {
-      const frame = typeof text === 'string' ? parseStackFrame(text) : null;
+      const frame = parseStackFrame(text);
       if (!frame || !/^https?:\/\//.test(frame.url)) continue;
       const lookup = await lookupFor(frame.url);
       if (!lookup) {

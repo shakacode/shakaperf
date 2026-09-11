@@ -33,7 +33,7 @@
 #       report variant always duplicates the full report).
 #   - coverage-results/      — @coverage screenshot-coverage snapshot: one
 #       file per source (code gutters + screenshot cells) plus legend.txt,
-#       from coverage-baseline.ts save over a development-bundle audit
+#       from coverage-baseline.mts save over a development-bundle audit
 #   - troubleshoot-results/01-sides.png — @troubleshoot
 #       Not a report shot: the four frozen troubleshoot browsers (visreg +
 #       perf, each control and experiment) screenshotted over CDP straight

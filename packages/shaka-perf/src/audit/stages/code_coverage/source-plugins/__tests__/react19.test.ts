@@ -109,33 +109,33 @@ describe('react19 resolve (runs in Node)', () => {
   it('names the source of the frame that lands in app code, skipping React runtime frames', async () => {
     const plugin = react19ScreenshotCoveragePlugin();
     const { context, warnings } = harness();
-    await expect(plugin.resolve!([OWN_APP_FRAMES], context))
+    await expect(plugin.resolve([OWN_APP_FRAMES], context))
       .resolves.toEqual([{ path: 'app/javascript/Card.tsx', line: 12, column: 7 }]);
     expect(warnings).toEqual([]);
   });
 
   it('walks past DOM a library rendered to the app component that used it', async () => {
     const plugin = react19ScreenshotCoveragePlugin();
-    await expect(plugin.resolve!([LIBRARY_DOM_FRAMES], harness().context))
+    await expect(plugin.resolve([LIBRARY_DOM_FRAMES], harness().context))
       .resolves.toEqual([{ path: 'app/javascript/Page.tsx', line: 8, column: 3 }]);
   });
 
   it('keeps order and length, with null for elements it cannot place', async () => {
     const plugin = react19ScreenshotCoveragePlugin();
-    await expect(plugin.resolve!([null, OWN_APP_FRAMES, [REACT_FRAME], 42], harness().context))
+    await expect(plugin.resolve([null, OWN_APP_FRAMES, [REACT_FRAME], 42], harness().context))
       .resolves.toEqual([null, { path: 'app/javascript/Card.tsx', line: 12, column: 7 }, null, null]);
   });
 
   it('omits the column when the map has no column detail, and reads an inline data: map', async () => {
     const plugin = react19ScreenshotCoveragePlugin();
-    await expect(plugin.resolve!([['    at Nav (http://h/cheap.js:1:1)']], harness().context))
+    await expect(plugin.resolve([['    at Nav (http://h/cheap.js:1:1)']], harness().context))
       .resolves.toEqual([{ path: 'app/javascript/Nav.tsx', line: 5 }]);
   });
 
   it('says "production build" when fibers exist but carry no stack', async () => {
     const plugin = react19ScreenshotCoveragePlugin();
     const { context, warnings } = harness();
-    await expect(plugin.resolve!(['react19:no-debug-stack', 'react19:no-debug-stack', null], context))
+    await expect(plugin.resolve(['react19:no-debug-stack', 'react19:no-debug-stack', null], context))
       .resolves.toEqual([null, null, null]);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toMatch(/2 React element\(s\) carry no owner stack.*production React build/);
@@ -144,22 +144,22 @@ describe('react19 resolve (runs in Node)', () => {
   it('says so when the page has no React at all', async () => {
     const plugin = react19ScreenshotCoveragePlugin();
     const { context, warnings } = harness();
-    await plugin.resolve!([null, null], context);
+    await plugin.resolve([null, null], context);
     expect(warnings).toEqual([expect.stringMatching(/no React fibers on this page/)]);
   });
 
   it('names a bundle it found no source map for', async () => {
     const plugin = react19ScreenshotCoveragePlugin();
     const { context, warnings } = harness();
-    await expect(plugin.resolve!([['    at X (http://h/nomap.js:1:1)']], context)).resolves.toEqual([null]);
+    await expect(plugin.resolve([['    at X (http://h/nomap.js:1:1)']], context)).resolves.toEqual([null]);
     expect(warnings).toEqual([expect.stringMatching(/no usable source map for http:\/\/h\/nomap\.js.*devtool/)]);
   });
 
   it('fetches each bundle and its map once for the life of the plugin', async () => {
     const plugin = react19ScreenshotCoveragePlugin();
     const { context, fetched } = harness();
-    await plugin.resolve!([OWN_APP_FRAMES, OWN_APP_FRAMES], context);
-    await plugin.resolve!([LIBRARY_DOM_FRAMES], context);
+    await plugin.resolve([OWN_APP_FRAMES, OWN_APP_FRAMES], context);
+    await plugin.resolve([LIBRARY_DOM_FRAMES], context);
     expect(fetched.sort()).toEqual([
       'http://h/app.js', 'http://h/app.js.map', 'http://h/vendor.js', 'http://h/vendor.js.map',
     ]);
@@ -167,14 +167,14 @@ describe('react19 resolve (runs in Node)', () => {
 
   it('lets a project redraw the line between its code and libraries', async () => {
     const plugin = react19ScreenshotCoveragePlugin({ isAppSource: (path) => path.includes('@mui') });
-    await expect(plugin.resolve!([LIBRARY_DOM_FRAMES], harness().context))
+    await expect(plugin.resolve([LIBRARY_DOM_FRAMES], harness().context))
       .resolves.toEqual([{ path: 'node_modules/@mui/material/Chip.js', line: 1 }]);
   });
 
   it('ignores frames whose URL is not fetchable', async () => {
     const plugin = react19ScreenshotCoveragePlugin();
     const { context, warnings } = harness();
-    await expect(plugin.resolve!([['    at x (webpack-internal:///./x.js:1:1)', '    at <anonymous>', '    at Card (http://h/app.js:10:20)']], context))
+    await expect(plugin.resolve([['    at x (webpack-internal:///./x.js:1:1)', '    at <anonymous>', '    at Card (http://h/app.js:10:20)']], context))
       .resolves.toEqual([{ path: 'app/javascript/Card.tsx', line: 12, column: 7 }]);
     expect(warnings).toEqual([]);
   });

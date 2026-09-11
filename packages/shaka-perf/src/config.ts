@@ -10,9 +10,12 @@ import {
   DESKTOP_VIEWPORT,
   PHONE_VIEWPORT,
   TABLET_VIEWPORT,
+  BUILT_IN_SCREENSHOT_COVERAGE_PLUGINS,
+  isBuiltInScreenshotCoveragePlugin,
   isScreenshotCoveragePlugin,
   type AbTestsConfigInput,
   type BeforeNavigateHook,
+  type BuiltInScreenshotCoveragePlugin,
   type ScreenshotCoveragePlugin,
   type TestType,
   type Viewport,
@@ -311,9 +314,12 @@ export const AuditConfigSchema = z
     // visibility-map row. Shape-checked only, like `beforeNavigate`: a plugin's
     // behaviour is the user's.
     screenshotCoveragePlugin: z
-      .custom<'react18' | 'react19' | ScreenshotCoveragePlugin>(
-        (value) => value === 'react18' || value === 'react19' || isScreenshotCoveragePlugin(value),
-        { message: "expected 'react18', 'react19', or a plugin object { name, locate(element), resolve?(raws, context) }" },
+      .custom<BuiltInScreenshotCoveragePlugin | ScreenshotCoveragePlugin>(
+        (value) => isBuiltInScreenshotCoveragePlugin(value) || isScreenshotCoveragePlugin(value),
+        {
+          message: `expected ${BUILT_IN_SCREENSHOT_COVERAGE_PLUGINS.map((name) => `'${name}'`).join(', ')}, `
+            + 'or a plugin object { name, locate(element), resolve(raws, context) }',
+        },
       )
       .optional(),
   })
