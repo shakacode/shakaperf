@@ -16,7 +16,7 @@ import {
   captureVisibilitySnapshot,
   formatVisibilityMap,
   VISIBILITY_MAP_FILENAME,
-} from '../../../bench/core/visibility-map';
+} from './visibility-map';
 import { withPlaywrightBrowser } from '../../../visreg/core/util/runPlaywright';
 import { withPreparedSide } from '../../../visreg/core/util/preparedSide';
 import { convertAbTestToScenario } from '../../../visreg/core/util/convertAbTestToScenario';

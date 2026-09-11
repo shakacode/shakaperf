@@ -14,7 +14,7 @@ import {
   type TestContext,
 } from '../../../stage/stage';
 import type { WorkerPool } from '../../../pipeline/worker-pool';
-import type { SourceAttribution } from '../../../bench/core/visibility-map';
+import type { SourceAttribution } from './visibility-map';
 import { CodeCoverageArtifactView } from './report';
 
 export interface CodeCoverageResult {
