@@ -9,7 +9,7 @@ import * as path from 'node:path';
 import chalk from 'chalk';
 import type { Browser, Page } from 'playwright-core';
 import { resolvePlaywrightOptions } from '../../../config';
-import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool';
+import type { WorkerPool } from '../../../pipeline/worker-pool';
 import type { TestContext } from '../../../stage/stage';
 import { StageFailureError, captureFailureScreenshot } from '../../../stage/stage-failure';
 import {
@@ -17,7 +17,7 @@ import {
   formatVisibilityMap,
   VISIBILITY_MAP_FILENAME,
 } from '../../../bench/core/visibility-map';
-import { createPlaywrightBrowser } from '../../../visreg/core/util/runPlaywright';
+import { withPlaywrightBrowser } from '../../../visreg/core/util/runPlaywright';
 import { withPreparedSide } from '../../../visreg/core/util/preparedSide';
 import { convertAbTestToScenario } from '../../../visreg/core/util/convertAbTestToScenario';
 import type { EngineBrowserConfig } from '../../../visreg/core/types';
@@ -31,43 +31,27 @@ import {
 import { resolveScreenshotCoveragePlugin } from './source-plugins';
 import type { CodeCoverageResult } from './stage';
 
-interface CodeCoverageSlotState extends PoolWorkerState {
-  codeCoverageBrowser?: Browser;
-}
-
-async function disposeCodeCoverageBrowser(state: Record<string, unknown>): Promise<void> {
-  const slot = state as CodeCoverageSlotState;
-  const browser = slot.codeCoverageBrowser;
-  if (!browser) return;
-  slot.codeCoverageBrowser = undefined;
-  await browser.close().catch(() => {});
-}
-
+// One browser per unit, launched from that unit's own resolved options and
+// disposed with it — the same lifecycle visreg gives each unit, so a per-test
+// launch override (`browser`, `args`) reaches the coverage run too.
 export async function runCodeCoverageStage(
   ctx: TestContext,
   workerPool: WorkerPool,
 ): Promise<CodeCoverageResult> {
-  return workerPool.submit(async (state) => {
-    const slot = workerPool.getWorkerState<CodeCoverageSlotState>(state, disposeCodeCoverageBrowser);
-    if (!slot.codeCoverageBrowser) {
-      // Launch options can't vary once the browser is up, so the shared
-      // per-slot browser takes the FILE-level visreg options; the per-scan
-      // context below re-resolves them per test.
-      slot.codeCoverageBrowser = await createPlaywrightBrowser(
-        engineConfig(resolvePlaywrightOptions(ctx.runtime.config, 'visreg'), ctx),
-      );
-    }
-    return collectCoverage(ctx, slot.codeCoverageBrowser);
-  }, { key: ctx.testAndViewportId });
+  return workerPool.submit(
+    () => withPlaywrightBrowser(engineConfig(ctx), (browser) => collectCoverage(ctx, browser)),
+    { key: ctx.testAndViewportId },
+  );
 }
 
-// The engine helpers read nothing but these two fields (see EngineBrowserConfig),
+// The engine helpers read nothing but these fields (see EngineBrowserConfig),
 // so the stage drives them directly instead of building a bridge config.
-function engineConfig(
-  playwrightOptions: ReturnType<typeof resolvePlaywrightOptions>,
-  ctx: TestContext,
-): EngineBrowserConfig {
-  return { playwrightOptions, headed: ctx.runtime.headed === true };
+function engineConfig(ctx: TestContext): EngineBrowserConfig {
+  return {
+    playwrightOptions: resolvePlaywrightOptions(ctx.config, 'visreg'),
+    headed: ctx.runtime.headed === true,
+    keepBrowserOpen: ctx.runtime.keepBrowserOpen === true,
+  };
 }
 
 /**
@@ -82,7 +66,7 @@ function engineConfig(
  * console. Failing twice for one cause would just double the noise.
  */
 async function collectCoverage(ctx: TestContext, browser: Browser): Promise<CodeCoverageResult> {
-  const config = engineConfig(resolvePlaywrightOptions(ctx.config, 'visreg'), ctx);
+  const config = engineConfig(ctx);
   const scenario = convertAbTestToScenario(ctx.test, ctx.controlURL, ctx.experimentURL, {
     controlURL: ctx.controlURL,
     experimentURL: ctx.experimentURL,
