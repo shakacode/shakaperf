@@ -477,14 +477,11 @@ describe('unselected categories', () => {
       result = await runPipeline(pipeline(), {
         cwd,
         config: buildAbTestsConfig({
-          shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, viewports: ['phone'] },
+          shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, viewports: ['phone'], timeoutMs: 1_000, retries: 0, retryDelay: 0 },
           visreg: { viewports: ['phone', 'desktop', 'tablet'] },
         }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
-        retries: 0,
-        retryDelay: 0,
-        timeoutMs: 1_000,
         tests: [homepage],
         categories: 'perf',
         skipReport: true,

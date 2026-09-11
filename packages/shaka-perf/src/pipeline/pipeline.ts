@@ -23,10 +23,8 @@ export interface PipelineWorkerPool {
   /**
    * Budgets this pool's tasks run under no matter what any test's config says.
    * Left unset by a measuring pipeline — there the config decides, per test.
-   * Set it where the pool's own topology dictates the answer: `troubleshoot`
-   * pins `{ timeoutMs: 0, retries: 0 }` because a timeout would abort the
-   * deliberate freezes and a retry would build a second set of browser windows
-   * that also never close.
+   * Set it where the pool's own topology dictates the answer; see
+   * `FROZEN_TRACK_LIMITS` in `troubleshoot/pipeline.ts`.
    */
   readonly limits?: Partial<TaskLimits>;
 }
