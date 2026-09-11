@@ -1,6 +1,6 @@
 ---
 name: shaka-perf-coverage
-description: Use when estimating Shaka Perf screenshot coverage from instrumented code coverage and audit visibility maps, comparing coverage with a saved baseline, or identifying duplicate A/B tests.
+description: Use to check if there are A/B tests for some scenario. Load this skill when asked about performance and visual regression testing.
 ---
 
 # shaka-perf-coverage
@@ -34,9 +34,7 @@ Two things must hold, and both are the user's to fix, not yours to work around:
 
 If either fails (the stage reports no `window.__coverage__`, or `save` says `impossible to estimate`), HALT and use the AskUserQuestion tool to offer the fixes: instrument the bundle (`babel-plugin-istanbul` / `nyc instrument` / `swc-plugin-coverage-instrument`); set `audit.screenshotCoveragePlugin` and audit a dev server; write a custom plugin; or manually tag the components. Wait for the answer.
 
-## The loop
-
-**save the before → make your change → re-audit → save the after → diff.**
+## Saving and diffing baselines
 
 ```
 node <skill-dir>/coverage-baseline.ts save "<relevant-sources>"
@@ -94,12 +92,3 @@ Each line is the source line, then its measurements as a trailing comment:
 - a MODULE-LEVEL statement gains letters when its chunk is fetched, not when the component renders — a `.diff` whose only changes sit outside function bodies moved no pixels
 - two runs against DIFFERENT SERVERS can disagree on which line a statement starts; when whole files show as rewritten, compare per-file counts, not lines
 
-## Coverage-based deduplication
-
-Two tests that appear together on every line and never apart walked the same code — likely one rendered state under two names.
-
-```
-    <Chip label={section.name} …    // A+B   |
-```
-
-A signal, not a verdict: different states can share code paths, so diff the captures before acting. Prefer making the states differ over deleting. A test that is the only letter on some line carries unique coverage — leave it.
