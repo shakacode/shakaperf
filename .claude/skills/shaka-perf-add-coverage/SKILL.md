@@ -1,6 +1,6 @@
 ---
 name: shaka-perf-add-coverage
-description: Use when source code is available and the user asks to add ShakaPerf A/B tests or improve A/B tests coverage for specified UI components or rendered states. Also use when asked to deduplicate A/B tests.
+description: Use when source code is available and the user asks to add ShakaPerf A/B tests or improve A/B tests coverage for specified UI components or rendered states. Also use when asked to deduplicate A/B tests. Also use when asked to measure FE performance.
 argument-hint: what elements to cover. Might be path or textual description of a component or a set of components.
 ---
 
