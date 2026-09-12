@@ -34,7 +34,14 @@ const configureClient = () => {
   }
   // In development (no BUNDLE_NAME set), keep all entries
 
- addCoverageInstrumentation(clientConfig);
+  // Opt-in: only the `code_coverage` audit stage reads `window.__coverage__`,
+  // and instrumenting triples this app's own JS — which every perf and audit
+  // number measured against this app would then carry. Set the flag for the
+  // build the coverage run audits; leave it unset everywhere else, including
+  // the twin-server production images.
+  if (process.env.SHAKA_PERF_INSTRUMENT_COVERAGE === '1') {
+    addCoverageInstrumentation(clientConfig);
+  }
 
   // Add Loadable Components plugin for code splitting
   const bundleName = process.env.BUNDLE_NAME || 'app';

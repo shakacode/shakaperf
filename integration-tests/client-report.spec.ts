@@ -82,10 +82,10 @@ test('audit filtered pages, render v2 client report, screenshot its states @audi
   // Expect a non-zero exit: the sabotaged products selector reliably errors
   // that one test. Swallow the throw and verify the artifacts below.
   let auditFailed = false;
-  await stage(`Running shaka-perf audit over the filtered ab-tests (${AUDIT_TEST_PATH_PATTERN}, ai_summary skipped, code_coverage on)`, () => {
+  await stage(`Running shaka-perf audit over the filtered ab-tests (${AUDIT_TEST_PATH_PATTERN}, ai_summary skipped)`, () => {
     try {
       execSync(
-        'yarn shaka-perf audit --skip-stages ai_summary --categories audit,accessibility,code_coverage ' +
+        'yarn shaka-perf audit --skip-stages ai_summary --categories audit,accessibility ' +
         `--testPathPattern ${JSON.stringify(AUDIT_TEST_PATH_PATTERN)}`,
         { cwd: DEMO_CWD, env, stdio: 'inherit', timeout: 40 * 60 * 1000 },
       );
@@ -114,23 +114,15 @@ test('audit filtered pages, render v2 client report, screenshot its states @audi
   )];
   expect(erroredTests, 'only the sabotaged products test may error').toEqual(['Products - Electronics Filter']);
 
-  // The @coverage suite builds the screenshot-coverage snapshot from its own
-  // development-bundle audit; this production-bundle run pins the other half.
-  // The demo's client bundle is istanbul-instrumented in every build (see its
-  // rspack config) and the stage FAILS a unit whose page carries no
-  // window.__coverage__, so these outcomes are `ok` and reference a map.
-  const coverageOutcomes = auditReport.tests.flatMap((t) => t.outcomes
-    .filter((outcome) => outcome.kind === 'ok' && outcome.stage === 'code_coverage'));
-  expect(coverageOutcomes.length, 'the filtered run must have code_coverage measurements')
-    .toBeGreaterThan(0);
-  for (const outcome of coverageOutcomes) {
-    const href = outcome.summary?.visibilityMapHref;
-    expect(href, 'code_coverage measurements must reference a visibility map').toBeTruthy();
-    expect(
-      fs.existsSync(path.join(AUDIT_RESULTS_DIR, href!)),
-      `visibility map must exist: ${href}`,
-    ).toBe(true);
-  }
+  // No code_coverage here: the stage needs `window.__coverage__`, which only
+  // an instrumented build carries, and instrumenting triples the app's JS —
+  // so this run measures the same uninstrumented production bundle the perf
+  // and audit suites do. The @coverage suite owns that path end to end,
+  // against a development build it instruments itself.
+  expect(
+    auditReport.tests.flatMap((t) => t.outcomes).filter((o) => o.stage === 'code_coverage' && o.kind !== 'skipped'),
+    'code_coverage must not run against the production bundle',
+  ).toEqual([]);
 
   // The client report is phone-framed: it renders one page per phone-class row
   // in report.json (selectViewportRows -> one page each). Pin that set, because

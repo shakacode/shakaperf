@@ -49,9 +49,14 @@ const CELL = /\b[A-Z]+=(\d+)%/g;
 test('audit a development bundle and snapshot screenshot coverage per source @coverage', async () => {
   test.setTimeout(30 * 60 * 1000);
 
+  // SHAKA_PERF_INSTRUMENT_COVERAGE is what puts `window.__coverage__` in the
+  // bundle (see demo-ecommerce/config/rspack/clientWebpackConfig.js). It is
+  // opt-in per build so the production images the other suites measure stay
+  // uninstrumented — this rebuild is the only one that asks for it.
   await stage('Rebuilding the experiment bundle in development mode', () => {
     execSync(
-      'yarn shaka-perf servers run-cmd experiment "NODE_ENV=development bin/shakapacker"',
+      'yarn shaka-perf servers run-cmd experiment '
+      + '"SHAKA_PERF_INSTRUMENT_COVERAGE=1 NODE_ENV=development bin/shakapacker"',
       { cwd: DEMO_CWD, env, stdio: 'inherit', timeout: 10 * 60 * 1000 },
     );
   });
@@ -70,6 +75,10 @@ test('audit a development bundle and snapshot screenshot coverage per source @co
     await waitForPort(EXPERIMENT_PORT);
   });
 
+  // Drop the tracked snapshot BEFORE anything can fail: a crash further down
+  // must leave it deleted in `git status`, not silently stale from the last
+  // run (the diff review would read an untouched snapshot as "unchanged").
+  if (fs.existsSync(SNAPSHOT_DIR)) fs.rmSync(SNAPSHOT_DIR, { recursive: true, force: true });
   if (fs.existsSync(AUDIT_RESULTS_DIR)) fs.rmSync(AUDIT_RESULTS_DIR, { recursive: true, force: true });
   await stage(`Running shaka-perf audit --categories code_coverage over ${TEST_FILTER}`, () => {
     execSync(
@@ -99,14 +108,20 @@ test('audit a development bundle and snapshot screenshot coverage per source @co
   }
 
   // Run from the demo dir so the script resolves audit-results/ and
-  // app/javascript/ relative to it, the way the skill documents.
+  // app/javascript/ relative to it, the way the skill documents: plain `node`,
+  // as a user types it. Under `yarn` this spec inherits NODE_OPTIONS carrying
+  // Yarn's PnP ESM loader, whose getFileFormat() has no `.mts` case and labels
+  // the script `commonjs` — Node then require()s the ES module and dies with
+  // ERR_REQUIRE_CYCLE_MODULE. The script needs only node builtins, so clear it.
   const saved = await stage('Saving the coverage snapshot (coverage-baseline.mts save)', () => execFileSync(
     'node', [COVERAGE_SCRIPT, 'save', RELEVANT_SOURCES],
-    { cwd: DEMO_CWD, env, encoding: 'utf-8', timeout: 2 * 60 * 1000 },
+    { cwd: DEMO_CWD, env: { ...env, NODE_OPTIONS: '' }, encoding: 'utf-8', timeout: 2 * 60 * 1000 },
   ));
   console.log(saved);
   expect(saved, 'save must fill the screenshot column').not.toContain('impossible to estimate');
-  const snapshotDir = path.join(DEMO_CWD, /^saved (\S+) /m.exec(saved)![1]);
+  const savedTo = /^saved (\S+) /m.exec(saved);
+  expect(savedTo, 'save must report where it wrote the snapshot').not.toBeNull();
+  const snapshotDir = path.join(DEMO_CWD, savedTo![1]);
 
   const legend = fs.readFileSync(path.join(snapshotDir, 'legend.txt'), 'utf-8');
   const letters = [...legend.matchAll(/^[A-Z]+ = (.+)$/gm)].map((m) => m[1]).sort();
