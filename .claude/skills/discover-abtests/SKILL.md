@@ -183,7 +183,7 @@ After completing desktop probing (A1-A7), resize the browser to mobile width and
 
 ### Step B — Write TODO comments with all probing findings
 
-Read `references/patterns.md` (per-scenario code patterns) **and** `../assess-abtest-quality/SKILL.md` (the non-negotiable test code rules) before writing any test code. The rules in one line: tests must **fail loudly and run linearly** — no `try/catch` swallowing, no loops, no `if`-branching on page state (assert with `waitForSelector`/`waitForURL` instead), wait for conditions not the clock, deterministic inputs, each test independent.
+Read `references/patterns.md` (per-scenario code patterns) **and** the test code rules in https://github.com/shakacode/shakaperf/blob/main/writing-good-ab-tests.md before writing any test code. The rules in one line: tests must **fail loudly and run linearly** — no `try/catch` swallowing, no loops, no `if`-branching on page state (assert with `waitForSelector`/`waitForURL` instead), wait for conditions not the clock, deterministic inputs, each test independent.
 
 Create/open the `.abtest.ts` file for this page (e.g., `homepage.abtest.ts`). Write `abTest()` stubs with `// TODO:` comments describing each planned test. Document ALL findings from probing so nothing is lost:
 

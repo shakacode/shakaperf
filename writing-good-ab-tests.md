@@ -1,6 +1,6 @@
 # Writing Good AB Tests
 
-Canonical list of test code rules. Both `discover-abtests` (when writing new tests) and this skill (when grading existing tests) read from this file.
+Canonical list of test code rules. The `discover-abtests` skill (when writing new tests) and the `assess-abtest-quality` skill (when grading existing tests) both read from this file.
 
 A visreg test exists to **fail loudly** when the UI changes. Control flow that hides "the element wasn't there" or "the action didn't happen" defeats the whole point — a green test that silently did nothing is worse than no test. So:
 
@@ -10,7 +10,7 @@ A visreg test exists to **fail loudly** when the UI changes. Control flow that h
    - Don't loop to "click through" N items — that's N separate tests, or one snapshot of the container. Split it.
    - Never write a `while (!atBottom)` scroll loop — it hangs in this harness (`window.scrollY` doesn't update in the Playwright context). Use `scrollIntoViewIfNeeded()` on a known bottom element (see the lazy-load pattern in `discover-abtests/references/patterns.md`).
 
-3. **No `if` — assert the expectation instead.** Don't branch on page state (`if (await locator.isVisible())`, `if (await locator.count())`, `if (el) …`). A branch means the test quietly takes the "do nothing" path *exactly when* the thing you're testing has regressed. State what you expect and let Playwright's auto-waiting throw when it's wrong — these are your assertions:
+3. **No `if` — assert the expectation instead.** Don't branch on page state (`if (await locator.isVisible())`, `if (await locator.count())`, `if (el) …`). A branch means the test quietly takes the "do nothing" path *exactly when* the thing you're testing has regressed. State what you expect and let Playwright's auto-waiting throw when it's wrong — these are your assertions (an `if` whose only body is a `throw` is an assertion too, not a branch):
    - `await page.waitForSelector(sel, { state: 'visible' })` — the element must appear.
    - `await page.waitForURL('**/path')` — navigation must happen.
    - Need different behaviour per viewport? Don't branch on `viewport.label` — write a separate `abTest` scoped to that viewport via `config: { visreg: { viewports: [...] } }` (see "Viewport-conditional selectors" in `patterns.md`). Each test stays linear.
@@ -177,8 +177,8 @@ This is causal waiting, not defensive waiting: the remove request is invalid unt
 
 ## Do not hide app bugs. Fail loudly.
 
-Flakiness can eihter be a test flaw, or an app bug. Never dence around the latter. Do not patch the app to stabilize it,
-add expectations and create a bug with reproduction steps `shaka-perf --categories=visreg --filter="<Test Name>" --burn 5`
+Flakiness can either be a test flaw, or an app bug. Never dance around the latter. Do not patch the app to stabilize it,
+add expectations and create a bug with reproduction steps `shaka-perf compare --categories=visreg --filter="<Test Name>" --burn 5`
 
 ### BAD — pin the page, hide the highlight, re-pin the strip until the screenshots match
 
@@ -522,7 +522,7 @@ abTest('Sidebar Section Tab Click', {
   visregSelectors: [SIDEBAR_NAV], // the sidebar means nothing outside its menu
 }, async ({ page }) => {
   await page.locator(SIDEBAR_NAV).getByRole('tab', { name: 'Sides' }).click();
-  /* page stabilization is ommitted */
+  /* page stabilization is omitted */
 });
 ```
 
@@ -534,7 +534,7 @@ abTest('Sidebar Section Tab Click', {
   visregSelectors: ['.pm-menus-bg'],
 }, async ({ page }) => {
   await page.locator('.pm-menu-sidebar').getByRole('tab', { name: 'Sides' }).click();
-  /* page stabilization is ommitted */
+  /* page stabilization is omitted */
 });
 ```
 
@@ -580,7 +580,7 @@ abTest('Sign in from menu', {
 }, async ({ page }) => {
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.locator(SIGN_IN_DIALOG).waitFor({ state: 'visible' });
-  /* page stabilization is ommitted */
+  /* page stabilization is omitted */
 });
 
 abTest('Sign in from cart', {
@@ -589,7 +589,7 @@ abTest('Sign in from cart', {
 }, async ({ page }) => {
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.locator(SIGN_IN_DIALOG).waitFor({ state: 'visible' });
-  /* page stabilization is ommitted */
+  /* page stabilization is omitted */
 });
 ```
 
@@ -607,7 +607,7 @@ abTest('Sign-in dialog', {
 }, async ({ page }) => {
   await page.getByRole('button', { name: 'Sign in' }).click();
   const dialog = page.locator(SIGN_IN_DIALOG);
-  /* page stabilization is ommitted */
+  /* page stabilization is omitted */
 });
 ```
 
@@ -624,7 +624,7 @@ abTest('Sign-in dialog', {
 }, async ({ page }) => {
   await page.getByRole('button', { name: 'Sign in' }).click();
   const dialog = page.locator(SIGN_IN_DIALOG);
-  /* page stabilization is ommitted */
+  /* page stabilization is omitted */
 });
 ```
 
@@ -657,7 +657,7 @@ When you add a variant of an existing test, rename the original rather than exte
 
 ## Declare the viewport you need; never resize mid-test
 
-Dynamic resizing causes all kinds of flakiness and kill LH measurements.
+Dynamic resizing causes all kinds of flakiness and kills Lighthouse measurements.
 
 ### BAD — grow the viewport at runtime to trip lazy loading
 
