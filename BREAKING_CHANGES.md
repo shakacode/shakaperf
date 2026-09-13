@@ -12,7 +12,7 @@ version being released and updates the "Current version" line at the bottom.
 
 ---
 
-## Unreleased
+## 0.2.6 — 2026-09-13
 
 ### `audit` no longer collects JS coverage — the opt-in `code_coverage` category does
 
@@ -530,5 +530,5 @@ Notes:
 ---
 
 <!-- deploy: keep this line last; /deploy updates the version on publish -->
-Current version: shaka-perf 0.2.5, shaka-shared 0.2.4 (breaking changes under
+Current version: shaka-perf 0.2.6, shaka-shared 0.2.6 (breaking changes under
 **Unreleased** ship in the next release).
