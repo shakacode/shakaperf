@@ -17,6 +17,12 @@ export interface ComparisonSide {
   page: PlaywrightPage;
   /** Close this side's context. Best-effort; safe if it's already gone. */
   dispose: () => Promise<void>;
+  /**
+   * Set on the other sides by the first side to fail: the unit is settled,
+   * and a cut-off side that fails too takes no screenshot and reports nothing
+   * — see `withPreparedSide`.
+   */
+  cutOff?: boolean;
 }
 
 /**

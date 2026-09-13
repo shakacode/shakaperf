@@ -123,6 +123,14 @@ export async function withPreparedSide<T>(
       return await use(side);
     } catch (err) {
       attachLatestTestAnnotation(err, getLatestTestAnnotation(err));
+      // Cut off: the sibling failed first, and it owns the one screenshot, the
+      // one reported error, and the teardown. Resolve rather than reject —
+      // rejecting would fail `Promise.all` under its capture, while this value
+      // is never read: the winner's throw is what settles `Promise.all`.
+      // Whatever this side saw is lost, by design: the same error, a moment later.
+      if (side?.cutOff) return undefined as T;
+      // First failure wins the unit: cut the others off before taking the shot.
+      if (side && !config.keepBrowserOpen) for (const other of activeSides) if (other !== side) other.cutOff = true;
       const failure = side && activeSides.has(side) && captureFailure
         ? await captureFailure(err, side.page, isControl)
         : err;
