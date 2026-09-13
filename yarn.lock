@@ -11662,7 +11662,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"shaka-shared@npm:0.2.4, shaka-shared@workspace:^, shaka-shared@workspace:packages/shaka-shared":
+"shaka-shared@npm:0.2.4":
+  version: 0.2.4
+  resolution: "shaka-shared@npm:0.2.4"
+  dependencies:
+    chalk: "npm:^4.1.2"
+  peerDependencies:
+    playwright-core: ^1.50.0
+  checksum: 10c0/4227dd97978b2febdd026ccb7900b0555bd01abeafbcfdfc21bcc63b7778f7c99fa03e62c70d4e15e802c7ff0eabb9e67c7dab73e46d74b9496392820e361954
+  languageName: node
+  linkType: hard
+
+"shaka-shared@workspace:^, shaka-shared@workspace:packages/shaka-shared":
   version: 0.0.0-use.local
   resolution: "shaka-shared@workspace:packages/shaka-shared"
   dependencies:
