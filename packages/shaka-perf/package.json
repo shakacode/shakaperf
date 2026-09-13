@@ -147,7 +147,7 @@
     "portfinder": "^1.0.32",
     "race-cancellation": "^0.4.1",
     "react": "^19.0.0",
-    "shaka-shared": "0.2.4",
+    "shaka-shared": "0.3.0",
     "sharp": "^0.35.4",
     "tesseract.js": "^7.0.0",
     "tslib": "^2.2.0",

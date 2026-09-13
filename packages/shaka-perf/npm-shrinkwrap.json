@@ -1,12 +1,12 @@
 {
   "name": "shaka-perf",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
       "name": "shaka-perf",
-      "version": "0.2.5",
+      "version": "0.3.0",
       "license": "SEE LICENSE IN LICENSE.md",
       "dependencies": {
         "@axe-core/playwright": "^4.11.3",
@@ -44,7 +44,7 @@
         "portfinder": "^1.0.32",
         "race-cancellation": "^0.4.1",
         "react": "^19.0.0",
-        "shaka-shared": "0.2.4",
+        "shaka-shared": "0.3.0",
         "sharp": "^0.35.4",
         "tesseract.js": "^7.0.0",
         "tslib": "^2.2.0",
@@ -4696,9 +4696,9 @@
       "license": "ISC"
     },
     "node_modules/shaka-shared": {
-      "version": "0.2.4",
-      "resolved": "https://registry.npmjs.org/shaka-shared/-/shaka-shared-0.2.4.tgz",
-      "integrity": "sha512-75uiuItmmLZcNquItyJP++meXuxB7NLVrE0mwajrxF4jCdTWpJgcNECIYeBG6Mb5YGjdn3isx6gHR2U3BkkXPA==",
+      "version": "0.3.0",
+      "resolved": "https://registry.npmjs.org/shaka-shared/-/shaka-shared-0.3.0.tgz",
+      "integrity": "sha512-tfWD2fbZh+jOfHo8RuQog3koUI7LQ9sPTvcEums+JZMqQhFpvVCBuS8+GX8ezjkte1ifp7bcBZKHGFzUKSBALA==",
       "license": "SEE LICENSE IN LICENSE.md",
       "dependencies": {
         "chalk": "^4.1.2"
