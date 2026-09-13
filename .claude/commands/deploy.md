@@ -24,7 +24,7 @@ are not restricted.
 
    Start from a fresh `main` (`git checkout main && git pull`) and create the release branch: `git checkout -b deploy/<package>@<version>` (use the shared version when several ship together).
 
-2. For each package, read its `packages/<name>/package.json` to get the current version, then bump the patch version. When `shaka-shared` and `shaka-perf` ship together, bump `shaka-perf`'s patch and set `shaka-shared` to the same version (rule 6). Leave `shaka-perf`'s `"shaka-shared"` pin alone — step 5c bumps it.
+2. For each package, read its `packages/<name>/package.json` to get the current version, then bump the patch version. When `shaka-shared` and `shaka-perf` ship together, bump `shaka-perf`'s patch and set `shaka-shared` to the same version (rule 6). Leave `shaka-perf`'s `"shaka-shared"` pin alone — step 5c bumps it. Then run `yarn install` and commit the `yarn.lock` change together with the bump: the exact pin only resolves to the workspace while the workspace version matches it, so after the bump Yarn fetches the old `shaka-shared` from npm and splits its lock entry. Without that commit, `yarn install --immutable` in the publish workflow rejects the tag (this failed the `shaka-shared@0.3.0` publish once).
 
 3. Update [BREAKING_CHANGES.md](../../BREAKING_CHANGES.md): if its **Unreleased** section has any entries, rename that heading to `## <package>@<version>` (or the shared version being released) with today's date, and update the "Current version:" line at the bottom to the versions just bumped. If **Unreleased** is empty, only update the "Current version:" line. Include this edit in the version-bump commit.
 
@@ -42,7 +42,7 @@ are not restricted.
 5. If `shaka-shared` is being deployed:
    a. Create the `shaka-shared@<version>` tag on the `main` merge commit and push it
    b. Wait for the publish workflow to complete successfully
-   c. On a second branch (`deploy/shaka-perf@<version>-shrinkwrap`), bump `shaka-perf`'s `"shaka-shared"` exact pin to `<new version>` (no `^` or `~`), then regenerate `packages/shaka-perf/npm-shrinkwrap.json` (`yarn install`). Without the dependency bump the pin silently stays on the old version; before `shaka-shared` is published the new version can't resolve.
+   c. On a second branch (`deploy/shaka-perf@<version>-shrinkwrap`), bump `shaka-perf`'s `"shaka-shared"` exact pin to `<new version>` (no `^` or `~`), then regenerate `packages/shaka-perf/npm-shrinkwrap.json` (`yarn install`). Without the dependency bump the pin silently stays on the old version; before `shaka-shared` is published the new version can't resolve. If npm reports `notarget` for the version you just published, the registry is still propagating: wait a minute and rerun `yarn install` (an `npm view shaka-shared version` that still shows the old version means the same thing).
 
       Inspect the refresh BEFORE committing:
 
