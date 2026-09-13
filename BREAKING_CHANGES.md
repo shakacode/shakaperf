@@ -14,6 +14,23 @@ version being released and updates the "Current version" line at the bottom.
 
 ## Unreleased
 
+### `--full-report-zip` removed from `compare` and `audit`
+
+The opt-in bundle of `full-report.html` plus its artifact directories into
+`<results>/full-report.zip` is gone, along with the `archiver` dependency that
+produced it. Packaging a results directory is outside shaka-perf's job; the
+results root is a plain directory, so zip it with the tooling you already have.
+
+```bash
+# BEFORE
+shaka-perf audit --url https://example.com/ --full-report-zip
+```
+```bash
+# AFTER
+shaka-perf audit --url https://example.com/
+(cd audit-results && zip -r ../full-report.zip . -x self-contained-performance-report.html)
+```
+
 ### `audit` no longer collects JS coverage — the opt-in `code_coverage` category does
 
 Coverage (`coverage.json`, `.nyc_output/`, and the new `visibility-map.txt`) is

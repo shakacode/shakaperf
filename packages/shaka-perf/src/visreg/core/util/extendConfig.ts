@@ -5,8 +5,9 @@
  * License in LICENSE.md.
  */
 
+import { randomUUID } from 'node:crypto';
+import os from 'node:os';
 import path from 'node:path';
-import temp from 'temp';
 import type { RuntimeConfig, VisregConfig } from '../types';
 
 function extendConfig (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
@@ -56,7 +57,7 @@ function artifactPaths (config: Partial<RuntimeConfig>, userConfig: VisregConfig
 }
 
 function tempCompareConfigPath (config: Partial<RuntimeConfig>) {
-  config.tempCompareConfigFileName = temp.path({ suffix: '.json' });
+  config.tempCompareConfigFileName = path.join(os.tmpdir(), `shaka-perf-compare-${randomUUID()}.json`);
 }
 
 export default extendConfig;

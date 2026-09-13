@@ -11,7 +11,7 @@ import type { PipelineRunResult } from './runner';
 /**
  * Print the human-facing report paths for a completed pipeline run, colored for
  * the terminal. Shared by every command that runs a pipeline (compare, audit, …)
- * so they stay in lockstep — including the full-report.zip bundle line.
+ * so they stay in lockstep.
  *
  * chalk auto-disables color when stdout isn't a TTY (piped output, CI), so this
  * is safe to call unconditionally.
@@ -25,11 +25,6 @@ export function printReportSummary(result: PipelineRunResult): void {
     console.log(
       chalk.bold.magenta('Full report (for you): ') + chalk.underline(result.fullReportPath),
     );
-    if (result.fullReportZipPath) {
-      console.log(
-        chalk.bold.green('Full report bundle (zip): ') + chalk.underline(result.fullReportZipPath),
-      );
-    }
   } else {
     console.log(
       chalk.yellow('\n--skip-report set: engine artifacts written, top-level report skipped.'),
