@@ -42,7 +42,6 @@ import {
   type ReportOutcome,
   type TestResult,
 } from './report';
-import { writeFullReportArchive } from './report-archive';
 import {
   persistedOutcomeInScope,
   resolveViewportsForTest,
@@ -294,11 +293,6 @@ export interface PipelineRunResult {
   /** Local full report intended for deeper debugging. */
   fullReportPath: string;
   /**
-   * The full report + its artifacts bundled into `<resultsRoot>/full-report.zip`,
-   * or `undefined` if no report was written (`--skip-report`) or zipping failed.
-   */
-  fullReportZipPath?: string;
-  /**
    * Directory the pipeline wrote per-test artifacts into (`<cwd>/<name>-results`).
    * Exposed so CLI wrappers can post-process side-channel artifacts the
    * runtime doesn't itself surface — e.g. the audit command's istanbul
@@ -373,12 +367,6 @@ export interface RuntimeOptions {
   readonly keepBrowserOpen?: boolean | undefined;
   /** Debug port per kept browser; no port is opened without it. */
   readonly cdpPorts?: CdpPorts | undefined;
-  /**
-   * Bundle the full report + all its artifacts into `full-report.zip` after a
-   * run that produced a report. Opt-in (the archive can be large) — off by
-   * default; driven by the `--full-report-zip` CLI flag on both pipelines.
-   */
-  readonly fullReportZip?: boolean | undefined;
   /**
    * `--burn <n>`: run every test n times as independent instances, retries off
    * (see `burn.ts`). Covers the framework's crash-retries, forced to 0 by
@@ -835,26 +823,11 @@ async function runConfiguredPipelineWithSelection(
     runtime.config,
   );
 
-  // Bundle the full report + its artifacts into full-report.zip when opted in
-  // via `--full-report-zip` (the archive can be large, so it's off by default).
-  // Non-fatal: a zip failure must not sink a run whose report is already on disk.
-  let fullReportZipPath: string | undefined;
-  if (runtime.fullReportZip) {
-    try {
-      const { zipPath, bytes } = await writeFullReportArchive(resultsRoot);
-      fullReportZipPath = zipPath;
-      console.log(`    wrote ${zipPath} (${(bytes / 1024 / 1024).toFixed(1)} MB)`);
-    } catch (err) {
-      console.warn(`    warning: could not write full-report.zip: ${(err as Error).message}`);
-    }
-  }
-
   return {
     testResults: data.tests,
     reportPath,
     shortReportPath: selfContainedPath,
     fullReportPath: fullPath,
-    fullReportZipPath,
     resultsRoot,
     ...summarizeFailures(data),
   };

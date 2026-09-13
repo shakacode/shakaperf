@@ -54,7 +54,6 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
     .option('--skip-report', 'Run the audit engine but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
     .option('--keep-old-results', 'Do not wipe audit-results/ before running. Engines still overwrite the files they produce, but unrelated artifacts from a prior run survive instead of being cleared.', false)
     .option('--debug-show-all-frames', 'Diagnostics: also render the FULL, non-deduped screencast timeline alongside the normal (deduped) one. Every synced frame is shown, each annotated with the pixel diff vs the previous frame (the signal the dedupe uses to decide what to drop). Off by default — produces a much heavier report.', false)
-    .option('--full-report-zip', 'After the run, bundle the full report and all its artifacts into full-report.zip. Off by default — the archive can be large.', false)
     .option('--headed', 'Launch the measurement browser headed (visible window) instead of headless. Off by default.', false)
     .option('--burn <number>', BURN_OPTION_DESCRIPTION)
     .action(async function (this: Command) {
@@ -99,7 +98,6 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
           skipReport: opts.skipReport === true,
           keepOldResults: opts.keepOldResults === true,
           debugShowAllFrames: opts.debugShowAllFrames === true,
-          fullReportZip: opts.fullReportZip === true,
           headed: opts.headed === true,
           burn: parseBurnOption(opts.burn),
         });

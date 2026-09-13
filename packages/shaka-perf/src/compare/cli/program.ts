@@ -40,7 +40,6 @@ export function createCompareCommand(
     .option('--report-only', 'Re-render the HTML report from existing compare-results/ stage outcomes without re-running engines. Complements --skip-report for sharded CI assembly.', false)
     .option('--skip-report', 'Run the engines but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
     .option('--keep-old-results', 'Do not wipe compare-results/ before running. Engines still overwrite the files they produce, but unrelated artifacts from a prior run survive instead of being cleared.', false)
-    .option('--full-report-zip', 'After the run, bundle the full report and all its artifacts into full-report.zip. Off by default — the archive can be large.', false)
     .option('--burn <number>', BURN_OPTION_DESCRIPTION)
     .action(async function (this: Command) {
       const opts = this.opts();
@@ -74,7 +73,6 @@ export function createCompareCommand(
           reportOnly: opts.reportOnly === true,
           skipReport: opts.skipReport === true,
           keepOldResults: opts.keepOldResults === true,
-          fullReportZip: opts.fullReportZip === true,
           headed: opts.headed === true,
           burn,
         });
