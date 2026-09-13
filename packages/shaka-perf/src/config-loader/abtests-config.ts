@@ -8,6 +8,7 @@
 import * as path from 'path';
 import { findConfigFile } from './find-config-file';
 import { loadConfigFile } from './load-config-file';
+import { assertCompatibleSharedVersion } from './shared-version';
 
 export const ABTESTS_CONFIG_FILENAMES = ['abtests.config.ts', 'abtests.config.js'];
 
@@ -19,5 +20,6 @@ export async function loadAbTestsConfig(
   configPath: string,
 ): Promise<Record<string, unknown>> {
   const absolute = path.resolve(configPath);
+  assertCompatibleSharedVersion(absolute);
   return loadConfigFile(absolute);
 }

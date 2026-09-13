@@ -632,6 +632,12 @@ describe('per-side visreg failures', () => {
       config: { visreg: { viewports: ['tablet'] } },
     };
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-visreg-side-'));
+    // Loading a user config asserts the shaka-shared next to it is new enough.
+    fs.mkdirSync(path.join(cwd, 'node_modules'));
+    fs.symlinkSync(
+      path.dirname(require.resolve('shaka-shared/package.json')),
+      path.join(cwd, 'node_modules', 'shaka-shared'),
+    );
     const configPath = path.join(cwd, 'abtests.config.js');
     fs.writeFileSync(
       configPath,

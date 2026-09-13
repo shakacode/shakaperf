@@ -14,7 +14,7 @@ are not restricted.
 3. **Wait for each publish workflow to succeed** before pushing tags for dependent packages. Use `gh run watch <id> --exit-status` to wait.
 4. **One version bump per package per deploy.** Don't re-bump a version that was already tagged — bump to a new version instead.
 5. **Stamp BREAKING_CHANGES.md.** If it has an **Unreleased** section with entries, this release ships breaking changes — record the released version there (see step 3).
-6. **Keep `shaka-perf` and `shaka-shared` on the same version only when they are published together** — a solo release bumps just that package and lets the versions diverge. Shipping them together again re-aligns them: the one left behind jumps straight to the shared version (e.g. `shaka-shared` 0.2.1 → 0.2.4).
+6. **Keep `shaka-perf` and `shaka-shared` on the same version only when they are published together** — a solo release bumps just that package and lets the versions diverge. Shipping them together again re-aligns them: the one left behind jumps straight to the shared version (e.g. `shaka-shared` 0.2.1 → 0.2.4). **Ship `shaka-shared` together with `shaka-perf`:** the shared package requires a running ShakaPerf version at least as new as its own. ShakaPerf-only releases remain allowed.
 7. **Surface breaking changes in the release.** When the Unreleased section had entries, annotate that package's tag with the list of them so the change is visible at release time, not just in the file (see steps 5–6). The list is mechanical — one line per `###` heading of the stamped section, no rewording, no verbatim body text. Tag a release with no breaking changes as a lightweight tag as before.
 8. **STOP THE DEPLOYMENT if the shrinkwrap refresh moves anything but the released versions.** A tag ships whatever `npm install` re-resolved (step 5c) straight to consumers, unreviewed. Report it and wait for the human — don't commit, don't tag, don't fix it.
 
@@ -24,7 +24,7 @@ are not restricted.
 
    Start from a fresh `main` (`git checkout main && git pull`) and create the release branch: `git checkout -b deploy/<package>@<version>` (use the shared version when several ship together).
 
-2. For each package, read its `packages/<name>/package.json` to get the current version, then bump the patch version. When `shaka-shared` and `shaka-perf` ship together, bump `shaka-perf`'s patch and set `shaka-shared` to the same version (rule 6). Leave `shaka-perf`'s `"shaka-shared"` range alone — step 5c bumps it.
+2. For each package, read its `packages/<name>/package.json` to get the current version, then bump the patch version. When `shaka-shared` and `shaka-perf` ship together, bump `shaka-perf`'s patch and set `shaka-shared` to the same version (rule 6). Leave `shaka-perf`'s `"shaka-shared"` pin alone — step 5c bumps it.
 
 3. Update [BREAKING_CHANGES.md](../../BREAKING_CHANGES.md): if its **Unreleased** section has any entries, rename that heading to `## <package>@<version>` (or the shared version being released) with today's date, and update the "Current version:" line at the bottom to the versions just bumped. If **Unreleased** is empty, only update the "Current version:" line. Include this edit in the version-bump commit.
 
@@ -42,7 +42,7 @@ are not restricted.
 5. If `shaka-shared` is being deployed:
    a. Create the `shaka-shared@<version>` tag on the `main` merge commit and push it
    b. Wait for the publish workflow to complete successfully
-   c. On a second branch (`deploy/shaka-perf@<version>-shrinkwrap`), bump `shaka-perf`'s `"shaka-shared"` range to `^<new version>`, then regenerate `packages/shaka-perf/npm-shrinkwrap.json` (`yarn install`). Without the range bump the pin silently stays on the old version; before `shaka-shared` is published the range can't resolve.
+   c. On a second branch (`deploy/shaka-perf@<version>-shrinkwrap`), bump `shaka-perf`'s `"shaka-shared"` exact pin to `<new version>` (no `^` or `~`), then regenerate `packages/shaka-perf/npm-shrinkwrap.json` (`yarn install`). Without the dependency bump the pin silently stays on the old version; before `shaka-shared` is published the new version can't resolve.
 
       Inspect the refresh BEFORE committing:
 
