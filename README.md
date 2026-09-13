@@ -54,6 +54,11 @@ graph TD
 6. [WIP] **Auto-bisect regressions**. Point it at a commit range, it finds exactly which commit caused the regression. No manual binary search.
 8. [WIP] **Actually convenient Accessibility testing**. Doesn't just dump violations - maintains a structured allow-list baseline. CI fails only on new issues.
 
+## Instrumented screenshot coverage makes AI generated tests work
+
+`shaka-perf init` installs Claude Code skills generating hi-fi tests. If any component in the app changes no matter how deap in the tree, shaka-perf will screenshot it and alert you. This works without needing you to polish the tests manually.
+![Code coverage vs instrumented screenshot coverage](./docs/screenshot-coverage.svg)
+
 ## TODO: host a demo with all the performance artifacts (Combine with RSC demo by Abanoub)
 
 ## Packages

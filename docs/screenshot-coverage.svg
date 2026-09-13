@@ -1,0 +1,222 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1380" height="740" viewBox="0 0 1380 740" font-family="Inter, Helvetica, Arial, sans-serif" font-size="13" fill="#1f2937">
+  <defs>
+    <style>
+      .h1 { font-size: 26px; font-weight: 700; }
+      .sub { font-size: 14px; fill: #475569; }
+      .h2 { font-size: 18px; font-weight: 700; }
+      .body { font-size: 13px; }
+      .small { font-size: 11px; fill: #64748b; }
+      .code { font-family: "JetBrains Mono", Menlo, Consolas, monospace; font-size: 12px; }
+      .cell { font-family: "JetBrains Mono", Menlo, Consolas, monospace; font-size: 11px; }
+      .badge { font-size: 34px; font-weight: 800; }
+      .panel { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 1; }
+      .green { fill: #16a34a; }
+      .red { fill: #dc2626; }
+      .amber { fill: #d97706; }
+      .bold { font-weight: 700; }
+      .ui { font-family: -apple-system, "SF Pro Text", Inter, Helvetica, Arial, sans-serif; }
+      .tag { font-size: 10px; font-weight: 700; fill: #ffffff; }
+    </style>
+    <marker id="arrow-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/></marker>
+    <marker id="arrow-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d97706"/></marker>
+    <marker id="arrow-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/></marker>
+    <marker id="arrow-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#bfdbfe"/>
+      <stop offset="1" stop-color="#e0e7ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="-2" stdDeviation="3" flood-color="#000" flood-opacity="0.18"/>
+    </filter>
+
+    <!-- ===== phone mock: 200 x 400 frame, page tail below to y=480 ===== -->
+    <g id="phone" class="ui">
+      <!-- the page continues below the fold (drawn first, behind the frame) -->
+      <rect x="6" y="404" width="188" height="60" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-dasharray="3 3"/>
+      <g opacity="0.75">
+        <rect x="14" y="404" width="82" height="18" fill="#ffffff" stroke="#e5e7eb"/>
+        <text x="20" y="416" font-size="9" font-weight="700" fill="#111827">$75</text>
+        <rect x="104" y="404" width="82" height="18" fill="#ffffff" stroke="#e5e7eb"/>
+        <text x="110" y="416" font-size="9" font-weight="700" fill="#111827">$99</text>
+      </g>
+      <path d="M6,436 H194 V458 a6,6 0 0 1 -6,6 H12 a6,6 0 0 1 -6,-6 Z" fill="#1e293b"/>
+      <text x="16" y="453" font-size="8" fill="#94a3b8">About    Help    Returns    Contact    © Shoppy</text>
+
+      <!-- frame + screen -->
+      <rect x="0" y="0" width="200" height="400" rx="26" fill="#111827"/>
+      <rect x="6" y="6" width="188" height="388" rx="21" fill="#ffffff"/>
+      <clipPath id="screen"><rect x="6" y="6" width="188" height="388" rx="21"/></clipPath>
+      <g clip-path="url(#screen)">
+        <!-- status bar -->
+        <text x="18" y="22" font-size="9" font-weight="700">9:41</text>
+        <rect x="160" y="13" width="18" height="9" rx="2" fill="none" stroke="#111827" stroke-width="1"/>
+        <rect x="162" y="15" width="12" height="5" rx="1" fill="#111827"/>
+        <rect x="150" y="14" width="7" height="7" fill="none"/>
+        <!-- nav -->
+        <line x1="6" y1="58" x2="194" y2="58" stroke="#e5e7eb"/>
+        <rect x="16" y="37" width="14" height="2" fill="#111827"/>
+        <rect x="16" y="42" width="14" height="2" fill="#111827"/>
+        <rect x="16" y="47" width="14" height="2" fill="#111827"/>
+        <text x="184" y="47" font-size="10" font-weight="800" text-anchor="end">Logo</text>
+        <!-- hero -->
+        <rect x="14" y="68" width="172" height="88" rx="8" fill="url(#hero)"/>
+        <text x="100" y="110" font-size="14" font-weight="800" fill="#1e3a8a" text-anchor="middle">Shoppy Shop Store</text>
+        <text x="100" y="127" font-size="9" fill="#1e40af" text-anchor="middle">we sell stuff, mostly shoes</text>
+        <text x="14" y="171" font-size="8" font-weight="700" fill="#64748b">ProductGrid</text>
+        <!-- product cards row 1 -->
+        <rect x="14" y="176" width="82" height="118" rx="6" fill="#ffffff" stroke="#e5e7eb"/>
+        <rect x="14" y="176" width="82" height="72" rx="6" fill="#e5e7eb"/>
+        <ellipse cx="55" cy="214" rx="26" ry="10" fill="#cbd5e1"/>
+        <text x="20" y="266" font-size="9" fill="#111827">Runner X</text>
+        <text x="20" y="282" font-size="9" font-weight="700" fill="#111827">$89</text>
+        <rect x="104" y="176" width="82" height="118" rx="6" fill="#ffffff" stroke="#e5e7eb"/>
+        <rect x="104" y="176" width="82" height="72" rx="6" fill="#e5e7eb"/>
+        <ellipse cx="145" cy="214" rx="26" ry="10" fill="#cbd5e1"/>
+        <text x="110" y="266" font-size="9" fill="#111827">Trail Pro</text>
+        <text x="110" y="282" font-size="9" font-weight="700" fill="#111827">$120</text>
+        <!-- row 2, cut by the sticky bar -->
+        <rect x="14" y="304" width="82" height="118" rx="6" fill="#ffffff" stroke="#e5e7eb"/>
+        <rect x="14" y="304" width="82" height="72" rx="6" fill="#e5e7eb"/>
+        <rect x="104" y="304" width="82" height="118" rx="6" fill="#ffffff" stroke="#e5e7eb"/>
+        <rect x="104" y="304" width="82" height="72" rx="6" fill="#e5e7eb"/>
+        <ellipse cx="55" cy="342" rx="26" ry="10" fill="#cbd5e1"/>
+        <ellipse cx="145" cy="342" rx="26" ry="10" fill="#cbd5e1"/>
+        <text x="20" y="393" font-size="9" fill="#111827">Street Lo</text>
+        <text x="110" y="393" font-size="9" fill="#111827">Trail Lite</text>
+        <!-- CartButton: sticky bar -->
+        <rect x="14" y="342" width="172" height="34" rx="17" fill="#111827"/>
+        <text x="100" y="364" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">CartButton · Add to cart</text>
+        <!-- cookie banner on top of it -->
+        <rect x="6" y="316" width="188" height="78" fill="#ffffff" fill-opacity="0.9" filter="url(#shadow)"/>
+        <line x1="6" y1="316" x2="194" y2="316" stroke="#e5e7eb"/>
+        <text x="16" y="336" font-size="9" font-weight="700" fill="#111827">We use cookies</text>
+        <text x="16" y="349" font-size="8" fill="#4b5563">to irritate you with this banner.</text>
+        <rect x="16" y="358" width="60" height="20" rx="4" fill="#111827"/>
+        <text x="46" y="371" font-size="8" font-weight="700" fill="#ffffff" text-anchor="middle">Accept</text>
+        <text x="86" y="371" font-size="8" fill="#4b5563" text-decoration="underline">Manage</text>
+        <!-- home indicator -->
+        <rect x="76" y="386" width="48" height="4" rx="2" fill="#111827"/>
+      </g>
+      <!-- fold marker -->
+      <line x1="-8" y1="401" x2="208" y2="401" stroke="#dc2626" stroke-dasharray="4 3"/>
+    </g>
+  </defs>
+
+  <rect width="1380" height="740" fill="#ffffff"/>
+
+  <text x="40" y="60" class="h1">ShakaPerf AI skills generate hi-fi tests</text>
+
+  <!-- ================= BEFORE ================= -->
+  <rect x="40" y="92" width="570" height="624" rx="10" class="panel"/>
+  <text x="58" y="122" class="h2">Legacy testing frameworks: code coverage</text>
+
+  <rect x="58" y="232" width="250" height="189" rx="6" fill="#0f172a"/>
+  <text x="70" y="254" class="code" xml:space="preserve" fill="#86efac">✓ &lt;App&gt;</text>
+  <text x="70" y="273" class="code" xml:space="preserve" fill="#86efac">✓   &lt;NavBar&gt;</text>
+  <text x="70" y="292" class="code" xml:space="preserve" fill="#86efac">✓     &lt;Logo /&gt;</text>
+  <text x="70" y="311" class="code" xml:space="preserve" fill="#86efac">    &lt;/NavBar&gt;</text>
+  <text x="70" y="330" class="code" xml:space="preserve" fill="#86efac">✓   &lt;Header /&gt;</text>
+  <text x="70" y="349" class="code" xml:space="preserve" fill="#86efac">✓   &lt;ProductGrid /&gt;</text>
+  <text x="70" y="368" class="code" xml:space="preserve" fill="#86efac">✓   &lt;CartButton /&gt;</text>
+  <text x="70" y="387" class="code" xml:space="preserve" fill="#86efac">✓   &lt;Footer /&gt;</text>
+  <text x="70" y="406" class="code" xml:space="preserve" fill="#86efac">  &lt;/App&gt;</text>
+  <rect x="58" y="166" width="534" height="56" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+  <rect x="58" y="166" width="4" height="56" fill="#dc2626"/>
+  <rect x="58" y="150" width="120" height="20" rx="4" fill="#dc2626"/>
+  <rect x="58" y="162" width="120" height="8" fill="#dc2626"/>
+  <text x="118" y="164.5" text-anchor="middle" style="font-size:12px;font-weight:700" fill="#ffffff">AI prompt (bad)</text>
+  <text x="72" y="199" class="cell" style="font-size:14px" xml:space="preserve" fill="#334155">/goal Write tests until you reach 100% line coverage</text>
+  <rect x="72" y="436" width="298" height="34" rx="8" fill="#f0fdf4" stroke="#bbf7d0"/>
+  <text x="88" y="458" class="body bold green">100% lines covered! 🎉</text>
+  <rect x="72" y="480" width="298" height="34" rx="8" fill="#f0fdf4" stroke="#bbf7d0"/>
+  <text x="88" y="502" class="body bold green">Goal achieved! <tspan fill="#dc2626">(prematurely)</tspan></text>
+  <rect x="72" y="524" width="298" height="34" rx="8" fill="#fef2f2" stroke="#fecaca"/>
+  <text x="88" y="546" class="body bold red">Someone breaks styles in &lt;CartButton/&gt;</text>
+  <rect x="72" y="568" width="298" height="116" rx="8" fill="#fef2f2" stroke="#fecaca"/>
+  <text x="88" y="592" class="body">Code coverage: still 100%.</text>
+  <text x="88" y="612" class="body">Visual Diff: <tspan fill="#16a34a" font-weight="700">green</tspan></text>
+  <text x="88" y="632" class="body">The button was never visible in the screenshot.</text>
+  <text x="88" y="664" class="body bold">Nobody notices.</text>
+  <g transform="translate(390,232)" class="ui">
+    <rect x="0" y="0" width="200" height="400" rx="26" fill="#111827"/>
+    <rect x="6" y="6" width="188" height="388" rx="21" fill="#ffffff"/>
+    <text x="18" y="22" font-size="9" font-weight="700">9:41</text>
+    <rect x="160" y="13" width="18" height="9" rx="2" fill="none" stroke="#111827" stroke-width="1"/>
+    <rect x="162" y="15" width="12" height="5" rx="1" fill="#111827"/>
+    <text x="100" y="186" font-size="13" font-weight="800" text-anchor="middle" fill="#64748b">WHO CARES WHAT</text>
+    <text x="100" y="204" font-size="13" font-weight="800" text-anchor="middle" fill="#64748b">IS ON THE SCREEN?</text>
+    <text x="100" y="232" font-size="13" font-weight="800" text-anchor="middle" fill="#16a34a">WE HAVE 100%</text>
+    <text x="100" y="250" font-size="13" font-weight="800" text-anchor="middle" fill="#16a34a">CODE COVERAGE!</text>
+    <rect x="76" y="386" width="48" height="4" rx="2" fill="#111827"/>
+  </g>
+
+  <!-- ================= AFTER ================= -->
+  <rect x="630" y="92" width="690" height="624" rx="10" class="panel"/>
+  <text x="648" y="122" class="h2">ShakaPerf: instrumented screenshot coverage</text>
+
+  <rect x="648" y="232" width="322" height="189" rx="6" fill="#0f172a"/>
+  <text x="660" y="254" class="code" xml:space="preserve" fill="#e2e8f0"><tspan fill="#94a3b8">&lt;</tspan><tspan fill="#fbbf24">App</tspan><tspan fill="#94a3b8">&gt;</tspan></text>
+  <text x="806" y="254" class="cell" fill="#fbbf24">63%</text>
+  <text x="660" y="273" class="code" xml:space="preserve" fill="#e2e8f0">  <tspan fill="#94a3b8">&lt;</tspan><tspan fill="#86efac">NavBar</tspan><tspan fill="#94a3b8">&gt;</tspan></text>
+  <text x="806" y="273" class="cell" fill="#86efac">100%</text>
+  <text x="660" y="292" class="code" xml:space="preserve" fill="#e2e8f0">    <tspan fill="#94a3b8">&lt;</tspan><tspan fill="#86efac">Logo</tspan><tspan fill="#94a3b8"> /&gt;</tspan></text>
+  <text x="806" y="292" class="cell" fill="#86efac">100%</text>
+  <text x="660" y="311" class="code" xml:space="preserve" fill="#e2e8f0">  <tspan fill="#94a3b8">&lt;/</tspan><tspan fill="#86efac">NavBar</tspan><tspan fill="#94a3b8">&gt;</tspan></text>
+  <text x="660" y="330" class="code" xml:space="preserve" fill="#e2e8f0">  <tspan fill="#94a3b8">&lt;</tspan><tspan fill="#86efac">Header</tspan><tspan fill="#94a3b8"> /&gt;</tspan></text>
+  <text x="806" y="330" class="cell" fill="#86efac">100%</text>
+  <text x="660" y="349" class="code" xml:space="preserve" fill="#e2e8f0">  <tspan fill="#94a3b8">&lt;</tspan><tspan fill="#fbbf24">ProductGrid</tspan><tspan fill="#94a3b8"> /&gt;</tspan></text>
+  <text x="806" y="349" class="cell" fill="#fbbf24">54%  banner + fold</text>
+  <text x="660" y="368" class="code" xml:space="preserve" fill="#e2e8f0">  <tspan fill="#94a3b8">&lt;</tspan><tspan fill="#f87171">CartButton</tspan><tspan fill="#94a3b8"> /&gt;</tspan></text>
+  <text x="806" y="368" class="cell" fill="#f87171">0%  cookie banner on top</text>
+  <text x="660" y="387" class="code" xml:space="preserve" fill="#e2e8f0">  <tspan fill="#94a3b8">&lt;</tspan><tspan fill="#f87171">Footer</tspan><tspan fill="#94a3b8"> /&gt;</tspan></text>
+  <text x="806" y="387" class="cell" fill="#f87171">0%  below the fold</text>
+  <text x="660" y="406" class="code" xml:space="preserve" fill="#e2e8f0"><tspan fill="#94a3b8">&lt;/</tspan><tspan fill="#fbbf24">App</tspan><tspan fill="#94a3b8">&gt;</tspan></text>
+  <rect x="648" y="166" width="654" height="56" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+  <rect x="648" y="166" width="4" height="56" fill="#16a34a"/>
+  <rect x="648" y="150" width="126" height="20" rx="4" fill="#16a34a"/>
+  <rect x="648" y="162" width="126" height="8" fill="#16a34a"/>
+  <text x="711" y="164.5" text-anchor="middle" style="font-size:12px;font-weight:700" fill="#ffffff">AI prompt (good)</text>
+  <text x="662" y="199" class="cell" style="font-size:14px" xml:space="preserve" fill="#334155">/goal /ShakaPerf-add-coverage until 100% components screenshoted</text>
+  <rect x="662" y="436" width="308" height="34" rx="8" fill="#fef2f2" stroke="#fecaca"/>
+  <text x="678" y="458" class="body bold red">Incomplete coverage! More tests needed.</text>
+  <rect x="662" y="480" width="308" height="34" rx="8" fill="#f0fdf4" stroke="#bbf7d0"/>
+  <text x="678" y="502" class="body bold green">AI keeps adding tests</text>
+  <rect x="662" y="524" width="308" height="34" rx="8" fill="#fef2f2" stroke="#fecaca"/>
+  <text x="678" y="546" class="body bold red">Someone breaks styles in &lt;CartButton/&gt;</text>
+  <rect x="662" y="568" width="308" height="116" rx="8" fill="#f0fdf4" stroke="#bbf7d0"/>
+  <text x="678" y="592" class="body">Instrumented screenshot coverage: 100%.</text>
+  <text x="678" y="612" class="body">Visual Diff: <tspan fill="#dc2626" font-weight="700">red</tspan></text>
+  <text x="678" y="632" class="body">The button is visible in the screenshot.</text>
+  <text x="678" y="664" class="body bold">Caught before merge.</text>
+  <use href="#phone" x="978" y="232"/>
+  <!-- tags on the after-phone (phone origin 946,150) -->
+
+  <!-- ================= bottom ================= -->
+  <!-- screenshot coverage chips -->
+  <path d="M1186,274 L1164,274" fill="none" stroke="#16a34a" stroke-width="1.6" marker-end="url(#arrow-g)"/>
+  <rect x="1186" y="257" width="130" height="34" rx="6" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="1194" y="271" style="font-size:11.5px;font-weight:700" fill="#166534">&lt;NavBar/&gt;</text>
+  <text x="1194" y="285" style="font-size:11.5px" fill="#166534">100%</text>
+  <path d="M1186,348 L1164,348" fill="none" stroke="#16a34a" stroke-width="1.6" marker-end="url(#arrow-g)"/>
+  <rect x="1186" y="331" width="130" height="34" rx="6" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="1194" y="345" style="font-size:11.5px;font-weight:700" fill="#166534">&lt;Header/&gt;</text>
+  <text x="1194" y="359" style="font-size:11.5px" fill="#166534">100%</text>
+  <path d="M1186,470 L1164,470" fill="none" stroke="#d97706" stroke-width="1.6" marker-end="url(#arrow-a)"/>
+  <rect x="1186" y="453" width="130" height="34" rx="6" fill="#fffbeb" stroke="#d97706"/>
+  <text x="1194" y="467" style="font-size:11.5px;font-weight:700" fill="#92400e">&lt;ProductGrid/&gt;</text>
+  <text x="1194" y="481" style="font-size:11.5px" fill="#92400e">54% · banner + fold</text>
+  <path d="M1186,591 L1164,591" fill="none" stroke="#dc2626" stroke-width="1.6" marker-end="url(#arrow-r)"/>
+  <rect x="1186" y="567" width="130" height="48" rx="6" fill="#fef2f2" stroke="#dc2626"/>
+  <text x="1194" y="581" style="font-size:11.5px;font-weight:700" fill="#991b1b">&lt;CartButton/&gt;</text>
+  <text x="1194" y="595" style="font-size:11.5px" fill="#991b1b">0% · cookie banner</text>
+  <text x="1194" y="609" style="font-size:11.5px" fill="#991b1b">on top</text>
+  <path d="M1186,682 L1164,682" fill="none" stroke="#dc2626" stroke-width="1.6" marker-end="url(#arrow-r)"/>
+  <rect x="1186" y="665" width="130" height="34" rx="6" fill="#fef2f2" stroke="#dc2626"/>
+  <text x="1194" y="679" style="font-size:11.5px;font-weight:700" fill="#991b1b">&lt;Footer/&gt;</text>
+  <text x="1194" y="693" style="font-size:11.5px" fill="#991b1b">0% · below fold</text>
+  <!-- time arrows -->
+  <path d="M62,436 L62,684" fill="none" stroke="#64748b" stroke-width="1.4" marker-end="url(#arrow-t)"/>
+  <text transform="translate(65,560) rotate(-90)" text-anchor="middle" style="font-size:10px;font-weight:700;paint-order:stroke;stroke:#f8fafc;stroke-width:4px" fill="#64748b">TIME</text>
+  <path d="M652,436 L652,684" fill="none" stroke="#64748b" stroke-width="1.4" marker-end="url(#arrow-t)"/>
+  <text transform="translate(655,560) rotate(-90)" text-anchor="middle" style="font-size:10px;font-weight:700;paint-order:stroke;stroke:#f8fafc;stroke-width:4px" fill="#64748b">TIME</text>
+</svg>
