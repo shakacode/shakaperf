@@ -195,6 +195,18 @@ export function abTest(
   testFn: (context: TestFnContext) => Promise<void>
 ): void {
     const perfVersion = process.env.SHAKA_PERF_VERSION;
+    const upgrade =
+      'Upgrade shaka-perf: npm install -g shaka-perf@latest ' +
+      '(or: yarn add shaka-perf@latest for a project dependency).';
+    // The runner marks its process tree with IS_SHAKA_PERF_PROCESS (kept in
+    // sync with shaka-perf's PROCESS_MARKER_ENV_VAR); versions that predate
+    // SHAKA_PERF_VERSION set the marker alone.
+    if (!perfVersion && process.env.IS_SHAKA_PERF_PROCESS === 'true') {
+      throw new Error(
+        `shaka-shared ${SHAKA_SHARED_VERSION} requires shaka-perf >= ${SHAKA_SHARED_VERSION}, ` +
+        `but the running shaka-perf is too old to report its version. ${upgrade}`,
+      );
+    }
     if (perfVersion) {
       // Compare major.minor.patch numerically, ignoring prerelease suffixes.
       const perf = perfVersion.split('-', 1)[0].split('.').map(Number);
@@ -203,8 +215,7 @@ export function abTest(
       if (difference > 0) {
         throw new Error(
           `shaka-shared ${SHAKA_SHARED_VERSION} requires shaka-perf >= ${SHAKA_SHARED_VERSION}, ` +
-          `but ${perfVersion} is running. Upgrade shaka-perf: npm install -g shaka-perf@latest ` +
-          `(or: yarn add shaka-perf@latest for a project dependency).`,
+          `but ${perfVersion} is running. ${upgrade}`,
         );
       }
     }
