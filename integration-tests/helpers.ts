@@ -174,9 +174,30 @@ export function waitForPort(port: number, timeout = 180_000): Promise<void> {
   });
 }
 
-const PUMA_CMD = 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000';
+export const PUMA_CMD = 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000';
 
-function portIsResponding(port: number): boolean {
+/**
+ * The slice of `audit-results/report.json` the specs assert on. `summary` is
+ * the stage's machineReadableSummary, never the raw measurement (see
+ * writeMachineReport), so only the fields a stage publishes appear here.
+ */
+export interface AuditReportJson {
+  tests: Array<{
+    name: string;
+    viewport?: { label?: string };
+    outcomes: Array<{
+      kind: 'ok' | 'error' | 'skipped';
+      stage?: string;
+      summary?: { visibilityMapHref?: string };
+    }>;
+  }>;
+}
+
+export function readAuditReport(resultsDir: string): AuditReportJson {
+  return JSON.parse(fs.readFileSync(path.join(resultsDir, 'report.json'), 'utf-8')) as AuditReportJson;
+}
+
+export function portIsResponding(port: number): boolean {
   try {
     execSync(`curl -sf -o /dev/null --max-time 2 http://localhost:${port}/`, { stdio: 'ignore' });
     return true;

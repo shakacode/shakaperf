@@ -1,0 +1,13 @@
+{
+  // Type-checks what no package tsconfig reaches: the Playwright integration
+  // specs and the skill scripts Node runs from source (`yarn typecheck:tools`).
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // Specs script the page inside page.evaluate (DOM); the skill script uses
+    // ES2023 array methods, which Node 24 has.
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["integration-tests/**/*.ts", ".claude/skills/**/*.mts"],
+  "exclude": ["integration-tests/snapshots/**"]
+}

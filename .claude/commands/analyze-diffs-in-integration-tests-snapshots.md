@@ -1,6 +1,6 @@
 Review git diffs in `integration-tests/` to catch meaningful changes hidden among expected run-to-run variance.
 
-Snapshots contain ONLY the normalized `baseline-*.log` per suite and the stable-named report screenshots under each `<suite>-results/` dir. The integration-tests run also emits a `screenshot-diff-report.html` under `integration-tests/snapshots/` for visual review (step 3).
+Snapshots contain ONLY the normalized `baseline-*.log` per suite, the stable-named report screenshots under each `<suite>-results/` dir, and the `@coverage` suite's snapshot dir `coverage-results/` (one file per source plus `legend.txt`, step 3). The integration-tests run also emits a `screenshot-diff-report.html` under `integration-tests/snapshots/` for visual review (step 4).
 
 This check reports **WHAT changed between the previous and current test run**
 (the git diff). NAME every meaningful change; deciding whether it's expected or
@@ -19,11 +19,20 @@ from control" :pray:
 
 1. List the baseline logs in `integration-tests/snapshots/` (they match `baseline-*.log`), then launch one Agent subagent per log, all in a single message so they run in parallel. Give each agent ONLY its own `git diff -- integration-tests/snapshots/<log>` command plus the rules below, and have it analyze that diff. Agents run no other commands — no ls, no cat, no extra git commands.
 
-   This check is **logs-only**: the agents judge the normalized transcripts, and the verdict is drawn from the logs alone. Screenshot diffs are NOT analyzed here — they are for the user to review by eye (see step 3).
+   This check is **logs-only**: the agents judge the normalized transcripts, and the verdict is drawn from the logs alone. Screenshot diffs are NOT analyzed here — they are for the user to review by eye (see step 4).
 
 2. Collect results from all agents and compile into the output format at the bottom, preserving every change they named. Before writing the **Changes** section, resolve each agent's quoted anchor text to a real `path:line` with `grep -n '<anchor text>' integration-tests/snapshots/<log>` — never a `git diff` hunk offset.
 
-3. The verdict above is logs-only — it does NOT cover the visual changes. The integration-tests run already generated the screenshot diff report at `integration-tests/snapshots/screenshot-diff-report.html`. Use AskUserQuestion to ask whether the user wants to open it in the browser. If they agree, open that path via Bash (`xdg-open <path>` on Linux, `open <path>` on macOS). If they decline, just print the path. Either way, make clear the screenshot changes still need the user's own eyes — the skill does not judge them.
+3. Diff the `@coverage` suite's screenshot-coverage snapshot:
+
+   ```bash
+   git diff --stat -- integration-tests/snapshots/coverage-results
+   git diff -- integration-tests/snapshots/coverage-results
+   ```
+
+   Report gutters (the letters before `|`) and screenshot cells (after it) SEPARATELY; a percentage that moved is a real change even when the gutters are identical. Letters are assigned alphabetically by test name, so a test entering or leaving re-letters every gutter — read the `legend.txt` diff first and report that as one change. If the suite was not run, say the snapshot was not regenerated; if the directory is untracked (first run), report "no previous coverage baseline" and skip the diff.
+
+4. The verdict above is logs-only — it does NOT cover the visual changes. The integration-tests run already generated the screenshot diff report at `integration-tests/snapshots/screenshot-diff-report.html`. Use AskUserQuestion to ask whether the user wants to open it in the browser. If they agree, open that path via Bash (`xdg-open <path>` on Linux, `open <path>` on macOS). If they decline, just print the path. Either way, make clear the screenshot changes still need the user's own eyes — the skill does not judge them.
 
 ## Log diffs
 
@@ -99,7 +108,10 @@ change, but never replaces naming it.]
 ### Visual Review Required
 This skill does NOT judge the screenshot diffs. Review them yourself in the
 report at `integration-tests/snapshots/screenshot-diff-report.html` (see
-step 3). The logs verdict above says nothing about whether a render broke.
+step 4). The logs verdict above says nothing about whether a render broke.
+
+### Screenshot Coverage
+[Per-file summary of the `coverage-results/` diff, gutters first and screenshot cells second. If not regenerated or no previous baseline, say why.]
 
 ### Changes
 [One bullet per meaningful change, each a clickable `path:line` link to the

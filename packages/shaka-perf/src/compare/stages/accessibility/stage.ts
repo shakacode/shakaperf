@@ -22,7 +22,7 @@ import {
 import type {
   AccessibilityCompareResult,
 } from './types';
-import { AccessibilityCompareArtifactView } from './report';
+import { AccessibilityCompareArtifactView, accessibilityCompareRows } from './report';
 
 export class AccessibilityCompareStage implements Stage<AccessibilityCompareResult> {
   readonly category = 'accessibility';
@@ -57,6 +57,7 @@ export class AccessibilityCompareStage implements Stage<AccessibilityCompareResu
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<AccessibilityCompareResult>[]) {
+    if (accessibilityCompareRows(measurements).length === 0) return null;
     return createElement(AccessibilityCompareArtifactView, { measurements });
   }
 

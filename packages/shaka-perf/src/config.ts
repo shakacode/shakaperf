@@ -10,8 +10,13 @@ import {
   DESKTOP_VIEWPORT,
   PHONE_VIEWPORT,
   TABLET_VIEWPORT,
+  BUILT_IN_SCREENSHOT_COVERAGE_PLUGINS,
+  isBuiltInScreenshotCoveragePlugin,
+  isScreenshotCoveragePlugin,
   type AbTestsConfigInput,
   type BeforeNavigateHook,
+  type BuiltInScreenshotCoveragePlugin,
+  type ScreenshotCoveragePlugin,
   type TestType,
   type Viewport,
 } from 'shaka-shared';
@@ -189,10 +194,12 @@ export const SharedConfigSchema = z
     parallelism: z.number().int().positive(),
     retries: z.number().int().nonnegative().default(2),
     retryDelay: z.number().int().nonnegative().default(1000),
-    // Runner-level cap on every race-timeout the pipeline wraps around
-    // engine work (setup, sample, etc.). Sits alongside `parallelism` /
-    // `retries` because the runner is shared infrastructure — a single
-    // cap covers every category's engines.
+    // Cap on every race-timeout the pipeline wraps around engine work
+    // (setup, sample, etc.), covering every category's engines. Sits
+    // alongside `parallelism` / `retries` because the runner is shared
+    // infrastructure — but unlike `parallelism`, this one and `retries` /
+    // `retryDelay` are resolved per unit, so an `abTest()` can override
+    // them for itself (see BREAKING_CHANGES.md).
     timeoutMs: z.number().int().positive().default(120000),
     // Global pre-navigation hook (see shaka-shared `SharedConfigInput`). Runs
     // before every test's navigation on every engine; a per-test
@@ -305,6 +312,18 @@ export const AuditConfigSchema = z
     // the per-task timeout, so the raw stream is evenly downsampled to this cap
     // before dedupe. Defaults to 700.
     limitVideoFramesCount: z.number().int().positive().default(700),
+    // `--categories code_coverage`: names the app source line behind each
+    // visibility-map row. Shape-checked only, like `beforeNavigate`: a plugin's
+    // behaviour is the user's.
+    screenshotCoveragePlugin: z
+      .custom<BuiltInScreenshotCoveragePlugin | ScreenshotCoveragePlugin>(
+        (value) => isBuiltInScreenshotCoveragePlugin(value) || isScreenshotCoveragePlugin(value),
+        {
+          message: `expected ${BUILT_IN_SCREENSHOT_COVERAGE_PLUGINS.map((name) => `'${name}'`).join(', ')}, `
+            + 'or a plugin object { name, locate(element), resolve(raws, context) }',
+        },
+      )
+      .optional(),
   })
   .strict();
 
@@ -386,6 +405,34 @@ export const BisectConfigSchema = z.object({
     .default([]),
 }).strict();
 
+interface ViewportLabelSources {
+  shared: { viewports: readonly string[] };
+  visreg: { viewports?: readonly string[] };
+  perf: { viewports?: readonly string[] };
+  audit: { viewports?: readonly string[] };
+  accessibility: { viewports?: readonly string[] };
+}
+
+const VIEWPORT_LABEL_SECTION: Record<TestType, keyof Omit<ViewportLabelSources, 'shared'>> = {
+  visreg: 'visreg',
+  perf: 'perf',
+  audit: 'audit',
+  accessibility: 'accessibility',
+  // Coverage rides along with the visreg run, so it runs at visreg's viewports.
+  code_coverage: 'visreg',
+};
+
+function viewportLabelsForCategory(
+  config: ViewportLabelSources,
+  category: TestType,
+): readonly [section: string, labels: readonly string[]] {
+  const section = VIEWPORT_LABEL_SECTION[category];
+  const labels = config[section].viewports;
+  return labels === undefined
+    ? ['shared', config.shared.viewports]
+    : [section, labels];
+}
+
 export const AbTestsConfigSchema = z
   .object({
     shared: SharedConfigSchema,
@@ -399,25 +446,18 @@ export const AbTestsConfigSchema = z
   })
   .strict()
   .superRefine((cfg, ctx) => {
-    // Cross-schema: every viewport label — the shared default list and each
-    // category's own — must be defined in `shared.viewportDefinitions`. Catches
-    // typos ("dekstop") and wrong references at parse time rather than
-    // "no viewport matched" at run time.
     const knownLabels = new Set(cfg.shared.viewportDefinitions.map((v) => v.label));
-    const lists: Array<[path: [string, string], labels: readonly string[] | undefined]> = [
-      [['shared', 'viewports'], cfg.shared.viewports],
-      ...(['visreg', 'perf', 'audit', 'accessibility'] as const)
-        .map((category) => [[category, 'viewports'], cfg[category].viewports] as
-          [[string, string], readonly string[] | undefined]),
-    ];
-    for (const [path, labels] of lists) {
-      // An unset category list is not an error — it falls back to
-      // `shared.viewports`, which this same loop already validated.
-      for (const label of labels ?? []) {
+    const lists = new Map<string, readonly string[]>();
+    for (const category of ['visreg', 'perf', 'audit', 'accessibility'] as const) {
+      const [section, labels] = viewportLabelsForCategory(cfg, category);
+      lists.set(section, labels);
+    }
+    for (const [section, labels] of lists) {
+      for (const label of labels) {
         if (!knownLabels.has(label)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            path,
+            path: [section, 'viewports'],
             message:
               `unknown viewport label "${label}" — ` +
               `define it in shared.viewportDefinitions or drop it here. ` +
@@ -487,24 +527,21 @@ export function resolveViewports(
 
 /**
  * The viewports one stage category runs at, under one (already per-test-merged)
- * config. THE single site of the `<category>.viewports ?? shared.viewports`
- * fallback — every caller that needs a category's viewports goes through here,
- * so the precedence lives in exactly one place:
+ * config. Category lists override the shared list; per-test values already
+ * override file values through `applyPerTestConfigOverrides`.
  *
  *   test `config.<category>.viewports`   (most specific)
  *   file `<category>.viewports`
  *   test `config.shared.viewports`
  *   file `shared.viewports`              (least specific)
- *
- * Test-over-file at each level is the per-test deep merge's doing
- * (`applyPerTestConfigOverrides`); category-over-shared is the `??` below.
  */
 export function viewportsForCategory(
   config: AbTestsConfig,
   category: TestType,
 ): readonly Viewport[] {
+  const [, labels] = viewportLabelsForCategory(config, category);
   return resolveViewports(
-    config[category].viewports ?? config.shared.viewports,
+    labels,
     config.shared.viewportDefinitions,
   );
 }
@@ -534,6 +571,7 @@ export function viewportsByStageCategory(
     perf: viewportsForCategory(config, 'perf'),
     audit: viewportsForCategory(config, 'audit'),
     accessibility: viewportsForCategory(config, 'accessibility'),
+    code_coverage: viewportsForCategory(config, 'code_coverage'),
   };
 }
 

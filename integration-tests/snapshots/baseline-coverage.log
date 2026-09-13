@@ -1,0 +1,198 @@
+Skipping global setup (SKIP_GLOBAL_SETUP=1)
+
+Running 1 test using 1 worker
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>>>>>>>>>>>>>>>>> TEST: audit a development bundle and snapshot screenshot coverage per source @coverage
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>> Rebuilding the experiment bundle in development mode
+
+Running SHAKA_PERF_INSTRUMENT_COVERAGE=1 NODE_ENV=development bin/shakapacker in experiment-server
+ [EXPERIMENT-SERVER]  > docker exec : SHAKA_PERF_INSTRUMENT_COVERAGE=1 NODE_ENV=development bin/shakapacker
+[Shakapacker] Looking for Rspack config in: /home/<USER>/app/demo-ecommerce/config/rspack/rspack.config.ts, /home/<USER>/app/demo-ecommerce/config/rspack/rspack.config.js
+[Shakapacker] Rspack config not found, checking for webpack config fallback...
+⚠️  DEPRECATION WARNING: Using webpack config file for Rspack assets bundler.
+   Please create config/rspack/rspack.config.js and migrate your configuration.
+   Using: /home/<USER>/app/demo-ecommerce/config/rspack/webpack.config.js
+[Shakapacker] Preparing environment for assets bundler execution...
+[Shakapacker] Base command: yarn exec rspack
+[Shakapacker] Adding config file: /home/<USER>/app/demo-ecommerce/config/rspack/webpack.config.js
+[Shakapacker] Final command: yarn exec rspack --config /home/<USER>/app/demo-ecommerce/config/rspack/webpack.config.js
+[Shakapacker] Working directory: /home/<USER>/app/demo-ecommerce
+Loading ENV specific webpack configuration file /home/<USER>/app/demo-ecommerce/config/rspack/development.js
+[React on Rails] Creating both client and server bundles.
+Rspack compiled successfully in <TIMING> ms
+
+Rspack compiled successfully in <TIMING> ms
+[Shakapacker] Completed rspack build in <TIMING>s (<TIMING>s)
+  ⏱ Rebuilding the experiment bundle in development mode: 3.3s
+
+>>> Restarting the experiment server on the new bundle
+
+
+>>> run: yarn shaka-perf servers run-cmd experiment "pkill -f puma || true"
+
+
+>>> run: yarn shaka-perf servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+
+Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
+ [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
+
+  ⏱ 1.8s
+  ⏱ waitForPort(3090): 2.0s
+  ⏱ Restarting the experiment server on the new bundle: 5.5s
+
+>>> Running shaka-perf audit --categories code_coverage over ^Homepage,^Products List
+
+Discovered 9 test file(s):
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/cart.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/deals.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/product-detail.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/integration-fixtures/orphaned-poller/ab-tests/orphaned-poller.abtest.ts
+Selected 2 of 17 test(s).
+
+========================================================================================
+STAGE: code_coverage
+========================================================================================
+Run each test body in a visreg-configured browser, drain its instrumented JS coverage, and map what the finished page shows inside the capture region.
+========================================================================================
+
+ab-tests/homepage.abtest.ts:11:desktop:code_coverage:<0.8s> to troubleshoot this line run shaka-perf troubleshoot --filter '^Homepage$' --viewport desktop
+ab-tests/homepage.abtest.ts:11:tablet:code_coverage:<0.8s> to troubleshoot this line run shaka-perf troubleshoot --filter '^Homepage$' --viewport tablet
+ab-tests/homepage.abtest.ts:11:phone:code_coverage:<0.8s> to troubleshoot this line run shaka-perf troubleshoot --filter '^Homepage$' --viewport phone
+ab-tests/products.abtest.ts:11:desktop:code_coverage:<0.8s> to troubleshoot this line run shaka-perf troubleshoot --filter '^Products List$' --viewport desktop
+ab-tests/products.abtest.ts:11:tablet:code_coverage:<0.8s> to troubleshoot this line run shaka-perf troubleshoot --filter '^Products List$' --viewport tablet
+ab-tests/products.abtest.ts:11:phone:code_coverage:<0.8s> to troubleshoot this line run shaka-perf troubleshoot --filter '^Products List$' --viewport phone
+ab-tests/homepage.abtest.ts:11:desktop:code_coverage:<1.1s> Creating Browser
+ab-tests/homepage.abtest.ts:11:tablet:code_coverage:<1.1s> Creating Browser
+ab-tests/homepage.abtest.ts:11:phone:code_coverage:<1.1s> Creating Browser
+ab-tests/products.abtest.ts:11:desktop:code_coverage:<1.1s> Creating Browser
+ab-tests/products.abtest.ts:11:tablet:code_coverage:<1.1s> Creating Browser
+ab-tests/products.abtest.ts:11:phone:code_coverage:<1.1s> Creating Browser
+ab-tests/products.abtest.ts:11:desktop:code_coverage:<1.6s> annotate: Wait for products list to settle
+ab-tests/homepage.abtest.ts:11:desktop:code_coverage:<1.6s> annotate: Wait for homepage to settle
+ab-tests/products.abtest.ts:11:tablet:code_coverage:<1.6s> annotate: Wait for products list to settle
+ab-tests/homepage.abtest.ts:11:desktop:code_coverage:<1.6s> [waitForAllImages] 0 visible images loaded for http://localhost:3090/ (12 ms)
+ab-tests/homepage.abtest.ts:11:desktop:code_coverage:<1.6s> [waitForFontsReady] fonts ready for http://localhost:3090/ (12 ms)
+ab-tests/products.abtest.ts:11:desktop:code_coverage:<1.6s> [waitForAllImages] 0 visible images loaded for http://localhost:3090/products (19 ms)
+ab-tests/products.abtest.ts:11:desktop:code_coverage:<1.6s> [waitForFontsReady] fonts ready for http://localhost:3090/products (19 ms)
+ab-tests/homepage.abtest.ts:11:tablet:code_coverage:<1.6s> annotate: Wait for homepage to settle
+ab-tests/homepage.abtest.ts:11:phone:code_coverage:<1.6s> annotate: Wait for homepage to settle
+ab-tests/products.abtest.ts:11:tablet:code_coverage:<1.6s> [waitForAllImages] 0 visible images loaded for http://localhost:3090/products (21 ms)
+ab-tests/products.abtest.ts:11:tablet:code_coverage:<1.6s> [waitForFontsReady] fonts ready for http://localhost:3090/products (20 ms)
+ab-tests/homepage.abtest.ts:11:phone:code_coverage:<1.6s> [waitForAllImages] 0 visible images loaded for http://localhost:3090/ (9 ms)
+ab-tests/homepage.abtest.ts:11:phone:code_coverage:<1.6s> [waitForFontsReady] fonts ready for http://localhost:3090/ (10 ms)
+ab-tests/homepage.abtest.ts:11:desktop:code_coverage:<1.6s> [waitForNoMutations] mutation batch size=3 attr=1 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-1egkt5t] | attr img src="data:image/svg+xml,%3Csvg xmlns="http://"
+ab-tests/homepage.abtest.ts:11:tablet:code_coverage:<1.6s> [waitForAllImages] 0 visible images loaded for http://localhost:3090/ (16 ms)
+ab-tests/homepage.abtest.ts:11:tablet:code_coverage:<1.6s> [waitForFontsReady] fonts ready for http://localhost:3090/ (16 ms)
+ab-tests/products.abtest.ts:11:phone:code_coverage:<1.6s> annotate: Wait for products list to settle
+ab-tests/products.abtest.ts:11:desktop:code_coverage:<1.6s> [waitForNoMutations] mutation batch size=5 attr=3 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-1htz7z9] | attr img src="data:image/svg+xml,%3Csvg xmlns="http://"
+ab-tests/products.abtest.ts:11:phone:code_coverage:<1.6s> [waitForAllImages] 0 visible images loaded for http://localhost:3090/products (14 ms)
+ab-tests/products.abtest.ts:11:phone:code_coverage:<1.6s> [waitForFontsReady] fonts ready for http://localhost:3090/products (15 ms)
+ab-tests/products.abtest.ts:11:tablet:code_coverage:<1.6s> [waitForNoMutations] mutation batch size=5 attr=3 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-1htz7z9] | attr img src="data:image/svg+xml,%3Csvg xmlns="http://"
+ab-tests/homepage.abtest.ts:11:desktop:code_coverage:<1.6s> [waitForNoMutations] mutation batch size=1 attr=0 text=0 child=1 :: children span.MuiBadge-badge.MuiBadge-standard +1[#text"0"]
+ab-tests/products.abtest.ts:11:desktop:code_coverage:<1.6s> [waitForNoMutations] mutation batch size=1 attr=0 text=0 child=1 :: children span.MuiBadge-badge.MuiBadge-standard +1[#text"0"]
+ab-tests/homepage.abtest.ts:11:phone:code_coverage:<1.7s> [waitForNoMutations] mutation batch size=3 attr=1 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-1egkt5t] | attr img src="data:image/svg+xml,%3Csvg xmlns="http://"
+ab-tests/homepage.abtest.ts:11:tablet:code_coverage:<1.7s> [waitForNoMutations] mutation batch size=3 attr=1 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-1egkt5t] | attr img src="data:image/svg+xml,%3Csvg xmlns="http://"
+ab-tests/products.abtest.ts:11:tablet:code_coverage:<1.7s> [waitForNoMutations] mutation batch size=1 attr=0 text=0 child=1 :: children span.MuiBadge-badge.MuiBadge-standard +1[#text"0"]
+ab-tests/homepage.abtest.ts:11:phone:code_coverage:<1.7s> [waitForNoMutations] mutation batch size=1 attr=0 text=0 child=1 :: children span.MuiBadge-badge.MuiBadge-standard +1[#text"0"]
+ab-tests/homepage.abtest.ts:11:tablet:code_coverage:<1.7s> [waitForNoMutations] mutation batch size=1 attr=0 text=0 child=1 :: children span.MuiBadge-badge.MuiBadge-standard +1[#text"0"]
+ab-tests/products.abtest.ts:11:tablet:code_coverage:<1.8s> [waitForNoMutations] mutation batch size=17 attr=15 text=0 child=2 :: children div.MuiContainer-root.MuiContainer-maxWidthLg -1[div.MuiBox-root.css-nfgtzt] | attr input.MuiSelect-nativeInput.css-j0riat-MuiSelect-nativeInput name="" | attr input.MuiSelect-nativeInput.css-j0riat-MuiSelect-nativeInput name=""
+ab-tests/homepage.abtest.ts:11:desktop:code_coverage:<1.8s> [waitForNoMutations] mutation batch size=9 attr=7 text=0 child=2 :: attr input name="" | attr input type="text" | attr input name=""
+ab-tests/homepage.abtest.ts:11:tablet:code_coverage:<1.8s> [waitForNoMutations] mutation batch size=9 attr=7 text=0 child=2 :: attr input name="" | attr input type="text" | attr input name=""
+ab-tests/products.abtest.ts:11:phone:code_coverage:<1.8s> [waitForNoMutations] mutation batch size=5 attr=3 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-1htz7z9] | attr img src="data:image/svg+xml,%3Csvg xmlns="http://"
+ab-tests/homepage.abtest.ts:11:phone:code_coverage:<1.8s> [waitForNoMutations] mutation batch size=9 attr=7 text=0 child=2 :: attr input name="" | attr input type="text" | attr input name=""
+ab-tests/products.abtest.ts:11:desktop:code_coverage:<1.8s> [waitForNoMutations] mutation batch size=17 attr=15 text=0 child=2 :: children div.MuiContainer-root.MuiContainer-maxWidthLg -1[div.MuiBox-root.css-nfgtzt] | attr input.MuiSelect-nativeInput.css-j0riat-MuiSelect-nativeInput name="" | attr input.MuiSelect-nativeInput.css-j0riat-MuiSelect-nativeInput name=""
+ab-tests/products.abtest.ts:11:phone:code_coverage:<1.8s> [waitForNoMutations] mutation batch size=18 attr=15 text=0 child=3 :: children span.MuiBadge-badge.MuiBadge-standard +1[#text"0"] | children div.MuiContainer-root.MuiContainer-maxWidthLg -1[div.MuiBox-root.css-nfgtzt] | attr input.MuiSelect-nativeInput.css-j0riat-MuiSelect-nativeInput name=""
+ab-tests/products.abtest.ts:11:tablet:code_coverage:<2.5s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products
+ab-tests/homepage.abtest.ts:11:desktop:code_coverage:<2.5s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/
+ab-tests/homepage.abtest.ts:11:tablet:code_coverage:<2.5s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/
+ab-tests/homepage.abtest.ts:11:tablet:code_coverage:<2.5s> [waitForNetworkSettle] network idle for http://localhost:3090/ (896 ms)
+ab-tests/homepage.abtest.ts:11:tablet:code_coverage:<2.5s> [waitUntilPageSettled] all checks complete for http://localhost:3090/ (897 ms)
+ab-tests/homepage.abtest.ts:11:desktop:code_coverage:<2.5s> [waitForNetworkSettle] network idle for http://localhost:3090/ (913 ms)
+ab-tests/homepage.abtest.ts:11:desktop:code_coverage:<2.5s> [waitUntilPageSettled] all checks complete for http://localhost:3090/ (915 ms)
+ab-tests/homepage.abtest.ts:11:phone:code_coverage:<2.5s> [waitForNetworkSettle] network idle for http://localhost:3090/ (898 ms)
+ab-tests/homepage.abtest.ts:11:phone:code_coverage:<2.5s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/
+ab-tests/homepage.abtest.ts:11:phone:code_coverage:<2.5s> [waitUntilPageSettled] all checks complete for http://localhost:3090/ (907 ms)
+ab-tests/products.abtest.ts:11:desktop:code_coverage:<2.5s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products
+ab-tests/products.abtest.ts:11:tablet:code_coverage:<2.6s> [waitForNetworkSettle] network idle for http://localhost:3090/products (984 ms)
+ab-tests/products.abtest.ts:11:tablet:code_coverage:<2.6s> [waitUntilPageSettled] all checks complete for http://localhost:3090/products (987 ms)
+ab-tests/products.abtest.ts:11:desktop:code_coverage:<2.6s> [waitForNetworkSettle] network idle for http://localhost:3090/products (997 ms)
+ab-tests/products.abtest.ts:11:desktop:code_coverage:<2.6s> [waitUntilPageSettled] all checks complete for http://localhost:3090/products (999 ms)
+ab-tests/products.abtest.ts:11:phone:code_coverage:<2.6s> [waitForNetworkSettle] network idle for http://localhost:3090/products (1020 ms)
+ab-tests/products.abtest.ts:11:phone:code_coverage:<2.6s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products
+ab-tests/products.abtest.ts:11:phone:code_coverage:<2.6s> [waitUntilPageSettled] all checks complete for http://localhost:3090/products (1022 ms)
+ab-tests/homepage.abtest.ts:11:desktop:code_coverage:<2.6s> coverage: 113/312 statements across 12 instrumented files
+ab-tests/homepage.abtest.ts:11:tablet:code_coverage:<2.7s> coverage: 113/312 statements across 12 instrumented files
+ab-tests/homepage.abtest.ts:11:phone:code_coverage:<2.7s> coverage: 113/312 statements across 12 instrumented files
+ab-tests/products.abtest.ts:11:desktop:code_coverage:<2.7s> coverage: 115/315 statements across 12 instrumented files
+ab-tests/products.abtest.ts:11:tablet:code_coverage:<2.7s> coverage: 115/315 statements across 12 instrumented files
+ab-tests/products.abtest.ts:11:phone:code_coverage:<2.7s> coverage: 115/315 statements across 12 instrumented files
+ab-tests/homepage.abtest.ts:11:phone:code_coverage:<3.2s> sources: 139/140 elements located via react19
+ab-tests/homepage.abtest.ts:11:tablet:code_coverage:<3.2s> sources: 141/142 elements located via react19
+ab-tests/homepage.abtest.ts:11:desktop:code_coverage:<3.2s> sources: 141/142 elements located via react19
+ab-tests/products.abtest.ts:11:phone:code_coverage:<3.2s> sources: 224/225 elements located via react19
+ab-tests/products.abtest.ts:11:desktop:code_coverage:<3.2s> sources: 226/227 elements located via react19
+ab-tests/products.abtest.ts:11:tablet:code_coverage:<3.2s> sources: 226/227 elements located via react19
+ab-tests/homepage.abtest.ts:11:desktop:code_coverage:<3.4s> Disposing Browser
+ab-tests/products.abtest.ts:11:desktop:code_coverage:<3.4s> Disposing Browser
+ab-tests/homepage.abtest.ts:11:phone:code_coverage:<3.9s> Disposing Browser
+ab-tests/homepage.abtest.ts:11:tablet:code_coverage:<4.0s> Disposing Browser
+ab-tests/products.abtest.ts:11:phone:code_coverage:<4.5s> Disposing Browser
+ab-tests/products.abtest.ts:11:tablet:code_coverage:<4.5s> Disposing Browser
+[1/1] stage:code_coverage
+Run each test body in a visreg-configured browser, drain its instrumented JS coverage, and map what the finished page shows inside the capture region.
+████████████████ 100% · 6/6 done · pool 0/12 active · ETA 00m:00s · to skip this stage use --skip-stages code_coverage
+<<< code_coverage · queued 0, running 0, done 6, skipped 0, error 0 · durations total 19.2s, avg 3.2s, max 3.7s
+
+>>> assemble · per-test artifacts (2 tests)
+    [1/2] Homepage (0.0s, 0.0 MB)
+    [2/2] Products List (0.0s, 0.0 MB)
+    all tests assembled in 0.0s
+
+>>> rendering report HTML files
+    payload total ~0.0 MB across 2 test(s)
+    top 2 contributors:
+          0.0 MB  Products List
+          0.0 MB  Homepage
+    payload total ~0.6 MB across 2 test(s)
+    top 2 contributors:
+          0.4 MB  Products List
+          0.2 MB  Homepage
+    wrote /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/full-report.html (0.5 MB) in 3.0s
+    wrote /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/self-contained-performance-report.html (1.1 MB)
+
+Short report (for slack/email): /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/self-contained-performance-report.html
+Full report (for you): /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/full-report.html
+
+Coverage JSONs: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/.nyc_output (install nyc and run `npx nyc report --temp-dir=/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/.nyc_output --report-dir=/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/coverage --reporter=html --reporter=text-summary` to view)
+  ⏱ Running shaka-perf audit --categories code_coverage over ^Homepage,^Products List: 8.7s
+
+>>> Saving the coverage snapshot (coverage-baseline.mts save)
+
+  ⏱ Saving the coverage snapshot (coverage-baseline.mts save): 0.1s
+saved audit-results/coverage-baselines/2026-09-13-05-54-12 — 3 sources, 49 element lines: 65 seen, 1 at 0%
+
+
+>>> Coverage snapshot written to /home/<USER>/shaka-perf/integration-tests/snapshots/coverage-results
+
+
+>>> Resetting git changes in temp clone
+
+Updated 0 paths from the index
+  ⏱ git checkout experiment: 0.0s
+Updated 0 paths from the index
+  ⏱ git checkout control: 0.0s
+  ✓  1 integration-tests/coverage.spec.ts:49:5 › audit a development bundle and snapshot screenshot coverage per source @coverage (<TIMING>s)
+Skipping teardown (SKIP_TEARDOWN=1)
+
+  1 passed (<TIMING>s)

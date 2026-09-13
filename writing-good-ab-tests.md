@@ -1,5 +1,48 @@
 # Writing Good AB Tests
 
+Canonical list of test code rules. The `discover-abtests` skill (when writing new tests) and the `assess-abtest-quality` skill (when grading existing tests) both read from this file.
+
+A visreg test exists to **fail loudly** when the UI changes. Control flow that hides "the element wasn't there" or "the action didn't happen" defeats the whole point — a green test that silently did nothing is worse than no test. So:
+
+1. **No error swallowing.** Never wrap an action in `try/catch` to keep going, and never `.catch(() => {})` a promise. A failed click, fill, or wait *is* the finding — let it throw so the report shows "Failed while \<annotation\>". "It might not be there" is a reason to assert it (rule 3), not to guard it.
+
+2. **No loops.** No `for` / `while` / `forEach` / `for await` in a test body. Steps stay explicit and linear, so a failure points at one action and the run is reproducible.
+   - Don't loop to "click through" N items — that's N separate tests, or one snapshot of the container. Split it.
+   - Never write a `while (!atBottom)` scroll loop — it hangs in this harness (`window.scrollY` doesn't update in the Playwright context). Use `scrollIntoViewIfNeeded()` on a known bottom element (see the lazy-load pattern in `discover-abtests/references/patterns.md`).
+
+3. **No `if` — assert the expectation instead.** Don't branch on page state (`if (await locator.isVisible())`, `if (await locator.count())`, `if (el) …`). A branch means the test quietly takes the "do nothing" path *exactly when* the thing you're testing has regressed. State what you expect and let Playwright's auto-waiting throw when it's wrong — these are your assertions (an `if` whose only body is a `throw` is an assertion too, not a branch):
+   - `await page.waitForSelector(sel, { state: 'visible' })` — the element must appear.
+   - `await page.waitForURL('**/path')` — navigation must happen.
+   - Need different behaviour per viewport? Don't branch on `viewport.label` — write a separate `abTest` scoped to that viewport via `config: { visreg: { viewports: [...] } }` (see "Viewport-conditional selectors" in `patterns.md`). Each test stays linear.
+
+4. **Wait for conditions, not the clock.** Use `waitUntilPageSettled(page)` and `waitForSelector(sel, { state })` to wait. `page.waitForTimeout(ms)` is a guess — flaky when short, slow when long. A short fixed delay (≤500ms) is acceptable *only* to let a confirmed animation/transition finish where there's no event to wait on, never to "hope" content loads.
+
+5. **Prefer user-facing locators.** `getByRole`, `getByLabel`, `getByText` express intent and survive refactors better than brittle CSS/XPath; fall back to a stable selector (`[data-cy=…]`, a semantic class) when there's no accessible handle. (Section *captures* still use CSS selectors — see Selectors strategy in `patterns.md`.)
+
+6. **Deterministic inputs *and* content.** Fill fixed values — a fixed date, name, count — never `Date.now()`, randomness, or "today". When the *page itself* renders nondeterministic content (timestamps, "2 minutes ago", live counters, randomized ordering, today's date, ads), **alter the page to force it deterministic** rather than raising `config.visreg.mismatchThreshold` to hide it — a raised threshold isn't determinism, it just blinds the test to real diffs. In order of preference:
+   - **Freeze it at the source** in `beforeNavigate`, before the page loads, so it renders identically every run and on both sides:
+     ```typescript
+     beforeNavigate: async ({ context }) => {
+       await context.addInitScript(() => {
+         const FIXED = new Date('2026-01-01T00:00:00Z').getTime();
+         Date.now = () => FIXED;            // also stub the Date constructor if the app uses `new Date()`
+         Math.random = () => 0.42;          // pin shuffles / randomized order
+       });
+     },
+     ```
+   - **Overwrite the rendered text** in `testFn` before capture (it runs before the screenshot). Annotate it, and don't guard it — if the element is gone, let it throw:
+     ```typescript
+     annotate('pinning the relative timestamp');
+     await page.locator('.posted-at').evaluate((el) => { el.textContent = 'Jan 1, 2026'; });
+     ```
+   - **Drop it from the capture** in the test body when the dynamic element isn't what this test is about (e.g. an ad slot inside a section you're snapshotting): `await page.locator('.ad-slot').evaluateAll((els) => els.forEach((el) => el.remove()))`.
+   - **Stub images** with `interceptImages(page)` (call before `page.goto`) and freeze animations/background images with `overrideCSS(page)`.
+
+7. **Each test stands alone.** It starts from its `startingPath` and assumes nothing from any other test — no shared state, no ordering. One behaviour (one section, one interaction) per `abTest`, so a failure pinpoints what broke.
+
+And keep annotating: an `annotate(...)` immediately before each user action is what turns a thrown assertion into a readable "Failed while \<doing X\>".
+
+
 ## What to do when the component you want to capture is below the viewport? Avoid scrolling.
 
 1. Script an interaction only when the interaction *is* the test. On a virtualized page this is not a style preference: as sections mount, estimated heights are replaced by measured ones and `scrollHeight` moves under you (18,669 → 8,940 px on a real menu page), so fraction-based scrolling overshoots and unmounts everything you meant to assert on.
@@ -51,6 +94,38 @@ abTest(
 );
 ```
 
+## Keep perf and audit viewports a subset of the visreg ones
+
+Visreg is cheap, so it can cover more viewports than perf and audit. What those
+must never do is cover *different* ones. If `visreg` runs `desktop-tall` and
+`perf` runs `desktop`, perf measures a rendering no screenshot ever captured —
+it never sees the content below the fold that visreg is diffing, so a perf
+number has no visual evidence to explain it. The same goes for `audit`. Every
+perf and audit viewport must also be a visreg viewport.
+
+### BAD — perf and audit measure viewports visreg never captures
+
+```typescript
+config: {
+  visreg: { viewports: ['desktop-tall', 'phone-tall'] },
+  perf: { viewports: ['desktop'] },
+  audit: { viewports: ['phone'] },
+}
+```
+
+### GOOD — perf and audit narrow the visreg list, reusing the same sizes
+
+```typescript
+const VISREG = ['desktop-tall', 'tablet-tall', 'phone-tall'] satisfies [string, ...string[]];
+const MEASURED = ['desktop-tall', 'phone-tall'] satisfies [string, ...string[]];
+
+config: {
+  visreg: { viewports: VISREG },
+  perf: { viewports: MEASURED },
+  audit: { viewports: MEASURED },
+}
+```
+
 ## Wait for a durable final state, not the first success signal
 
 Modern UIs can expose a component before its content and geometry have finished updating. Wait for both the meaningful state and the specific component's rendered size to settle.
@@ -99,6 +174,39 @@ await page.getByRole('heading', { name: 'Your cart is empty' }).waitFor({ state:
 ```
 
 This is causal waiting, not defensive waiting: the remove request is invalid until the add request has committed.
+
+## Do not hide app bugs. Fail loudly.
+
+Flakiness can either be a test flaw, or an app bug. Never dance around the latter. Do not patch the app to stabilize it,
+add expectations and create a bug with reproduction steps `shaka-perf compare --categories=visreg --filter="<Test Name>" --burn 5`
+
+### BAD — pin the page, hide the highlight, re-pin the strip until the screenshots match
+
+```typescript
+await waitForScrollSettled(page);
+await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+await stabilizeForVisreg(page);
+await neutralizeActiveSectionChip(page);
+await pinSectionChipStripToEnd(page);
+await waitForStableActiveSectionChip(page);
+await pinSectionChipStripToEnd(page);
+```
+
+### GOOD — add the expectation; its failure message is the bug's reproduction
+
+```typescript
+await annotate('clicking the last section chip (Specials)');
+await page.locator('[aria-label="menu sections"] a:has-text("Specials")').first().click();
+await page.getByRole('heading', { name: 'Tuscan Butter Shrimp' }).waitFor({ state: 'visible' });
+await stabilizeForVisreg(page);
+const active = await page.locator('[aria-label="menu sections"] [aria-current="true"]').textContent();
+if (active?.trim() !== 'Specials') {
+  throw new Error(
+    `APP BUG: tapped Specials, active chip is "${active}". ` +
+    'Repro: shaka-perf compare --categories=visreg --filter="Popmenu Order - Menu Section Last Chip Into View" --burn 5',
+  );
+}
+```
 
 ## Never alter the database; intercept writes
 
@@ -159,6 +267,85 @@ abTest('Like a dish', {
 ```
 
 Keep stubs narrow: continue unmatched GraphQL operations and return the complete response shape the UI reads. Use the same interception pattern for nondeterministic third-party APIs such as geocoders, which can rank results differently or time out. For merely blocking resources in perf runs, prefer `installRequestBlocking(context, patterns)`; general Playwright routing disables Chromium's HTTP cache and can distort the measurement.
+
+## Do not hand-roll counters for what the run already records
+
+The trace behind every perf run already carries each network request as a span,
+and same-origin `/graphql` POSTs are keyed by their `operationName`. A repeated
+request is therefore visible as repeated bars on one side of the timeline strip.
+Counting the same requests yourself adds a listener that can only agree with the
+trace, and asserting on the count turns a measurement into a pass/fail gate that
+hides the numbers when it trips. Reproduce the condition and let the comparison
+report it.
+
+### BAD — count requests in the test and throw
+
+```typescript
+abTest('Autonavigate', { startingPath: '/order?location=main', testTypes: ['perf'] },
+  async ({ browserContext, page }) => {
+    const updates = cartUpdateMutationCount(browserContext); // duplicates the trace
+    if (updates > 2) throw new Error(`sent ${updates} cart updates`);
+  });
+```
+
+### GOOD — drive the page to the state and let the trace show the requests
+
+```typescript
+abTest('Autonavigate', { startingPath: '/order?location=main', testTypes: ['perf'] },
+  async ({ page }) => {
+    await page.waitForURL('**/order/main/menus/**');
+    await waitUntilPageSettled(page);
+  });
+```
+
+## Never branch on page state
+
+A branch or swallowed rejection makes the test pass when expected UI is missing. State the
+expected journey and let Playwright throw when it cannot complete it.
+
+### BAD — silently works whether the element exists or not
+
+```typescript
+  if (await toast.count()) {
+    await toast.click();
+  }
+
+  await trigger.click().catch(() => undefined);
+```
+
+### GOOD — one expected journey
+
+```typescript
+  await toast.click();
+  await trigger.click();
+```
+
+If the toast matters, click it unconditionally; otherwise omit it. For viewport-specific
+journeys, use separate viewport-scoped tests.
+
+## Never branch the test body on `isControl`
+
+Control is not a fixed baseline — it is the merge-base today and your merged work tomorrow —
+so `if (!isControl)` will cause false regressions.
+
+### BAD — the wait is skipped on control, and silently on both sides after the merge
+
+```typescript
+
+  await openCartDrawer(page);
+  // A new element was just introduced, to fix the fail, we only check it in experiment.
+  if (!isControl) {
+    await page.locator('[data-section-id="cart-upsell"]').waitFor({ state: 'visible' });
+  }
+```
+
+### GOOD — one journey, gated on state both sides reach
+
+```typescript
+  await openCartDrawer(page);
+  // Wait unconditionally. Initial failure against master is expected.
+  await page.locator('[data-section-id="cart-upsell"]').waitFor({ state: 'visible' });
+```
 
 ## Compose per-test `beforeNavigate` setup explicitly
 
@@ -250,14 +437,16 @@ Put an annotation immediately before its user action so the timeline chip marks 
 
 ## Capture presence, not absence
 
-Shaka-perf is a snapshot-heavy framework: the captured artifact should contain the UI that proves the state under test. Do not use it for behavior whose only result is that an element is gone. A screenshot of the page after a dialog closes provides no meaningful evidence about the dialog or its close button.
+Shaka-perf is not your regular testing framework like Cypress and Playwright! It is a tool based on screenshot comparison: the captured artifact should contain the UI. Do not use it for testing behavior whose only result is that an element is gone. A screenshot of the page after a dialog closes provides no meaningful evidence about the looks and the speed of the dialog or its close button.
+
+Shaka-perf is not meant to hunt edge cases. If you are trying to achieve 100% code coverage with it, you are using the wrong tool. Use Playwright/Cypress instead!
 
 ### BAD — close the visual subject before capture
 
 ```typescript
 abTest('Close item dialog', {
   startingPath: '/menus/dinner-menu',
-  testTypes: ['visreg', 'accessibility'],
+  testTypes: ['visreg', 'accessibility', 'perf'],
   visregSelectors: ['viewport'],
 }, async ({ page }) => {
   await page.getByRole('button', { name: /Curly Fries/ }).first().click();
@@ -272,22 +461,22 @@ abTest('Close item dialog', {
 ### GOOD — capture the dialog and its meaningful contents
 
 ```typescript
-const ITEM_DIALOG = '[role="dialog"][aria-label*="Curly Fries"]';
-
 abTest('Item dialog', {
   startingPath: '/menus/dinner-menu',
-  testTypes: ['visreg', 'accessibility'],
-  visregSelectors: [ITEM_DIALOG],
+  testTypes: ['visreg', 'accessibility', 'perf'],
+  visregSelectors: ['viewport'],
 }, async ({ page }) => {
   await page.getByRole('button', { name: /Curly Fries/ }).first().click();
-  const dialog = page.locator(ITEM_DIALOG);
+  const dialog = page.getByRole('dialog', { name: /Curly Fries/ });
   await dialog.waitFor({ state: 'visible' });
   await dialog.getByRole('button', { name: 'Add to order' }).waitFor({ state: 'visible' });
   await waitForStableElementSize(dialog);
 });
 ```
 
-If the requirement is “the Close button dismisses the dialog,” write that as a behavioral assertion in vanilla Playwright or Cypress. Keep the shaka-perf test focused on the presence and rendered quality of the open dialog.
+You would ask, "What about performance? Surely the GOOD example covers fewer scenarios? Isn't it important to make sure that closing the dialog does not freeze the page or cause CLS issues? The BAD example provides a sharper perspective on the page's performance. Right?"
+Wrong. Performance tests are ridiculously expensive. You can't have perf tests for every single edge case. You can't have perf tests even for all of your happy paths. Shaka-perf is not suitable for **code coverage**. It is only suitable for **screenshot coverage** of happy paths. If you want **code coverage**, write other types of tests (they are cheaper and less flaky).
+
 
 ## Capture the final component, not unstable surroundings
 
@@ -319,6 +508,61 @@ abTest('Pick schedule time', {
 
 Choose `viewport` only when the whole viewport is the subject. Otherwise, a narrow selector produces a more meaningful diff and isolates the test from unrelated layout churn.
 
+## Trim unrelated chrome, never the component's own parts
+
+`visregSelectors` is for excluding page furniture that has nothing to do with the subject. It is not for cropping a component down to the piece you changed. A nav and the content it drives are one component: capture the nav alone and the shot cannot show whether the nav did anything.
+
+### BAD — crop to the nav, losing the menu it navigates
+
+```typescript
+const SIDEBAR_NAV = '.pm-menu-sidebar';
+
+abTest('Sidebar Section Tab Click', {
+  startingPath: '/sidebar-menu-tabs-layout',
+  visregSelectors: [SIDEBAR_NAV], // the sidebar means nothing outside its menu
+}, async ({ page }) => {
+  await page.locator(SIDEBAR_NAV).getByRole('tab', { name: 'Sides' }).click();
+  /* page stabilization is omitted */
+});
+```
+
+### GOOD — capture the whole menu group, nav and content together
+
+```typescript
+abTest('Sidebar Section Tab Click', {
+  startingPath: '/sidebar-menu-tabs-layout',
+  visregSelectors: ['.pm-menus-bg'],
+}, async ({ page }) => {
+  await page.locator('.pm-menu-sidebar').getByRole('tab', { name: 'Sides' }).click();
+  /* page stabilization is omitted */
+});
+```
+
+If the whole-component shot looks nearly identical to another test's, make the states genuinely different or drop the redundant test — do not crop until a diff appears.
+
+## Keep the default perf set small
+
+Perf costs `numberOfMeasurements` samples per viewport per twin, so every test that opts into it multiplies the run. Visreg is cheap by comparison. Tag each test with the suite it belongs to and let an env var widen it, so a normal run measures only the numbers someone actually reads while visual coverage stays complete.
+
+### BAD — every test measures perf forever
+
+```typescript
+abTest('Menu tab switch', { startingPath: '/menus', testTypes: ['perf', 'visreg'] }, async () => {});
+abTest('Dish modal', { startingPath: '/menus', testTypes: ['perf', 'visreg'] }, async () => {});
+```
+
+### GOOD — tag the suite
+
+```typescript
+export function perfTestSuite(suite: 'essential' | 'all', types: TestType[] = ['perf', 'visreg']): TestType[] {
+  const measuresPerf = suite === 'essential' || process.env.ALL_PERF_TESTS === 'true';
+  return measuresPerf ? types : types.filter(type => type !== 'perf');
+}
+
+abTest('Menu tab switch', { startingPath: '/menus', testTypes: perfTestSuite('all') }, async () => {});
+abTest('Core layout', { startingPath: '/menus/core', testTypes: perfTestSuite('essential') }, async () => {});
+```
+
 ## Capture each UI state once
 
 Different test names, setup steps, or routes do not make captures distinct. If two tests finish by capturing the same component in the same rendered state, they duplicate coverage and multiply snapshot noise and runtime.
@@ -336,7 +580,7 @@ abTest('Sign in from menu', {
 }, async ({ page }) => {
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.locator(SIGN_IN_DIALOG).waitFor({ state: 'visible' });
-  /* page stabilization is ommitted */
+  /* page stabilization is omitted */
 });
 
 abTest('Sign in from cart', {
@@ -345,7 +589,7 @@ abTest('Sign in from cart', {
 }, async ({ page }) => {
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.locator(SIGN_IN_DIALOG).waitFor({ state: 'visible' });
-  /* page stabilization is ommitted */
+  /* page stabilization is omitted */
 });
 ```
 
@@ -363,7 +607,7 @@ abTest('Sign-in dialog', {
 }, async ({ page }) => {
   await page.getByRole('button', { name: 'Sign in' }).click();
   const dialog = page.locator(SIGN_IN_DIALOG);
-  /* page stabilization is ommitted */
+  /* page stabilization is omitted */
 });
 ```
 
@@ -380,11 +624,89 @@ abTest('Sign-in dialog', {
 }, async ({ page }) => {
   await page.getByRole('button', { name: 'Sign in' }).click();
   const dialog = page.locator(SIGN_IN_DIALOG);
-  /* page stabilization is ommitted */
+  /* page stabilization is omitted */
 });
 ```
 
 Before adding a test, inventory the final component and state already captured by **the rest of the suite**. Add another route only when it produces a materially different rendered state or when route performance is itself the subject and the capture provides route-specific evidence. Otherwise, cover alternate-route behavior in vanilla Playwright or Cypress.
 
 The inventory is across tests. Within one test, the viewport list is a separate decision and this rule has nothing to say about it.
+
+## No test name may contain another test name
+
+`troubleshoot --filter` must resolve to exactly ONE test. A name that is a prefix of a sibling's cannot be addressed at all, so the test becomes undebuggable — and `compare --filter` silently runs more tests than you asked for.
+
+### BAD — the first name is a prefix of the other two
+
+```typescript
+abTest('Consumer App Menu - Material Menu Tabs Layout', /* … */);
+abTest('Consumer App Menu - Material Menu Tabs Layout Single Menu', /* … */);
+abTest('Consumer App Menu - Material Menu Tabs Layout Tab Switch', /* … */);
+```
+
+### GOOD — qualify the base case too
+
+```typescript
+abTest('Consumer App Menu - Material Menu Tabs Layout Multi Menu', /* … */);
+abTest('Consumer App Menu - Material Menu Tabs Layout Single Menu', /* … */);
+abTest('Consumer App Menu - Material Menu Tabs Layout Tab Switch', /* … */);
+```
+
+When you add a variant of an existing test, rename the original rather than extending its name.
+
+
+## Declare the viewport you need; never resize mid-test
+
+Dynamic resizing causes all kinds of flakiness and kills Lighthouse measurements.
+
+### BAD — grow the viewport at runtime to trip lazy loading
+
+```typescript
+const viewport = page.viewportSize();
+await page.setViewportSize({ width: viewport.width, height: 6000 }); // everything reflows
+await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+await page.setViewportSize(viewport);                                // and reflows back
+```
+
+### GOOD — declare it once, so both sides render at that size from the first paint
+
+```typescript
+// abtests.config.ts
+viewportDefinitions: [{ ...DESKTOP_VIEWPORT, height: 6000 }, { ...PHONE_VIEWPORT, height: 6000 }],
+```
+
+## Make the viewport bigger than the element you capture
+
+A screenshot is cropped to the viewport, so a subject taller than the window comes back
+clipped or full of capture artifacts (fixed chrome mid-image, unmounted lazy content).
+Check the subject's height and pick a viewport it fits inside — the tall trio
+(`desktop-tall`, `tablet-tall`, `phone-tall`: same widths, 3000 px) exists for this.
+Phone is the worst case: 667 px tall, and columns restack into one long strip.
+
+### BAD — a ~2,200 px footer at phone's 667 px
+
+```typescript
+abTest('Footer locations', {
+  startingPath: '/custom-form',
+  visregSelectors: ['footer'],
+}, async ({ page }) => {
+  await waitUntilPageSettled(page);
+});
+```
+
+### GOOD — a viewport the footer fits inside
+
+```typescript
+const MEASURED = ['desktop-tall', 'tablet-tall', 'phone-tall'] satisfies [string, ...string[]];
+
+abTest('Footer locations', {
+  startingPath: '/custom-form',
+  visregSelectors: ['footer'],
+  config: {
+    visreg: { viewports: MEASURED },
+  },
+}, async ({ page }) => {
+  await waitUntilPageSettled(page);
+});
+```
 

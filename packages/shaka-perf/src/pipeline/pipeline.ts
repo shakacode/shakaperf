@@ -13,12 +13,20 @@ import type { ChipDescriptor, ReportMeta, SortDescriptor, TestResult } from './r
 import type { Outcome } from './outcome';
 import type { StageArtifactTestMeta } from './stage-report-components';
 import type { Stage, StageCategory, StageName, StageRenderEntry } from '../stage/stage';
+import type { TaskLimits } from './worker-pool';
 
 type StageMeasurement<S> = S extends Stage<infer M> ? M : never;
 
 export interface PipelineWorkerPool {
   readonly id: string;
   readonly parallelism: number;
+  /**
+   * Budgets this pool's tasks run under no matter what any test's config says.
+   * Left unset by a measuring pipeline — there the config decides, per test.
+   * Set it where the pool's own topology dictates the answer; see
+   * `FROZEN_TRACK_LIMITS` in `troubleshoot/pipeline.ts`.
+   */
+  readonly limits?: Partial<TaskLimits>;
 }
 
 export interface PipelineRunStageStep {
@@ -90,6 +98,13 @@ export interface PipelineReport {
   renderHeaderUrls(meta: ReportMeta): ReactNode;
   renderTestCardUrls(test: TestResult): ReactNode;
   renderDialogMetaUrls(test: StageArtifactTestMeta): ReactNode;
+  /**
+   * The command that re-runs this test at this viewport with its browsers left
+   * open. It runs whichever of visreg/perf the test declares, which is not
+   * necessarily the stage that failed. Omitted by a pipeline with no such
+   * command — troubleshoot is already it.
+   */
+  troubleshootCommand?(testName: string, viewportLabel: string): string;
 }
 
 export interface PipelineMachineReportMeta {
@@ -127,7 +142,7 @@ interface PipelineOptions {
 }
 
 interface PipelineBuilder {
-  registerWorkerPool(parallelism: number): PipelineWorkerPool;
+  registerWorkerPool(parallelism: number, limits?: Partial<TaskLimits>): PipelineWorkerPool;
   runStage(pool: PipelineWorkerPool, stage: Stage): void;
   waitForAllTasksFinishAndDispose(pool: PipelineWorkerPool): void;
   buildChips<Measurements extends Record<string, unknown>>(chips: PipelineChipBuilder<Measurements>): void;
@@ -157,10 +172,11 @@ export function createPipeline(
   const chipStep: { current?: PipelineChipBuilder<Record<string, unknown>> } = {};
   const sortStep: { current?: PipelineSortBuilder<Record<string, unknown>> } = {};
   const builder: PipelineBuilder = {
-    registerWorkerPool(parallelism) {
+    registerWorkerPool(parallelism, limits) {
       const pool: PipelineWorkerPool = {
         id: `worker-pool-${workerPools.length + 1}`,
         parallelism,
+        ...(limits ? { limits } : {}),
       };
       workerPools.push(pool);
       registeredPools.add(pool);

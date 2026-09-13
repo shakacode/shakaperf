@@ -137,6 +137,13 @@ export default defineConfig({
 
   audit: {
     lighthouseConfig: LIGHTHOUSE_CONFIG,
+    // Enable so `--categories code_coverage` can tell which source lines the
+    // screenshots actually show.  'react19' (React >= 19.1, fetchable source 
+    // map) or 'react18' (React 16–18 with the JSX source transform).
+    // 
+    // For other frameworks, pass a custom `ScreenshotCoveragePlugin` object
+    // (type exported from shaka-perf).
+    // screenshotCoveragePlugin: 'react19',
   },
 
   // Agent-readiness (AI-legibility scan → the client report's "Agent Ready"

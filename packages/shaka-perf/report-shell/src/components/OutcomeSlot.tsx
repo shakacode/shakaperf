@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import type { ReactNode } from 'react';
 import { renderPersistedStageArtifacts } from '../../../src/pipeline/pipeline-artifacts';
 import type { ReportMeta, ReportOutcome } from '../types';
 
@@ -73,6 +74,34 @@ function OutcomeError({ outcome }: { outcome: ReportOutcome }) {
   );
 }
 
+/**
+ * The section one stage's outcomes render, or null when they render nothing —
+ * a stage whose measurements produce no artifact (an accessibility comparison
+ * that found no differences) is as absent as one that never ran. Null here
+ * means the stage is absent for every purpose: section counts, the sections
+ * filter, and the card itself.
+ */
+export function stageSection(
+  meta: ReportMeta,
+  outcomes: readonly ReportOutcome[],
+): { errorOutcomes: ReportOutcome[]; artifact: ReactNode } | null {
+  const first = outcomes[0];
+  if (!first) return null;
+
+  const errorOutcomes = outcomes.filter((outcome) => outcome.kind === 'error');
+  const measurements = outcomes.flatMap((outcome) => (
+    outcome.kind !== 'ok' || outcome.measurement == null
+      ? []
+      : [{ measurement: outcome.measurement, viewport: outcome.viewport }]
+  ));
+  const artifact = measurements.length > 0
+    ? renderPersistedStageArtifacts(meta.pipelineName, meta.pipelineConfig, first.stage, measurements)
+    : null;
+
+  if (errorOutcomes.length === 0 && artifact == null) return null;
+  return { errorOutcomes, artifact };
+}
+
 export function OutcomeSlot({
   meta,
   outcomes,
@@ -81,23 +110,9 @@ export function OutcomeSlot({
   outcomes: readonly ReportOutcome[];
 }) {
   const first = outcomes[0];
-  if (!first) return null;
-
-  const okOutcomes = outcomes.filter((outcome) => outcome.kind === 'ok');
-  const errorOutcomes = outcomes.filter((outcome) => outcome.kind === 'error');
-  const measurements = okOutcomes.flatMap((outcome) => (
-    outcome.measurement == null
-      ? []
-      : [{ measurement: outcome.measurement, viewport: outcome.viewport }]
-  ));
-
-  const artifact = measurements.length > 0
-    ? renderPersistedStageArtifacts(meta.pipelineName, meta.pipelineConfig, first.stage, measurements)
-    : null;
-
-  if (errorOutcomes.length === 0 && artifact == null) {
-    return null;
-  }
+  const section = stageSection(meta, outcomes);
+  if (!first || !section) return null;
+  const { errorOutcomes, artifact } = section;
 
   return (
     <section className="outcome-slot" data-stage={first.stage} tabIndex={-1}>

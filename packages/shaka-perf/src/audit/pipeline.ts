@@ -19,6 +19,7 @@ import type { ChipDescriptor, SortDescriptor } from '../pipeline/report';
 import { AuditStage, type AuditMetric, type AuditResult } from './stages/audit';
 import { AccessibilityStage, type AccessibilityResult, type AccessibilityStageConfig } from './stages/accessibility';
 import { AgentReadinessStage, type AgentReadinessStageConfig } from './stages/agent_readiness';
+import { CodeCoverageStage } from './stages/code_coverage';
 import {
   METRIC_LEVEL_CHIP_COLOR,
   classifyMetric,
@@ -28,16 +29,15 @@ import {
 import { BuildAnnotatedTimelineStage } from './stages/build_annotated_timeline';
 import { AiSummaryStage } from './stages/ai_summary';
 import { auditPipelineReport } from './pipeline-report';
-import {
-  coverageCoversChips,
-  coverageDuplicateChips,
-  coverageSignaturesByTest,
-} from './coverage-duplicate-chips';
 
 export const auditPipelineMetadata = {
   description: 'Run absolute Lighthouse and accessibility audits on the target URL.',
-  categories: ['audit', 'accessibility'],
-  stages: ['audit', 'accessibility', 'agent-readiness', 'build_annotated_timeline', 'ai_summary'],
+  categories: ['audit', 'accessibility', 'code_coverage'],
+  // What `--categories` runs when the user names none. `code_coverage` is left
+  // out on purpose: it re-runs every test body in a second browser, so it only
+  // runs when asked for by name.
+  defaultCategories: ['audit', 'accessibility'],
+  stages: ['audit', 'accessibility', 'agent-readiness', 'code_coverage', 'build_annotated_timeline', 'ai_summary'],
 } as const;
 
 export interface AuditPipelineConfig {
@@ -53,7 +53,7 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     description: auditPipelineMetadata.description,
     pipelineConfig: input,
     report: auditPipelineReport,
-    // The audit stage mirrors each unit's coverage.json here (see
+    // The code_coverage stage mirrors each unit's coverage.json here (see
     // mirrorCoverageToNycOutput); the runner wipes it before a fresh run so
     // orphan slugs from renamed/deleted tests can't pollute the nyc report.
     derivedResultsDirs: ['.nyc_output'],
@@ -69,6 +69,11 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     // ideally per-test); when enabled the client report renders the "Agent Ready"
     // tab. Its `applies()` skips units for tests that didn't turn it on.
     pipeline.runStage(workerPool, new AgentReadinessStage(input.agentReadiness));
+    // Instrumented-JS coverage + the screenshot-visibility map. Not in the
+    // default category set (`--categories code_coverage` runs it): it re-runs
+    // every test body in its own visreg-configured browser rather than riding
+    // the Lighthouse gather, so it cannot perturb the audit numbers.
+    pipeline.runStage(workerPool, new CodeCoverageStage());
     // Reads its frame cap (audit.limitVideoFramesCount) off the per-test
     // effective config at run time — no stage-level config.
     pipeline.runStage(workerPool, new BuildAnnotatedTimelineStage());
@@ -79,7 +84,7 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     pipeline.waitForAllTasksFinishAndDispose(workerPool);
 
     pipeline.buildChips<{ audit: AuditResult; accessibility: AccessibilityResult }>({
-      chipsForAllTests(perTest, context) {
+      chipsForAllTests(perTest) {
         const out = new Map<AbTestDefinition, readonly ChipDescriptor[]>();
         // Index test → metrics once and reuse across the chip builders below.
         const indexed = perTest.map((entry) => ({
@@ -88,22 +93,7 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
           accessibilityResults: entry.results.accessibility ?? [],
         }));
 
-        // Coverage-duplicate detection runs across the same `perTest` set
-        // because it needs every test's signature to spot supersets. Tests
-        // without coverage data are simply absent from the chip map.
-        const signatures = coverageSignaturesByTest(
-          perTest.map(({ test, results }) => ({
-            test,
-            auditResults: results.audit ?? [],
-          })),
-          context?.readJsonArtifact,
-        );
-        const duplicateChips = coverageDuplicateChips(signatures);
-        const coversChips = coverageCoversChips(signatures);
-
         for (const { test, metrics, accessibilityResults } of indexed) {
-          const duplicateChip = duplicateChips.get(test);
-          const coversChip = coversChips.get(test);
           const accessibility = accessibilityChips(accessibilityResults);
           if (metrics.length === 0) {
             const chips: ChipDescriptor[] = [{
@@ -115,8 +105,6 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
               affectsCardOrder: false,
             }];
             chips.push(...accessibility);
-            if (duplicateChip) chips.push(duplicateChip);
-            if (coversChip) chips.push(coversChip);
             out.set(test, chips);
             continue;
           }
@@ -125,8 +113,6 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
             ...needsImprovementChips(metrics),
             interactionsChip(metrics),
           ];
-          if (duplicateChip) chips.push(duplicateChip);
-          if (coversChip) chips.push(coversChip);
           out.set(test, chips);
         }
         return out;

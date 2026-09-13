@@ -35,14 +35,24 @@ export const troubleshootPipelineMetadata = {
 /** A pool serializes its stages, so each track needs its own. */
 const TRACK_PARALLELISM = 1;
 
+/**
+ * The browsers ARE the output here, so neither track may be cut short: a
+ * timeout would abort the deliberate freezes and let the run finish, taking
+ * every browser with it, and a retry would build a second set of windows that
+ * also never close. Pinned on the pool because it is a fact about this
+ * pipeline, not about any test — a test carrying its own `shared.timeoutMs`
+ * must not reintroduce either.
+ */
+const FROZEN_TRACK_LIMITS = { timeoutMs: 0, retries: 0 } as const;
+
 export function createTroubleshootPipeline(config: AbTestsConfig) {
   return createPipeline({
     name: 'troubleshoot',
     description: troubleshootPipelineMetadata.description,
     report: NO_REPORT,
   }, (pipeline) => {
-    const visregPool = pipeline.registerWorkerPool(TRACK_PARALLELISM);
-    const perfPool = pipeline.registerWorkerPool(TRACK_PARALLELISM);
+    const visregPool = pipeline.registerWorkerPool(TRACK_PARALLELISM, FROZEN_TRACK_LIMITS);
+    const perfPool = pipeline.registerWorkerPool(TRACK_PARALLELISM, FROZEN_TRACK_LIMITS);
 
     pipeline.runStage(visregPool, createVisregStage({
       mismatchThreshold: config.visreg.mismatchThreshold,

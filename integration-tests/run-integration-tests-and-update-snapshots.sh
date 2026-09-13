@@ -4,7 +4,7 @@
 #
 # Usage:
 #   ./integration-tests/run-integration-tests-and-update-snapshots.sh \
-#       [--perf] [--visreg] [--twin-servers] [--audit] [--troubleshoot]
+#       [--perf] [--visreg] [--twin-servers] [--audit] [--troubleshoot] [--coverage]
 #
 # Snapshots contain ONLY reviewable, STABLE-NAMED artifacts — the normalized
 # per-suite logs and the deep-click report screenshots. Their diffs
@@ -19,7 +19,7 @@
 # control/experiment/failed_diff captures with per-run ids in their
 # filenames — until the next run for debugging. Layout under
 # integration-tests/snapshots/:
-#   - baseline-{perf,visreg,twin-servers,audit,troubleshoot}.log
+#   - baseline-{perf,visreg,twin-servers,audit,troubleshoot,coverage}.log
 #                       — the normalized Playwright log per suite
 #   - bench-results/*.png    — @perf deep-click screenshots
 #   - visreg-results/*.png   — @visreg deep-click screenshots
@@ -31,6 +31,9 @@
 #       full-page render of the report — separate per-HTML screenshots would
 #       only duplicate these dialog/overview shots (and the self-contained
 #       report variant always duplicates the full report).
+#   - coverage-results/      — @coverage screenshot-coverage snapshot: one
+#       file per source (code gutters + screenshot cells) plus legend.txt,
+#       from coverage-baseline.mts save over a development-bundle audit
 #   - troubleshoot-results/01-sides.png — @troubleshoot
 #       Not a report shot: the four frozen troubleshoot browsers (visreg +
 #       perf, each control and experiment) screenshotted over CDP straight
@@ -85,6 +88,7 @@ VISREG=false
 TWIN_SERVERS=false
 AUDIT=false
 TROUBLESHOOT=false
+COVERAGE=false
 EXTRA_ARGS=()
 for arg in "$@"; do
   case "$arg" in
@@ -93,13 +97,14 @@ for arg in "$@"; do
     --twin-servers) TWIN_SERVERS=true ;;
     --audit)        AUDIT=true ;;
     --troubleshoot) TROUBLESHOOT=true ;;
+    --coverage)     COVERAGE=true ;;
     *) EXTRA_ARGS+=("$arg") ;;
   esac
 done
 
 # If no flags specified, run everything
-if ! $PERF && ! $VISREG && ! $TWIN_SERVERS && ! $AUDIT && ! $TROUBLESHOOT; then
-  PERF=true; VISREG=true; TWIN_SERVERS=true; AUDIT=true; TROUBLESHOOT=true
+if ! $PERF && ! $VISREG && ! $TWIN_SERVERS && ! $AUDIT && ! $TROUBLESHOOT && ! $COVERAGE; then
+  PERF=true; VISREG=true; TWIN_SERVERS=true; AUDIT=true; TROUBLESHOOT=true; COVERAGE=true
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -194,6 +199,9 @@ SETUP_FAILED=false
 ! $SETUP_FAILED && $PERF         && run_suite "@perf"         "$SNAPSHOTS/baseline-perf.log"
 ! $SETUP_FAILED && $AUDIT        && run_suite "@audit"        "$SNAPSHOTS/baseline-audit.log"
 ! $SETUP_FAILED && $TROUBLESHOOT && run_suite "@troubleshoot" "$SNAPSHOTS/baseline-troubleshoot.log"
+# Last: it rebuilds the experiment bundle in development mode and leaves it
+# that way, which would skew any suite measuring the experiment side after it.
+! $SETUP_FAILED && $COVERAGE     && run_suite "@coverage"     "$SNAPSHOTS/baseline-coverage.log"
 
 # Stop containers after all suites
 echo "=== Stopping containers ==="

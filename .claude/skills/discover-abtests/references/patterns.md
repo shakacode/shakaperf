@@ -8,7 +8,7 @@ Per-test `config` values REPLACE the file value wholesale — arrays included (a
 
 ## Test code rules (non-negotiable)
 
-See [`../../assess-abtest-quality/SKILL.md`](../../assess-abtest-quality/SKILL.md) — the canonical list (no error swallowing, no loops, no `if`-branching on page state, wait for conditions, prefer user-facing locators, deterministic inputs, each test independent). Read it before writing or grading any test.
+See [writing-good-ab-tests.md](https://github.com/shakacode/shakaperf/blob/main/writing-good-ab-tests.md) — the canonical list (no error swallowing, no loops, no `if`-branching on page state, wait for conditions, prefer user-facing locators, deterministic inputs, each test independent). Read it before writing or grading any test.
 
 ## Selectors strategy
 

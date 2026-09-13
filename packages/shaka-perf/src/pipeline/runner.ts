@@ -53,6 +53,7 @@ import { viewportsForCategory } from '../config';
 import type { AbTestsConfig } from '../config';
 import {
   type Pipeline,
+  type PipelineReport,
   type PipelineWorkerPool,
   type ChipResultMap,
   type ChipStageResult,
@@ -67,7 +68,8 @@ import type {
   StageRuntime,
   TestContext,
 } from '../stage/stage';
-import { WorkerPool, type WorkerTaskProgressSink } from './worker-pool';
+import { taskLimitsResolver } from './task-limits';
+import { WorkerPool, type TaskLimits, type WorkerTaskProgressSink } from './worker-pool';
 import type { StageSelection } from './pipeline';
 import { testIdForTest, unitIdForTest } from './unit-id';
 import { burnDisplayName, expandTestsForBurn } from './burn';
@@ -147,6 +149,8 @@ interface StageExecution {
 interface RuntimeWorkerPool {
   ref: PipelineWorkerPool;
   pool: WorkerPool;
+  /** This pool's `config -> TaskLimits` mapping (see `taskLimitsResolver`). */
+  taskLimits(config: AbTestsConfig): TaskLimits;
   unitChains: Map<string, Promise<void>>;
   stageExecutions: StageExecution[];
   pending: Promise<void>[];
@@ -238,6 +242,13 @@ class BufferedStageLogger implements StageLogger {
 }
 
 const stageTaskProgressStorage = new AsyncLocalStorage<WorkerTaskProgressSink>();
+// The limits every task the CURRENT unit submits runs under, derived from that
+// unit's effective config. Stage engines call `pool.submit()` from inside
+// `runStage`, so the pool reads this at submit time the same way it reads
+// `stageTaskProgressStorage`. Before it existed, a pool was built once from the
+// FILE config and a test's own `shared.timeoutMs`/`retries`/`retryDelay` were
+// accepted by the schema, merged into its effective config, and then ignored.
+const stageTaskLimitsStorage = new AsyncLocalStorage<TaskLimits>();
 
 function errorInfo(err: unknown): ErrorInfo {
   const lastAnnotation = findLastAnnotation(err);
@@ -369,28 +380,12 @@ export interface RuntimeOptions {
    */
   readonly fullReportZip?: boolean | undefined;
   /**
-   * Worker-pool crash retries — applied uniformly to every worker pool
-   * the pipeline registers. Engine-level retries (e.g. visreg best-of-N
-   * screenshot stability) are a stage knob and stay on pipeline config.
-   *
-   * Ignored under `burn`, which forces both to 0.
-   */
-  readonly retries: number;
-  readonly retryDelay: number;
-  /**
    * `--burn <n>`: run every test n times as independent instances, retries off
-   * (see `burn.ts`). Covers the framework's crash-retries, forced to 0 below;
-   * a stage's own retries are zeroed on the pipeline config by the CLI.
-   * Undefined = off.
+   * (see `burn.ts`). Covers the framework's crash-retries, forced to 0 by
+   * `taskLimitsResolver`; a stage's own retries are zeroed on the pipeline
+   * config by the CLI. Undefined = off.
    */
   readonly burn?: number | undefined;
-  /**
-   * Per-task wall-clock cap, applied uniformly to every worker pool.
-   * Driven by `shared.timeoutMs`; stages never see this value — the pool
-   * itself races each `job.run` against the timer and fires its
-   * race-cancellation so cooperative subsystems exit on time. `0` disables it.
-   */
-  readonly timeoutMs: number;
 }
 
 export async function runPipeline(
@@ -434,6 +429,7 @@ async function runConfiguredPipelineWithSelection(
   if (executableStages.length === 0 && !runtime.reportOnly) {
     throw new Error('No executable pipeline stages selected.');
   }
+  const reportedStages = reportedStagesFor(pipeline, stageSelection);
 
   const controlURL = runtime.controlURL;
   const experimentURL = runtime.experimentURL;
@@ -620,17 +616,18 @@ async function runConfiguredPipelineWithSelection(
     const getRuntimePool = (ref: PipelineWorkerPool): RuntimeWorkerPool => {
       let runtimePool = runtimePools.get(ref);
       if (runtimePool) return runtimePool;
+      const taskLimits = taskLimitsResolver(ref, runtime.burn);
       const pool = new WorkerPool(ref.parallelism, {
         currentTaskProgress: () => stageTaskProgressStorage.getStore(),
-        // Burn replaces retries: 0 makes the pool terminal on the first
-        // throw, so an instance's raw outcome is the measurement.
-        retries: runtime.burn == null ? runtime.retries : 0,
-        retryDelay: runtime.retryDelay,
-        timeoutMs: runtime.timeoutMs,
+        currentTaskLimits: () => stageTaskLimitsStorage.getStore(),
+        // Only for a task submitted outside a unit's context; every per-unit
+        // task publishes its own test's effective config over this.
+        limits: taskLimits(runtime.config),
       });
       runtimePool = {
         ref,
         pool,
+        taskLimits,
         unitChains: new Map(),
         stageExecutions: [],
         pending: [],
@@ -677,6 +674,7 @@ async function runConfiguredPipelineWithSelection(
             stageIndex: executableStages.indexOf(step.stage) + 1,
             totalStages: executableStages.length,
             renderSticky,
+            troubleshootCommand: pipeline.report.troubleshootCommand,
           });
           runtimePool.stageExecutions.push(execution);
           runtimePool.pending.push(execution.promise);
@@ -694,7 +692,7 @@ async function runConfiguredPipelineWithSelection(
     }
   }
   if (!runtime.reportOnly) {
-    persistCliSkippedStageOutcomes(store, reportTests, stageSelection, runtime.config);
+    persistCliSkippedStageOutcomes(store, reportTests, stageSelection, reportedStages, runtime.config);
   }
 
   console.log(
@@ -716,6 +714,7 @@ async function runConfiguredPipelineWithSelection(
         resultsRoot,
         store,
         categories,
+        reportedStages,
         reportOnly: runtime.reportOnly === true,
         config: runtime.config,
       });
@@ -827,7 +826,7 @@ async function runConfiguredPipelineWithSelection(
   writeMachineReport(
     path.join(resultsRoot, 'report.json'),
     reportTests,
-    (test) => viewportsForTestAcrossStages(test, pipeline.stages, runtime.config),
+    (test) => viewportsForTestAcrossStages(test, reportedStages, runtime.config),
     pipeline,
     data.meta,
     store,
@@ -875,6 +874,7 @@ interface ScheduleStageExecutionOptions {
   stageIndex: number;
   totalStages: number;
   renderSticky(): void;
+  troubleshootCommand: PipelineReport['troubleshootCommand'];
 }
 
 function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecution {
@@ -889,6 +889,7 @@ function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecu
     stageIndex,
     totalStages,
     renderSticky,
+    troubleshootCommand,
   } = opts;
   const progress: StageProgress = {
     queued: units.length,
@@ -934,6 +935,7 @@ function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecu
         durations: execution.durations,
         renderSticky,
         testAndViewportId: id,
+        troubleshootCommand,
       }));
     runtimePool.unitChains.set(id, run.catch(() => undefined));
     return run;
@@ -964,6 +966,7 @@ interface ExecuteStageForUnitOptions {
   durations: number[];
   renderSticky(): void;
   testAndViewportId: string;
+  troubleshootCommand: PipelineReport['troubleshootCommand'];
 }
 
 async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<void> {
@@ -1078,11 +1081,25 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     },
   };
   try {
+    // `ctx.config` is this unit's EFFECTIVE config, so a test that overrode a
+    // budget gets its own and one that overrode nothing gets the file's — no
+    // "did this test declare it?" branch, because whatever outranks a test is
+    // layered on inside the pool's own resolver rather than smuggled in as a
+    // pool-wide default nobody may override.
     const measurement = await consoleCaptureStorage.run(
       logger,
       () => stageTaskProgressStorage.run(
         taskProgressSink,
-        () => runWithTestAnnotationContext(() => stage.run(ctx, runtimePool.pool)),
+        () => stageTaskLimitsStorage.run(
+          runtimePool.taskLimits(ctx.config),
+          () => runWithTestAnnotationContext(() => {
+            // First line of every unit's log, so a failure carries the way back
+            // to itself: one test, one viewport, browsers left open.
+            const command = opts.troubleshootCommand?.(unit.test.name, unit.viewport.label);
+            if (command) console.log(`to troubleshoot this line run ${chalk.green(command)}`);
+            return stage.run(ctx, runtimePool.pool);
+          }),
+        ),
       ),
     );
     outcome = {
@@ -1132,16 +1149,33 @@ function persistStageOutcome(
   unit.priorOutcomes.set(outcome.stage, leanPriorOutcome(outcome));
 }
 
+// The stages whose outcomes a report can carry: the ones this run executes
+// plus the ones `--restart-from-stage` retained from the previous run (the
+// only skipped entries without a persisted skip marker). A stage skipped by
+// `--categories` / `--skip-stages` is left out on purpose: its category must
+// contribute no viewports, or a default `audit` run — where `code_coverage`
+// is unselected but resolves to visreg's viewports — gains a row per
+// visreg-only breakpoint carrying nothing but that stage's skip marker.
+function reportedStagesFor(pipeline: Pipeline, stageSelection: StageSelection): Stage[] {
+  const retained = new Set(
+    stageSelection.skippedStages.filter((entry) => !entry.persistOutcome).map((entry) => entry.stage),
+  );
+  return pipeline.stages.filter((stage) => stageSelection.stages.includes(stage) || retained.has(stage));
+}
+
 function persistCliSkippedStageOutcomes(
   store: ArtifactStore,
   tests: AbTestDefinition[],
   stageSelection: StageSelection,
+  reportedStages: readonly Stage[],
   config: AbTestsConfig,
 ): void {
   const skippedStages = stageSelection.skippedStages.filter((entry) => entry.persistOutcome);
   if (skippedStages.length === 0) return;
   for (const test of tests) {
-    const viewports = viewportsForTestAcrossStages(test, skippedStages.map((entry) => entry.stage), config);
+    // Only at the viewports the report has rows for — a skip marker explains a
+    // stage's absence from a row, it must not create the row.
+    const viewports = viewportsForTestAcrossStages(test, reportedStages, config);
     for (const { stage, reason } of skippedStages) {
       for (const viewport of viewports) {
         store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason));
@@ -1341,6 +1375,8 @@ interface BuildTestResultOpts {
   resultsRoot: string;
   store: ArtifactStore;
   categories: StageCategory[];
+  /** See `reportedStagesFor`: the row set is derived from these, not every registered stage. */
+  reportedStages: readonly Stage[];
   reportOnly: boolean;
   config: AbTestsConfig;
 }
@@ -1362,6 +1398,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
     resultsRoot,
     store,
     categories,
+    reportedStages,
     reportOnly,
     config,
   } = opts;
@@ -1385,7 +1422,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
 
   const relFilePath = test.file ? path.relative(cwd, test.file) : '(unknown source)';
   const stagesByName = new Map(pipeline.stages.map((stage, index) => [stage.name, { stage, index }]));
-  const viewportOutcomes = viewportsForTestAcrossStages(test, pipeline.stages, config).flatMap((viewport) =>
+  const viewportOutcomes = viewportsForTestAcrossStages(test, reportedStages, config).flatMap((viewport) =>
     store.readOutcomesForViewport(test, viewport.label)
       // Drop stale on-disk outcomes from earlier runs at viewports this test's
       // effective config no longer runs the stage's category at.
@@ -1407,7 +1444,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
   const hasError = outcomes.some((outcome) => outcome.kind === 'error');
   const chipResults = chipResultsForOutcomes(pipeline, outcomes);
   const runId = newestRunId(outcomes);
-  const viewportArtifactPaths = viewportsForTestAcrossStages(test, pipeline.stages, config).map((vp) => ({
+  const viewportArtifactPaths = viewportsForTestAcrossStages(test, reportedStages, config).map((vp) => ({
     viewport: vp.label,
     path: store.unitDirForViewport(test, vp.label),
   }));
@@ -1430,7 +1467,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
       ),
       code: readTestSource(test.file, test.line),
       durationMs: 0,
-      measuredAt: freshestArtifactMtime(resultsRoot, test, pipeline.stages, config),
+      measuredAt: freshestArtifactMtime(resultsRoot, test, reportedStages, config),
       runId,
       outcomes,
       viewportArtifactPaths,

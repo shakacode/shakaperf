@@ -39,8 +39,9 @@ export interface AuditResult {
   metrics: AuditMetric[];
   lighthouseHref?: string;
   lighthouseThumbHref?: string;
-  /** Report-relative path to the executed statement-id JSON artifact. */
-  coverageStatementIdsHref?: string;
+  /** The one-sided halves of compare's "profile diff" / "network diff". */
+  performanceProfileHref?: string;
+  networkActivityHref?: string;
 }
 
 export class AuditStage implements Stage<AuditResult> {
@@ -51,7 +52,8 @@ export class AuditStage implements Stage<AuditResult> {
   readonly selfContainedReportStrip = {
     lighthouseHref: true,
     lighthouseThumbHref: true,
-    coverageStatementIdsHref: true,
+    performanceProfileHref: true,
+    networkActivityHref: true,
   };
 
   constructor(private readonly config: AuditStageConfig) {}

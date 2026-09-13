@@ -9,7 +9,7 @@ import path from 'node:path';
 
 import playwright from 'playwright';
 import chalk from 'chalk';
-import type { Browser, DecoratedCompareConfig } from '../types';
+import type { Browser, EngineBrowserConfig } from '../types';
 
 type PlaywrightBrowserType = 'chromium' | 'firefox' | 'webkit';
 
@@ -37,7 +37,7 @@ function buildMissingBrowserError (browserChoice: string, originalMessage: strin
   ].join('\n'));
 }
 
-export async function createPlaywrightBrowser (config: DecoratedCompareConfig) {
+export async function createPlaywrightBrowser (config: EngineBrowserConfig) {
   console.log('Creating Browser');
 
   const { playwrightOptions: sanitizedPlaywrightOptions } = JSON.parse(JSON.stringify(config));
@@ -77,3 +77,21 @@ export async function disposePlaywrightBrowser (browser: Browser) {
   console.log('Disposing Browser');
   await browser.close();
 };
+
+/**
+ * One unit's browser: launched from that unit's resolved options, handed to
+ * `run`, then disposed however `run` ends — unless `keepBrowserOpen` asks for
+ * the windows to outlive the run (a failed unit is the whole reason a window
+ * was wanted, so the error path keeps them too).
+ */
+export async function withPlaywrightBrowser<T> (
+  config: EngineBrowserConfig,
+  run: (browser: Browser) => Promise<T>,
+): Promise<T> {
+  const browser = await createPlaywrightBrowser(config);
+  try {
+    return await run(browser);
+  } finally {
+    if (!config.keepBrowserOpen) await disposePlaywrightBrowser(browser);
+  }
+}

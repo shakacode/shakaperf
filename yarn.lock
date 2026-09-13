@@ -6927,6 +6927,7 @@ __metadata:
     shaka-shared: "workspace:^"
     shakapacker: "npm:9.5.0"
     style-loader: "npm:4.0.0"
+    swc-plugin-coverage-instrument: "npm:^0.0.32"
     typescript: "npm:^5.9.3"
     webpack-bundle-analyzer: "npm:^5.1.1"
   languageName: unknown
@@ -12113,6 +12114,9 @@ __metadata:
     pixelmatch: "npm:^7.1.0"
     pngjs: "npm:^7.0.0"
     typescript: "npm:^5.3.3"
+  dependenciesMeta:
+    swc-plugin-coverage-instrument:
+      unplugged: true
   languageName: unknown
   linkType: soft
 
@@ -12709,6 +12713,13 @@ __metadata:
   version: 1.0.0
   resolution: "supports-preserve-symlinks-flag@npm:1.0.0"
   checksum: 10c0/6c4032340701a9950865f7ae8ef38578d8d7053f5e10518076e6554a9381fa91bd9c6850193695c141f32b21f979c985db07265a758867bac95de05f7d8aeb39
+  languageName: node
+  linkType: hard
+
+"swc-plugin-coverage-instrument@npm:^0.0.32":
+  version: 0.0.32
+  resolution: "swc-plugin-coverage-instrument@npm:0.0.32"
+  checksum: 10c0/c58fc5df25529e7b9aad8e9d7e088e5699bfa321dd8a7b6e624a9fc7e6f594a15a469fc878a0100cf3760e03e2e11ae8baf36db16fbe743a96ca0e29440c61c8
   languageName: node
   linkType: hard
 

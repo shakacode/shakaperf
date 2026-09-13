@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import type { Browser, BrowserContext, PlaywrightPage, Viewport, DecoratedCompareConfig } from '../types';
+import type { Browser, BrowserContext, PlaywrightPage, Viewport, EngineBrowserConfig } from '../types';
 
 // JSON-bridge safety net only: the compare runner always writes the resolved
 // `waitTimeout` (required on `shared.playwrightOptions`) into the temp config,
@@ -17,6 +17,12 @@ export interface ComparisonSide {
   page: PlaywrightPage;
   /** Close this side's context. Best-effort; safe if it's already gone. */
   dispose: () => Promise<void>;
+  /**
+   * Set on the other sides by the first side to fail: the unit is settled,
+   * and a cut-off side that fails too takes no screenshot and reports nothing
+   * — see `withPreparedSide`.
+   */
+  cutOff?: boolean;
 }
 
 /**
@@ -39,7 +45,7 @@ export interface ComparisonSide {
  */
 export async function createComparisonSide(
   browser: Browser,
-  config: DecoratedCompareConfig,
+  config: EngineBrowserConfig,
   viewport: Viewport,
   onContextReady?: (context: BrowserContext) => Promise<void>,
 ): Promise<ComparisonSide> {

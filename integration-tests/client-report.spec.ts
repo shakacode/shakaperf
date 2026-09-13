@@ -11,7 +11,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
   ORIGINAL_REPO, EXPERIMENT_CLONE_PATH, DEMO_CWD, CONTROL_PORT, EXPERIMENT_PORT,
-  assertPlainNonZeroExit, env, loud, stage, startServers, waitForPort,
+  assertPlainNonZeroExit, env, loud, readAuditReport, stage, startServers, waitForPort,
 } from './helpers';
 import {
   captureClientReportScreenshots,
@@ -85,7 +85,8 @@ test('audit filtered pages, render v2 client report, screenshot its states @audi
   await stage(`Running shaka-perf audit over the filtered ab-tests (${AUDIT_TEST_PATH_PATTERN}, ai_summary skipped)`, () => {
     try {
       execSync(
-        `yarn shaka-perf audit --skip-stages ai_summary --testPathPattern ${JSON.stringify(AUDIT_TEST_PATH_PATTERN)}`,
+        'yarn shaka-perf audit --skip-stages ai_summary --categories audit,accessibility ' +
+        `--testPathPattern ${JSON.stringify(AUDIT_TEST_PATH_PATTERN)}`,
         { cwd: DEMO_CWD, env, stdio: 'inherit', timeout: 40 * 60 * 1000 },
       );
     } catch (e) {
@@ -105,21 +106,23 @@ test('audit filtered pages, render v2 client report, screenshot its states @audi
   // The non-zero exit must come from the ENGINEERED error alone. If any
   // other test errored (servers dying mid-audit, flaky engine), the baseline
   // would quietly become a report full of broken pages.
-  const auditReport = JSON.parse(
-    fs.readFileSync(path.join(AUDIT_RESULTS_DIR, 'report.json'), 'utf-8'),
-  ) as {
-    tests: Array<{
-      name: string;
-      viewport?: { label?: string };
-      outcomes: Array<{ kind: string }>;
-    }>;
-  };
+  const auditReport = readAuditReport(AUDIT_RESULTS_DIR);
   const erroredTests = [...new Set(
     auditReport.tests
       .filter((t) => t.outcomes.some((o) => o.kind === 'error'))
       .map((t) => t.name),
   )];
   expect(erroredTests, 'only the sabotaged products test may error').toEqual(['Products - Electronics Filter']);
+
+  // No code_coverage here: the stage needs `window.__coverage__`, which only
+  // an instrumented build carries, and instrumenting triples the app's JS —
+  // so this run measures the same uninstrumented production bundle the perf
+  // and audit suites do. The @coverage suite owns that path end to end,
+  // against a development build it instruments itself.
+  expect(
+    auditReport.tests.flatMap((t) => t.outcomes).filter((o) => o.stage === 'code_coverage' && o.kind !== 'skipped'),
+    'code_coverage must not run against the production bundle',
+  ).toEqual([]);
 
   // The client report is phone-framed: it renders one page per phone-class row
   // in report.json (selectViewportRows -> one page each). Pin that set, because

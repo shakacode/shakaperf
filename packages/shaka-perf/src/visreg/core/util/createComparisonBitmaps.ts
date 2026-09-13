@@ -9,7 +9,7 @@ import cloneDeep from 'lodash/cloneDeep.js';
 import { writeFile } from 'node:fs/promises';
 import pMap from 'p-map';
 import { loadTests } from '../../../config-loader';
-import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywright';
+import { withPlaywrightBrowser } from './runPlaywright';
 import * as runCompareScenario from './runCompareScenario';
 import ensureDirectoryPath from './ensureDirectoryPath';
 import { convertAbTestToScenario, type ScenarioUrls } from './convertAbTestToScenario';
@@ -115,30 +115,15 @@ function delegateCompareScenarios (
 
   const asyncCaptureLimit = config.asyncCaptureLimit === 0 ? 1 : config.asyncCaptureLimit || CONCURRENCY_DEFAULT;
 
-  return new Promise(function (resolve, reject) {
-    createPlaywrightBrowser(config).then(function (browser) {
-      logger.log('Browser created');
-
-      for (let i = 0; i < scenarioViews.length; i++) {
-        scenarioViews[i]._playwrightBrowser = browser;
-      }
-
-      // The browser outlives the run on BOTH branches — the error branch above
-      // all, since a failed unit is the whole reason a window was wanted. The
-      // contexts are kept and titled by runCompareAttempts; keeping the browser
-      // handle alive stops Playwright taking those windows down with it.
-      const finish = config.keepBrowserOpen
-        ? function () { return Promise.resolve(); }
-        : function () { return disposePlaywrightBrowser(browser); };
-
-      pMap(scenarioViews as Required<ScenarioView>[], function (view: Required<ScenarioView>) {
-        return runCompareScenario.playwright(view, runtime);
-      }, { concurrency: asyncCaptureLimit }).then(function (out: unknown) {
-        finish().then(function () { resolve(out); });
-      }, function (e: unknown) {
-        finish().then(function () { reject(e); });
-      });
-    }, function (e: unknown) { reject(e); });
+  // Under keepBrowserOpen the contexts are kept and titled by
+  // runCompareAttempts; the helper keeping the browser handle alive is what
+  // stops Playwright taking those windows down with it.
+  return withPlaywrightBrowser(config, function (browser) {
+    logger.log('Browser created');
+    for (const view of scenarioViews) view._playwrightBrowser = browser;
+    return pMap(scenarioViews as Required<ScenarioView>[], function (view: Required<ScenarioView>) {
+      return runCompareScenario.playwright(view, runtime);
+    }, { concurrency: asyncCaptureLimit });
   });
 }
 
