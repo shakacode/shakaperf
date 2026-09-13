@@ -114,6 +114,7 @@
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",
     "@mirzazeyrek/node-resemble-js": "^1.2.1",
+    "@types/react": "^19.0.0",
     "axe-core": "^4.10.2",
     "chalk": "^4.1.2",
     "chrome-launcher": "^0.15.1",
@@ -170,7 +171,6 @@
     "@types/object-hash": "^3.0.0",
     "@types/pixelmatch": "^5.2.0",
     "@types/pngjs": "^6.0.5",
-    "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "jest": "^30.0.0",
