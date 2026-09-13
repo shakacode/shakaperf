@@ -12,7 +12,7 @@ version being released and updates the "Current version" line at the bottom.
 
 ---
 
-## 0.2.6 — 2026-09-13
+## 0.3.0 — 2026-09-13
 
 ### `--full-report-zip` removed from `compare` and `audit`
 
@@ -547,5 +547,5 @@ Notes:
 ---
 
 <!-- deploy: keep this line last; /deploy updates the version on publish -->
-Current version: shaka-perf 0.2.6, shaka-shared 0.2.6 (breaking changes under
+Current version: shaka-perf 0.3.0, shaka-shared 0.3.0 (breaking changes under
 **Unreleased** ship in the next release).
