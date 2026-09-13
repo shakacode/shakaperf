@@ -13,8 +13,19 @@ import path from 'node:path';
 describe('reconstructEffectiveConfig', function () {
   const envKey = 'SHAKA_PERF_ABTESTS_CONFIG_PATH';
 
-  function writeConfig(tmpDirPrefix: string, marker: string) {
+  // Loading a user config asserts the shaka-shared next to it is new enough.
+  function configDir(tmpDirPrefix: string): string {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), tmpDirPrefix));
+    fs.mkdirSync(path.join(tmpDir, 'node_modules'));
+    fs.symlinkSync(
+      path.dirname(require.resolve('shaka-shared/package.json')),
+      path.join(tmpDir, 'node_modules', 'shaka-shared'),
+    );
+    return tmpDir;
+  }
+
+  function writeConfig(tmpDirPrefix: string, marker: string) {
+    const tmpDir = configDir(tmpDirPrefix);
     const configPath = path.join(tmpDir, 'abtests.config.js');
     fs.writeFileSync(
       configPath,
@@ -143,7 +154,7 @@ describe('reconstructEffectiveConfig', function () {
   });
 
   it('throws (not warns) when the config file fails to parse', async function () {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-badconfig-'));
+    const tmpDir = configDir('shaka-perf-badconfig-');
     const configPath = path.join(tmpDir, 'abtests.config.js');
     // Stale key → the strict schema rejects it; a unit that rebuilds the
     // effective config must FAIL, not degrade to no-config.

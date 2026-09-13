@@ -8,6 +8,7 @@
 import * as path from 'path';
 import { registerTsExtensionResolver } from './register-ts-extensions';
 import { loadModule } from './load-module';
+import { assertCompatibleSharedVersion } from './shared-version';
 
 /**
  * Imports a test file for its side effect: the top-level `abTest()` calls that
@@ -20,5 +21,7 @@ import { loadModule } from './load-module';
 export async function loadTestFile(testFilePath: string): Promise<void> {
   // Let test files use extensionless / `.js` relative imports (see the hook).
   registerTsExtensionResolver();
-  await loadModule(path.resolve(testFilePath));
+  const absolute = path.resolve(testFilePath);
+  assertCompatibleSharedVersion(absolute);
+  await loadModule(absolute);
 }

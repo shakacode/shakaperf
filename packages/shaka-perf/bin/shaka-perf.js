@@ -24,6 +24,7 @@ const nodePathEnv = nodePathParts.join(path.delimiter);
 // invisible parent process. Keep this env var name in sync with
 // PROCESS_MARKER_ENV_VAR in src/processes/program.ts.
 process.env.IS_SHAKA_PERF_PROCESS = 'true';
+process.env.SHAKA_PERF_VERSION = require('../package.json').version;
 
 const nodeArgs = ['--enable-source-maps'];
 

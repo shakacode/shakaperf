@@ -8,6 +8,9 @@
 import type { Page, BrowserContext } from 'playwright-core';
 import type { PerTestConfig } from './define-config';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { version: SHAKA_SHARED_VERSION } = require('../package.json') as { version: string };
+
 export interface Marker {
   start?: string;
   end: string;
@@ -191,6 +194,20 @@ export function abTest(
   config: AbTestConfig,
   testFn: (context: TestFnContext) => Promise<void>
 ): void {
+    const perfVersion = process.env.SHAKA_PERF_VERSION;
+    if (perfVersion) {
+      // Compare major.minor.patch numerically, ignoring prerelease suffixes.
+      const perf = perfVersion.split('-', 1)[0].split('.').map(Number);
+      const shared = SHAKA_SHARED_VERSION.split('-', 1)[0].split('.').map(Number);
+      const difference = shared.map((part, i) => part - perf[i]).find((n) => n !== 0) ?? 0;
+      if (difference > 0) {
+        throw new Error(
+          `shaka-shared ${SHAKA_SHARED_VERSION} requires shaka-perf >= ${SHAKA_SHARED_VERSION}, ` +
+          `but ${perfVersion} is running. Upgrade shaka-perf: npm install -g shaka-perf@latest ` +
+          `(or: yarn add shaka-perf@latest for a project dependency).`,
+        );
+      }
+    }
     // Commas are the delimiter for the `--filter` CLI option, so a name
     // containing one would silently split into pieces and match nothing.
     if (name.includes(',')) {

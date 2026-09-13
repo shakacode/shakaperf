@@ -94,13 +94,13 @@ function compareReleaseVersions(a: string, b: string): number {
 function assertShakaSharedInstalled(cwd: string): void {
   const required = shakaSharedVersionFrom(__filename);
   const installed = shakaSharedVersionFrom(path.join(cwd, 'package.json'));
-  const pin = required ? `@^${required}` : '';
+  const pin = required ? `@${required}` : '';
 
   if (!installed) {
     throw new Error(
       `shaka-shared is not installed in ${cwd}. The generated ` +
         `${DEFAULT_DEST_FILENAME} imports it, so install it first:\n` +
-        `  yarn add shaka-shared${pin}    (or: npm install shaka-shared${pin})`,
+        `  yarn add --exact shaka-shared${pin}    (or: npm install --save-exact shaka-shared${pin})`,
     );
   }
   if (required && compareReleaseVersions(installed, required) < 0) {
@@ -108,7 +108,7 @@ function assertShakaSharedInstalled(cwd: string): void {
       `installed shaka-shared ${installed} is older than ${required}, ` +
         `which this shaka-perf needs (the generated config uses newer shaka-shared APIs). ` +
         `Upgrade it:\n` +
-        `  yarn add shaka-shared${pin}    (or: npm install shaka-shared${pin})`,
+        `  yarn add --exact shaka-shared${pin}    (or: npm install --save-exact shaka-shared${pin})`,
     );
   }
 }
