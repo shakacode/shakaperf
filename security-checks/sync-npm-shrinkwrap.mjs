@@ -23,6 +23,7 @@
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -51,29 +52,41 @@ if (!syncNpmShrinkwrapPlugin.supportsNpmVersion(npmVersion)) {
   );
 }
 
+// npm resolves from a scratch copy of the manifest with `devDependencies`
+// removed. Resolving the real manifest and dropping the dev entries afterwards
+// (the previous approach) leaves the shrinkwrap incomplete against the
+// manifest, so every later run re-resolves all the dev dependencies from the
+// live registry — and a fresh react-dom brings a peer range that drags the
+// production react along with it, which yarn's lock and age gate never follow.
+// A manifest that never had them keeps npm on the locked tree.
+//
 // --no-workspaces: npm otherwise walks up to the monorepo root and aborts on a
 // sibling workspace's `workspace:` range, which it cannot parse.
 // --fetch-retries and the timeout: npm retries a refused registry with backoff,
 // so without them an unreachable one stalls the install for many minutes.
-execFileSync(
-  'npm',
-  [
-    'install', '--package-lock-only', '--ignore-scripts', '--no-workspaces',
-    '--no-audit', '--no-fund', '--fetch-retries=1', '--fetch-timeout=30000',
-  ],
-  { cwd: PKG_DIR, stdio: 'inherit', timeout: Number(process.env.SHAKAPERF_NPM_SHRINKWRAP_TIMEOUT_MS || 180_000) },
-);
+const manifest = JSON.parse(fs.readFileSync(path.join(PKG_DIR, 'package.json'), 'utf8'));
+delete manifest.devDependencies;
+const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-shrinkwrap-'));
+try {
+  fs.writeFileSync(path.join(scratch, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  fs.copyFileSync(SHRINKWRAP, path.join(scratch, 'npm-shrinkwrap.json'));
+  execFileSync(
+    'npm',
+    [
+      'install', '--package-lock-only', '--ignore-scripts', '--no-workspaces',
+      '--no-audit', '--no-fund', '--fetch-retries=1', '--fetch-timeout=30000',
+    ],
+    { cwd: scratch, stdio: 'inherit', timeout: Number(process.env.SHAKAPERF_NPM_SHRINKWRAP_TIMEOUT_MS || 180_000) },
+  );
+  fs.copyFileSync(path.join(scratch, 'npm-shrinkwrap.json'), SHRINKWRAP);
+} finally {
+  fs.rmSync(scratch, { recursive: true, force: true });
+}
 
-// npm records devDependencies whatever you pass (`--omit=dev` only affects
-// installs). Left in, a consumer gets all 380 of them written to disk and
-// flagged `extraneous`. Dropping the dev-flagged entries afterwards yields a
-// file byte-identical to resolving from a manifest that never had them.
 const lock = JSON.parse(fs.readFileSync(SHRINKWRAP, 'utf8'));
-const dropped = Object.entries(lock.packages).filter(([key, entry]) => key && entry.dev);
-for (const [key] of dropped) delete lock.packages[key];
-delete lock.packages[''].devDependencies;
-fs.writeFileSync(SHRINKWRAP, `${JSON.stringify(lock, null, 2)}\n`);
+const dev = Object.entries(lock.packages).filter(([key, entry]) => key && entry.dev);
+if (dev.length > 0 || lock.packages[''].devDependencies) {
+  throw new Error(`sync-npm-shrinkwrap: dev entries leaked into the shrinkwrap (${dev.length})`);
+}
 
-process.stdout.write(
-  `sync-npm-shrinkwrap: ${Object.keys(lock.packages).length - 1} packages (${dropped.length} dev entries dropped)\n`,
-);
+process.stdout.write(`sync-npm-shrinkwrap: ${Object.keys(lock.packages).length - 1} packages\n`);
