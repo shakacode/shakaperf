@@ -23,6 +23,7 @@ import { copyChangesToSsh } from './commands/copy-changes-to-ssh';
 import { forwardPorts } from './commands/forward-ports';
 import { customizeDockerCompose } from './commands/customize-docker-compose';
 import { pruneBuildCache } from './commands/prune-cache';
+import { checkout } from './commands/checkout';
 import type { ResolvedConfig } from './types';
 import { colorize } from './helpers/ui';
 import { tryProxy } from './ipc/client';
@@ -372,6 +373,30 @@ function syncChangesSub(): Command {
   );
 }
 
+function checkoutSub(): Command {
+  return addCommonOptions(
+    new Command('checkout')
+      .description('Check out a branch/ref in a side\'s checkout (fetches and fast-forwards)')
+      .argument('<target>', 'control or experiment')
+      .argument('<ref>', 'Branch, origin/<branch>, or commit')
+      .option('--control-merge-base', 'Also move control to the merge base of experiment with the default branch (experiment only)')
+      .action(wrapAction(async function(this: Command, target, ref, opts: { controlMergeBase?: boolean }) {
+        const { resolvedConfig } = await getResolvedConfig(this);
+        const usage = 'shaka-perf servers checkout <control|experiment> <ref> [--control-merge-base]';
+        requireTarget(target, usage);
+        if (opts.controlMergeBase && target !== 'experiment') {
+          console.error(colorize('Error: --control-merge-base only applies to an experiment checkout', 'red'));
+          console.error(`Usage: ${usage}`);
+          process.exit(2);
+        }
+        await checkout(resolvedConfig, target, ref, {
+          verbose: inheritedOpts(this).verbose,
+          controlMergeBase: opts.controlMergeBase,
+        });
+      }))
+  );
+}
+
 function saySub(): Command {
   return new Command('say')
     .description('Speak a message using text-to-speech (macOS/Linux)')
@@ -466,6 +491,7 @@ export function createServersCommand(): Command {
     runCmdParallelSub(),
     runOvermindCommandSub(),
     syncChangesSub(),
+    checkoutSub(),
     saySub(),
     notifyServerStartedSub(),
     copyChangesToSshSub(),

@@ -155,6 +155,20 @@ yarn shaka-perf servers run-cmd experiment "bundle exec rails console"
 yarn shaka-perf servers run-cmd-parallel "bundle exec rake db:migrate"
 ```
 
+### Checking Out Branches
+
+```bash
+# Put the experiment on a branch and control on its merge base with origin/main
+yarn shaka-perf servers checkout experiment feature-x --control-merge-base
+
+# Move one side on its own (branch, origin/<branch>, or commit)
+yarn shaka-perf servers checkout control main
+```
+
+Each checkout fetches, switches, and fast-forwards to upstream; it refuses to
+pull when the local branch and its upstream have diverged. Rebuild the image
+afterwards (`build --target experiment`, then `start-containers`).
+
 ### Syncing Changes
 
 ```bash

@@ -638,3 +638,71 @@ describe('get-config command', () => {
     });
   });
 });
+
+describe('checkout command', () => {
+  const tmpDir = path.join(__dirname, 'tmp-checkout');
+
+  beforeEach(() => {
+    fs.mkdirSync(tmpDir, { recursive: true });
+    jest.resetModules();
+    jest.clearAllMocks();
+  });
+
+  afterAll(() => {
+    if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true });
+  });
+
+  function mockCheckoutHelpers() {
+    const checkoutBranch = jest.fn(async (_dir: string, ref: string) => ({ ok: true, message: `on ${ref}` }));
+    const findMergeBaseAgainstDefault = jest.fn(() => ({
+      sha: 'deadbeefdeadbeef',
+      shortSha: 'deadbee',
+      defaultBranch: 'origin/main',
+    }));
+    jest.doMock('../helpers/checkout', () => ({ checkoutBranch, findMergeBaseAgainstDefault }));
+    jest.doMock('../helpers/ui', () => ({
+      printBanner: jest.fn(),
+      printSuccess: jest.fn(),
+      printError: jest.fn(),
+    }));
+    return { checkoutBranch, findMergeBaseAgainstDefault };
+  }
+
+  it('checks out the ref in the target dir only', async () => {
+    const { checkoutBranch, findMergeBaseAgainstDefault } = mockCheckoutHelpers();
+    const { checkout } = require('../commands/checkout');
+    const config = createMockConfig(tmpDir);
+
+    await checkout(config, 'experiment', 'feature-x');
+
+    expect(checkoutBranch).toHaveBeenCalledTimes(1);
+    expect(checkoutBranch).toHaveBeenCalledWith(config.experimentDir, 'feature-x', expect.any(Object));
+    expect(findMergeBaseAgainstDefault).not.toHaveBeenCalled();
+  });
+
+  it('moves control to the merge base with --control-merge-base', async () => {
+    const { checkoutBranch, findMergeBaseAgainstDefault } = mockCheckoutHelpers();
+    const { checkout } = require('../commands/checkout');
+    const config = createMockConfig(tmpDir);
+
+    await checkout(config, 'experiment', 'feature-x', { controlMergeBase: true });
+
+    expect(findMergeBaseAgainstDefault).toHaveBeenCalledWith(config.experimentDir);
+    expect(checkoutBranch).toHaveBeenNthCalledWith(1, config.experimentDir, 'feature-x', expect.any(Object));
+    expect(checkoutBranch).toHaveBeenNthCalledWith(2, config.controlDir, 'deadbeefdeadbeef', expect.any(Object));
+  });
+
+  it('exits without touching control when the experiment checkout fails', async () => {
+    const { checkoutBranch } = mockCheckoutHelpers();
+    checkoutBranch.mockResolvedValueOnce({ ok: false, message: 'diverged' });
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation((code) => {
+      throw new Error(`process.exit(${code})`);
+    });
+    const { checkout } = require('../commands/checkout');
+    const config = createMockConfig(tmpDir);
+
+    await expect(checkout(config, 'experiment', 'feature-x', { controlMergeBase: true })).rejects.toThrow('process.exit(1)');
+    expect(checkoutBranch).toHaveBeenCalledTimes(1);
+    exitSpy.mockRestore();
+  });
+});

@@ -65,6 +65,7 @@ Rules for agents driving servers — from the `ab-servers` skill:
 Cold start:
 
 ```bash
+yarn shaka-perf servers checkout experiment <branch> --control-merge-base   # optional: put experiment on a branch, control on its merge base with the default branch
 yarn shaka-perf servers build              # build both Docker images (control + experiment)
 yarn shaka-perf servers prune-cache        # prune only this project's isolated Buildx cache
 yarn shaka-perf servers start-containers   # clears both bind-mount volumes, recreates containers, runs setupCommands
