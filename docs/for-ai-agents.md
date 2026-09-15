@@ -19,23 +19,6 @@ Install `shaka-perf` and `shaka-shared`, then run `yarn shaka-perf init` (see th
 skills; the `shaka-perf` skill is the command map and sends you to each command's
 `--help`, which is the reference for every flag mentioned below.
 
-## Choose your on-ramp
-
-You do not need the full twin-server setup to get value on day one:
-
-1. **Single-URL site audit (no Docker, no A/B pair)** — `yarn shaka-perf audit --url https://your-site.example`. Audit visits the paths your `.abtest.ts` files declare, so it needs at least one — a stub is enough:
-
-   ```ts
-   // ab-tests/homepage.abtest.ts
-   import { abTest } from 'shaka-shared';
-   abTest('Homepage', { startingPath: '/' }, async () => {});
-   ```
-
-   Output lands in `audit-results/` (Lighthouse perf, accessibility, agent-readiness, screencast timeline).
-2. **URL-vs-URL compare** — `yarn shaka-perf compare --controlURL <a> --experimentURL <b>` works against any two running servers: two preview deployments, staging vs production, or two local checkouts on two ports. Simultaneous sampling still cancels client-side noise; server-side isolation (equal hardware, no shared caches) is on you at this rung.
-3. **Single-server smoke** — pass the same URL as both control and experiment to validate that your tests run and capture real content before you have an A/B pair.
-4. **Twin Docker servers** — the full harness: control (baseline branch) and experiment (your branch) built and run side by side in production mode. This is what the setup skill automates.
-
 ## The PR loop (twin servers)
 
 Server lifecycle rules and subcommands are in the `shaka-perf` skill and
