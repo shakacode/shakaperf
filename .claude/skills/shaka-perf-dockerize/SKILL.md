@@ -6,7 +6,7 @@ argument-hint: [path-to-existing-Dockerfile] [services e.g. postgres,redis,elast
 
 # shaka-perf-dockerize
 
-Twin-servers runs **two production-mode copies of one app side by side** — `control` (the baseline branch) and `experiment` (your branch) — so `shaka-perf compare` can diff them for visual and performance regressions. This skill sets up the Docker infrastructure that makes that happen in the current project.
+Twin-servers runs **two production-mode copies of one app side by side** by default — `control` (the baseline branch) and `experiment` (your branch) — so `shaka-perf compare` can diff them for visual and performance regressions. This skill sets up the Docker infrastructure, including an opt-in instrumented development mode for coverage, in the current project.
 
 The whole point is an **apples-to-apples comparison**: control and experiment must be identical in every way *except the application code under test* — same base image, dependencies, services, environment, data. Any incidental drift (a service only one side has, an env var that differs, a slower disk path) surfaces later as a phantom regression that's brutal to trace. Keep asking: *are these two sides truly identical?*
 
@@ -110,6 +110,16 @@ Create `twin-servers/Dockerfile`. **Read `references/writing-the-dockerfile.md` 
 - **Pass runtime versions as build args**, e.g. `ENV NODE_VERSION=...` driven by `dockerBuildArgs`. Don't modify `.node-version`/`.ruby-version`/`engines`.
 - **Remove `CMD` and `ENTRYPOINT`.** docker-compose uses `command: sleep infinity` so the container idles and Overmind starts/stops the server independently. Leave an `EXPOSE 3000` (or your port) and a comment explaining the removal.
 
+---
+
+## instrumentation
+
+As part of dockerization, implement an opt-in mode that runs a **development build with code and screenshot coverage** in Docker. Keep uninstrumented production builds as the default for performance measurements.
+
+- Add an explicit project option (for example, `SHAKA_PERF_INSTRUMENT_COVERAGE=1`) and wire it through `twinServers.dockerBuildArgs`, the Dockerfile, the frontend build configuration, and the Procfile where needed. This is a project-defined switch, not a built-in CLI flag. It must select the development bundle and instrumentation at build time; changing only the running container's environment cannot instrument an already-built bundle.
+- Instrument application JavaScript with the stack's Istanbul-compatible tooling so the page exposes `window.__coverage__`. Set `audit.screenshotCoveragePlugin` in `abtests.config.ts`: React 18 needs the development JSX source transform; React 19 needs fetchable source maps. Use a custom plugin for other frameworks.
+- Apply the same mode to both sides. Document the exact commands to enable it, rebuild both images, recreate containers, and start the servers, plus how to switch back to production mode.
+- Verify a representative test against the instrumented container URL with `shaka-perf audit --categories code_coverage --url <container-url> --filter <test>`. Confirm nonempty `coverage.json` and a `visibility-map.txt` with application source locations; a successful server boot alone does not verify instrumentation.
 ---
 
 ## Phase 3 — Write the dockerignore

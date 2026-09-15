@@ -211,31 +211,63 @@
 
   // Flattens titles + both screenshots + the annotation overlay + verdicts into one PNG.
   async function stageToBlob(stage) {
-    const W = 1020, titlesH = 40, shotsH = 620, verdictH = 40, H = titlesH + shotsH + verdictH;
+    await document.fonts.ready;
+    const screenshots = new Map(await Promise.all([...stage.querySelectorAll('.shot img')].map(
+      async img => [img, await loadImage(img.src)],
+    )));
+    const bounds = stage.getBoundingClientRect();
+    const box = el => {
+      const rect = el.getBoundingClientRect();
+      return { x: rect.left - bounds.left, y: rect.top - bounds.top, width: rect.width, height: rect.height };
+    };
     const canvas = document.createElement('canvas');
-    canvas.width = W * 2; canvas.height = H * 2;
+    canvas.width = Math.ceil(bounds.width * 2); canvas.height = Math.ceil(bounds.height * 2);
     const ctx = canvas.getContext('2d');
     ctx.scale(2, 2);
-    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
-    const text = (t, x, y, font, color, align) => { ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align; ctx.fillText(t, x, y, 390); };
-    const mono = '700 20px ui-monospace, Menlo, Consolas, monospace';
-    const [tl, , tr] = stage.querySelectorAll('.titles > div');
-    text(tl.innerText, 195, 26, mono, '#c8102e', 'center');
-    text(tr.innerText, 825, 26, mono, '#c8102e', 'center');
-    for (const [sel, x] of [['.shot.left', 0], ['.shot.right', 630]]) {
-      const img = stage.querySelector(`${sel} img`);
-      const cs = getComputedStyle(img);
-      ctx.save(); ctx.beginPath(); ctx.rect(x, titlesH, 390, shotsH); ctx.clip();
-      ctx.drawImage(img, x, titlesH + parseFloat(cs.marginTop), parseFloat(cs.width), parseFloat(cs.height));
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, bounds.width, bounds.height);
+
+    // Use the browser's text layout, including wrapping and nested PR links.
+    for (const el of stage.querySelectorAll('.titles > div, .verdict > div')) {
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        const style = getComputedStyle(node.parentElement);
+        ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+        ctx.fillStyle = style.color;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        const range = document.createRange();
+        let line = '', lineRect;
+        const paintLine = () => {
+          if (!line) return;
+          const metrics = ctx.measureText(line);
+          const ascent = metrics.fontBoundingBoxAscent;
+          const descent = metrics.fontBoundingBoxDescent;
+          ctx.fillText(line, lineRect.left - bounds.left,
+            lineRect.top - bounds.top + (lineRect.height - ascent - descent) / 2 + ascent);
+        };
+        for (let i = 0; i < node.length; i++) {
+          range.setStart(node, i); range.setEnd(node, i + 1);
+          const rect = range.getBoundingClientRect();
+          if (!rect.width) continue;
+          if (lineRect && rect.top !== lineRect.top) { paintLine(); line = ''; }
+          if (!line) lineRect = rect;
+          line += node.data[i];
+        }
+        paintLine();
+      }
+    }
+    for (const shot of stage.querySelectorAll('.shot')) {
+      const img = shot.querySelector('img');
+      const crop = box(shot), source = box(img);
+      ctx.save(); ctx.beginPath(); ctx.rect(crop.x, crop.y, crop.width, crop.height); ctx.clip();
+      ctx.drawImage(screenshots.get(img), source.x, source.y, source.width, source.height);
       ctx.restore();
     }
     const svg = stage.querySelector('.shots svg');
+    const overlayBox = box(svg);
     const overlay = await loadImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(svg)));
-    ctx.drawImage(overlay, 0, titlesH, W, shotsH);
-    const [vl, , vr] = stage.querySelectorAll('.verdict > div');
-    const sans = '600 18px system-ui, sans-serif';
-    text(vl.innerText, 0, H - 12, sans, '#1b7f3b', 'left');
-    text(vr.innerText, W, H - 12, sans, '#c8102e', 'right');
+    ctx.drawImage(overlay, overlayBox.x, overlayBox.y, overlayBox.width, overlayBox.height);
     return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
   }
 

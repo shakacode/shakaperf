@@ -112,8 +112,15 @@ export async function checkoutBranch(
   let remoteRef: string | null = null;
   const slash = ref.indexOf('/');
   if (slash > 0) {
-    remoteRef = ref;
-    localBranch = ref.slice(slash + 1);
+    const remotes = await exec('git', ['remote'], { cwd: dir, silent: true });
+    if (remotes.code !== 0) {
+      return { ok: false, message: `git remote failed: ${(remotes.stderr || remotes.stdout).trim()}` };
+    }
+    // Slashes also occur in local branch names (e.g. feature/login).
+    if (remotes.stdout.trim().split(/\s+/).includes(ref.slice(0, slash))) {
+      remoteRef = ref;
+      localBranch = ref.slice(slash + 1);
+    }
   }
 
   // Use argv form, not `execSync_` (shell expansion) — `localBranch` can

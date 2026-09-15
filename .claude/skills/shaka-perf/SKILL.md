@@ -35,3 +35,7 @@ shaka-perf compare --help
 Setup from scratch is the `/shaka-perf-dockerize` skill; writing tests is
 `/shaka-perf-add-coverage`; checking what is covered is `/shaka-perf-coverage`;
 hunting regressions on a branch is `/shaka-perf-find-bugs`.
+
+Read this guide before writing or editing a test.
+https://github.com/shakacode/shakaperf/blob/main/writing-good-ab-tests.md.
+

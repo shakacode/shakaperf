@@ -167,8 +167,11 @@ yarn shaka-perf servers checkout experiment feature-x
 ```
 
 Each checkout fetches, switches, and fast-forwards to upstream; it refuses to
-pull when the local branch and its upstream have diverged. Rebuild the image
-afterwards (`build --target experiment`, then `start-containers`).
+pull when the local branch and its upstream have diverged. After the default
+checkout, rebuild both images (`shaka-perf servers build`), then run
+`shaka-perf servers start-containers` and `shaka-perf servers start-servers`.
+After moving only one side, you can limit the build to that side with
+`build --target control` or `build --target experiment` before restarting.
 
 ### Syncing Changes
 
