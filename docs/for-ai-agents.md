@@ -14,27 +14,10 @@ What ShakaPerf gives an agent that a raw Lighthouse run or DevTools trace cannot
 
 ## Install and scaffold
 
-```bash
-yarn add shaka-perf shaka-shared      # or: npm install shaka-perf shaka-shared
-yarn shaka-perf init
-```
-
-`shaka-shared` is required — the generated config imports from it, and your test files import `abTest()` from it. `init` refuses to overwrite existing files unless you pass `--force`.
-
-`init` creates:
-
-- **`abtests.config.ts`** - the single project config (sections: `shared`, `visreg`, `perf`, `audit`, `twinServers`), every field annotated with its default. `accessibility` is supported but not scaffolded; its `failOnViolation` default is `true`. Coverage is the opt-in `--categories code_coverage` audit stage, which drains instrumented-JS coverage and maps what each finished page shows inside its capture region; its one config knob, `audit.screenshotCoveragePlugin` (`'react18'`, `'react19'`, or a custom plugin object), stamps each map row with the app source line that rendered the element, and needs a development build of the app to read.
-- **Five Claude Code skills** under `.claude/skills/` (they ship inside the npm package):
-
-| Skill | What it does |
-| --- | --- |
-| `shaka-perf` | Map of the CLI commands; tells an agent to read each command's `--help` before using it. |
-| `shaka-perf-dockerize` | Walks an agent through standing up the twin Docker servers: production Dockerfile, Procfile, config, and the build/verify loop. |
-| `shaka-perf-add-coverage` | Adds focused source-aware visual-regression tests without duplicating existing coverage. |
-| `shaka-perf-coverage` | Estimates screenshot coverage from code coverage and audit visibility maps, and compares saved baselines. |
-| `shaka-perf-find-bugs` | Uses the twin servers as a QA rig: reads the branch diff, reproduces regressions on control vs experiment, and writes a paired-screenshot report. |
-
-In Claude Code these trigger automatically on matching requests ("set up twin servers for this project", "find bugs introduced in this branch").
+Install `shaka-perf` and `shaka-shared`, then run `yarn shaka-perf init` (see the
+[README](../README.md)). `init` scaffolds `abtests.config.ts` and the Claude Code
+skills; the `shaka-perf` skill is the command map and sends you to each command's
+`--help`, which is the reference for every flag mentioned below.
 
 ## Choose your on-ramp
 
@@ -55,25 +38,8 @@ You do not need the full twin-server setup to get value on day one:
 
 ## The PR loop (twin servers)
 
-Rules for agents driving servers:
-
-- **Never run bare `shaka-perf servers`** — it opens an interactive menu meant for humans. Always call subcommands.
-- `start-servers` **blocks** while Overmind runs; start it in the background.
-- If a human already has the interactive `shaka-perf servers` menu open, your subcommands are proxied into that session and may queue. Queued commands wait, then return their actual exit code. Exit code `75` (`EX_TEMPFAIL`) means the menu is starting or shutting down; retry shortly.
-
-Cold start:
-
-```bash
-yarn shaka-perf servers checkout experiment <branch> --control-merge-base   # optional: put experiment on a branch, control on its merge base with the default branch
-yarn shaka-perf servers build              # build both Docker images (control + experiment)
-yarn shaka-perf servers prune-cache        # prune only this project's isolated Buildx cache
-yarn shaka-perf servers start-containers   # clears both bind-mount volumes, recreates containers, runs setupCommands
-yarn shaka-perf servers start-servers      # launch the app via Overmind — blocks; run in background
-```
-
-If you rerun `start-containers` after syncing code, rerun `sync-changes` and any app-specific build command before measuring.
-
-Iterate on a change:
+Server lifecycle rules and subcommands are in the `shaka-perf` skill and
+`yarn shaka-perf servers --help`. The loop itself:
 
 ```bash
 # 1. Edit application code.
@@ -95,13 +61,7 @@ yarn shaka-perf compare
 
 Commit an experiment change only after measuring it. `sync-changes` sees uncommitted changes; after committing, rebuild the experiment image with `yarn shaka-perf servers build --target experiment`, then rerun `start-containers` and start the apps with `start-servers` in the background before measuring.
 
-`--filter` accepts a test-name regex, a comma-separated list, or a path to a single `.abtest.ts` file. `--categories` takes any subset of `visreg,perf,accessibility` (default: all three). `compare` clears the artifact directory for each test and viewport it will run, not `compare-results/` as a whole. Artifacts for tests excluded by `--filter` remain. `--keep-old-results` also preserves the per-test artifact directories.
-
-**`shaka-perf troubleshoot` is for looking at a failure, not for measuring it.** One test, one viewport, and it **never finishes** — every stage freezes once its browser is up, which is what keeps them alive. No `report.json` and no perf numbers. For a verdict use `compare`. What it gives you is the live page the failure happened on.
-
-**Always `--headed=false`, always backgrounded.** It never exits, so a foreground call hangs your turn.
-
-Attach to the frozen browsers with `troubleshoot`'s own subcommands (`session`, `eval`, `html`, `shot`, `console`) — no MCP. `<target>` is a side: `visreg:control`, `visreg:experiment`, `perf:control`, `perf:experiment`. Run `shaka-perf troubleshoot --help` for the full loop. See also [README-troubleshoot.md](../packages/shaka-perf/README-troubleshoot.md).
+To look at a failing page rather than measure it, use `yarn shaka-perf troubleshoot` (see [README-troubleshoot.md](../packages/shaka-perf/README-troubleshoot.md)); it never exits, so run it with `--headed=false` in the background.
 
 ## Reading results — the machine contract
 
