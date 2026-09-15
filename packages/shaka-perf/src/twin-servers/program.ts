@@ -376,23 +376,28 @@ function syncChangesSub(): Command {
 function checkoutSub(): Command {
   return addCommonOptions(
     new Command('checkout')
-      .description('Check out a branch/ref in a side\'s checkout (fetches and fast-forwards)')
-      .argument('<target>', 'control or experiment')
-      .argument('<ref>', 'Branch, origin/<branch>, or commit')
-      .option('--control-merge-base', 'Also move control to the merge base of experiment with the default branch (experiment only)')
-      .action(wrapAction(async function(this: Command, target, ref, opts: { controlMergeBase?: boolean }) {
+      .description('Check out a branch in experiment and its merge base with the default branch in control (fetches and fast-forwards). Name a side to move only that side.')
+      .argument('<ref>', 'Branch, origin/<branch>, or commit; or "control" / "experiment" followed by the ref')
+      .argument('[sideRef]', 'The ref, when the first argument names a side')
+      .action(wrapAction(async function(this: Command, first: string, sideRef: string | undefined) {
         const { resolvedConfig } = await getResolvedConfig(this);
-        const usage = 'shaka-perf servers checkout <control|experiment> <ref> [--control-merge-base]';
-        requireTarget(target, usage);
-        if (opts.controlMergeBase && target !== 'experiment') {
-          console.error(colorize('Error: --control-merge-base only applies to an experiment checkout', 'red'));
+        const usage = 'shaka-perf servers checkout <ref> | shaka-perf servers checkout <control|experiment> <ref>';
+        const verbose = inheritedOpts(this).verbose;
+        if (first === 'control' || first === 'experiment') {
+          if (!sideRef) {
+            console.error(colorize(`Error: ref required after "${first}"`, 'red'));
+            console.error(`Usage: ${usage}`);
+            process.exit(2);
+          }
+          await checkout(resolvedConfig, first, sideRef, { verbose });
+          return;
+        }
+        if (sideRef) {
+          console.error(colorize('Error: unexpected second argument; name a side first to check out one side only', 'red'));
           console.error(`Usage: ${usage}`);
           process.exit(2);
         }
-        await checkout(resolvedConfig, target, ref, {
-          verbose: inheritedOpts(this).verbose,
-          controlMergeBase: opts.controlMergeBase,
-        });
+        await checkout(resolvedConfig, 'experiment', first, { verbose, controlMergeBase: true });
       }))
   );
 }

@@ -8,20 +8,52 @@ Do you want to improve `Lighthouse` & `Web Vitals` without breaking your site?
 It also auto-detects SEO and accessibility issues, and it's extremely easy to setup.
 This is the only benchmarking toolset your web site needs.
 
-**Using a coding agent (Claude Code, Cursor, Codex)?** Start with [docs/for-ai-agents.md](./docs/for-ai-agents.md) — setup commands, the machine-readable results contract, the iterate-loop recipe, and a paste-able AGENTS.md snippet.
 
-<img width="539" height="672" alt="image" src="https://github.com/user-attachments/assets/fd7b111c-d734-4bb6-95d8-e7e80e580173" />
+## High-level architecture diagram
 
-In order to use `shaka-perf`, you need to create a Docker image with a production-local server and some Playwright tests. `shaka-perf` will magically transform it to:
-* Statistically significant performance AB tests
-* Visual Regression tests (screenshot comparison of main vs feature branches on multiple screen sizes)
-* Comprehensive bundle-size regression check
-* Accessibility tests
-* HTML reports
-* CircleCI integration
-* Automatic regression detection in the main branch
 
-This is a chef's kiss toolset for quick performance optimization without the risk of breaking things down!
+ShakaPerf is a chef's kiss toolset for quick performance optimization without the risk of breaking things down!
+Or it can be your AI-driven visual-regression catching pipeline.
+
+<img width="539" height="672" alt="Your web app as a duck with ducklings labeled performance, visual diff, accessibility, bundle size, and a CircleCI puppy" src="./docs/unduck-your-wep-pages.png" />
+
+## Usage
+
+Setting up takes one to four hours. Install, then let the bundled Claude Code skills do the Docker work:
+
+```bash
+# small helpers and types
+yarn add shaka-shared
+# or
+npm i shaka-shared
+
+# install shaka-perf globally
+npm i -g shaka-perf       # you may use yarn, or have a local installation, but this is not recommended
+shaka-perf init           # creates abtests.config.ts and installs the AI skills
+```
+
+In Claude Code, run the two prompts:
+```bash
+# ~30 minutes
+/shaka-perf-dockerize # Optionally provide details about how to seed your app (e.g. instruct it to visit your production site with playwright-mcp and re-use the data)
+
+# start small, expand later. ~30 minutes
+/shaka-perf-add-coverage write a mimimal test suite. Add seeded data if needed.
+```
+
+Then run the same image as two containers, `control` on the merge base of your branch and `experiment` on your branch, and compare them:
+
+```bash
+shaka-perf servers checkout experiment <your-branch> --control-merge-base
+shaka-perf servers   # builds both images, starts both containers, launches the app on each side
+shaka-perf compare   # runs every test on phone, tablet, and desktop against both sides
+
+# or if you are not interested in performance and a11y
+shaka-perf compare --categories=visreg # way faster
+```
+
+`compare` writes `compare-results/report.html` with side-by-side screenshots plus the pixel diff, and a statistically significant performance comparison of Web Vitals, Lighthouse, accessibility, and custom metrics.
+
 
 ![ShakaPerf basic setup](./docs/setup-first-steps.svg)
 
@@ -39,7 +71,7 @@ This is a chef's kiss toolset for quick performance optimization without the ris
 `shaka-perf init` installs Claude Code skills generating hi-fi tests. If any component in the app changes no matter how deap in the tree, shaka-perf will screenshot it and alert you. This works without needing you to polish the tests manually.
 ![Code coverage vs instrumented screenshot coverage](./docs/screenshot-coverage.svg)
 
-## Shakaperf help AI find bugs in your PRs. No false positives.
+## Shakaperf can be used as AI QA-Engineer. Minimal amount of false positives.
 
 The `shaka-perf-find-bugs` skill turns twin-servers into a QA rig: agents use the control server to generate the `expected/actual` screenshots. `shaka-perf init` installs it next to the other skills.
 

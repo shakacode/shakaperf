@@ -680,7 +680,7 @@ describe('checkout command', () => {
     expect(findMergeBaseAgainstDefault).not.toHaveBeenCalled();
   });
 
-  it('moves control to the merge base with --control-merge-base', async () => {
+  it('moves control to the merge base when asked', async () => {
     const { checkoutBranch, findMergeBaseAgainstDefault } = mockCheckoutHelpers();
     const { checkout } = require('../commands/checkout');
     const config = createMockConfig(tmpDir);

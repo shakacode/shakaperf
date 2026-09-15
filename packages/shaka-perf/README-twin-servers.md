@@ -159,10 +159,11 @@ yarn shaka-perf servers run-cmd-parallel "bundle exec rake db:migrate"
 
 ```bash
 # Put the experiment on a branch and control on its merge base with origin/main
-yarn shaka-perf servers checkout experiment feature-x --control-merge-base
+yarn shaka-perf servers checkout feature-x
 
 # Move one side on its own (branch, origin/<branch>, or commit)
 yarn shaka-perf servers checkout control main
+yarn shaka-perf servers checkout experiment feature-x
 ```
 
 Each checkout fetches, switches, and fast-forwards to upstream; it refuses to
