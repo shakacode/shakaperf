@@ -23,27 +23,7 @@ In order to use `shaka-perf`, you need to create a Docker image with a productio
 
 This is a chef's kiss toolset for quick performance optimization without the risk of breaking things down!
 
-```mermaid
-graph TD
-    A[Your Docker Image] --> B
-    P[Single Playwright Test] --> T
-
-    subgraph CircleCI Integration
-        B[experiment-container<br>feature branch] --> T[Twin Servers]
-        C[control-container<br>main branch] --> T
-        T --> F[Bundle Size Tests]
-        T --> D[Visual Regression Tests]
-        T --> E[Performance AB Tests]
-        T --> G[Accessibility Tests]
-    end
-
-    A --> C
-
-    D --> H[HTML Report<br>Includes stats and profiles<br>Only important stuff]
-    E --> H
-    F --> H
-    G --> H
-```
+![ShakaPerf basic setup](./docs/setup-first-steps.svg)
 
 ## Why choose `shaka-perf`?
 1. **One test to rule them all**. Write a Playwright test once - get performance benchmarks, visual regression, accessibility audits, and network-activity tracking from the same `abTest` definition.
