@@ -23,6 +23,7 @@ import { copyChangesToSsh } from './commands/copy-changes-to-ssh';
 import { forwardPorts } from './commands/forward-ports';
 import { customizeDockerCompose } from './commands/customize-docker-compose';
 import { pruneBuildCache } from './commands/prune-cache';
+import { checkout } from './commands/checkout';
 import type { ResolvedConfig } from './types';
 import { colorize } from './helpers/ui';
 import { tryProxy } from './ipc/client';
@@ -372,6 +373,35 @@ function syncChangesSub(): Command {
   );
 }
 
+function checkoutSub(): Command {
+  return addCommonOptions(
+    new Command('checkout')
+      .description('Check out a branch in experiment and its merge base with the default branch in control (fetches and fast-forwards). Name a side to move only that side.')
+      .argument('<ref>', 'Branch, origin/<branch>, or commit; or "control" / "experiment" followed by the ref')
+      .argument('[sideRef]', 'The ref, when the first argument names a side')
+      .action(wrapAction(async function(this: Command, first: string, sideRef: string | undefined) {
+        const { resolvedConfig } = await getResolvedConfig(this);
+        const usage = 'shaka-perf servers checkout <ref> | shaka-perf servers checkout <control|experiment> <ref>';
+        const verbose = inheritedOpts(this).verbose;
+        if (first === 'control' || first === 'experiment') {
+          if (!sideRef) {
+            console.error(colorize(`Error: ref required after "${first}"`, 'red'));
+            console.error(`Usage: ${usage}`);
+            process.exit(2);
+          }
+          await checkout(resolvedConfig, first, sideRef, { verbose });
+          return;
+        }
+        if (sideRef) {
+          console.error(colorize('Error: unexpected second argument; name a side first to check out one side only', 'red'));
+          console.error(`Usage: ${usage}`);
+          process.exit(2);
+        }
+        await checkout(resolvedConfig, 'experiment', first, { verbose, controlMergeBase: true });
+      }))
+  );
+}
+
 function saySub(): Command {
   return new Command('say')
     .description('Speak a message using text-to-speech (macOS/Linux)')
@@ -466,6 +496,7 @@ export function createServersCommand(): Command {
     runCmdParallelSub(),
     runOvermindCommandSub(),
     syncChangesSub(),
+    checkoutSub(),
     saySub(),
     notifyServerStartedSub(),
     copyChangesToSshSub(),

@@ -14,66 +14,15 @@ What ShakaPerf gives an agent that a raw Lighthouse run or DevTools trace cannot
 
 ## Install and scaffold
 
-```bash
-yarn add shaka-perf shaka-shared      # or: npm install shaka-perf shaka-shared
-yarn shaka-perf init
-```
-
-`shaka-shared` is required — the generated config imports from it, and your test files import `abTest()` from it. `init` refuses to overwrite existing files unless you pass `--force`.
-
-`init` creates:
-
-- **`abtests.config.ts`** - the single project config (sections: `shared`, `visreg`, `perf`, `audit`, `twinServers`), every field annotated with its default. `accessibility` is supported but not scaffolded; its `failOnViolation` default is `true`. Coverage is the opt-in `--categories code_coverage` audit stage, which drains instrumented-JS coverage and maps what each finished page shows inside its capture region; its one config knob, `audit.screenshotCoveragePlugin` (`'react18'`, `'react19'`, or a custom plugin object), stamps each map row with the app source line that rendered the element, and needs a development build of the app to read.
-- **Seven Claude Code skills** under `.claude/skills/` (they ship inside the npm package):
-
-| Skill | What it does |
-| --- | --- |
-| `setup-docker-servers-for-ab-tests` | Walks an agent through standing up the twin Docker servers: production Dockerfile, Procfile, config, and the build/verify loop. |
-| `discover-abtests` | Crawls the running app and generates validated `.abtest.ts` files (currently requires desktop Claude with the Chrome extension — portability is tracked in [#73](https://github.com/shakacode/shakaperf/issues/73)). |
-| `shaka-perf-add-coverage` | Adds focused source-aware visual-regression tests without duplicating existing coverage. |
-| `shaka-perf-coverage` | Estimates screenshot coverage from code coverage and audit visibility maps, and compares saved baselines. |
-| `assess-abtest-quality` | Audits existing tests for anti-patterns and false-positive PASSes. Also the canonical test-writing rules. |
-| `ab-servers` | The command dispatch table for driving twin servers from an agent. |
-
-In Claude Code these trigger automatically on matching requests ("set up twin servers for this project", "discover ab tests", "are my visreg tests any good?").
-
-## Choose your on-ramp
-
-You do not need the full twin-server setup to get value on day one:
-
-1. **Single-URL site audit (no Docker, no A/B pair)** — `yarn shaka-perf audit --url https://your-site.example`. Audit visits the paths your `.abtest.ts` files declare, so it needs at least one — a stub is enough:
-
-   ```ts
-   // ab-tests/homepage.abtest.ts
-   import { abTest } from 'shaka-shared';
-   abTest('Homepage', { startingPath: '/' }, async () => {});
-   ```
-
-   Output lands in `audit-results/` (Lighthouse perf, accessibility, agent-readiness, screencast timeline).
-2. **URL-vs-URL compare** — `yarn shaka-perf compare --controlURL <a> --experimentURL <b>` works against any two running servers: two preview deployments, staging vs production, or two local checkouts on two ports. Simultaneous sampling still cancels client-side noise; server-side isolation (equal hardware, no shared caches) is on you at this rung.
-3. **Single-server smoke** — pass the same URL as both control and experiment to validate that your tests run and capture real content before you have an A/B pair.
-4. **Twin Docker servers** — the full harness: control (baseline branch) and experiment (your branch) built and run side by side in production mode. This is what the setup skill automates.
+Install `shaka-perf` and `shaka-shared`, then run `yarn shaka-perf init` (see the
+[README](../README.md)). `init` scaffolds `abtests.config.ts` and the Claude Code
+skills; the `shaka-perf` skill is the command map and sends you to each command's
+`--help`, which is the reference for every flag mentioned below.
 
 ## The PR loop (twin servers)
 
-Rules for agents driving servers — from the `ab-servers` skill:
-
-- **Never run bare `shaka-perf servers`** — it opens an interactive menu meant for humans. Always call subcommands.
-- `start-servers` **blocks** while Overmind runs; start it in the background.
-- If a human already has the interactive `shaka-perf servers` menu open, your subcommands are proxied into that session and may queue. Queued commands wait, then return their actual exit code. Exit code `75` (`EX_TEMPFAIL`) means the menu is starting or shutting down; retry shortly.
-
-Cold start:
-
-```bash
-yarn shaka-perf servers build              # build both Docker images (control + experiment)
-yarn shaka-perf servers prune-cache        # prune only this project's isolated Buildx cache
-yarn shaka-perf servers start-containers   # clears both bind-mount volumes, recreates containers, runs setupCommands
-yarn shaka-perf servers start-servers      # launch the app via Overmind — blocks; run in background
-```
-
-If you rerun `start-containers` after syncing code, rerun `sync-changes` and any app-specific build command before measuring.
-
-Iterate on a change:
+Server lifecycle rules and subcommands are in the `shaka-perf` skill and
+`yarn shaka-perf servers --help`. The loop itself:
 
 ```bash
 # 1. Edit application code.
@@ -95,13 +44,7 @@ yarn shaka-perf compare
 
 Commit an experiment change only after measuring it. `sync-changes` sees uncommitted changes; after committing, rebuild the experiment image with `yarn shaka-perf servers build --target experiment`, then rerun `start-containers` and start the apps with `start-servers` in the background before measuring.
 
-`--filter` accepts a test-name regex, a comma-separated list, or a path to a single `.abtest.ts` file. `--categories` takes any subset of `visreg,perf,accessibility` (default: all three). `compare` clears the artifact directory for each test and viewport it will run, not `compare-results/` as a whole. Artifacts for tests excluded by `--filter` remain. `--keep-old-results` also preserves the per-test artifact directories.
-
-**`shaka-perf troubleshoot` is for looking at a failure, not for measuring it.** One test, one viewport, and it **never finishes** — every stage freezes once its browser is up, which is what keeps them alive. No `report.json` and no perf numbers. For a verdict use `compare`. What it gives you is the live page the failure happened on.
-
-**Always `--headed=false`, always backgrounded.** It never exits, so a foreground call hangs your turn.
-
-Attach to the frozen browsers with `troubleshoot`'s own subcommands (`session`, `eval`, `html`, `shot`, `console`) — no MCP. `<target>` is a side: `visreg:control`, `visreg:experiment`, `perf:control`, `perf:experiment`. Run `shaka-perf troubleshoot --help` for the full loop; the `troubleshoot-abtest` skill (shipped by `shaka-perf init`) points agents at it. See also [README-troubleshoot.md](../packages/shaka-perf/README-troubleshoot.md).
+To look at a failing page rather than measure it, use `yarn shaka-perf troubleshoot` (see [README-troubleshoot.md](../packages/shaka-perf/README-troubleshoot.md)); it never exits, so run it with `--headed=false` in the background.
 
 ## Reading results — the machine contract
 
@@ -154,7 +97,7 @@ Practical guidance for the loop:
 
 ## Writing tests (for agents)
 
-Tests are `abTest()` calls in `ab-tests/*.abtest.ts` — one Playwright-driven scenario each, used by perf and visreg alike. The non-negotiable rules live in `.claude/skills/assess-abtest-quality/SKILL.md`; the short version: **fail loudly and run linearly** — no `try/catch` swallowing, no loops, no `if`-branching on page state (assert with `waitForSelector`/`waitForURL` instead), wait for conditions not the clock, deterministic inputs, `annotate('...')` before every non-trivial action, one behaviour per test.
+Tests are `abTest()` calls in `ab-tests/*.abtest.ts` — one Playwright-driven scenario each, used by perf and visreg alike. The non-negotiable rules live in [writing-good-ab-tests.md](../writing-good-ab-tests.md); the short version: **fail loudly and run linearly** — no `try/catch` swallowing, no loops, no `if`-branching on page state (assert with `waitForSelector`/`waitForURL` instead), wait for conditions not the clock, deterministic inputs, `annotate('...')` before every non-trivial action, one behaviour per test.
 
 ## Concurrent agents
 
@@ -192,7 +135,7 @@ https://github.com/shakacode/shakaperf/blob/main/docs/for-ai-agents.md. Config: 
 - A perf `regression` = p < 0.05 AND the paired estimate exceeds the configured
   threshold — iterate on the code and re-run the filtered compare; confirm with a
   full run before pushing.
-- Writing/editing `.abtest.ts` files: follow `.claude/skills/assess-abtest-quality/SKILL.md`
+- Writing/editing `.abtest.ts` files: follow `writing-good-ab-tests.md`
   (fail loudly: no try/catch, no loops, no if-branches; wait for conditions, not time).
 ````
 

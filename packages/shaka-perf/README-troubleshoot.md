@@ -14,5 +14,4 @@ reaches it, and a visreg failure doesn't skip perf.
 
 **Run `shaka-perf troubleshoot --help`** for everything else — the options, the
 attach-over-CDP subcommands (`session`, `eval`, `html`, `shot`, `console`), the full
-debug loop, and how to stop a session. The bundled `troubleshoot-abtest` skill points
-agents at it.
+debug loop, and how to stop a session.

@@ -12,10 +12,10 @@ import { parseReport } from '../parse-report';
 
 // At runtime __dirname is dist/discover-abtests/cli/, so go up three levels to
 // the package root. The browser-side JS scripts are bundled into
-// dist/skills/discover-abtests/scripts/ by scripts/copy-assets.mjs (sourced
+// dist/skills/shaka-perf-discover-abtests/scripts/ by scripts/copy-assets.mjs (sourced
 // from the repo-root .claude/ dir).
 const PACKAGE_ROOT = path.resolve(__dirname, '..', '..', '..');
-const SCRIPTS_DIR = path.resolve(PACKAGE_ROOT, 'dist', 'skills', 'discover-abtests', 'scripts');
+const SCRIPTS_DIR = path.resolve(PACKAGE_ROOT, 'dist', 'skills', 'shaka-perf-discover-abtests', 'scripts');
 const DEFAULT_RESULTS_ROOT = 'compare-results';
 
 function printScript(filename: string): void {
@@ -41,7 +41,7 @@ export function findDefaultVisregReports(resultsRoot = DEFAULT_RESULTS_ROOT): st
 
 export function createDiscoverAbtestsCommand(): Command {
   const cmd = new Command('discover-abtests').description(
-    'Helpers for the discover-abtests Claude Code skill: prints browser script sources and summarizes visreg reports.',
+    'Helpers for the shaka-perf-discover-abtests Claude Code skill: prints browser script sources and summarizes visreg reports.',
   );
 
   cmd

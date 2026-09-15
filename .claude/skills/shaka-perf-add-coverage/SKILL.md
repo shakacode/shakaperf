@@ -20,7 +20,7 @@ Your goal is to add tests without unnecessarily bloating the test suite. The end
     - 3.c. Generate screenshots with `shaka-perf compare --categories=visreg --filter=<relevant-tests> --controlURL=<experiment-url>` and review the screenshots visually.
 4. If the screenshot cell is below 100%, fix it per the reason table. If the element is dead code, DO NOT EDIT PROD FILES TO MAKE IT RENDERED.
 5. If these fixes are not enough for the coverage and you genuinely need to add more tests, write them and add them to `relevant-tests`.
-6. If `relevant-tests` violate any rules in `writing-good-ab-tests.md`, fix them
+6. If `relevant-tests` violate any rules in https://github.com/shakacode/shakaperf/blob/main/writing-good-ab-tests.md, fix them
 7. Run `shaka-perf compare --categories=visreg --filter=<relevant-tests> --controlURL=<experiment-url> --burn 3` and fix all the flakiness coming from tests themselves. Do not fix flaky errors on the page or in the server, instead let the user know there is a bug and give them reproduction cmd (the failing --burn command you were running). Tell them that the problem is in the App, not in the tests.
 8. Scan steps 3-6 using a subagent to make it adversarial, see if you missed somethings
 9. Re-audit, save the AFTER baseline, and `diff` it against the BEFORE (per `shaka-perf-coverage`). Restart from 3 with the AFTER as the new BEFORE.
