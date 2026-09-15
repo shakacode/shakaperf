@@ -11,7 +11,7 @@ ARG BUNDLE_PATH=/home/${NON_ROOT_USER}/bundle
 ARG NODE_PATH=/home/${NON_ROOT_USER}/node
 ARG APP_PATH=/home/${NON_ROOT_USER}/app
 
-FROM ruby:${RUBY_VERSION}-bullseye AS base
+FROM ruby:${RUBY_VERSION}-bookworm AS base
 
 # Re-declare ARGs after FROM (they don't persist across stages)
 ARG NON_ROOT_USER
