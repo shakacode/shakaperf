@@ -15,7 +15,8 @@ use — including CI, PR checks, and coding-agent workflows — is also free
 if you can answer yes to all three questions: *Do fewer than 10 people
 work for your organization (counting all affiliates)? Was its revenue in
 the last twelve months under US $1M? Has it raised under US $1M in outside
-capital, ever?* If any answer is no, production use requires a
+capital, ever?* Charities and educational institutions are free at any
+size. If any answer is no and you are neither, production use requires a
 paid subscription — see https://shakaperf.com/pricing. Registration is
 free, optional, and open to everyone (Section 8). Once a version ships
 under these terms, those terms govern that version permanently.
@@ -56,6 +57,20 @@ c. it has received less than US $1,000,000 in aggregate outside capital
 
 Government entities, other than public educational institutions, are not
 Small Organizations.
+
+**"Charity"** means an organization recognized as charitable or
+public-benefit under the law of the jurisdiction where it is organized (for
+example, a US 501(c)(3) organization or its equivalent elsewhere), no part
+of whose net earnings benefits any private person.
+
+**"Educational Institution"** means a school, college, university, or
+other institution whose principal purpose is teaching or academic
+research, whether public or private, including its libraries, research
+institutes, and teaching hospitals.
+
+Charity and Educational Institution status belongs to the qualifying
+entity and to affiliates that qualify on their own; it does not extend to
+for-profit affiliates, spin-offs, or commercial ventures.
 
 **"Automated workflow"** means any execution of the software initiated by
 software or by an automated or semi-autonomous agent — whether or not a
@@ -107,18 +122,20 @@ f. generating reports published where the public can access them at a
    gates software development or release.
 
 In addition, **all production use is free of charge for a Small
-Organization — including use in private repositories, CI, pull-request
-checks, and coding-agent workflows.** If your organization is a Small
-Organization, nothing in Section 5 applies to you.
+Organization, a Charity, or an Educational Institution — including use in
+private repositories, CI, pull-request checks, and coding-agent
+workflows — at any size.** If your organization is one of these, nothing
+in Section 5 applies to you.
 
 ## 5. Paid uses
 
-Production use by an organization that is not a Small Organization
-requires a Subscription. This includes, without limitation: ongoing use in
-private repositories beyond the Section 4(b) evaluation window, Automated
-workflows, coding-agent or agent-assisted development workflows,
-performance-regression gates, privately hosted or internal reports, and
-services or deliverables built on the software.
+Production use by an organization that is not a Small Organization, a
+Charity, or an Educational Institution requires a Subscription. This
+includes, without limitation: ongoing use in private repositories beyond
+the Section 4(b) evaluation window, Automated workflows, coding-agent or
+agent-assisted development workflows, performance-regression gates,
+privately hosted or internal reports, and services or deliverables built
+on the software.
 
 In any conflict between Section 4 and this Section 5, use described in
 this Section 5 is production use and is not a free use under Section 4(b),
@@ -253,6 +270,9 @@ free_production_use_if_all:
   max_org_headcount_fte: 10        # exclusive; whole control group
   max_ttm_revenue_usd: 1000000     # exclusive; trailing 12 months
   max_lifetime_outside_capital_usd: 1000000  # exclusive
+free_production_use_if_any:
+  - charity                        # recognized charitable / public-benefit org, any size
+  - educational_institution        # school, college, university, any size
 always_free: [read, study, evaluate_45_days, education, personal, oss_support, attributed_public_reports_non_automated]
 enforcement: trust  # no keys, no telemetry; registration optional
 per_version_terms: true
