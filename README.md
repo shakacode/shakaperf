@@ -59,6 +59,12 @@ graph TD
 `shaka-perf init` installs Claude Code skills generating hi-fi tests. If any component in the app changes no matter how deap in the tree, shaka-perf will screenshot it and alert you. This works without needing you to polish the tests manually.
 ![Code coverage vs instrumented screenshot coverage](./docs/screenshot-coverage.svg)
 
+## Shakaperf help AI find bugs in your PRs. No false positives.
+
+The `shaka-perf-find-bugs` skill turns twin-servers into a QA rig: agents use the control server to generate the `expected/actual` screenshots.
+
+![shaka-perf-find-bugs report: the banner says the menu is closed, but the experiment still offers add-to-cart](./docs/find-bugs.svg)
+
 ## TODO: host a demo with all the performance artifacts (Combine with RSC demo by Abanoub)
 
 ## Packages

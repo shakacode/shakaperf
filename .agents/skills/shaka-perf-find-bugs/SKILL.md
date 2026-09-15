@@ -51,17 +51,24 @@ If you can't confirm the regression, return to step 2 and try a different hypoth
 
 ## 5. Report confirmed bugs
 
-Write `/tmp/shaka-perf/reproduction-steps-<short-bug-description>.html` with: the two SHAs, numbered steps, expected vs actual, and the paired screenshots inline (control left, experiment right). One bug per file.
+Write `/tmp/shaka-perf/reproduction-steps-<short-bug-description>.html`, one bug per file, by copying `assets/report-template.html` (next to this SKILL.md) and filling in every `{{PLACEHOLDER}}`. Keep the template's markup, styles, and script; do not restyle or restructure it (except for adding items to lists).
 
-Screenshots should be
-1. Paired (no use in showing experiment without showing control)
-2. Titled with branch names used in control and experiment (just branch name, nothing else).
-3. Annotations should be in the center, with arrows pointing at good elements in control and bad elements in experiment.
-4. Mobile if possible. They occupy less screen space. Desktop-only bugs can have full-desktop screenshots. If the component you want to capture is below the viewport increase viewport height instead of scrolling.
+The report always opens with the templated section, and nothing goes above it:
 
-All text segments should have copy button, for easy communication in PRs. For example, it should be possible to copy reproduction steps with step numbers intact. It should also be appropriately styled: the copy button should be labeling a box wrapping the copied text. Except for screenshot section, they are not copiable to markdown, so they should copy the image itself to the clipboard with all the text built into the one image. SVG on the other hand are supported well, so they should be built in.
+1. `Discovered Bug: <one-line headline>` - the user-visible symptom, not the cause.
+2. Reproduction steps panel - numbered steps, then `Expected (control): ...` and `Actual (experiment): ...`.
+3. Paired screenshots stage - control left, experiment right, titled with the branch names only (the experiment title may link the PR); annotations in the center gap with a green arrow to the correct element on control and a red arrow to the broken element on experiment; one verdict line under each side.
 
-After you proved the bug exists, you need to explain it. Spawn a subagent with "Draw an insightful SVG explaining <bug description>. Use playwright-mcp to polish it. Don't stop iterating until it is clean and insigthful. You are expected to run at least 5 iterations. The SVG can contain 30 words top. Before you start drawing plan what you will show to the user, don't expect them to be familiar with implementation details. Get creative."
+Everything else follows below it, in the template's order: the two SHAs, the explanation SVG, relevant sources.
 
-Attach the SVG to the report, and list relevant sources.
-The SVG should be inlined in the report. Screenshot PNGs should be inlined as base64.
+Screenshot rules:
+1. Always paired - an experiment shot without its control shot proves nothing.
+2. Same step, same viewport, same scroll position on both sides.
+3. Mobile viewport when the bug shows there; it takes less space. Desktop-only bugs may use full-desktop shots. If the element is below the fold, capture with a taller viewport instead of scrolling.
+4. Inline as base64 PNG; crop with the template's img height/margin, not by editing the PNG.
+
+The template's two copy buttons are what make the report pasteable into a PR. "Copy markdown" copies the headline, the numbered steps, expected/actual, and every section below the screenshots as one markdown block with a slot for the image. "Copy image" copies the screenshot stage as one PNG with the titles, annotations, and verdicts baked in (an SVG overlay does not survive a paste, a flattened image does); it is pasted separately. Keep all text in those sections and all screenshot content inside the stage.
+
+After you proved the bug exists, you need to explain it. Spawn a subagent with "Draw an insightful SVG explaining <bug description>. Use playwright-mcp to polish it. Don't stop iterating until it is clean and insigthful. You are expected to run at least 2 iterations. The SVG can contain 30 words top. Before you start drawing plan what you will show to the user, don't expect them to be familiar with implementation details. Get creative."
+
+In the "Why it happens" section, write the explanation in plain language, 70 words max, then inline that SVG under it, and list the relevant sources in the section below.
