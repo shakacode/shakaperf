@@ -44,7 +44,7 @@ In Claude Code, run the two prompts:
 Then run the same image as two containers, `control` on the merge base of your branch and `experiment` on your branch, and compare them:
 
 ```bash
-shaka-perf servers checkout experiment <your-branch> --control-merge-base
+shaka-perf servers checkout <your-branch>
 shaka-perf servers   # builds both images, starts both containers, launches the app on each side
 shaka-perf compare   # runs every test on phone, tablet, and desktop against both sides
 
