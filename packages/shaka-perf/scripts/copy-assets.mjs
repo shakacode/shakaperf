@@ -58,13 +58,13 @@ const assets = [
   // Bundled Claude Code skills — `shaka-perf init` copies these into the
   // user's project at .claude/skills/<name>/. Source of truth lives at the
   // repo-root .claude/ dir so they're also active in this repo.
-  ['../../.claude/skills/discover-abtests', 'dist/skills/discover-abtests'],
+  // shaka-perf-discover-abtests is not installed by init; it ships only for the
+  // browser scripts the `shaka-perf discover-abtests` CLI helpers print.
+  ['../../.claude/skills/shaka-perf-discover-abtests', 'dist/skills/shaka-perf-discover-abtests'],
   ['../../.claude/skills/shaka-perf-add-coverage', 'dist/skills/shaka-perf-add-coverage'],
   ['../../.claude/skills/shaka-perf-coverage', 'dist/skills/shaka-perf-coverage'],
-  ['../../.claude/skills/setup-docker-servers-for-ab-tests', 'dist/skills/setup-docker-servers-for-ab-tests'],
-  ['../../.claude/skills/assess-abtest-quality', 'dist/skills/assess-abtest-quality'],
-  ['../../.claude/skills/ab-servers', 'dist/skills/ab-servers'],
-  ['../../.claude/skills/troubleshoot-abtest', 'dist/skills/troubleshoot-abtest'],
+  ['../../.claude/skills/shaka-perf-dockerize', 'dist/skills/shaka-perf-dockerize'],
+  ['../../.claude/skills/shaka-perf-find-bugs', 'dist/skills/shaka-perf-find-bugs'],
 ];
 
 for (const [src, dest] of assets) {

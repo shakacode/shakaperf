@@ -1,6 +1,6 @@
 # Writing Good AB Tests
 
-Canonical list of test code rules. The `discover-abtests` skill (when writing new tests) and the `assess-abtest-quality` skill (when grading existing tests) both read from this file.
+Canonical list of test code rules. The `shaka-perf-discover-abtests` skill reads from this file when writing new tests.
 
 A visreg test exists to **fail loudly** when the UI changes. Control flow that hides "the element wasn't there" or "the action didn't happen" defeats the whole point — a green test that silently did nothing is worse than no test. So:
 
@@ -8,7 +8,7 @@ A visreg test exists to **fail loudly** when the UI changes. Control flow that h
 
 2. **No loops.** No `for` / `while` / `forEach` / `for await` in a test body. Steps stay explicit and linear, so a failure points at one action and the run is reproducible.
    - Don't loop to "click through" N items — that's N separate tests, or one snapshot of the container. Split it.
-   - Never write a `while (!atBottom)` scroll loop — it hangs in this harness (`window.scrollY` doesn't update in the Playwright context). Use `scrollIntoViewIfNeeded()` on a known bottom element (see the lazy-load pattern in `discover-abtests/references/patterns.md`).
+   - Never write a `while (!atBottom)` scroll loop — it hangs in this harness (`window.scrollY` doesn't update in the Playwright context). Use `scrollIntoViewIfNeeded()` on a known bottom element (see the lazy-load pattern in `shaka-perf-discover-abtests/references/patterns.md`).
 
 3. **No `if` — assert the expectation instead.** Don't branch on page state (`if (await locator.isVisible())`, `if (await locator.count())`, `if (el) …`). A branch means the test quietly takes the "do nothing" path *exactly when* the thing you're testing has regressed. State what you expect and let Playwright's auto-waiting throw when it's wrong — these are your assertions (an `if` whose only body is a `throw` is an assertion too, not a branch):
    - `await page.waitForSelector(sel, { state: 'visible' })` — the element must appear.

@@ -1,10 +1,10 @@
 ---
-name: setup-docker-servers-for-ab-tests
+name: shaka-perf-dockerize
 description: Set up shaka-perf twin-servers — the Docker A/B testing infrastructure that runs your app twice (control vs experiment) so visreg/perf can compare two branches. Use this skill whenever the user wants to set up, configure, or debug twin-servers, "dockerize" their app for shaka-perf, write the twin-servers Dockerfile/Procfile/docker-compose, fill in the `twinServers` config, or get `shaka-perf servers` building and running — even if they just say "set up twin servers", "get the A/B servers running", or "make my app run under shaka-perf for perf testing".
 argument-hint: [path-to-existing-Dockerfile] [services e.g. postgres,redis,elasticsearch]
 ---
 
-# setup-docker-servers-for-ab-tests
+# shaka-perf-dockerize
 
 Twin-servers runs **two production-mode copies of one app side by side** — `control` (the baseline branch) and `experiment` (your branch) — so `shaka-perf compare` can diff them for visual and performance regressions. This skill sets up the Docker infrastructure that makes that happen in the current project.
 

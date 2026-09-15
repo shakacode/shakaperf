@@ -17,26 +17,17 @@ const DEFAULT_DEST_FILENAME = 'abtests.config.ts';
 
 // Bundled Claude Code skills shipped alongside the config so a fresh project
 // gets both the runtime config and the agent tooling in one step:
-//   - discover-abtests: turns "discover ab tests for <url>" into a real crawl
-//     + .abtest.ts generation flow.
 //   - shaka-perf-add-coverage: adds focused source-aware visual-regression tests.
 //   - shaka-perf-coverage: estimates screenshot coverage from code + visibility maps.
-//   - setup-docker-servers-for-ab-tests: walks an agent through standing up the
+//   - shaka-perf-dockerize: walks an agent through standing up the
 //     twin-servers Docker A/B infrastructure (Dockerfile, Procfile, config).
-//   - assess-abtest-quality: audits existing .abtest.ts files + the latest
-//     audit-results/ for anti-patterns and false-positive PASSes.
-//   - ab-servers: short reference of which `shaka-perf servers` subcommands
-//     an agent should call (bare `servers` is interactive, for humans only).
-//   - troubleshoot-abtest: attach to a `shaka-perf troubleshoot` session's frozen
-//     browsers over CDP from bash (bundled zero-dep cdp.mjs), no MCP required.
+//   - shaka-perf-find-bugs: drives twin-servers as a QA rig to reproduce
+//     regressions a branch introduces and writes a paired-screenshot report.
 const SKILL_NAMES = [
-  'discover-abtests',
   'shaka-perf-add-coverage',
   'shaka-perf-coverage',
-  'setup-docker-servers-for-ab-tests',
-  'assess-abtest-quality',
-  'ab-servers',
-  'troubleshoot-abtest',
+  'shaka-perf-dockerize',
+  'shaka-perf-find-bugs',
 ];
 
 // At runtime __dirname is dist/compare/cli/, so go up three levels to the
@@ -192,26 +183,15 @@ function runInit(opts: { out?: string; force?: boolean }): void {
   console.log(`shaka-perf init: wrote ${configDest}`);
 
   // Wipe each skill dir before re-copying so files removed in newer skill
-  // versions don't linger. cpSync overwrites/adds but never prunes. The
-  // browser-side scripts (e.g. discover-abtests') are exposed via the CLI
-  // (e.g. `shaka-perf discover-abtests parse-report`) and intentionally
-  // NOT copied here — they would be inert noise in the user's repo.
+  // versions don't linger. cpSync overwrites/adds but never prunes.
   for (const { src, dest } of skillDests) {
     fs.rmSync(dest, { recursive: true, force: true });
     fs.mkdirSync(dest, { recursive: true });
-    fs.cpSync(src, dest, {
-      recursive: true,
-      filter: (from) => {
-        const rel = path.relative(src, from);
-        return rel !== 'scripts' && !rel.startsWith(`scripts${path.sep}`);
-      },
-    });
+    fs.cpSync(src, dest, { recursive: true });
     console.log(`shaka-perf init: wrote ${dest}`);
   }
 
   console.log('');
   console.log(chalk.gray('Next steps — In Claude code:'));
-  console.log(`${chalk.green('/goal /setup-docker-servers-for-ab-tests')}${chalk.gray(' use playwright mcp to verify control and experiment builds look good.')}`);
-  console.log(`${chalk.green('/goal /discover-abtests')}${chalk.gray(' add essential ab tests. `shaka-perf audit` should finish without errors')}`);
-  console.log(`${chalk.green('/goal')}${chalk.gray(' there should be no issues in ')}${chalk.green('/assess-abtest-quality')}`);
+  console.log(`${chalk.green('/goal /shaka-perf-dockerize')}${chalk.gray(' use playwright mcp to verify control and experiment builds look good.')}`);
 }

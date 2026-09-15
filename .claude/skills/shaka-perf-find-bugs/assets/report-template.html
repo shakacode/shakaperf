@@ -27,6 +27,8 @@
   center gap (x=510); a green arrow points at the correct element on control,
   a red one at the broken element on experiment. Arrow endpoints are in the
   1020x620 viewBox, i.e. the same coordinates as the cropped screenshots.
+  The good/bad circles share one radius, {{CIRCLE_RADIUS}}: pick it so the ring
+  encloses the element it marks (11 fits an icon, 20-30 a chip or a button).
 -->
 <style>
   :root { --good: #1b7f3b; --bad: #c8102e; --ink: #14171a; --muted: #5b6470; }
@@ -100,15 +102,17 @@
         <div class="shots">
           <div class="shot left"><img src="data:image/png;base64,{{CONTROL_PNG_BASE64}}" alt="control: {{WHAT_CONTROL_SHOWS}}"></div>
           <div class="shot right"><img src="data:image/png;base64,{{EXPERIMENT_PNG_BASE64}}" alt="experiment: {{WHAT_EXPERIMENT_SHOWS}}"></div>
-          <svg viewBox="0 0 1020 620" xmlns="http://www.w3.org/2000/svg">
+          <svg class="overlay" viewBox="0 0 1020 620" xmlns="http://www.w3.org/2000/svg">
             <style>
-              text { font: 700 19px/1.2 system-ui, sans-serif; fill: #14171a; text-anchor: middle; }
-              text.sub { font-weight: 400; font-size: 16px; fill: #5b6470; }
-              line { stroke-width: 2.5; fill: none; }
-              line.good { stroke: #1b7f3b; } line.bad { stroke: #c8102e; }
-              circle.dot { fill: #14171a; }
-              circle.good { fill: none; stroke: #1b7f3b; stroke-width: 2.5; }
-              circle.bad { fill: none; stroke: #c8102e; stroke-width: 2.5; }
+              /* Scoped to this SVG: an inline SVG style sheet applies to the whole document,
+                 so bare selectors here would also restyle the explanation diagram below. */
+              svg.overlay text { font: 700 19px/1.2 system-ui, sans-serif; fill: #14171a; text-anchor: middle; }
+              svg.overlay text.sub { font-weight: 400; font-size: 16px; fill: #5b6470; }
+              svg.overlay line { stroke-width: 2.5; fill: none; }
+              svg.overlay line.good { stroke: #1b7f3b; } svg.overlay line.bad { stroke: #c8102e; }
+              svg.overlay circle.dot { fill: #14171a; }
+              svg.overlay circle.good { fill: none; stroke: #1b7f3b; stroke-width: 2.5; }
+              svg.overlay circle.bad { fill: none; stroke: #c8102e; stroke-width: 2.5; }
             </style>
             <defs>
               <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1b7f3b"/></marker>
@@ -129,7 +133,7 @@
               <line class="good" x1="510" y1="507" x2="48" y2="507" marker-end="url(#ag)"/>
               <line class="bad" x1="510" y1="507" x2="650" y2="507" marker-end="url(#ab)"/>
               <circle class="dot" cx="510" cy="507" r="3.5"/>
-              <circle class="good" cx="34" cy="507" r="11"/><circle class="bad" cx="664" cy="507" r="11"/>
+              <circle class="good" cx="34" cy="507" r="{{CIRCLE_RADIUS}}"/><circle class="bad" cx="664" cy="507" r="{{CIRCLE_RADIUS}}"/>
               <text class="sub" x="510" y="534">right: {{WHY_EXPERIMENT_IS_WRONG}}</text>
             </g>
           </svg>

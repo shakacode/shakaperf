@@ -39,8 +39,8 @@ vite-plugin-singlefile, all assets inlined as base64).
 
 `troubleshoot` is `compare` narrowed to one test at one viewport, leaving the
 browsers open for inspection over CDP (it never finishes and yields no numbers —
-use `compare` to measure). To run it and attach to the browsers, use the
-`troubleshoot-abtest` skill / `shaka-perf troubleshoot --help`; details in
+use `compare` to measure). To run it and attach to the browsers, see
+`shaka-perf troubleshoot --help`; details in
 @packages/shaka-perf/README-troubleshoot.md.
 
 ### Auditing bot-protected sites (real-Chrome mode)

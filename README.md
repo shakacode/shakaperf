@@ -61,7 +61,7 @@ graph TD
 
 ## Shakaperf help AI find bugs in your PRs. No false positives.
 
-The `shaka-perf-find-bugs` skill turns twin-servers into a QA rig: agents use the control server to generate the `expected/actual` screenshots.
+The `shaka-perf-find-bugs` skill turns twin-servers into a QA rig: agents use the control server to generate the `expected/actual` screenshots. `shaka-perf init` installs it next to the other skills.
 
 ![shaka-perf-find-bugs report: the banner says the menu is closed, but the experiment still offers add-to-cart](./docs/find-bugs.svg)
 

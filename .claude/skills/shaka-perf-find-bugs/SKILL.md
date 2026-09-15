@@ -25,7 +25,7 @@ What commits are checked out in `twinServers.experimentDir`/`twinServers.control
 
 ## 3. Boot the servers
 
-See `packages/shaka-perf/README-twin-servers.md` and `.claude/skills/ab-servers/SKILL.md` to understand the desired experiment/control layout and server lifecycle. Use the configured application's `abtests.config.ts` for databases, seed setup, and build commands. Run the following from that application's directory (`demo-ecommerce` for this repository's demo):
+See `packages/shaka-perf/README-twin-servers.md` to understand the desired experiment/control layout and server lifecycle. Use the configured application's `abtests.config.ts` for databases, seed setup, and build commands. Run the following from that application's directory (`demo-ecommerce` for this repository's demo):
 
 ```bash
 yarn shaka-perf servers build
