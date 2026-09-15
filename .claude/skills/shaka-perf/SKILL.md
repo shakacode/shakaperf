@@ -39,3 +39,7 @@ hunting regressions on a branch is `/shaka-perf-find-bugs`.
 Read this guide before writing or editing a test.
 https://github.com/shakacode/shakaperf/blob/main/writing-good-ab-tests.md.
 
+
+Whenever you are talking about results of your findings with users, give them full path to the generated report.
+If you are running multiple tests, save self-contained-report.html to a temporary file, so you can show it later.
+Showing actual reports is way more important than your conclusions, so attach it to the footer of your responses.
