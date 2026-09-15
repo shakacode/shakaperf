@@ -17,6 +17,8 @@ const DEFAULT_DEST_FILENAME = 'abtests.config.ts';
 
 // Bundled Claude Code skills shipped alongside the config so a fresh project
 // gets both the runtime config and the agent tooling in one step:
+//   - shaka-perf: map of the CLI commands; tells an agent to read each
+//     command's --help before using it.
 //   - shaka-perf-add-coverage: adds focused source-aware visual-regression tests.
 //   - shaka-perf-coverage: estimates screenshot coverage from code + visibility maps.
 //   - shaka-perf-dockerize: walks an agent through standing up the
@@ -24,6 +26,7 @@ const DEFAULT_DEST_FILENAME = 'abtests.config.ts';
 //   - shaka-perf-find-bugs: drives twin-servers as a QA rig to reproduce
 //     regressions a branch introduces and writes a paired-screenshot report.
 const SKILL_NAMES = [
+  'shaka-perf',
   'shaka-perf-add-coverage',
   'shaka-perf-coverage',
   'shaka-perf-dockerize',

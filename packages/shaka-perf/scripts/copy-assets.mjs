@@ -61,6 +61,7 @@ const assets = [
   // shaka-perf-discover-abtests is not installed by init; it ships only for the
   // browser scripts the `shaka-perf discover-abtests` CLI helpers print.
   ['../../.claude/skills/shaka-perf-discover-abtests', 'dist/skills/shaka-perf-discover-abtests'],
+  ['../../.claude/skills/shaka-perf', 'dist/skills/shaka-perf'],
   ['../../.claude/skills/shaka-perf-add-coverage', 'dist/skills/shaka-perf-add-coverage'],
   ['../../.claude/skills/shaka-perf-coverage', 'dist/skills/shaka-perf-coverage'],
   ['../../.claude/skills/shaka-perf-dockerize', 'dist/skills/shaka-perf-dockerize'],

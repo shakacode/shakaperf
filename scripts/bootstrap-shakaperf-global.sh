@@ -28,7 +28,7 @@ yarn install-global-script
 
 # 3. Symlink the capability skills into the global skills dir.
 mkdir -p "$SKILLS_DIR"
-for s in shaka-perf-discover-abtests shaka-perf-add-coverage shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs; do
+for s in shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs; do
   ln -sfn "$REPO/.claude/skills/$s" "$SKILLS_DIR/$s"
   echo "linked skill: $s"
 done

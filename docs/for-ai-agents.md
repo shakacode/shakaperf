@@ -24,10 +24,11 @@ yarn shaka-perf init
 `init` creates:
 
 - **`abtests.config.ts`** - the single project config (sections: `shared`, `visreg`, `perf`, `audit`, `twinServers`), every field annotated with its default. `accessibility` is supported but not scaffolded; its `failOnViolation` default is `true`. Coverage is the opt-in `--categories code_coverage` audit stage, which drains instrumented-JS coverage and maps what each finished page shows inside its capture region; its one config knob, `audit.screenshotCoveragePlugin` (`'react18'`, `'react19'`, or a custom plugin object), stamps each map row with the app source line that rendered the element, and needs a development build of the app to read.
-- **Four Claude Code skills** under `.claude/skills/` (they ship inside the npm package):
+- **Five Claude Code skills** under `.claude/skills/` (they ship inside the npm package):
 
 | Skill | What it does |
 | --- | --- |
+| `shaka-perf` | Map of the CLI commands; tells an agent to read each command's `--help` before using it. |
 | `shaka-perf-dockerize` | Walks an agent through standing up the twin Docker servers: production Dockerfile, Procfile, config, and the build/verify loop. |
 | `shaka-perf-add-coverage` | Adds focused source-aware visual-regression tests without duplicating existing coverage. |
 | `shaka-perf-coverage` | Estimates screenshot coverage from code coverage and audit visibility maps, and compares saved baselines. |

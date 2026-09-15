@@ -19,6 +19,7 @@ This guide walks you through adding twin-servers to a project that already has a
 
 Run `shaka-perf init` to drop a starter `abtests.config.ts` into your project, plus the bundled Claude Code skills under `.claude/skills/` so an agent in your repo can do the heavy lifting, including:
 
+- `shaka-perf` — a map of the CLI commands that points the agent at each command's `--help`.
 - `shaka-perf-add-coverage` — adds focused source-aware visual-regression tests.
 - `shaka-perf-coverage` — estimates screenshot coverage and compares baselines.
 - `shaka-perf-find-bugs` — once the twin servers run, reads the branch diff, reproduces regressions on control vs experiment, and writes a paired-screenshot bug report.
