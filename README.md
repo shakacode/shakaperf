@@ -1,6 +1,6 @@
 # shaka-perf
 
-[![License: ShakaPerf License](https://img.shields.io/badge/license-ShakaPerf%20License-blue.svg)](./LICENSE.md) TL;DR: free for orgs under 10 people, $1M revenue, and $1M raised, and for charities and schools at any size. Otherwise a [subscription](https://shakaperf.com/pricing).
+[![License: ShakaPerf License](https://img.shields.io/badge/license-ShakaPerf%20License-blue.svg)](./LICENSE.md) TL;DR: free for orgs under 10 people, $1M revenue, and $1M raised, and for charities, schools, and hospitals at any size. Otherwise a [subscription](https://shakaperf.com/pricing).
 
 ## The easiest way to test Frontend Performance
 Do you want to improve `Lighthouse` & `Web Vitals` without breaking your site?
