@@ -1,10 +1,5 @@
 # shaka-perf
 
-## License
-TL;DR: free for orgs under 10 people, $1M revenue, and $1M raised, and for charities, schools, and hospitals at any size. Otherwise a [subscription](https://shakaperf.com/pricing).
-
-[![License: ShakaPerf License](https://img.shields.io/badge/license-ShakaPerf%20License-blue.svg)](./LICENSE.md) 
-
 ## The easiest way to test Frontend Performance
 Do you want to improve `Lighthouse` & `Web Vitals` without breaking your site?
 `shaka-perf` will measure the impact of your PRs on performance and detect visual changes.
@@ -57,8 +52,25 @@ shaka-perf compare --categories=visreg # way faster
 
 `compare` writes `compare-results/report.html` with side-by-side screenshots plus the pixel diff, and a statistically significant performance comparison of Web Vitals, Lighthouse, accessibility, and custom metrics.
 
-
 ![ShakaPerf basic setup](./docs/setup-first-steps.svg)
+
+Now you can start optimizing your pages. (~1 hour)
+```
+/goal run shaka-perf audit and read sources to find the largest bottleneck. Minimal change should produce maximum result.
+
+Before announcing the victory, ensure all the affected components are screenshot-covered /shaka-perf-add-coverage
+```
+
+Or something more ambitous (2-8 hours)
+```
+/goal
+
+1. /shaka-perf-add-coverage ensure screenshot coverage of all components
+2. Switch the stack to React RSC
+3. Subagent with /shaka-perf-find-bugs should not find anything critical
+4. No visual changes
+5. When done, hit me up with performance comparison report from shaka-perf
+```
 
 ## Why choose `shaka-perf`?
 1. **One test to rule them all**. Write a Playwright test once - get performance benchmarks, visual regression, accessibility audits, and network-activity tracking from the same `abTest` definition.
@@ -87,19 +99,9 @@ The `shaka-perf-find-bugs` skill turns twin-servers into a QA rig: agents use th
 use skill `/deploy shaka-perf shaka-shared`
 
 ## License
+[![License: ShakaPerf License](https://img.shields.io/badge/license-ShakaPerf%20License-blue.svg)](./LICENSE.md) 
 
-ShakaPerf is source-available under [The ShakaPerf License](./LICENSE.md)
-(ShakaCode Trust-Based Commercial Licensing) - no license keys, no
-phone-home, enforced by trust.
-
-Free for everyone: reading and studying the source, a 45-day evaluation
-(agents welcome), education, personal projects, and supporting public
-open-source projects. Production use - including CI, PR checks, and
-coding-agent workflows - is also free for small organizations: under 10
-people AND under $1M revenue AND under $1M raised, counted with
-affiliates. Larger or funded organizations need a paid subscription - see
-[shakaperf.com/pricing](https://shakaperf.com/pricing). Once a version
-ships under these terms, those terms govern that version permanently.
+TL;DR: free for orgs under 10 people, $1M revenue, and $1M raised, and for charities, schools, and hospitals at any size. Otherwise a [subscription](https://shakaperf.com/pricing).
 
 Registration is free, optional, and encouraged for every organization:
 [shakaperf.com/license](https://shakaperf.com/license). Questions:
