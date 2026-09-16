@@ -24,6 +24,8 @@ import { createTroubleshootCommand } from './troubleshoot/program';
 
 const { version } = require('../package.json');
 
+// Publish before loading user tests so shaka-shared can check runner compatibility.
+process.env.SHAKA_PERF_VERSION = version;
 markCurrentProcess();
 
 async function main(): Promise<void> {

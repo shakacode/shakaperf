@@ -17,14 +17,9 @@ const nodePathParts = [globalNodeModules, packageNodeModules];
 if (process.env.NODE_PATH) nodePathParts.push(process.env.NODE_PATH);
 const nodePathEnv = nodePathParts.join(path.delimiter);
 
-// Tag the wrapper before spawnSync so `shaka-perf processes` can see it too
-// — otherwise only the child cli.js shows up (markCurrentProcess in cli.ts
-// only marks its own process). Long-running commands like `shaka-perf audit`
-// keep this wrapper alive, so a leaked audit would otherwise have an
-// invisible parent process. Keep this env var name in sync with
-// PROCESS_MARKER_ENV_VAR in src/processes/program.ts.
+// Mark the child before spawning: `ps axeww` reads its initial environment.
+// Keep in sync with PROCESS_MARKER_ENV_VAR in src/processes/program.ts.
 process.env.IS_SHAKA_PERF_PROCESS = 'true';
-process.env.SHAKA_PERF_VERSION = require('../package.json').version;
 
 const nodeArgs = ['--enable-source-maps'];
 

@@ -20,7 +20,8 @@ mkdirSync(path.dirname(target), { recursive: true });
 
 const pnpCjs = path.join(repoRoot, '.pnp.cjs');
 const pnpLoader = path.join(repoRoot, '.pnp.loader.mjs');
-const cliEntry = path.join(pkgDir, 'dist', 'cli.js');
+// Use the published wrapper to share its Node flags and process marker setup.
+const binEntry = path.join(pkgDir, 'bin', 'shaka-perf.js');
 
 // NODE_OPTIONS propagates to worker_threads and child node processes;
 // CLI flags do not. esbuild's main.js spawns a worker that resolves its
@@ -31,9 +32,7 @@ const wrapper = `#!/usr/bin/env bash
 # Dev shaka-perf — runs the workspace build with Yarn PnP loaded.
 # Re-generate with: yarn workspace shaka-perf install-global
 export NODE_OPTIONS="--require ${pnpCjs} --experimental-loader ${pnpLoader}\${NODE_OPTIONS:+ $NODE_OPTIONS}"
-# Export the marker BEFORE exec so /proc/PID/environ reflects it — Node's
-# in-process \`process.env\` mutation (markCurrentProcess) doesn't update the
-# kernel's env block, which is what \`ps axeww\` reads.
+# Mark the wrapper before exec so it appears in \`ps axeww\` too.
 export IS_SHAKA_PERF_PROCESS=true
 # Authenticate the bundled claude CLI calls (ai_summary, accessibility,
 # agent-readiness, warm/cold email) with a Claude subscription token saved at
@@ -49,7 +48,7 @@ if [ -r "$HOME/.claude-oat-token" ]; then
   fi
   unset _oat
 fi
-exec "${process.execPath}" "${cliEntry}" "$@"
+exec "${process.execPath}" "${binEntry}" "$@"
 `;
 
 writeFileSync(target, wrapper);
