@@ -54,6 +54,8 @@ shaka-perf compare --categories=visreg # way faster
 
 ![ShakaPerf basic setup](./docs/setup-first-steps.svg)
 
+### Performance Optimization
+
 Now you can start optimizing your pages. (~1 hour)
 ```
 /goal run shaka-perf audit and read sources to find the largest bottleneck. Minimal change should produce maximum result.
