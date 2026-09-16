@@ -24,7 +24,7 @@ import { createTroubleshootCommand } from './troubleshoot/program';
 
 const { version } = require('../package.json');
 
-markCurrentProcess();
+markCurrentProcess(version);
 
 async function main(): Promise<void> {
   const program = new Command();
