@@ -17,15 +17,8 @@ const nodePathParts = [globalNodeModules, packageNodeModules];
 if (process.env.NODE_PATH) nodePathParts.push(process.env.NODE_PATH);
 const nodePathEnv = nodePathParts.join(path.delimiter);
 
-// Mark the env BEFORE spawnSync so the child cli.js carries the marker in its
-// initial environment block, which is what `ps axeww` (and so `shaka-perf
-// processes`) reads. markCurrentProcess in cli.ts mutates process.env
-// in-process, which its own descendants inherit but `ps` never shows for that
-// process itself - so without this line a leaked `shaka-perf audit` would be
-// invisible. (This wrapper's own ps line stays unmarked for the same reason;
-// only a parent shell could mark it.) Keep the name in sync with
-// PROCESS_MARKER_ENV_VAR in src/processes/program.ts. SHAKA_PERF_VERSION is
-// deliberately NOT set here: cli.ts publishes it before any test file loads.
+// Mark the child before spawning: `ps axeww` reads its initial environment.
+// Keep in sync with PROCESS_MARKER_ENV_VAR in src/processes/program.ts.
 process.env.IS_SHAKA_PERF_PROCESS = 'true';
 
 const nodeArgs = ['--enable-source-maps'];

@@ -18,25 +18,13 @@ const importInk: () => Promise<typeof Ink> =
 
 export const PROCESS_MARKER_ENV_VAR = 'IS_SHAKA_PERF_PROCESS';
 const PROCESS_MARKER_VALUE = 'true';
-// Read by shaka-shared's abTest() version guard. Keep in sync with
-// packages/shaka-shared/src/ab-test-registry.ts.
-export const VERSION_ENV_VAR = 'SHAKA_PERF_VERSION';
 
 /**
  * Tag the current process (and every descendant it spawns) with an env var
- * so `shaka-perf processes list` can find them later, and publish the runner
- * version for shaka-shared's guard. Call once at CLI entry.
- *
- * This is the ONLY place the version is set: it is read by shaka-shared inside
- * this process (or a child, which inherits process.env) when a test file loads,
- * so every entry point - bin/shaka-perf.js, the dev wrapper, `node dist/cli.js`
- * - is covered. A runner that carries the marker without a version is rejected
- * by shaka-shared as "too old". The marker, by contrast, is ALSO set by the
- * wrappers before spawn/exec, because `ps` only shows a process's initial env.
+ * so `shaka-perf processes list` can find them later. Call once at CLI entry.
  */
-export function markCurrentProcess(version: string): void {
+export function markCurrentProcess(): void {
   process.env[PROCESS_MARKER_ENV_VAR] = PROCESS_MARKER_VALUE;
-  process.env[VERSION_ENV_VAR] = version;
 }
 
 type ShakaProcess = { pid: number; rssKB: number; command: string };
