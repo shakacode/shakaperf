@@ -72,6 +72,8 @@ interface TimelineEvent {
   interactionType?: string;
   // LCP specifics
   isLcpFinal?: boolean;
+  // network-end specifics: encoded bytes transferred
+  sizeBytes?: number;
 }
 
 export interface ProfileData {
@@ -265,6 +267,7 @@ export function parseProfile(filePath: string): ProfileData {
           timeMs,
           label: url,
           category: 'network-end',
+          sizeBytes: typeof e.args.data.encodedDataLength === 'number' ? e.args.data.encodedDataLength : undefined,
         });
       }
     }
@@ -678,6 +681,7 @@ interface NetworkRequest {
   url: string;
   startMs: number;
   endMs: number;
+  sizeBytes: number;
 }
 
 /**
@@ -697,13 +701,13 @@ function buildNetworkRequests(profile: ProfileData): NetworkRequest[] {
     } else if (e.category === 'network-end') {
       const arr = openStarts.get(e.label);
       if (arr && arr.length > 0) {
-        requests.push({ url: e.label, startMs: arr.shift()!, endMs: e.timeMs });
+        requests.push({ url: e.label, startMs: arr.shift()!, endMs: e.timeMs, sizeBytes: e.sizeBytes ?? 0 });
       }
     }
   }
   for (const [url, starts] of openStarts) {
     for (const startMs of starts) {
-      requests.push({ url, startMs, endMs: profile.maxTimeMs });
+      requests.push({ url, startMs, endMs: profile.maxTimeMs, sizeBytes: 0 });
     }
   }
   requests.sort((a, b) => a.startMs - b.startMs);
@@ -724,6 +728,10 @@ interface StripRect {
   heightPx: number;       // base pixel height of the rectangle
   timeProportional: boolean; // true → height scales with zoom (network spans)
   weight: number;         // lane-packing priority; heavier hugs the diagram
+  // Inputs to the above-cursor counter (see the status panel script).
+  kb?: number;            // network request: encoded size
+  cls?: number;           // layout shift: score
+  taskMs?: number;        // top-level main-thread task: duration
 }
 
 /** Origin-relative form of a URL/label, so `https://host/a.js` shows as `/a.js`. */
@@ -759,6 +767,7 @@ function buildStripRects(profile: ProfileData, pxPerMs: number): StripRect[] {
       heightPx: Math.max(2, Math.round((r.endMs - r.startMs) * pxPerMs)),
       timeProportional: true,
       weight: STRIP_CATEGORY_WEIGHT[category],
+      kb: r.sizeBytes / 1024,
     });
   }
 
@@ -783,6 +792,7 @@ function buildStripRects(profile: ProfileData, pxPerMs: number): StripRect[] {
       heightPx: hasSpan ? Math.max(2, Math.round(e.durationMs! * pxPerMs)) : MARKER_PX,
       timeProportional: hasSpan,
       weight: STRIP_CATEGORY_WEIGHT[category] ?? 30,
+      cls: e.category === 'layout-shift' ? e.score : undefined,
     });
   }
   return rects;
@@ -818,6 +828,7 @@ function buildMainThreadFlame(profile: ProfileData, pxPerMs: number): StripLayou
       heightPx: Math.max(2, Math.round(e.durMs * pxPerMs)),
       timeProportional: true,
       weight: 0,
+      taskMs: e.name === 'RunTask' && e.depth === 0 ? e.durMs : undefined,
     });
     laneOf.push(e.depth);
     if (e.depth + 1 > laneCount) laneCount = e.depth + 1;
@@ -1115,7 +1126,7 @@ function buildTimelineHtml(
   // wide the column is. That lets each paired column share one width and keep the
   // diagram symmetric/centred.
   // data-key/data-idx/data-side wire into the cross-side highlight + jump JS.
-  function renderStrip(side: 'control' | 'experiment', layout: StripLayout): string {
+  function renderStrip(side: 'control' | 'experiment', kind: 'net' | 'main' | 'other', layout: StripLayout): string {
     const { rects, laneOf } = layout;
     const anchor = side === 'control' ? 'right' : 'left';
     const keyCounts = new Map<string, number>();
@@ -1128,7 +1139,10 @@ function buildTimelineHtml(
       // height; fixed-height markers keep their pixel height at every zoom.
       const dataH = r.timeProportional ? ` data-h="${r.heightPx}"` : '';
       const aligned = alignedAttrs(side, r.topMs, r.endMs, top, r.timeProportional ? r.heightPx : null);
-      return `<div class="net-bar cat-${r.category}"${dataH}${aligned} data-key="${escapeHtml(r.key)}" data-idx="${idx}" data-side="${side}" title="${escapeHtml(r.title)}" style="top:${top}px;height:${r.heightPx}px;${anchor}:${offset}px;width:${NET_LANE_W - 1}px;background:${STRIP_CATEGORY_COLOR[r.category]};">${escapeHtml(r.label)}</div>`;
+      const counted = (r.kb != null ? ` data-kb="${r.kb.toFixed(2)}"` : '') +
+        (r.cls != null ? ` data-cls="${r.cls}"` : '') +
+        (r.taskMs != null ? ` data-task="${r.taskMs.toFixed(1)}"` : '');
+      return `<div class="net-bar cat-${r.category}"${dataH}${aligned} data-kind="${kind}"${counted} data-key="${escapeHtml(r.key)}" data-idx="${idx}" data-side="${side}" title="${escapeHtml(r.title)}" style="top:${top}px;height:${r.heightPx}px;${anchor}:${offset}px;width:${NET_LANE_W - 1}px;background:${STRIP_CATEGORY_COLOR[r.category]};">${escapeHtml(r.label)}</div>`;
     }).join('\n');
   }
 
@@ -1206,6 +1220,34 @@ function buildTimelineHtml(
   }
   .controls label { cursor: pointer; color: #1a1d22; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
   .controls label:has(input:disabled) { cursor: default; color: #9ca3af; }
+  /* Live tally of everything above the mouse cursor: one chip per side, pinned
+     to the left (control) / right (experiment) screen edge and following the
+     cursor's row. Hidden until the cursor first enters the timeline. */
+  .status-chip {
+    position: fixed;
+    top: 0;
+    transform: translateY(-50%);
+    z-index: 20;
+    display: none;
+    border-collapse: collapse;
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    padding: 4px 6px;
+    font-family: ui-monospace, 'SF Mono', Monaco, monospace;
+    font-size: 11px;
+    color: #1a1d22;
+    pointer-events: none;
+  }
+  body.status-live .status-chip { display: table; }
+  .status-chip.control { left: 8px; }
+  .status-chip.experiment { right: 8px; }
+  .status-chip th, .status-chip td { padding: 1px 6px; text-align: right; white-space: nowrap; }
+  .status-chip th { text-align: left; font-weight: 600; color: #5a6470; border-bottom: 1px solid rgba(0, 0, 0, 0.1); }
+  .status-chip td:first-child { text-align: left; color: #5a6470; }
+  .status-chip.control .side { color: #2563eb; }
+  .status-chip.experiment .side { color: #dc2626; }
 
   .timeline-container {
     display: grid;
@@ -1441,6 +1483,17 @@ function buildTimelineHtml(
       <input type="checkbox" id="align-annotations"${alignment.pairCount === 0 ? ' disabled' : ''}>align test annotations
     </label>
   </div>
+  ${(['control', 'experiment'] as const).map(side => `<table class="status-chip ${side}" id="status-${side}">
+    <thead><tr><th colspan="2"><span class="side">${side}</span> <span data-stat="${side}-time">above cursor</span></th></tr></thead>
+    <tbody>
+      <tr><td>files</td><td data-stat="${side}-files">–</td></tr>
+      <tr><td>KB</td><td data-stat="${side}-kb">–</td></tr>
+      <tr><td>events</td><td data-stat="${side}-events">–</td></tr>
+      <tr><td>JS tasks</td><td data-stat="${side}-tasks">–</td></tr>
+      <tr><td>JS ms</td><td data-stat="${side}-taskms">–</td></tr>
+      <tr><td>CLS</td><td data-stat="${side}-cls">–</td></tr>
+    </tbody>
+  </table>`).join('\n  ')}
   <div class="legend">${legendHtml}</div>
 
   <div class="header-row">
@@ -1457,13 +1510,13 @@ function buildTimelineHtml(
 
   <div class="timeline-container">
     <div class="net-col control col-other">
-      ${renderStrip('control', controlStrip.other)}
+      ${renderStrip('control', 'other', controlStrip.other)}
     </div>
     <div class="net-col control col-main">
-      ${renderStrip('control', controlStrip.mainThread)}
+      ${renderStrip('control', 'main', controlStrip.mainThread)}
     </div>
     <div class="net-col control col-net">
-      ${renderStrip('control', controlStrip.net)}
+      ${renderStrip('control', 'net', controlStrip.net)}
     </div>
     <div class="screenshot-col control">
       ${renderGroupBands('control', control)}
@@ -1479,13 +1532,13 @@ function buildTimelineHtml(
       ${renderScreenshots('experiment', experiment)}
     </div>
     <div class="net-col experiment col-net">
-      ${renderStrip('experiment', experimentStrip.net)}
+      ${renderStrip('experiment', 'net', experimentStrip.net)}
     </div>
     <div class="net-col experiment col-main">
-      ${renderStrip('experiment', experimentStrip.mainThread)}
+      ${renderStrip('experiment', 'main', experimentStrip.mainThread)}
     </div>
     <div class="net-col experiment col-other">
-      ${renderStrip('experiment', experimentStrip.other)}
+      ${renderStrip('experiment', 'other', experimentStrip.other)}
     </div>
   </div>
 
@@ -1513,6 +1566,13 @@ function buildTimelineHtml(
           el: el, top: top, h: h,
           atop: el.dataset.atop ? parseFloat(el.dataset.atop) : top,
           ah: el.dataset.ah ? parseFloat(el.dataset.ah) : h,
+          // Above-cursor tally inputs (strip bars only): which strip the bar
+          // belongs to, and the size / CLS score / task duration it carries.
+          side: el.dataset.side,
+          kind: el.dataset.kind,
+          kb: el.dataset.kb ? parseFloat(el.dataset.kb) : 0,
+          cls: el.dataset.cls ? parseFloat(el.dataset.cls) : 0,
+          task: el.dataset.task ? parseFloat(el.dataset.task) : null,
         });
       });
       const columns = document.querySelectorAll('.screenshot-col, .net-col');
@@ -1536,8 +1596,61 @@ function buildTimelineHtml(
         BASE_HEIGHT = aligned ? ALIGNED_HEIGHT : RAW_HEIGHT;
         document.body.classList.toggle('aligned', aligned);
         applyScale();
+        if (lastCursorY != null) updateStatus(lastCursorY);
       });
 
+      // Above-cursor tally. Every strip bar is a counted item: its kind
+      // (network / main-thread / events column) plus the size, CLS score or
+      // task duration it carries. Positions come from positioned (captured
+      // before the first applyScale, so they are unscaled) and are compared in
+      // unscaled px, in whichever view (raw / aligned) is active.
+      var PX_PER_MS = ${pxPerMs};
+      var counted = { control: [], experiment: [] };
+      positioned.forEach(function(p) {
+        if (p.kind) counted[p.side].push(p);
+      });
+      var statusCells = {};
+      document.querySelectorAll('.status-chip [data-stat]').forEach(function(td) { statusCells[td.dataset.stat] = td; });
+      var statusChips = { control: document.getElementById('status-control'), experiment: document.getElementById('status-experiment') };
+      var lastCursorY = null;
+
+      function tally(items, yUnscaled) {
+        var t = { files: 0, kb: 0, events: 0, tasks: 0, taskms: 0, cls: 0 };
+        for (var i = 0; i < items.length; i++) {
+          var it = items[i];
+          var top = aligned ? it.atop : it.top;
+          if (top > yUnscaled) continue;
+          if (it.kind === 'net') { t.files++; t.kb += it.kb; }
+          else if (it.kind === 'other') { t.events++; t.cls += it.cls; }
+          else if (it.task != null) {
+            t.tasks++;
+            t.taskms += Math.min(it.task, (yUnscaled - top) / PX_PER_MS);
+          }
+        }
+        return t;
+      }
+
+      function updateStatus(yUnscaled, clientY) {
+        lastCursorY = yUnscaled;
+        document.body.classList.add('status-live');
+        ['control', 'experiment'].forEach(function(side) {
+          if (clientY != null) statusChips[side].style.top = clientY + 'px';
+          var t = tally(counted[side], yUnscaled);
+          statusCells[side + '-time'].textContent = 'above ' + Math.round(yUnscaled / PX_PER_MS) + 'ms';
+          statusCells[side + '-files'].textContent = t.files;
+          statusCells[side + '-kb'].textContent = t.kb.toFixed(1);
+          statusCells[side + '-events'].textContent = t.events;
+          statusCells[side + '-tasks'].textContent = t.tasks;
+          statusCells[side + '-taskms'].textContent = Math.round(t.taskms);
+          statusCells[side + '-cls'].textContent = t.cls.toFixed(4);
+        });
+      }
+
+      var timeline = document.querySelector('.timeline-container');
+      timeline.addEventListener('mousemove', function(e) {
+        var y = e.clientY - timeline.getBoundingClientRect().top;
+        updateStatus(Math.max(0, y / scale), e.clientY);
+      });
 
       var container = document.querySelector('.timeline-container');
 
