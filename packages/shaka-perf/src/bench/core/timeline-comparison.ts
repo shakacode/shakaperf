@@ -1177,7 +1177,9 @@ function buildTimelineHtml(
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: #ffffff;
     color: #1a1d22;
-    padding: 20px;
+    /* Bottom slack so the last rows can be scrolled up clear of the tally
+       chips, which sit at the bottom of the window when the cursor is low. */
+    padding: 20px 20px 60vh;
   }
   h1 { text-align: center; color: #111; margin-bottom: 8px; font-size: 20px; }
   /* Floats above the sticky header so it stays reachable anywhere down the
@@ -1195,34 +1197,70 @@ function buildTimelineHtml(
   }
   .controls label { cursor: pointer; color: #1a1d22; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
   .controls label:has(input:disabled) { cursor: default; color: #9ca3af; }
-  /* Live tally of everything above the mouse cursor: one chip per side, pinned
-     to the left (control) / right (experiment) screen edge and following the
-     cursor's row. Hidden until the cursor first enters the timeline. */
+  /* Live tally of everything between the baseline and the mouse cursor: one
+     line per side, pinned to the right screen edge and sitting just BELOW the
+     cursor so it never covers it. Hidden until the cursor first enters the
+     timeline. */
   .status-chip {
     position: fixed;
     top: 0;
-    transform: translateY(-50%);
     z-index: 20;
     display: none;
-    border-collapse: collapse;
+    white-space: nowrap;
     background: rgba(255, 255, 255, 0.97);
     border: 1px solid rgba(0, 0, 0, 0.12);
     border-radius: 8px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-    padding: 4px 6px;
+    padding: 3px 9px;
     font-family: ui-monospace, 'SF Mono', Monaco, monospace;
     font-size: 11px;
     color: #1a1d22;
     pointer-events: none;
   }
-  body.status-live .status-chip { display: table; }
-  .status-chip.control { left: 8px; }
-  .status-chip.experiment { right: 8px; }
-  .status-chip th, .status-chip td { padding: 1px 6px; text-align: right; white-space: nowrap; }
-  .status-chip th { text-align: left; font-weight: 600; color: #5a6470; border-bottom: 1px solid rgba(0, 0, 0, 0.1); }
-  .status-chip td:first-child { text-align: left; color: #5a6470; }
+  body.status-live .status-chip { display: block; }
+  /* Both on the right, experiment above control, so they stack clear of the
+     cursor and each gets the full window width. */
+  .status-chip { right: 8px; max-width: calc(100vw - 16px); overflow: hidden; text-overflow: ellipsis; }
+  .status-chip .side { font-weight: 700; margin-right: 7px; }
   .status-chip.control .side { color: #2563eb; }
   .status-chip.experiment .side { color: #dc2626; }
+
+  /* The click-set baseline. Everything the chips count starts here instead of
+     at 0 ms; without one they count from the top of the timeline. */
+  .baseline-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 2px dashed #111;
+    z-index: 8;
+    pointer-events: none;
+    display: none;
+  }
+  body.has-baseline .baseline-line { display: block; }
+  .baseline-label {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    /* The line itself ignores the mouse; its label takes the reset click. */
+    pointer-events: auto;
+    /* Left edge, not centred: the line spans the whole grid, which is far
+       wider than the window, so a centred label sits off-screen. */
+    left: 8px;
+    transform: translateY(-100%);
+    background: #111;
+    color: #ffffff;
+    font-family: ui-monospace, 'SF Mono', Monaco, monospace;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .baseline-clear {
+    cursor: pointer;
+    font-weight: 700;
+    opacity: 0.75;
+  }
+  .baseline-clear:hover { opacity: 1; }
 
   .timeline-container {
     display: grid;
@@ -1449,7 +1487,8 @@ function buildTimelineHtml(
   <h1>Timeline Comparison</h1>
   <div style="text-align:center;color:#666;font-size:12px;margin-bottom:12px;line-height:1.8">
     Ctrl + Mouse Wheel to zoom<br>
-    Hover a rectangle for its full label · Click to jump to the matching event on the other side
+    Hover a rectangle for its full label · Click one to jump to the matching event on the other side<br>
+    Click anywhere else to measure from there instead of 0ms · its &times; or Esc resets
   </div>
   <div class="controls">
     <label title="${alignment.pairCount === 0
@@ -1458,17 +1497,9 @@ function buildTimelineHtml(
       <input type="checkbox" id="align-annotations"${alignment.pairCount === 0 ? ' disabled' : ''}>align test annotations
     </label>
   </div>
-  ${(['control', 'experiment'] as const).map(side => `<table class="status-chip ${side}" id="status-${side}">
-    <thead><tr><th colspan="2"><span class="side">${side}</span> <span data-stat="${side}-time">above cursor</span></th></tr></thead>
-    <tbody>
-      <tr><td>files</td><td data-stat="${side}-files">–</td></tr>
-      <tr><td>KB</td><td data-stat="${side}-kb">–</td></tr>
-      <tr><td>events</td><td data-stat="${side}-events">–</td></tr>
-      <tr><td>JS tasks</td><td data-stat="${side}-tasks">–</td></tr>
-      <tr><td>JS ms</td><td data-stat="${side}-taskms">–</td></tr>
-      <tr><td>CLS</td><td data-stat="${side}-cls">–</td></tr>
-    </tbody>
-  </table>`).join('\n  ')}
+  ${(['control', 'experiment'] as const).map(side =>
+    `<div class="status-chip ${side}" id="status-${side}"><span class="side">${side}</span><span class="metrics"></span></div>`
+  ).join('\n  ')}
   <div class="legend">${legendHtml}</div>
 
   <div class="header-row">
@@ -1484,6 +1515,7 @@ function buildTimelineHtml(
   </div>
 
   <div class="timeline-container">
+    <div class="baseline-line" id="baseline-line"><span class="baseline-label"><span id="baseline-text"></span><span class="baseline-clear" id="baseline-clear" title="reset the baseline to 0ms">&times;</span></span></div>
     <div class="net-col control col-other">
       ${renderStrip('control', 'other', controlStrip.other)}
     </div>
@@ -1553,6 +1585,8 @@ function buildTimelineHtml(
       const columns = document.querySelectorAll('.screenshot-col, .net-col');
 
       function applyScale() {
+        // Runs before the baseline element is looked up on the first call.
+        if (baselineLine) positionBaseline();
         var h = Math.ceil(BASE_HEIGHT * scale) + 'px';
         columns.forEach(function(col) { col.style.height = h; });
         positioned.forEach(function(p) {
@@ -1574,60 +1608,102 @@ function buildTimelineHtml(
         if (lastCursorY != null) updateStatus(lastCursorY);
       });
 
-      // Above-cursor tally. Every strip bar is a counted item: its kind
-      // (network / main-thread / events column) plus the size, CLS score or
-      // task duration it carries. Positions come from positioned (captured
-      // before the first applyScale, so they are unscaled) and are compared in
-      // unscaled px, in whichever view (raw / aligned) is active.
+      // Tally of the span between the baseline and the cursor. Every strip bar
+      // is a counted item: its kind (network / main-thread / events column)
+      // plus the size, CLS score or task duration it carries. Positions come
+      // from positioned (captured before the first applyScale, so they are
+      // unscaled) and are compared in unscaled px, in whichever view
+      // (raw / aligned) is active.
       var PX_PER_MS = ${pxPerMs};
+      var CHIP_CURSOR_GAP_PX = 18;
+      var CHIP_STACK_GAP_PX = 4;
       var counted = { control: [], experiment: [] };
       positioned.forEach(function(p) {
         if (p.kind) counted[p.side].push(p);
       });
-      var statusCells = {};
-      document.querySelectorAll('.status-chip [data-stat]').forEach(function(td) { statusCells[td.dataset.stat] = td; });
       var statusChips = { control: document.getElementById('status-control'), experiment: document.getElementById('status-experiment') };
+      var statusMetrics = {
+        control: statusChips.control.querySelector('.metrics'),
+        experiment: statusChips.experiment.querySelector('.metrics'),
+      };
+      var baselineLine = document.getElementById('baseline-line');
+      var baselineText = document.getElementById('baseline-text');
+      var baselineY = 0;
       var lastCursorY = null;
+      var lastClientY = 0;
 
-      function tally(items, yUnscaled) {
+      function tally(items, fromMs, toMs) {
         var t = { files: 0, kb: 0, events: 0, tasks: 0, taskms: 0, cls: 0 };
         for (var i = 0; i < items.length; i++) {
           var it = items[i];
-          var top = aligned ? it.atop : it.top;
-          if (top > yUnscaled) continue;
+          var startMs = (aligned ? it.atop : it.top) / PX_PER_MS;
+          if (it.task != null) {
+            // A task straddling either edge counts for the part inside the span.
+            var overlap = Math.min(startMs + it.task, toMs) - Math.max(startMs, fromMs);
+            if (overlap > 0) { t.tasks++; t.taskms += overlap; }
+            continue;
+          }
+          if (startMs < fromMs || startMs > toMs) continue;
           if (it.kind === 'net') { t.files++; t.kb += it.kb; }
           else if (it.kind === 'other') { t.events++; t.cls += it.cls; }
-          else if (it.task != null) {
-            t.tasks++;
-            t.taskms += Math.min(it.task, (yUnscaled - top) / PX_PER_MS);
-          }
         }
         return t;
       }
 
       function updateStatus(yUnscaled, clientY) {
         lastCursorY = yUnscaled;
+        if (clientY != null) lastClientY = clientY;
         document.body.classList.add('status-live');
+        // Below the cursor, so the chips never sit under the pointer itself,
+        // experiment stacked above control.
+        var chipH = statusChips.experiment.offsetHeight || 22;
+        var stackH = chipH * 2 + CHIP_STACK_GAP_PX;
+        var chipTop = Math.min(lastClientY + CHIP_CURSOR_GAP_PX, window.innerHeight - stackH - 8);
+        statusChips.experiment.style.top = chipTop + 'px';
+        statusChips.control.style.top = (chipTop + chipH + CHIP_STACK_GAP_PX) + 'px';
+        var fromMs = Math.min(baselineY, yUnscaled) / PX_PER_MS;
+        var toMs = Math.max(baselineY, yUnscaled) / PX_PER_MS;
+        var span = baselineY > 0
+          ? Math.round(fromMs) + '-' + Math.round(toMs) + 'ms'
+          : Math.round(toMs) + 'ms';
         ['control', 'experiment'].forEach(function(side) {
-          if (clientY != null) statusChips[side].style.top = clientY + 'px';
-          var t = tally(counted[side], yUnscaled);
-          statusCells[side + '-time'].textContent = 'above ' + Math.round(yUnscaled / PX_PER_MS) + 'ms';
-          statusCells[side + '-files'].textContent = t.files;
-          statusCells[side + '-kb'].textContent = t.kb.toFixed(1);
-          statusCells[side + '-events'].textContent = t.events;
-          statusCells[side + '-tasks'].textContent = t.tasks;
-          statusCells[side + '-taskms'].textContent = Math.round(t.taskms);
-          statusCells[side + '-cls'].textContent = t.cls.toFixed(4);
+          var t = tally(counted[side], fromMs, toMs);
+          statusMetrics[side].textContent = span +
+            ', ' + t.files + ' files' +
+            ', ' + Math.round(t.kb) + ' KB' +
+            ', ' + t.events + ' events' +
+            ', ' + t.tasks + ' tasks' +
+            ', ' + Math.round(t.taskms) + ' task-ms' +
+            ', CLS ' + t.cls.toFixed(4);
         });
       }
 
-      var timeline = document.querySelector('.timeline-container');
-      timeline.addEventListener('mousemove', function(e) {
-        var y = e.clientY - timeline.getBoundingClientRect().top;
-        updateStatus(Math.max(0, y / scale), e.clientY);
-      });
+      function setBaseline(yUnscaled) {
+        baselineY = Math.max(0, yUnscaled);
+        document.body.classList.toggle('has-baseline', baselineY > 0);
+        baselineText.textContent = Math.round(baselineY / PX_PER_MS) + 'ms baseline';
+        positionBaseline();
+        if (lastCursorY != null) updateStatus(lastCursorY);
+      }
+
+      function positionBaseline() {
+        baselineLine.style.top = (baselineY * scale) + 'px';
+      }
 
       var container = document.querySelector('.timeline-container');
+      container.addEventListener('mousemove', function(e) {
+        var y = e.clientY - container.getBoundingClientRect().top;
+        updateStatus(Math.max(0, y / scale), e.clientY);
+      });
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') setBaseline(0);
+      });
+      document.getElementById('baseline-clear').addEventListener('click', function(e) {
+        // Without this the document handler would read the click as "measure
+        // from here" and immediately set a new baseline on the same row.
+        e.stopPropagation();
+        setBaseline(0);
+      });
 
       document.addEventListener('wheel', function(e) {
         if (!e.ctrlKey) return;
@@ -1680,8 +1756,14 @@ function buildTimelineHtml(
 
       // Click: jump to the matching event on the other side
       document.addEventListener('click', function(e) {
-        var span = e.target.closest('[data-key]');
-        if (!span) return;
+        var span = e.target instanceof Element ? e.target.closest('[data-key]') : null;
+        if (!span) {
+          // Anywhere in the timeline that is not an event bar: measure from here.
+          var box = container.getBoundingClientRect();
+          if (e.clientY < box.top || e.clientY > box.bottom) return;
+          setBaseline((e.clientY - box.top) / scale);
+          return;
+        }
         var key = span.getAttribute('data-key');
         var idx = span.getAttribute('data-idx');
         var side = span.getAttribute('data-side');
