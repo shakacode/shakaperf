@@ -11,6 +11,7 @@ import * as path from 'node:path';
 import { PNG } from 'pngjs';
 import sharp from 'sharp';
 import { pipeAndFilterStderr } from './ffmpeg-stderr';
+import { rendererMainThreadEvents } from './main-thread-tasks';
 import type { RecordedInteraction } from './interaction-recorder';
 import { SCREENCAST_FILENAME, SCREENCAST_START_FILENAME } from './lighthouse-config';
 import {
@@ -152,38 +153,15 @@ export function parseProfile(filePath: string): ProfileData {
   const navStartEvent = events.find(e => e.name === 'navigationStart');
   const navStart = navStartEvent?.ts ?? 0;
 
-  // Renderer main-thread flame: every `devtools.timeline` complete event on the
-  // process/thread that emitted navigationStart (CrRendererMain) — Task,
-  // Evaluate Script, Function Call, Layout, Paint, GC, … These properly nest by
-  // time containment, so a stack gives each one its depth (the flame lane).
-  // Sub-MIN_MAIN_TASK_MS events are dropped as noise; because a child can't last
-  // longer than its parent, that filter never strands a descendant above a
-  // dropped ancestor, so depths stay gap-free. UserTiming marks/measures live in
-  // the events column already, so they're excluded here.
-  const mainThreadEvents: MainThreadEvent[] = [];
-  if (navStartEvent) {
-    const raw = events.filter(e =>
-      e.ph === 'X' && e.dur != null && e.dur / 1000 >= MIN_MAIN_TASK_MS &&
-      e.pid === navStartEvent.pid && e.tid === navStartEvent.tid &&
-      (e.cat ?? '').includes('devtools.timeline') &&
-      !e.name.startsWith('UserTiming'));
-    // Start asc, then end desc so a parent is processed before the children it
-    // contains (and thus sits on the stack when they compute their depth).
-    raw.sort((a, b) => a.ts - b.ts || b.dur! - a.dur!);
-    const ancestorEnds: number[] = [];
-    for (const e of raw) {
-      const end = e.ts + e.dur!;
-      while (ancestorEnds.length && ancestorEnds[ancestorEnds.length - 1] <= e.ts) ancestorEnds.pop();
-      mainThreadEvents.push({
-        name: e.name,
-        startMs: Math.max(0, (e.ts - navStart) / 1000),
-        durMs: e.dur! / 1000,
-        depth: ancestorEnds.length,
-        detail: mainThreadDetail(e),
-      });
-      ancestorEnds.push(end);
-    }
-  }
+  // Renderer main-thread flame; see rendererMainThreadEvents for what's kept and
+  // how depth (the flame lane) is computed.
+  const mainThreadEvents: MainThreadEvent[] = rendererMainThreadEvents(events).map(({ event: e, depth }) => ({
+    name: e.name,
+    startMs: Math.max(0, (e.ts - navStart) / 1000),
+    durMs: e.dur! / 1000,
+    depth,
+    detail: mainThreadDetail(e),
+  }));
 
   // Extract screenshots
   const screenshots: Screenshot[] = [];
@@ -524,9 +502,6 @@ const STRIP_LEGEND: readonly { cat: StripCategory; label: string }[] = [
 // A top-level main-thread Task at or above this duration is flagged as a "long
 // task" (the standard 50ms blocking threshold), rendered in the long-task colour.
 const LONG_TASK_MS = 50;
-// Main-thread events shorter than this are dropped — sub-ms events are visual
-// noise (thousands per load) and convey no useful activity in the flame.
-const MIN_MAIN_TASK_MS = 1;
 
 // Trace event name → DevTools-style display title for the main-thread flame.
 const MAIN_THREAD_TITLES: Record<string, string> = {
