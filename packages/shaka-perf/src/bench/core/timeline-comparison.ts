@@ -384,7 +384,7 @@ function computePxPerMs(control: ProfileData, experiment: ProfileData): number {
   return Math.max(FRAME_SLOT / globalMinDelta, 0.5);
 }
 
-function decodeJpeg(buf: Buffer): { width: number; height: number; data: Uint8Array } {
+export function decodeJpeg(buf: Buffer): { width: number; height: number; data: Uint8Array } {
   const raw = jpeg.decode(buf, { useTArray: true });
   return { width: raw.width, height: raw.height, data: raw.data };
 }
@@ -773,7 +773,7 @@ function buildStripRects(profile: ProfileData, pxPerMs: number): StripRect[] {
 
   for (const e of profile.events) {
     if (e.category === 'network-start' || e.category === 'network-end') continue;
-    if (e.category === 'user-timing' && e.label.startsWith(SHAKA_PERF_ANNOTATION_PREFIX)) continue;
+    if (e.category === 'user-timing' && isInternalMark(e.label)) continue;
     const category = e.category as StripCategory;
     const key = originRelative(e.label, profile.baseOrigin);
     const detail = e.detail ? ` (${e.detail})` : '';
@@ -2213,6 +2213,14 @@ export interface FrameAnnotation {
  */
 export const SHAKA_PERF_ANNOTATION_PREFIX = 'shaka-perf-annotation: ';
 
+/** Prefix of every `performance.mark` shaka-perf itself emits (test
+ *  annotations, sync flashes). They drive the timeline and never render as bars. */
+export const SHAKA_PERF_MARK_PREFIX = 'shaka-perf-';
+
+export function isInternalMark(label: string): boolean {
+  return label.startsWith(SHAKA_PERF_MARK_PREFIX);
+}
+
 function findFrameIndex(frames: ProfileFrame[], timeMs: number): number {
   let idx = 0;
   for (let i = 0; i < frames.length; i++) {
@@ -2312,7 +2320,7 @@ interface InteractionMatch {
    *  reached the renderer, navStart-relative. The recorder's `it.timeMs`
    *  is just when `locator.click()` was called from Node; the trace
    *  timestamp is the renderer's own clock, which is what the screencast
-   *  is now synced to via FCP. */
+   *  is synced to via the flash markers. */
   timeMs: number;
   /** Interaction duration in ms (INP) from the matched EventTiming. */
   durationMs: number;
@@ -2421,131 +2429,93 @@ export function bucketEventsToFrames(
   return buckets;
 }
 
-/**
- * Count saturated-red pixels in the bottom-right 30 % × 30 % of a JPEG —
- * the corner where the interaction-overlay anchors its red chip.
- */
-function chipCornerRedCount(snapshot: Buffer): number {
-  const dec = decodeJpeg(snapshot);
-  const W = dec.width, H = dec.height;
-  const x0 = Math.floor(W * 0.7), y0 = Math.floor(H * 0.7);
-  let count = 0;
-  for (let y = y0; y < H; y++) {
-    for (let x = x0; x < W; x++) {
-      const i = (y * W + x) * 4;
-      if (dec.data[i] > 200 && dec.data[i + 1] < 100 && dec.data[i + 2] < 100) count++;
-    }
-  }
-  return count;
+export interface PlacedInteraction {
+  interaction: RecordedInteraction;
+  label: string;
+  /** Trace time of the raw synced screencast frame that carries the chip. */
+  frameTimeMs: number;
+}
+
+// Per-pixel pixelmatch threshold under which two decoded screencast frames
+// count as the same picture. The CFR encode's repeated frames decode with
+// zero differing pixels at this threshold; any real repaint differs.
+const REPEAT_FRAME_PIXELMATCH_THRESHOLD = 0.1;
+
+function isRepeatOfPrevious(frames: readonly Screenshot[], i: number): boolean {
+  if (i === 0) return false;
+  const a = decodeJpeg(frames[i - 1].snapshot);
+  const b = decodeJpeg(frames[i].snapshot);
+  if (a.width !== b.width || a.height !== b.height) return false;
+  return pixelmatch(a.data, b.data, null, a.width, a.height, { threshold: REPEAT_FRAME_PIXELMATCH_THRESHOLD }) === 0;
 }
 
 /**
- * Attach pw-interaction annotations to kept frames, INJECTING raw red-
- * overlay frames into the kept set when the pre-sync visual-change pass
- * did not leave the red chip frame in the report stream. The interaction
- * overlay's red chip flashes for only 25 ms, so the blue chip placement can
- * otherwise land on the next kept frame, which by then has no red overlay,
- * and the OCR verifier can never line up first-blue with first-red.
- *
- * This function reads back the raw post-sync video frames, picks out
- * the ones with the red chip rendered (via `chipCornerRedCount`), and
- * SPLICES them into the kept set if missing. Then each pw-interaction
- * is anchored to the first injected/kept red-bearing frame after its
- * dispatch.
+ * Decide which screencast frame shows each Playwright interaction. The
+ * on-page overlay draws its red chip in the interaction's own next paint, and
+ * the trace EventTiming measures exactly that: `start + duration` is the
+ * presentation time of that paint. The screencast is encoded at a constant
+ * 60fps, so it repeats the last captured picture until Chrome sends the next
+ * one, and that capture trails the paint by 0-2 frames. The chip frame is
+ * therefore the first frame at or after the paint that is a new picture, not
+ * a repeat of the one before it. The INP label comes from the same
+ * EventTiming. An interaction with no EventTiming (a `fill`, which fires no
+ * input event the overlay draws) is placed from its dispatch time the same way.
  */
-export function attachPwInteractionsToKeptFrames(
-  rawFrames: readonly ProfileFrame[],
-  keptFrames: ProfileFrame[],
-  keptArrows: ArrowSpec[][],
-  keptBuckets: FrameAnnotation[][],
+export function placeInteractions(
   playwrightInteractions: readonly RecordedInteraction[],
-  eventTimingInteractions: readonly TimelineEvent[],
-): void {
-  if (rawFrames.length === 0 || playwrightInteractions.length === 0) return;
-  const matchFor = createInteractionMatcher(
-    eventTimingInteractions
+  events: readonly TimelineEvent[],
+  rawSynced: readonly Screenshot[],
+): PlacedInteraction[] {
+  const matchTiming = createInteractionMatcher(
+    events
       .filter((e): e is TimelineEvent & { durationMs: number } =>
         e.category === 'interaction' && typeof e.durationMs === 'number')
       .map((e) => ({ timeMs: e.timeMs, durationMs: e.durationMs })),
   );
-  // ~80 × 40 px chip = ~3200 px worst case; ~150 px-wide "Featured" tag
-  // patches show as ~1500 px. 800 cleanly splits chip-bearing frames
-  // from page-decoration frames.
-  const RED_CHIP_MIN = 800;
-  const ordered = [...playwrightInteractions].sort((a, b) => a.timeMs - b.timeMs);
-  for (const it of ordered) {
-    const matched = matchFor(it.timeMs);
-    const dispatchMs = matched?.timeMs ?? it.timeMs;
-    // First, try the kept frame just after dispatch — if dedup didn't
-    // drop the red-overlay frame, the chip belongs there and we're
-    // done. This preserves the common-case where every click's red
-    // chip survives dedup naturally.
-    let idx = keptFrames.findIndex((f) => f.timeMs > dispatchMs);
-    if (idx < 0) continue;
-    if (chipCornerRedCount(keptFrames[idx].snapshot) >= RED_CHIP_MIN) {
-      keptBuckets[idx].push({
-        kind: 'pw-interaction',
-        label: pwInteractionLabel(it, matched),
-        pwRect: it.rect,
-      });
-      continue;
-    }
-    // Dedup dropped the chip frame. Hunt the raw video for the
-    // closest red-bearing frame to dispatch (looking back too —
-    // the pixelmatch alignment occasionally squishes adjacent
-    // interactions' raw frames onto overlapping trace times, so
-    // the actual capture may sit just BEFORE the trace-side
-    // dispatch of THIS interaction). The +5 ms tie-bias favours
-    // post-dispatch frames so two events whose red captures
-    // straddle dispatch still resolve unambiguously.
-    const SEARCH_WINDOW_MS = 200;
-    let chosenRaw: ProfileFrame | null = null;
-    let bestDelta = Infinity;
-    for (const f of rawFrames) {
-      const dt = f.timeMs - dispatchMs;
-      if (dt < -SEARCH_WINDOW_MS) continue;
-      if (dt > SEARCH_WINDOW_MS) break;
-      if (chipCornerRedCount(f.snapshot) < RED_CHIP_MIN) continue;
-      const score = Math.abs(dt) + (dt < 0 ? 5 : 0);
-      if (score < bestDelta) {
-        bestDelta = score;
-        chosenRaw = f;
-      }
-    }
-    // If the raw video also doesn't have a red capture
-    // within the window: drop the chip on the first kept frame
-    // after dispatch (best-effort, blue without red).
-    if (chosenRaw === null) {
-      keptBuckets[idx].push({
-        kind: 'pw-interaction',
-        label: pwInteractionLabel(it, matched),
-        pwRect: it.rect,
-      });
-      continue;
-    }
-    // Inject the chosen raw frame into the kept set if dedup dropped
-    // it. Raw frames carry placeholder imgW/imgH = 0 (the bucketing
-    // pass only needs each frame's timeMs); decode here so the
-    // per-frame overlay can scale the pwRect into image pixels.
-    idx = keptFrames.findIndex((f) => f.timeMs === chosenRaw.timeMs);
-    if (idx < 0) {
-      idx = keptFrames.findIndex((f) => f.timeMs > chosenRaw.timeMs);
-      if (idx < 0) idx = keptFrames.length;
-      const dec = decodeJpeg(chosenRaw.snapshot);
-      keptFrames.splice(idx, 0, {
-        timeMs: chosenRaw.timeMs,
-        snapshot: chosenRaw.snapshot,
-        imgW: dec.width,
-        imgH: dec.height,
-      });
-      keptArrows.splice(idx, 0, []);
-      keptBuckets.splice(idx, 0, []);
-    }
-    keptBuckets[idx].push({
-      kind: 'pw-interaction',
-      label: pwInteractionLabel(it, matched),
-      pwRect: it.rect,
+  const firstNewFrameAtOrAfter = (timeMs: number): number => {
+    let i = rawSynced.findIndex((f) => f.timeMs >= timeMs);
+    if (i < 0) return rawSynced[rawSynced.length - 1]?.timeMs ?? timeMs;
+    while (i + 1 < rawSynced.length && isRepeatOfPrevious(rawSynced, i)) i++;
+    return rawSynced[i].timeMs;
+  };
+  return [...playwrightInteractions]
+    .sort((a, b) => a.timeMs - b.timeMs)
+    .map((interaction) => {
+      const timing = matchTiming(interaction.timeMs);
+      const paintMs = timing ? timing.timeMs + timing.durationMs : interaction.timeMs;
+      return { interaction, label: pwInteractionLabel(interaction, timing), frameTimeMs: firstNewFrameAtOrAfter(paintMs) };
     });
+}
+
+/** Add the raw synced frames at `timesMs` to the kept set when dedupe dropped them. */
+export function keepFramesAt(
+  screenshots: readonly Screenshot[],
+  rawSynced: readonly Screenshot[],
+  timesMs: readonly number[],
+): Screenshot[] {
+  const out = [...screenshots].sort((a, b) => a.timeMs - b.timeMs);
+  for (const timeMs of timesMs) {
+    const raw = rawSynced.find((f) => f.timeMs === timeMs);
+    if (!raw || out.some((f) => f.timeMs === timeMs)) continue;
+    const insertIdx = out.findIndex((f) => f.timeMs > timeMs);
+    if (insertIdx < 0) out.push(raw);
+    else out.splice(insertIdx, 0, raw);
+  }
+  return out;
+}
+
+/** Put each placed interaction's chip on its frame (kept by `keepFramesAt`). */
+export function bucketPlacedInteractions(
+  frames: readonly ProfileFrame[],
+  buckets: FrameAnnotation[][],
+  placed: readonly PlacedInteraction[],
+): void {
+  for (const { interaction, label, frameTimeMs } of placed) {
+    let idx = frames.findIndex((f) => f.timeMs === frameTimeMs);
+    if (idx < 0) idx = frames.findIndex((f) => f.timeMs >= frameTimeMs);
+    if (idx < 0) idx = frames.length - 1;
+    if (idx < 0) return;
+    buckets[idx].push({ kind: 'pw-interaction', label, pwRect: interaction.rect });
   }
 }
 
@@ -2589,7 +2559,7 @@ export function loadPlaywrightInteractions(path: string): RecordedInteraction[] 
  * as `Screenshot` objects. The video is CFR (constant 60 fps with duplicates
  * during idle stretches — see encodeScreencastVideo); extracting "every frame"
  * gives a uniform timestamp grid, and the visual-change pass in
- * `syncDedupedVideoToTraceViaPixelmatchAnchors` collapses duplicated
+ * `syncVideoToTraceViaFlashMarkers` collapses duplicated
  * stretches before trace timestamp interpolation.
  *
  * The video's frame-zero is the first captured screencast frame, NOT the
@@ -2702,7 +2672,7 @@ export async function loadScreenshotsFromVideo(
  * pixels at the COMPARISON resolution (always trace-screenshot dims, so
  * trace and video changes can be pixelmatched directly).
  */
-interface ChangeFrame {
+export interface ChangeFrame {
   /** Index into the original Screenshot array. */
   shotIdx: number;
   /** Source timestamp. For trace shots this is authoritative (trace
@@ -2711,17 +2681,6 @@ interface ChangeFrame {
   sourceTimeMs: number;
   /** RGBA pixel buffer at (compareW, compareH). */
   decoded: Uint8Array;
-}
-
-/**
- * One (raw video time, authoritative trace time) pair learned by matching
- * a video change frame against a trace change frame. The pipeline collects
- * a sequence of these and piecewise-linearly interpolates between them to
- * reassign every video frame's timestamp onto the trace clock.
- */
-interface AnchorPair {
-  rawVideoTimeMs: number;
-  traceTimeMs: number;
 }
 
 // Per-pixel YIQ colour-distance threshold (pixelmatch): a pixel counts as
@@ -2734,7 +2693,7 @@ const CHANGE_DETECTION_PIXELMATCH_THRESHOLD = 0.175;
 // real change. Lowered from 2 % to keep small/slow UI animations whose per-step
 // delta is tiny but visually meaningful, at the cost of a few more near-duplicate
 // frames surviving the dedupe.
-const CHANGE_DETECTION_MIN_CHANGE_FRACTION = 0.005;
+export const CHANGE_DETECTION_MIN_CHANGE_FRACTION = 0.005;
 
 /**
  * Walk a screenshot stream in order and emit one ChangeFrame per
@@ -2748,7 +2707,7 @@ const CHANGE_DETECTION_MIN_CHANGE_FRACTION = 0.005;
  * sharp downscales JPEG → trace dims first. Keeping the decode out of
  * this function lets us reuse the same change-detection logic for both.
  */
-async function detectChangeFrames(
+export async function detectChangeFrames(
   shots: Screenshot[],
   compareW: number,
   compareH: number,
@@ -2795,7 +2754,7 @@ async function detectChangeFrames(
  * aspect-fitted upstream from the same Chrome window). Adding alpha
  * matches the 4-channel layout pixelmatch expects from decodeJpeg.
  */
-async function scaleJpegToCompareDims(
+export async function scaleJpegToCompareDims(
   jpegBuf: Buffer,
   compareW: number,
   compareH: number,
@@ -2808,249 +2767,15 @@ async function scaleJpegToCompareDims(
   return new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength);
 }
 
-/**
- * Walk video change frames in order and assign each one the trace change
- * frame it pixelmatches best to. Two passes:
- *   1. For every video change, find its global best-similarity trace
- *      change. A pair is a candidate only if similarity ≥ threshold.
- *   2. Resolve conflicts (multiple video changes pointing at the same
- *      trace change → keep the highest-similarity claim) and enforce
- *      monotonicity (anchors must agree on order — video time strictly
- *      increasing implies trace time strictly increasing). Pairs that
- *      break monotonicity are dropped, keeping the higher-similarity one
- *      of each conflict.
- *
- * Returned anchors are sorted by rawVideoTimeMs.
- */
-function buildAnchorPairs(
-  videoChanges: ChangeFrame[],
-  traceChanges: ChangeFrame[],
-  compareW: number,
-  compareH: number,
-  similarityThreshold: number,
-): AnchorPair[] {
-  if (videoChanges.length === 0 || traceChanges.length === 0) return [];
-  const pixels = compareW * compareH;
-
-  type Candidate = { vi: number; tj: number; similarity: number };
-  const candidates: Candidate[] = [];
-  for (let vi = 0; vi < videoChanges.length; vi++) {
-    let bestJ = -1;
-    let bestSim = 0;
-    for (let tj = 0; tj < traceChanges.length; tj++) {
-      const diff = pixelmatch(
-        videoChanges[vi].decoded,
-        traceChanges[tj].decoded,
-        null,
-        compareW,
-        compareH,
-        { threshold: 0.3 },
-      );
-      const sim = 1 - diff / pixels;
-      if (sim > bestSim) {
-        bestSim = sim;
-        bestJ = tj;
-      }
-    }
-    if (bestJ >= 0 && bestSim >= similarityThreshold) {
-      candidates.push({ vi, tj: bestJ, similarity: bestSim });
-    }
-  }
-
-  // Walk by ascending video index; reject any candidate that would
-  // require trace index to decrease (or stay equal). On conflict
-  // (c.tj ≤ kept.last.tj) prefer the higher-similarity candidate, but
-  // only when replacing also stays monotonic w.r.t. the SECOND-to-last
-  // kept element — otherwise the swap silently inverts a segment and
-  // applyAnchorInterpolation later produces negative slopes that re-
-  // order frames.
-  const kept: Candidate[] = [];
-  for (const c of candidates) {
-    if (kept.length === 0) {
-      kept.push(c);
-      continue;
-    }
-    const last = kept[kept.length - 1];
-    if (c.tj > last.tj) {
-      kept.push(c);
-      continue;
-    }
-    if (c.similarity > last.similarity) {
-      const prev = kept.length >= 2 ? kept[kept.length - 2] : null;
-      if (prev === null || c.tj > prev.tj) {
-        kept[kept.length - 1] = c;
-      }
-    }
-  }
-  for (let i = 1; i < kept.length; i++) {
-    if (kept[i].vi <= kept[i - 1].vi || kept[i].tj <= kept[i - 1].tj) {
-      throw new Error('buildAnchorPairs produced non-monotonic anchors');
-    }
-  }
-  return kept.map((c) => ({
-    rawVideoTimeMs: videoChanges[c.vi].sourceTimeMs,
-    traceTimeMs: traceChanges[c.tj].sourceTimeMs,
-  }));
-}
-
-/**
- * Apply piecewise-linear interpolation defined by `anchors` to every
- * video screenshot's `timeMs`. Inside the anchor span, video times slide
- * onto the trace clock following each segment's slope; outside the span,
- * we extrapolate with the slope of the nearest segment so frames at the
- * very start/end of the recording still get a sensible timestamp (rather
- * than collapsing to the closest anchor's offset, which would create a
- * visible kink at the boundary).
- *
- * The frame ORDER is preserved (anchors are monotonic, so the mapping is
- * monotonic too); only timestamps change. Frame pixel content is
- * untouched. Edge case: a single anchor degenerates to a constant offset
- * shift, which is exactly what the FCP-only path used to do.
- */
-function applyAnchorInterpolation(
-  videoShots: Screenshot[],
-  anchors: AnchorPair[],
-): Screenshot[] {
-  if (anchors.length === 0) return videoShots;
-  const sorted = anchors.slice().sort((a, b) => a.rawVideoTimeMs - b.rawVideoTimeMs);
-  if (sorted.length === 1) {
-    const offset = sorted[0].traceTimeMs - sorted[0].rawVideoTimeMs;
-    return videoShots.map((s) => ({ ...s, timeMs: s.timeMs + offset }));
-  }
-  const remap = (t: number): number => {
-    if (t <= sorted[0].rawVideoTimeMs) {
-      // Extrapolate using the first segment's slope so the pre-anchor
-      // region doesn't snap to a flat offset (which would put a kink at
-      // anchor 0).
-      const a = sorted[0];
-      const b = sorted[1];
-      const slope = (b.traceTimeMs - a.traceTimeMs) / (b.rawVideoTimeMs - a.rawVideoTimeMs);
-      return a.traceTimeMs + (t - a.rawVideoTimeMs) * slope;
-    }
-    if (t >= sorted[sorted.length - 1].rawVideoTimeMs) {
-      const a = sorted[sorted.length - 2];
-      const b = sorted[sorted.length - 1];
-      const slope = (b.traceTimeMs - a.traceTimeMs) / (b.rawVideoTimeMs - a.rawVideoTimeMs);
-      return b.traceTimeMs + (t - b.rawVideoTimeMs) * slope;
-    }
-    let lo = 0;
-    let hi = sorted.length - 1;
-    while (hi - lo > 1) {
-      const mid = (lo + hi) >> 1;
-      if (sorted[mid].rawVideoTimeMs <= t) lo = mid;
-      else hi = mid;
-    }
-    const a = sorted[lo];
-    const b = sorted[hi];
-    const ratio = (t - a.rawVideoTimeMs) / (b.rawVideoTimeMs - a.rawVideoTimeMs);
-    return a.traceTimeMs + (b.traceTimeMs - a.traceTimeMs) * ratio;
-  };
-  return videoShots.map((s) => ({ ...s, timeMs: remap(s.timeMs) }));
-}
-
 export interface ScreencastSyncStats {
+  frameCapDropped: number;
   inputFrameCount: number;
   keptFrameCount: number;
   removedFrameCount: number;
-  anchorCount: number;
 }
 
 export interface DedupedScreencastSyncResult {
   screenshots: Screenshot[];
   rawSyncedScreenshots: Screenshot[];
   stats: ScreencastSyncStats;
-}
-
-/**
- * Sync raw screencast video screenshot timestamps onto the trace clock by
- * pixel-matching mutual change frames, then feed downstream compositing only
- * the visual-change frames found before timestamp interpolation. The full
- * synced stream is still returned separately (`rawSyncedScreenshots`) for
- * interaction-chip repair.
- *
- * The trace's screenshots (≤ 250 px, but with millisecond-precise
- * `ts - navStart` timestamps) are the authority; video frames at 60 fps
- * carry raw video timestamps that need remapping. This is the only sync
- * path: if anchoring can't run — fewer than two trace screenshots, mixed
- * trace dimensions, or no candidate pair clears the similarity threshold —
- * it throws rather than degrading to a single-FCP shift. A degraded shift
- * would leave the screencast un-deduped, flooding the timeline with hundreds
- * of near-identical frames; failing fast surfaces the real capture problem.
- *
- * Why pixelmatch anchors beat a single FCP anchor: one anchor handles a
- * constant offset only. Multiple anchors compensate for any clock drift
- * between the CDP screencast PTS and the trace's renderer ts (ffmpeg's
- * CFR resampling can leave per-frame quantization on the video side),
- * and they're more robust than the "first non-blank pixel" heuristic
- * which can latch onto a frame ±1 from true FCP because of the blank-
- * threshold + JPEG quantization interaction.
- */
-export async function syncDedupedVideoToTraceViaPixelmatchAnchors(
-  traceShots: Screenshot[],
-  videoShots: Screenshot[],
-): Promise<DedupedScreencastSyncResult> {
-  if (videoShots.length === 0) {
-    throw new Error('shaka-perf: pixelmatch video↔trace sync requires at least one screencast frame');
-  }
-  if (traceShots.length < 2) {
-    throw new Error(
-      `shaka-perf: pixelmatch video↔trace sync needs ≥ 2 trace screenshots for change detection, got ${traceShots.length}`,
-    );
-  }
-  const firstTrace = decodeJpeg(traceShots[0].snapshot);
-  const compareW = firstTrace.width;
-  const compareH = firstTrace.height;
-  // Detect trace change frames at the trace's native dims (no scaling).
-  const traceDecodes = traceShots.map((s) => decodeJpeg(s.snapshot));
-  const uniformTrace = traceDecodes.every((d) => d.width === compareW && d.height === compareH);
-  if (!uniformTrace) {
-    throw new Error(
-      'shaka-perf: pixelmatch video↔trace sync needs uniform trace screenshot dimensions, but the trace captured mixed resolutions',
-    );
-  }
-  const traceChanges = await detectChangeFrames(
-    traceShots,
-    compareW,
-    compareH,
-    async (i) => traceDecodes[i].data,
-    CHANGE_DETECTION_MIN_CHANGE_FRACTION,
-  );
-  // Cache downscaled video frames keyed by index — change detection
-  // touches each frame once, and we only retain the changed ones'
-  // pixels for the later matching pass. Decoding/scaling 600+ video
-  // frames is the bulk of this function's cost; once-only is mandatory.
-  const videoChanges = await detectChangeFrames(
-    videoShots,
-    compareW,
-    compareH,
-    async (i) => scaleJpegToCompareDims(videoShots[i].snapshot, compareW, compareH),
-    CHANGE_DETECTION_MIN_CHANGE_FRACTION,
-  );
-  // 0.85 = "≥85 % of pixels pass pixelmatch at threshold 0.3 against the
-  // trace shot". Empirically separates "same UI state captured at slightly
-  // different sub-pixel offsets / JPEG quant" (typically >0.9) from
-  // "different states" (typically <0.7). Looser than 0.85 starts pulling
-  // in cross-state matches that wreck the interpolation.
-  const anchors = buildAnchorPairs(videoChanges, traceChanges, compareW, compareH, 0.85);
-  if (anchors.length === 0) {
-    throw new Error(
-      `shaka-perf: pixelmatch video↔trace sync found no candidate pair above the 0.85 similarity threshold (compared ${videoChanges.length} video changes × ${traceChanges.length} trace changes); the screencast and trace may be capturing different content`,
-    );
-  }
-  // Interpolation is a pure per-frame timestamp remap, so the visual-change
-  // subset is just a slice of the fully-synced stream. Interpolate once over
-  // every frame, then pick the change-frame indices — no second pass over the
-  // deduped shots.
-  const rawSyncedScreenshots = applyAnchorInterpolation(videoShots, anchors);
-  const screenshots = videoChanges.map((change) => rawSyncedScreenshots[change.shotIdx]);
-  return {
-    screenshots,
-    rawSyncedScreenshots,
-    stats: {
-      inputFrameCount: videoShots.length,
-      keptFrameCount: screenshots.length,
-      removedFrameCount: Math.max(0, videoShots.length - screenshots.length),
-      anchorCount: anchors.length,
-    },
-  };
 }
