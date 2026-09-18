@@ -13,6 +13,13 @@ import sharp from 'sharp';
 import { pipeAndFilterStderr } from './ffmpeg-stderr';
 import type { RecordedInteraction } from './interaction-recorder';
 import { SCREENCAST_FILENAME, SCREENCAST_START_FILENAME } from './lighthouse-config';
+import {
+  alignAnnotations,
+  alignedMs,
+  hasAlignmentGaps,
+  type SideAlignment,
+  type TimelineAlignment,
+} from './timeline-alignment';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const jpeg = require('jpeg-js') as { decode(buf: Buffer, opts?: { useTArray: boolean }): { width: number; height: number; data: Uint8Array } };
@@ -125,7 +132,7 @@ function loadGraphqlOps(networkActivityPath: string): string[] {
   try { text = readFileSync(networkActivityPath, 'utf-8'); } catch { return []; }
   const ops: string[] = [];
   for (const line of text.split('\n')) {
-    // e.g. `[12.345s] [6.78 KB] /graphql?operationName="popmenuConfig"` — the URL
+    // e.g. `[6.78 KB] /graphql?operationName="popmenuConfig"` — the URL
     // is the last whitespace-separated token (op names never contain spaces).
     const url = line.trim().split(/\s+/).pop() ?? '';
     const q = url.indexOf('?');
@@ -386,11 +393,16 @@ function encodePngDataUri(pixels: Uint8Array, width: number, height: number): st
   return `data:image/png;base64,${buf.toString('base64')}`;
 }
 
-function computeDiffFrames(control: ProfileData, experiment: ProfileData): DiffFrame[] {
+// Diff frames pair each side's latest screenshot at every timestamp. `alignment`
+// (when given) places the screenshots in aligned time instead, so the diff at a
+// given row compares the frames the aligned view shows side by side.
+function computeDiffFrames(control: ProfileData, experiment: ProfileData, alignment?: TimelineAlignment): DiffFrame[] {
   type Entry = { timeMs: number; side: 'control' | 'experiment'; screenshot: Screenshot };
+  const timeOf = (side: SideAlignment | undefined, s: Screenshot): number =>
+    side ? alignedMs(side, s.timeMs) : s.timeMs;
   const entries: Entry[] = [
-    ...control.screenshots.map(s => ({ timeMs: s.timeMs, side: 'control' as const, screenshot: s })),
-    ...experiment.screenshots.map(s => ({ timeMs: s.timeMs, side: 'experiment' as const, screenshot: s })),
+    ...control.screenshots.map(s => ({ timeMs: timeOf(alignment?.control, s), side: 'control' as const, screenshot: s })),
+    ...experiment.screenshots.map(s => ({ timeMs: timeOf(alignment?.experiment, s), side: 'experiment' as const, screenshot: s })),
   ];
   entries.sort((a, b) => a.timeMs - b.timeMs);
 
@@ -654,6 +666,14 @@ function buildAnnotationGroups(profile: ProfileData): TimelineAnnotationGroup[] 
   return groups;
 }
 
+/** The test annotations of a profile as alignment points, one per group band
+ *  (so annotations sharing a timestamp pair up as one joined label). */
+function annotationPoints(profile: ProfileData): { label: string; timeMs: number }[] {
+  return buildAnnotationGroups(profile)
+    .filter(g => !(g.startMs === 0 && g.label === TIMELINE_GROUP_INITIAL_LABEL))
+    .map(g => ({ label: g.label, timeMs: g.startMs }));
+}
+
 interface NetworkRequest {
   url: string;
   startMs: number;
@@ -700,6 +720,7 @@ interface StripRect {
   label: string;          // text rendered (vertically) inside the rectangle
   title: string;          // full tooltip shown on hover
   topMs: number;          // start time → vertical position
+  endMs: number;          // end time (== topMs for point markers)
   heightPx: number;       // base pixel height of the rectangle
   timeProportional: boolean; // true → height scales with zoom (network spans)
   weight: number;         // lane-packing priority; heavier hugs the diagram
@@ -734,6 +755,7 @@ function buildStripRects(profile: ProfileData, pxPerMs: number): StripRect[] {
       category, key, label: key,
       title: `${key} · ${formatMs(r.startMs)}–${formatMs(r.endMs)} (${formatMs(r.endMs - r.startMs)})`,
       topMs: r.startMs,
+      endMs: r.endMs,
       heightPx: Math.max(2, Math.round((r.endMs - r.startMs) * pxPerMs)),
       timeProportional: true,
       weight: STRIP_CATEGORY_WEIGHT[category],
@@ -757,6 +779,7 @@ function buildStripRects(profile: ProfileData, pxPerMs: number): StripRect[] {
         ? `${key}${detail} · ${formatMs(e.timeMs)}–${formatMs(endMs)} (${formatMs(e.durationMs!)})`
         : `${key}${detail} · ${formatMs(e.timeMs)}`,
       topMs: e.timeMs,
+      endMs,
       heightPx: hasSpan ? Math.max(2, Math.round(e.durationMs! * pxPerMs)) : MARKER_PX,
       timeProportional: hasSpan,
       weight: STRIP_CATEGORY_WEIGHT[category] ?? 30,
@@ -791,6 +814,7 @@ function buildMainThreadFlame(profile: ProfileData, pxPerMs: number): StripLayou
       label,
       title: `${label} · ${formatMs(e.startMs)}–${formatMs(endMs)} (${formatMs(e.durMs)})`,
       topMs: e.startMs,
+      endMs,
       heightPx: Math.max(2, Math.round(e.durMs * pxPerMs)),
       timeProportional: true,
       weight: 0,
@@ -986,13 +1010,48 @@ function renderFrameOverlay(
   return `<svg class="frame-overlay" viewBox="0 0 ${vbW} ${vbH}" preserveAspectRatio="none">${boxes}${pills}</svg>`;
 }
 
-function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFrames: DiffFrame[]): string {
+function buildTimelineHtml(
+  control: ProfileData,
+  experiment: ProfileData,
+  diffFrames: DiffFrame[],
+  alignment: TimelineAlignment,
+  alignedDiffFrames: DiffFrame[] | null,
+): string {
   const maxTimeMs = Math.max(control.maxTimeMs, experiment.maxTimeMs, 1);
   const pxPerMs = computePxPerMs(control, experiment);
   const totalHeight = Math.ceil(maxTimeMs * pxPerMs) + FRAME_HEIGHT + 50;
+  const alignedMaxTimeMs = Math.max(
+    alignedMs(alignment.control, control.maxTimeMs),
+    alignedMs(alignment.experiment, experiment.maxTimeMs),
+    1,
+  );
+  const alignedTotalHeight = Math.ceil(alignedMaxTimeMs * pxPerMs) + FRAME_HEIGHT + 50;
   const frameWidth = computeFrameWidth(control, experiment);
 
-  function renderScreenshots(profile: ProfileData): string {
+  // Every positioned element carries its raw-time `top` in the inline style
+  // and, where the aligned view moves it, the aligned position in `data-atop`
+  // (plus the aligned height in `data-ah` for time-proportional spans, which
+  // stretch when they straddle a shifted annotation). The zoom script reads
+  // whichever set the "align test annotations" checkbox selects.
+  function alignedAttrs(
+    side: 'control' | 'experiment',
+    startMs: number,
+    endMs: number,
+    rawTop: number,
+    rawH: number | null,
+  ): string {
+    const sideAlignment = alignment[side];
+    const top = Math.round(alignedMs(sideAlignment, startMs) * pxPerMs);
+    let attrs = top !== rawTop ? ` data-atop="${top}"` : '';
+    if (rawH != null) {
+      const span = alignedMs(sideAlignment, endMs) - alignedMs(sideAlignment, startMs);
+      const h = Math.max(2, Math.round(span * pxPerMs));
+      if (h !== rawH) attrs += ` data-ah="${h}"`;
+    }
+    return attrs;
+  }
+
+  function renderScreenshots(side: 'control' | 'experiment', profile: ProfileData): string {
     const annotations = buildFrameAnnotations(profile);
     // Layout-shift region_rects are in CSS-viewport pixels, so the overlay
     // viewBox must be the CSS viewport. The trace screenshot JPEGs are downscaled
@@ -1005,20 +1064,41 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
     return profile.screenshots.map((s, i) => {
       const top = Math.round(s.timeMs * pxPerMs);
       const overlay = renderFrameOverlay(annotations.get(i), viewBoxW, viewBoxH);
-      return `<div class="screenshot-entry" style="top:${top}px">
+      return `<div class="screenshot-entry"${alignedAttrs(side, s.timeMs, s.timeMs, top, null)} style="top:${top}px">
         <span class="ts-label">${formatMs(s.timeMs)}</span>
         <span class="frame-wrap"><img src="${s.dataUri}" />${overlay}</span>
       </div>`;
     }).join('\n');
   }
 
+  // Diff frames identical in both views (same time and image, i.e. before the
+  // first shift) are emitted once and shown in both; the rest are view-specific.
+  // Without an aligned set (no shifted annotation) the raw set serves both views.
   function renderDiffFrames(): string {
-    return diffFrames.map(d => {
+    const key = (d: DiffFrame) => `${d.timeMs}|${d.dataUri}`;
+    const rawKeys = new Set(diffFrames.map(key));
+    const alignedKeys = new Set((alignedDiffFrames ?? []).map(key));
+    const entry = (d: DiffFrame, viewClass: '' | ' raw-only' | ' aligned-only') => {
       const top = Math.round(d.timeMs * pxPerMs);
-      return `<div class="screenshot-entry diff-entry" style="top:${top}px">
+      return `<div class="screenshot-entry diff-entry${viewClass}" style="top:${top}px">
         <span class="ts-label">${formatMs(d.timeMs)}</span>
         <img src="${d.dataUri}" />
       </div>`;
+    };
+    return [
+      ...diffFrames.map(d => entry(d, !alignedDiffFrames || alignedKeys.has(key(d)) ? '' : ' raw-only')),
+      ...(alignedDiffFrames ?? []).filter(d => !rawKeys.has(key(d))).map(d => entry(d, ' aligned-only')),
+    ].join('\n');
+  }
+
+  // The stretch a side spent waiting for the other to reach the same
+  // annotation. Positioned in aligned time, so it is only ever shown in the
+  // aligned view.
+  function renderWaitBoxes(side: 'control' | 'experiment'): string {
+    return alignment[side].gaps.map(g => {
+      const top = Math.round(g.startMs * pxPerMs);
+      const height = Math.max(0, Math.round((g.endMs - g.startMs) * pxPerMs));
+      return `<div class="wait-box aligned-only" data-h="${height}" style="top:${top}px;height:${height}px"><span>waiting for the other side · ${formatMs(g.endMs - g.startMs)}</span></div>`;
     }).join('\n');
   }
 
@@ -1047,19 +1127,23 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
       // Only time-proportional spans carry data-h, so the zoom JS scales their
       // height; fixed-height markers keep their pixel height at every zoom.
       const dataH = r.timeProportional ? ` data-h="${r.heightPx}"` : '';
-      return `<div class="net-bar cat-${r.category}"${dataH} data-key="${escapeHtml(r.key)}" data-idx="${idx}" data-side="${side}" title="${escapeHtml(r.title)}" style="top:${top}px;height:${r.heightPx}px;${anchor}:${offset}px;width:${NET_LANE_W - 1}px;background:${STRIP_CATEGORY_COLOR[r.category]};">${escapeHtml(r.label)}</div>`;
+      const aligned = alignedAttrs(side, r.topMs, r.endMs, top, r.timeProportional ? r.heightPx : null);
+      return `<div class="net-bar cat-${r.category}"${dataH}${aligned} data-key="${escapeHtml(r.key)}" data-idx="${idx}" data-side="${side}" title="${escapeHtml(r.title)}" style="top:${top}px;height:${r.heightPx}px;${anchor}:${offset}px;width:${NET_LANE_W - 1}px;background:${STRIP_CATEGORY_COLOR[r.category]};">${escapeHtml(r.label)}</div>`;
     }).join('\n');
   }
 
   // Annotation group bands tint each side's screenshot column per timeline phase
   // (the comparison-view counterpart of the audit timeline's colour-coded
   // sections). The accent border + chip sit on the screenshot-facing inner edge.
-  function renderGroupBands(profile: ProfileData): string {
+  // A band keeps its raw height in the aligned view: the wait for the other
+  // side sits just before the band's own annotation, outside the band.
+  function renderGroupBands(side: 'control' | 'experiment', profile: ProfileData): string {
     return buildAnnotationGroups(profile).map(g => {
       const color = TIMELINE_GROUP_PALETTE[g.colorIndex % TIMELINE_GROUP_PALETTE.length]!;
       const top = Math.round(g.startMs * pxPerMs);
       const height = Math.max(0, Math.round((g.endMs - g.startMs) * pxPerMs));
-      return `<div class="group-band" data-h="${height}" style="top:${top}px;height:${height}px;background:${color.tint};--accent:${color.accent};">
+      const aligned = alignedAttrs(side, g.startMs, g.startMs, top, null);
+      return `<div class="group-band" data-h="${height}"${aligned} style="top:${top}px;height:${height}px;background:${color.tint};--accent:${color.accent};">
         <span class="group-chip" style="background:${color.accent}" title="${escapeHtml(g.label)}">${escapeHtml(g.label)}</span>
       </div>`;
     }).join('\n');
@@ -1107,9 +1191,21 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
     padding: 20px;
   }
   h1 { text-align: center; color: #111; margin-bottom: 8px; font-size: 20px; }
-  .controls { text-align: center; margin-bottom: 16px; }
-  .controls label { cursor: pointer; color: #5a6470; font-size: 13px; margin: 0 12px; }
-  .controls input[type="checkbox"] { margin-right: 4px; }
+  /* Floats above the sticky header so it stays reachable anywhere down the
+     (very tall) timeline. */
+  .controls {
+    position: fixed;
+    top: 12px;
+    right: 16px;
+    z-index: 20;
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 8px;
+    padding: 6px 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  }
+  .controls label { cursor: pointer; color: #1a1d22; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+  .controls label:has(input:disabled) { cursor: default; color: #9ca3af; }
 
   .timeline-container {
     display: grid;
@@ -1220,6 +1316,32 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
   .screenshot-col.control .group-chip { right: 4px; }
   .screenshot-col.experiment .group-chip { left: 4px; }
 
+  /* Aligned view: the earlier side's wait for the other side, drawn in the
+     frames column. Sits under the frames (z-index 0) because the frame just
+     before the annotation may hang down into the gap; the label hugs the
+     bottom edge, which the next frame never covers. */
+  .wait-box {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0 6px 6px;
+    background: #e5e7eb;
+    border: 1px dashed #9ca3af;
+    border-radius: 3px;
+    color: #6b7280;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 11px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .wait-box span { text-align: center; line-height: 1.25; }
+  body:not(.aligned) .aligned-only { display: none; }
+  body.aligned .raw-only { display: none; }
+
   .legend {
     display: flex;
     flex-wrap: wrap;
@@ -1312,6 +1434,13 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
     Ctrl + Mouse Wheel to zoom<br>
     Hover a rectangle for its full label · Click to jump to the matching event on the other side
   </div>
+  <div class="controls">
+    <label title="${alignment.pairCount === 0
+      ? 'no test annotation is shared by both sides'
+      : 'shift the side that reached each test annotation earlier so both sides line up there'}">
+      <input type="checkbox" id="align-annotations"${alignment.pairCount === 0 ? ' disabled' : ''}>align test annotations
+    </label>
+  </div>
   <div class="legend">${legendHtml}</div>
 
   <div class="header-row">
@@ -1337,15 +1466,17 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
       ${renderStrip('control', controlStrip.net)}
     </div>
     <div class="screenshot-col control">
-      ${renderGroupBands(control)}
-      ${renderScreenshots(control)}
+      ${renderGroupBands('control', control)}
+      ${renderWaitBoxes('control')}
+      ${renderScreenshots('control', control)}
     </div>
     <div class="screenshot-col diff">
       ${renderDiffFrames()}
     </div>
     <div class="screenshot-col experiment">
-      ${renderGroupBands(experiment)}
-      ${renderScreenshots(experiment)}
+      ${renderGroupBands('experiment', experiment)}
+      ${renderWaitBoxes('experiment')}
+      ${renderScreenshots('experiment', experiment)}
     </div>
     <div class="net-col experiment col-net">
       ${renderStrip('experiment', experimentStrip.net)}
@@ -1361,7 +1492,10 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
   <script>
     (function() {
       const MAX_SCALE = 20;
-      const BASE_HEIGHT = ${totalHeight};
+      const RAW_HEIGHT = ${totalHeight};
+      const ALIGNED_HEIGHT = ${alignedTotalHeight};
+      var aligned = false;
+      var BASE_HEIGHT = RAW_HEIGHT;
       var viewportH = window.innerHeight;
       var MIN_SCALE = Math.min(0.1, viewportH / BASE_HEIGHT);
       var scale = Math.max(MIN_SCALE, Math.min(1, (2 * viewportH) / BASE_HEIGHT));
@@ -1369,9 +1503,17 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
       // Collect all positioned elements and their original top values. Net bars
       // and group bands also carry a time-proportional height (data-h) that must
       // scale with the timeline; screenshots keep their intrinsic pixel height.
+      // data-atop / data-ah hold the aligned-view position and height where
+      // they differ from the raw ones.
       const positioned = [];
-      document.querySelectorAll('.screenshot-entry, .net-bar, .group-band').forEach(function(el) {
-        positioned.push({ el: el, top: parseFloat(el.style.top), h: el.dataset.h ? parseFloat(el.dataset.h) : null });
+      document.querySelectorAll('.screenshot-entry, .net-bar, .group-band, .wait-box').forEach(function(el) {
+        var top = parseFloat(el.style.top);
+        var h = el.dataset.h ? parseFloat(el.dataset.h) : null;
+        positioned.push({
+          el: el, top: top, h: h,
+          atop: el.dataset.atop ? parseFloat(el.dataset.atop) : top,
+          ah: el.dataset.ah ? parseFloat(el.dataset.ah) : h,
+        });
       });
       const columns = document.querySelectorAll('.screenshot-col, .net-col');
 
@@ -1379,12 +1521,23 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
         var h = Math.ceil(BASE_HEIGHT * scale) + 'px';
         columns.forEach(function(col) { col.style.height = h; });
         positioned.forEach(function(p) {
-          p.el.style.top = (p.top * scale) + 'px';
-          if (p.h != null) p.el.style.height = (p.h * scale) + 'px';
+          var top = aligned ? p.atop : p.top;
+          var height = aligned ? p.ah : p.h;
+          p.el.style.top = (top * scale) + 'px';
+          if (height != null) p.el.style.height = (height * scale) + 'px';
         });
       }
 
       applyScale();
+
+      var alignBox = document.getElementById('align-annotations');
+      alignBox.addEventListener('change', function() {
+        aligned = alignBox.checked;
+        BASE_HEIGHT = aligned ? ALIGNED_HEIGHT : RAW_HEIGHT;
+        document.body.classList.toggle('aligned', aligned);
+        applyScale();
+      });
+
 
       var container = document.querySelector('.timeline-container');
 
@@ -1490,7 +1643,11 @@ export function generateTimelineComparison(options: GenerateTimelineComparisonOp
   const control = parseProfile(options.controlProfilePath);
   const experiment = parseProfile(options.experimentProfilePath);
   const diffFrames = computeDiffFrames(control, experiment);
-  const html = buildTimelineHtml(control, experiment, diffFrames);
+  const alignment = alignAnnotations(annotationPoints(control), annotationPoints(experiment));
+  // Only a shifted side changes which frames sit opposite each other, so a
+  // second (aligned) diff set is worth its bytes only when there is a gap.
+  const alignedDiffFrames = hasAlignmentGaps(alignment) ? computeDiffFrames(control, experiment, alignment) : null;
+  const html = buildTimelineHtml(control, experiment, diffFrames, alignment, alignedDiffFrames);
   writeFileSync(options.outputPath, html);
 }
 
