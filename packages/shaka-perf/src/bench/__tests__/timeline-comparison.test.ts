@@ -8,8 +8,11 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { PNG } from 'pngjs';
 import {
   bucketEventsToFrames,
+  dedupeIdenticalScreenshots,
+  progressMaskDataUris,
   bucketPlacedInteractions,
   keepFramesAt,
   placeInteractions,
@@ -244,5 +247,52 @@ describe('Playwright interaction placement on the synced screencast', () => {
     const placed = placeInteractions([{ timeMs: 30, kind: 'fill' as const, text: 'x' }], [], raw);
     expect(placed[0].frameTimeMs).toBe(50);
     expect(placed[0].label).toBe('fill "x"');
+  });
+});
+
+describe('dedupeIdenticalScreenshots', () => {
+  const shot = (timeMs: number, r: number, g: number, b: number): Screenshot =>
+    ({ timeMs, dataUri: '', snapshot: jpegBuffer(r, g, b) });
+
+  it('keeps the first frame of a repeated run and drops the repeats', () => {
+    const frames = [shot(0, 10, 10, 10), shot(16, 10, 10, 10), shot(33, 10, 10, 10), shot(50, 200, 30, 30), shot(66, 200, 30, 30)];
+    expect(dedupeIdenticalScreenshots(frames).map((s) => s.timeMs)).toEqual([0, 50]);
+  });
+
+  it('compares against the last kept frame, so a return to an earlier picture keeps its frame', () => {
+    const frames = [shot(0, 10, 10, 10), shot(16, 200, 30, 30), shot(33, 10, 10, 10)];
+    expect(dedupeIdenticalScreenshots(frames).map((s) => s.timeMs)).toEqual([0, 16, 33]);
+  });
+
+  it('returns an empty list unchanged', () => {
+    expect(dedupeIdenticalScreenshots([])).toEqual([]);
+  });
+});
+
+describe('progressMaskDataUris', () => {
+  // 32x16: a left and a right 16x16 half, so each half is its own JPEG block
+  // and a change in one cannot bleed into the other.
+  const halves = (left: number, right: number): Screenshot => {
+    const data = Buffer.alloc(32 * 16 * 4);
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 32; x++) {
+        const v = x < 16 ? left : right;
+        data.set([v, v, v, 255], (y * 32 + x) * 4);
+      }
+    }
+    return { timeMs: 0, dataUri: '', snapshot: Buffer.from(jpeg.encode({ data, width: 32, height: 16 }, 90).data) };
+  };
+
+  it('paints only the pixels that changed since the previous frame red, on a transparent mask', () => {
+    const masks = progressMaskDataUris([halves(128, 128), halves(128, 0)]);
+    expect(masks[0]).toBeNull();
+    const png = PNG.sync.read(Buffer.from(masks[1]!.replace('data:image/png;base64,', ''), 'base64'));
+    const pixel = (x: number, y: number) => Array.from(png.data.subarray((y * 32 + x) * 4, (y * 32 + x) * 4 + 4));
+    for (const y of [0, 15]) {
+      expect(pixel(0, y)).toEqual([0, 0, 0, 0]);
+      expect(pixel(15, y)).toEqual([0, 0, 0, 0]);
+      expect(pixel(16, y)).toEqual([255, 0, 0, 255]);
+      expect(pixel(31, y)).toEqual([255, 0, 0, 255]);
+    }
   });
 });
