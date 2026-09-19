@@ -182,6 +182,33 @@ describe('resolveStageSelection', () => {
       .toThrow('Unknown stage "missing". Valid: visreg, perf-warmup, perf, perf-low-noise');
   });
 
+  it('runs only the --stages list and marks the rest skipped by it', () => {
+    const selected = resolveStageSelection(pipeline(), { stages: 'visreg,perf' });
+
+    expect(selected.stageNames).toEqual(['visreg', 'perf']);
+    expect(selected.skippedStages.map((entry) => ({
+      stage: entry.stage.name,
+      reason: entry.reason,
+      persistOutcome: entry.persistOutcome,
+    }))).toEqual([
+      { stage: 'perf-warmup', reason: 'skipped by --stages visreg,perf', persistOutcome: true },
+      { stage: 'perf-low-noise', reason: 'skipped by --stages visreg,perf', persistOutcome: true },
+    ]);
+  });
+
+  it('rejects --stages combined with --categories or --skip-stages', () => {
+    const message = '--stages cannot be combined with --categories or --skip-stages.';
+    expect(() => resolveStageSelection(pipeline(), { stages: 'perf', categories: 'perf' }))
+      .toThrow(message);
+    expect(() => resolveStageSelection(pipeline(), { stages: 'perf', skipStages: 'visreg' }))
+      .toThrow(message);
+  });
+
+  it('rejects unknown --stages entries', () => {
+    expect(() => resolveStageSelection(pipeline(), { stages: 'perf,missing' }))
+      .toThrow('Unknown stage "missing" in --stages. Valid: visreg, perf-warmup, perf, perf-low-noise');
+  });
+
   it('warns and ignores unknown --skip-stages entries instead of crashing', () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     try {
