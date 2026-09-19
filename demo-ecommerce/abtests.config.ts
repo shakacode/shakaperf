@@ -31,7 +31,7 @@ const { control: CONTROL_PORT, experiment: EXPERIMENT_PORT } =
     ? { control: pinnedControl, experiment: pinnedExperiment }
     : assignPortsAutomatically({ control: 3060, experiment: 3090 });
 
-const PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
+const PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 3));
 
 // Shared by perf and audit so both pipelines hit Lighthouse with the same
 // network/CPU profile — drift here would make audit and perf disagree on
