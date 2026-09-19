@@ -321,6 +321,8 @@ export interface RuntimeOptions {
   readonly filter?: string | undefined;
   readonly categories?: string | string[] | undefined;
   readonly skipStages?: string | string[] | undefined;
+  /** Run only these stages. Cannot be combined with `categories` or `skipStages`. */
+  readonly stages?: string | string[] | undefined;
   /**
    * Restart the run from this stage: discard this stage's and every later
    * stage's results, then re-run them. Earlier stages are retained — their

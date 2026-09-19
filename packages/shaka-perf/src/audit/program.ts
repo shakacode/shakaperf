@@ -41,6 +41,10 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
       `Comma-separated list of exact stages to skip (${validStages.join(', ')})`,
     )
     .option(
+      '--stages <list>',
+      `Comma-separated list of exact stages to run, skipping every other stage. Cannot be combined with --categories or --skip-stages (${validStages.join(', ')})`,
+    )
+    .option(
       '--restart-from-stage <stage>',
       `Restart from this stage: discard its results and all later stages' results, then re-run them; earlier stages' results are preserved (${validStages.join(', ')})`,
     )
@@ -93,8 +97,12 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
           experimentURL: url,
           testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
           filter: opts.filter ?? config.shared.filter,
-          categories: opts.categories,
+          // --categories always carries its default; only a typed value conflicts with --stages.
+          categories: opts.stages != null && this.getOptionValueSource('categories') === 'default'
+            ? undefined
+            : opts.categories,
           skipStages: opts.skipStages,
+          stages: opts.stages,
           restartFromStage,
           reportOnly: opts.reportOnly === true,
           skipReport: opts.skipReport === true,
