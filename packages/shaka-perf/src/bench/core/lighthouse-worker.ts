@@ -56,6 +56,7 @@ import type { AbTestDefinition } from './ab-test-registry';
 import { sendErrorFrame } from './worker-log';
 import { existsSync, writeFileSync } from 'node:fs';
 import { screencastRecorder } from './screencast-recorder';
+import { flashSyncMarker } from '../../pipeline/sync-flash-overlay';
 import {
   chromeVersionFromProductString,
   matchRealChromeUserAgentVersion,
@@ -421,6 +422,10 @@ class LighthouseWorkerSampler {
       await injectINPObserver(page);
       const recorder = captureAuditArtifacts ? createInteractionRecorder() : null;
       if (recorder) await recorder.attach(page);
+      // Sync anchors for the screencast: flash START now and END right before
+      // Lighthouse is released (below), each with its performance.mark. The
+      // annotated-timeline stage lines the video up on the trace clock by them.
+      if (captureAuditArtifacts) await flashSyncMarker(page, 'start');
       // Emit the timeline `performance.mark` for an annotation. The page can
       // be torn down concurrently (navigation, or Lighthouse's audit phase
       // closing the CDP target) — page.evaluate then rejects. A test author
@@ -468,6 +473,7 @@ class LighthouseWorkerSampler {
         // load-gate conditions; LH then still waits for CPU-idle and keeps the
         // trace running). The encode happens once the run resolves.
         .finally(async () => {
+          if (captureAuditArtifacts) await flashSyncMarker(page, 'end');
           if (this.keepBrowserOpen && options.windowLabel) {
             await labelWindow(page, options.windowLabel);
           }
