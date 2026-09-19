@@ -26,3 +26,18 @@ export function parseSettleAfterTestOption(raw: unknown): number | undefined {
   }
   return Math.round(seconds * 1000);
 }
+
+/**
+ * Keep measuring for `ms` after the test body. The period is announced
+ * through the test's own `annotate`, so it shows as a labelled band on both
+ * timelines and a marker line in network_activity.txt, and it is the "latest
+ * annotation" if something fails while the page settles.
+ */
+export async function settleAfterTest(
+  ms: number | undefined,
+  annotate: (label: string) => Promise<void>,
+): Promise<void> {
+  if (!ms || ms <= 0) return;
+  await annotate(`settling ${ms / 1000}s after the test`);
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
