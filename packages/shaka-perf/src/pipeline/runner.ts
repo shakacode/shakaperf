@@ -384,6 +384,12 @@ export interface RuntimeOptions {
    * config by the CLI. Undefined = off.
    */
   readonly burn?: number | undefined;
+  /**
+   * `--seconds-to-settle-after-test`, in milliseconds: how long the perf
+   * stages keep measuring after a test body finishes. Surfaced to them via
+   * `StageRuntime.settleAfterTestMs`. Undefined = 0.
+   */
+  readonly settleAfterTestMs?: number | undefined;
 }
 
 export async function runPipeline(
@@ -578,6 +584,7 @@ async function runConfiguredPipelineWithSelection(
     keepBrowserOpen: runtime.keepBrowserOpen ?? false,
     ...(runtime.cdpPorts ? { cdpPorts: runtime.cdpPorts } : {}),
     burn: runtime.burn ?? null,
+    settleAfterTestMs: runtime.settleAfterTestMs ?? 0,
   };
 
   // Single wipe authority: one cleanup per pipeline run, before any stage
