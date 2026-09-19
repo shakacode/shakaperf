@@ -15,7 +15,11 @@ import { buildAbTestsConfig, resolvePlaywrightOptions } from '../config';
 import { runPipeline } from '../pipeline/runner';
 import { selectedViewportFilter, VIEWPORT_OPTION_DESCRIPTION } from '../pipeline/viewport-selection';
 import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../pipeline/burn';
-import { SETTLE_AFTER_TEST_OPTION_DESCRIPTION, parseSettleAfterTestOption } from '../pipeline/settle-after-test';
+import {
+  SETTLE_AFTER_TEST_OPTION_DESCRIPTION,
+  parseSettleAfterTestOption,
+  withSettleInTimeout,
+} from '../pipeline/settle-after-test';
 import { printReportSummary, reportPipelineFailure } from '../pipeline/report-summary';
 import { auditPipelineMetadata, createAuditPipeline } from './pipeline';
 
@@ -75,7 +79,11 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
         );
       }
       await withAbTestsConfigPath(configPath, async () => {
-        const config = buildAbTestsConfig(await loadAbTestsConfig(configPath));
+        const settleAfterTestMs = parseSettleAfterTestOption(opts.secondsToSettleAfterTest);
+        const config = withSettleInTimeout(
+          buildAbTestsConfig(await loadAbTestsConfig(configPath)),
+          settleAfterTestMs,
+        );
         const viewportsFilter = selectedViewportFilter(opts.viewport, config);
         const url = opts.url ?? config.shared.experimentURL;
         const pipeline = createAuditPipeline({
@@ -115,7 +123,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
           debugShowAllFrames: opts.debugShowAllFrames === true,
           headed: opts.headed === true,
           burn: parseBurnOption(opts.burn),
-          settleAfterTestMs: parseSettleAfterTestOption(opts.secondsToSettleAfterTest),
+          settleAfterTestMs,
         });
         printReportSummary(result);
         maybeGenerateCoverageReport(result.resultsRoot);

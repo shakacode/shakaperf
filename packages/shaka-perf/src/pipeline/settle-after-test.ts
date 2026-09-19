@@ -5,6 +5,8 @@
  * License in LICENSE.md.
  */
 
+import type { AbTestsConfig } from '../config';
+
 /** Shared so the `compare` and `audit` flags can't drift apart. */
 export const SETTLE_AFTER_TEST_OPTION_DESCRIPTION =
   'Perf: after each test body finishes, keep measuring for <seconds> before ' +
@@ -25,6 +27,15 @@ export function parseSettleAfterTestOption(raw: unknown): number | undefined {
     throw new Error(`--seconds-to-settle-after-test must be a non-negative number of seconds (got "${String(raw)}")`);
   }
   return Math.round(seconds * 1000);
+}
+
+/**
+ * Widens `shared.timeoutMs` by the settle: a pool task runs at most a control
+ * and an experiment test body, and each one waits `settleMs` after it.
+ */
+export function withSettleInTimeout(config: AbTestsConfig, settleMs: number | undefined): AbTestsConfig {
+  if (!settleMs) return config;
+  return { ...config, shared: { ...config.shared, timeoutMs: config.shared.timeoutMs + 2 * settleMs } };
 }
 
 /**
