@@ -449,6 +449,9 @@ class LighthouseWorkerSampler {
         testType: 'perf',
         annotate: createTestAnnotate(markAnnotation),
       })
+        // Keep measuring for a while after the last step, so late work the
+        // step triggered lands inside the trace instead of after its end.
+        .then(() => settleAfterTest(options.settleAfterTestMs))
         .then(() => collectINP(page))
         .then((inp) => {
           assertConsoleClean(context);
@@ -566,6 +569,12 @@ class LighthouseWorkerSampler {
   }
 }
 
+
+async function settleAfterTest(ms: number | undefined): Promise<void> {
+  if (!ms || ms <= 0) return;
+  console.log(`settling for ${ms}ms after the test before releasing the measurement`);
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function assertSampleMessage(value: unknown, sampleIndex: number): SampleMessage {
   if (

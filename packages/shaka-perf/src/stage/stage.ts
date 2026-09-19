@@ -60,6 +60,12 @@ export interface StageRuntime {
    * measurement.
    */
   readonly burn?: number | null;
+  /**
+   * `--seconds-to-settle-after-test`, in milliseconds. The Lighthouse stages
+   * wait this long after a test body finishes before releasing the
+   * measurement, so work the page does after the last step is captured.
+   */
+  readonly settleAfterTestMs?: number;
 }
 
 export interface StageLogger {

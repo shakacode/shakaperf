@@ -14,6 +14,7 @@ import { findAbTestsConfig, loadAbTestsConfig } from '../config-loader';
 import { buildAbTestsConfig, resolvePlaywrightOptions } from '../config';
 import { runPipeline } from '../pipeline/runner';
 import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../pipeline/burn';
+import { SETTLE_AFTER_TEST_OPTION_DESCRIPTION, parseSettleAfterTestOption } from '../pipeline/settle-after-test';
 import { printReportSummary, reportPipelineFailure } from '../pipeline/report-summary';
 import { auditPipelineMetadata, createAuditPipeline } from './pipeline';
 
@@ -56,6 +57,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
     .option('--debug-show-all-frames', 'Diagnostics: also render the FULL, non-deduped screencast timeline alongside the normal (deduped) one. Every synced frame is shown, each annotated with the pixel diff vs the previous frame (the signal the dedupe uses to decide what to drop). Off by default — produces a much heavier report.', false)
     .option('--headed', 'Launch the measurement browser headed (visible window) instead of headless. Off by default.', false)
     .option('--burn <number>', BURN_OPTION_DESCRIPTION)
+    .option('--seconds-to-settle-after-test <seconds>', SETTLE_AFTER_TEST_OPTION_DESCRIPTION)
     .action(async function (this: Command) {
       const opts = this.opts();
       const configPath = opts.config ?? findAbTestsConfig();
@@ -100,6 +102,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
           debugShowAllFrames: opts.debugShowAllFrames === true,
           headed: opts.headed === true,
           burn: parseBurnOption(opts.burn),
+          settleAfterTestMs: parseSettleAfterTestOption(opts.secondsToSettleAfterTest),
         });
         printReportSummary(result);
         maybeGenerateCoverageReport(result.resultsRoot);
