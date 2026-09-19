@@ -69,6 +69,7 @@ export async function runPerfEngineStage(
     // Effective launch options (shared.playwrightOptions ← perf override ←
     // per-test config), with keep-open riding along.
     headed: ctx.runtime.headed,
+    settleAfterTestMs: ctx.runtime.settleAfterTestMs,
     playwrightOptions: {
       ...resolvePlaywrightOptions(ctx.config, 'perf'),
       ...(ctx.runtime.keepBrowserOpen ? { keepBrowserOpen: true } : {}),
