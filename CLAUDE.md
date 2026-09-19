@@ -155,7 +155,7 @@ When asked to implement something, keep your edits in the main workspace on top 
 your changes have to be reviewable, don't be shy.
 
 When committing some changes in functionality related to older PR in the stack, do it in the branch for
-the older PR and then `gh sync` and return to the cumulative branch.
+the older PR and then `gh sync` and return to the tip of the stack.
 
 The main two points is to keep your changes reviewable locally before they are commited, and keeping `gh stack` well organized when they are commited. So if you end up with some changes in unrelated PRs in the stack, or if you commit something anauthorized before you showed it to the dev, that's going to be your failure to follow this guidance.
 
