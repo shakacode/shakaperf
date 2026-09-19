@@ -151,8 +151,13 @@ Split a branch into a single `gh stack`, even when its pieces are unrelated:
 separate PRs against `main` complicate QA. Order the stack so each PR sits
 above anything it depends on or edits heavily. See `gh stack --help`.
 
+When asked to implement something, keep your edits in the main workspace on top of the stack tip, not in your scratchpad:
+your changes have to be reviewable, don't be shy.
+
 When committing some changes in functionality related to older PR in the stack, do it in the branch for
 the older PR and then `gh sync` and return to the cumulative branch.
+
+The main two points is to keep your changes reviewable locally before they are commited, and keeping `gh stack` well organized when they are commited. So if you end up with some changes in unrelated PRs in the stack, or if you commit something anauthorized before you showed it to the dev, that's going to be your failure to follow this guidance.
 
 ## Publishing
 
