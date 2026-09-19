@@ -118,8 +118,7 @@ export async function runBuildAnnotatedTimelineStage(
         console.log(chalk.dim('annotated-timeline: deduping screencast before trace sync'));
         const syncResult = await client.syncScreencastToTrace(limitVideoFramesCount);
         console.log(chalk.dim(`annotated-timeline: pre-sync dedupe removed ${syncResult.removedFrameCount}/${syncResult.inputFrameCount} screencast frame${syncResult.inputFrameCount === 1 ? '' : 's'}; kept ${syncResult.keptFrameCount}`));
-        const syncMode = `with ${syncResult.anchorCount} pixelmatch anchor${syncResult.anchorCount === 1 ? '' : 's'}`;
-        console.log(chalk.dim(`annotated-timeline: synced ${syncResult.screenshotCount} deduped timeline frame candidate${syncResult.screenshotCount === 1 ? '' : 's'} ${syncMode}; retained ${syncResult.rawSyncedFrameCount} raw synced frame${syncResult.rawSyncedFrameCount === 1 ? '' : 's'} for interaction annotations`));
+        console.log(chalk.dim(`annotated-timeline: synced ${syncResult.screenshotCount} deduped timeline frame candidate${syncResult.screenshotCount === 1 ? '' : 's'} on the flash markers; retained ${syncResult.rawSyncedFrameCount} raw synced frame${syncResult.rawSyncedFrameCount === 1 ? '' : 's'} for interaction annotations`));
       }
 
       // Diagnostics: capture the FULL, non-deduped stream (each frame diffed
