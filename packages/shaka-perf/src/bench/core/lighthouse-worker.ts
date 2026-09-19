@@ -46,6 +46,7 @@ import {
 } from './lighthouse-config';
 import { runLighthouse, accessibilityScoreFromLhr } from './run-lighthouse';
 import { SHAKA_PERF_ANNOTATION_PREFIX } from './timeline-comparison';
+import { settleAfterTest } from '../../pipeline/settle-after-test';
 import { importPatchedLighthouse } from './patched-lighthouse';
 import { extractMarkers } from './extract-markers';
 import { injectINPObserver, collectINP } from './inp';
@@ -440,6 +441,9 @@ class LighthouseWorkerSampler {
       // worker's sample boundary attaches that label to any thrown error before
       // sending it over IPC. The engine-specific side effect (timeline mark)
       // rides along as `markAnnotation`.
+      // One annotate for the test body and the settle period after it, so the
+      // settle band continues the same sequence of test steps.
+      const annotate = createTestAnnotate(markAnnotation);
       const playwrightPromise = testDef.testFn({
         page,
         browserContext: context,
@@ -447,8 +451,11 @@ class LighthouseWorkerSampler {
         scenario: testDef,
         viewport: options.viewport,
         testType: 'perf',
-        annotate: createTestAnnotate(markAnnotation),
+        annotate,
       })
+        // Keep measuring for a while after the last step, so late work the
+        // step triggered lands inside the trace instead of after its end.
+        .then(() => settleAfterTest(options.settleAfterTestMs, annotate))
         .then(() => collectINP(page))
         .then((inp) => {
           assertConsoleClean(context);

@@ -11,6 +11,11 @@ import { findAbTestsConfig, loadAbTestsConfig } from '../../config-loader';
 import { buildAbTestsConfig } from '../../config';
 import { runPipeline } from '../../pipeline/runner';
 import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../../pipeline/burn';
+import {
+  SETTLE_AFTER_TEST_OPTION_DESCRIPTION,
+  parseSettleAfterTestOption,
+  withSettleInTimeout,
+} from '../../pipeline/settle-after-test';
 import { printReportSummary, reportPipelineFailure } from '../../pipeline/report-summary';
 import {
   comparePipelineConfigFromAbTests,
@@ -34,6 +39,10 @@ export function createCompareCommand(
       `Comma-separated list of exact stages to skip (${validStages.join(', ')})`,
     )
     .option(
+      '--stages <list>',
+      `Comma-separated list of exact stages to run, skipping every other stage. Cannot be combined with --categories or --skip-stages (${validStages.join(', ')})`,
+    )
+    .option(
       '--restart-from-stage <stage>',
       `Restart from this stage: discard its results and all later stages' results, then re-run them; earlier stages' results are preserved (${validStages.join(', ')})`,
     )
@@ -41,6 +50,7 @@ export function createCompareCommand(
     .option('--skip-report', 'Run the engines but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
     .option('--keep-old-results', 'Do not wipe compare-results/ before running. Engines still overwrite the files they produce, but unrelated artifacts from a prior run survive instead of being cleared.', false)
     .option('--burn <number>', BURN_OPTION_DESCRIPTION)
+    .option('--seconds-to-settle-after-test <seconds>', SETTLE_AFTER_TEST_OPTION_DESCRIPTION)
     .action(async function (this: Command) {
       const opts = this.opts();
       const configPath = opts.config ?? findAbTestsConfig();
@@ -51,7 +61,11 @@ export function createCompareCommand(
         );
       }
       await withAbTestsConfigPath(configPath, async () => {
-        const config = buildAbTestsConfig(await loadAbTestsConfig(configPath));
+        const settleAfterTestMs = parseSettleAfterTestOption(opts.secondsToSettleAfterTest);
+        const config = withSettleInTimeout(
+          buildAbTestsConfig(await loadAbTestsConfig(configPath)),
+          settleAfterTestMs,
+        );
         const burn = parseBurnOption(opts.burn);
         // Burn replaces retries, visreg's best-of-N included — the visreg
         // stage zeroes compareRetries off `runtime.burn`.
@@ -67,14 +81,19 @@ export function createCompareCommand(
           experimentURL: opts.experimentURL ?? config.shared.experimentURL,
           testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
           filter: opts.filter ?? config.shared.filter,
-          categories: opts.categories,
+          // --categories always carries its default; only a typed value conflicts with --stages.
+          categories: opts.stages != null && this.getOptionValueSource('categories') === 'default'
+            ? undefined
+            : opts.categories,
           skipStages: opts.skipStages,
+          stages: opts.stages,
           restartFromStage,
           reportOnly: opts.reportOnly === true,
           skipReport: opts.skipReport === true,
           keepOldResults: opts.keepOldResults === true,
           headed: opts.headed === true,
           burn,
+          settleAfterTestMs,
         });
         printReportSummary(result);
         reportPipelineFailure(result);
