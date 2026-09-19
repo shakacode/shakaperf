@@ -47,7 +47,6 @@ export interface SyncScreencastToTraceResult {
   inputFrameCount: number;
   keptFrameCount: number;
   removedFrameCount: number;
-  anchorCount: number;
   /**
    * Frames dropped by the pre-dedupe hard cap (`limitVideoFramesCount`): the
    * raw screencast was evenly downsampled to the cap before dedupe ran. 0 when
