@@ -12,6 +12,7 @@ import { buildAbTestsConfig } from '../../config';
 import { runPipeline } from '../../pipeline/runner';
 import { selectedViewportFilter, VIEWPORT_OPTION_DESCRIPTION } from '../../pipeline/viewport-selection';
 import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../../pipeline/burn';
+import { SETTLE_AFTER_TEST_OPTION_DESCRIPTION, parseSettleAfterTestOption } from '../../pipeline/settle-after-test';
 import { printReportSummary, reportPipelineFailure } from '../../pipeline/report-summary';
 import {
   comparePipelineConfigFromAbTests,
@@ -43,6 +44,7 @@ export function createCompareCommand(
     .option('--skip-report', 'Run the engines but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
     .option('--keep-old-results', 'Do not wipe compare-results/ before running. Engines still overwrite the files they produce, but unrelated artifacts from a prior run survive instead of being cleared.', false)
     .option('--burn <number>', BURN_OPTION_DESCRIPTION)
+    .option('--seconds-to-settle-after-test <seconds>', SETTLE_AFTER_TEST_OPTION_DESCRIPTION)
     .action(async function (this: Command) {
       const opts = this.opts();
       const configPath = opts.config ?? findAbTestsConfig();
@@ -80,6 +82,7 @@ export function createCompareCommand(
           keepOldResults: opts.keepOldResults === true,
           headed: opts.headed === true,
           burn,
+          settleAfterTestMs: parseSettleAfterTestOption(opts.secondsToSettleAfterTest),
         });
         printReportSummary(result);
         reportPipelineFailure(result);
