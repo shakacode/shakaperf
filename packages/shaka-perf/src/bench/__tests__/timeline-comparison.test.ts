@@ -10,11 +10,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   bucketEventsToFrames,
+  bucketPlacedInteractions,
+  keepFramesAt,
+  placeInteractions,
   copyPreviousFramesForAnnotations,
   parseProfile,
   profileFramesWithAnnotations,
   SHAKA_PERF_ANNOTATION_PREFIX,
-  syncDedupedVideoToTraceViaPixelmatchAnchors,
   type ProfileData,
   type ProfileFrame,
   type Screenshot,
@@ -147,20 +149,6 @@ describe('annotated timeline frame preparation', () => {
   });
 });
 
-describe('syncDedupedVideoToTraceViaPixelmatchAnchors fail-fast', () => {
-  const shot = (timeMs: number): Screenshot => ({ timeMs, dataUri: '', snapshot: jpegBuffer(10, 10, 10) });
-
-  it('throws instead of degrading when there are no screencast frames', async () => {
-    await expect(syncDedupedVideoToTraceViaPixelmatchAnchors([shot(0), shot(1)], []))
-      .rejects.toThrow('at least one screencast frame');
-  });
-
-  it('throws instead of degrading with fewer than two trace screenshots', async () => {
-    await expect(syncDedupedVideoToTraceViaPixelmatchAnchors([shot(0)], [shot(0)]))
-      .rejects.toThrow('trace screenshots for change detection');
-  });
-});
-
 describe('parseProfile user-timing measures vs marks', () => {
   const NAV = 1_000_000; // navigationStart ts, microseconds
   const at = (ms: number) => NAV + ms * 1000;
@@ -218,5 +206,43 @@ describe('parseProfile user-timing measures vs marks', () => {
       { timeMs: 10, durationMs: 80 }, // outer
       { timeMs: 20, durationMs: 10 }, // inner
     ]);
+  });
+});
+
+describe('Playwright interaction placement on the synced screencast', () => {
+  const shot = (timeMs: number, shade: number): Screenshot => ({ timeMs, dataUri: '', snapshot: jpegBuffer(shade, shade, shade) });
+  // 16 and 33 repeat the picture at 0 (the CFR encode's repeated frames);
+  // the click's repaint first shows at 50.
+  const raw = [shot(0, 10), shot(16, 10), shot(33, 10), shot(50, 200), shot(66, 200), shot(83, 90)];
+
+  it('places a chip on the first new picture at or after the interaction\'s next paint, labelled with its INP', () => {
+    const interactions = [{ timeMs: 20, kind: 'click' as const, rect: { x: 1, y: 2, width: 3, height: 4 } }];
+    const events = [{ timeMs: 24, label: 'click', category: 'interaction' as const, durationMs: 6, interactionType: 'click' }];
+    const placed = placeInteractions(interactions, events, raw);
+    expect(placed).toHaveLength(1);
+    expect(placed[0].frameTimeMs).toBe(50);
+    expect(placed[0].label).toBe('click 6ms');
+
+    const kept = keepFramesAt([raw[0], raw[5]], raw, [50]);
+    expect(kept.map((s) => s.timeMs)).toEqual([0, 50, 83]);
+    expect(kept[1]).toBe(raw[3]);
+
+    const frames: ProfileFrame[] = kept.map((s) => ({ timeMs: s.timeMs, snapshot: s.snapshot, imgW: 1, imgH: 1 }));
+    const buckets = frames.map(() => [] as ReturnType<typeof bucketEventsToFrames>[number]);
+    bucketPlacedInteractions(frames, buckets, placed);
+    expect(buckets.map((b) => b.length)).toEqual([0, 1, 0]);
+    expect(buckets[1][0]).toMatchObject({ kind: 'pw-interaction', label: 'click 6ms', pwRect: { x: 1, y: 2, width: 3, height: 4 } });
+  });
+
+  it('takes the first frame at or after the paint when it is already a new picture', () => {
+    const events = [{ timeMs: 60, label: 'click', category: 'interaction' as const, durationMs: 20, interactionType: 'click' }];
+    const placed = placeInteractions([{ timeMs: 58, kind: 'click' as const }], events, raw);
+    expect(placed[0].frameTimeMs).toBe(83);
+  });
+
+  it('uses the dispatch time for an interaction without an EventTiming', () => {
+    const placed = placeInteractions([{ timeMs: 30, kind: 'fill' as const, text: 'x' }], [], raw);
+    expect(placed[0].frameTimeMs).toBe(50);
+    expect(placed[0].label).toBe('fill "x"');
   });
 });
