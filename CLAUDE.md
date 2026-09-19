@@ -142,6 +142,18 @@ packages/shaka-perf/src/
     └── types.ts        # Zod schemas
 ```
 
+## Pull requests
+
+Push back against mixing different concerns in the same PR. Gravitate toward `gh stack`.
+When splitting the PRs, squash first, and split by functionality, not by commit history.
+
+Split a branch into a single `gh stack`, even when its pieces are unrelated:
+separate PRs against `main` complicate QA. Order the stack so each PR sits
+above anything it depends on or edits heavily. See `gh stack --help`.
+
+When committing some changes in functionality related to older PR in the stack, do it in the branch for
+the older PR and then `gh sync` and return to the cumulative branch.
+
 ## Publishing
 
 See @.claude/commands/deploy.md
