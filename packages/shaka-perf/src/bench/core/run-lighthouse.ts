@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import type { LighthouseConfig, PhaseSample } from './lighthouse-config';
 import { extractLcpRawTraceTimestamp, extractTestAnnotationMarks } from './extract-markers';
 import { saveNetworkActivity, analyzeNetworkResources } from './network-activity';
+import { countMainThreadTasks } from './main-thread-tasks';
 import { runPatchedLighthouse } from './patched-lighthouse';
 import { summarizePerformanceProfile } from './summarize-performance-profile';
 import type { Group } from '../../pipeline/log-prefix-format';
@@ -135,6 +136,14 @@ export async function runLighthouse(
     });
 
     results.push(...analyzeNetworkResources(runnerResult, url, lcpTs));
+
+    results.push({
+      phase: 'js-tasks',
+      duration: countMainThreadTasks(runnerResult.artifacts.Trace!.traceEvents),
+      start: 0,
+      sign: 1,
+      unit: '',
+    });
   }
 
   return { phases: results, runnerResult };
