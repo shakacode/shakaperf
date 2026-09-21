@@ -68,7 +68,7 @@ export { waitForAllImages } from './page-helpers/waitForAllImages';
 export type { WaitForAllImagesOptions } from './page-helpers/waitForAllImages';
 export { waitForNoMutations } from './page-helpers/waitForNoMutations';
 export type { WaitForNoMutationsOptions } from './page-helpers/waitForNoMutations';
-export { waitForNetworkSettle } from './page-helpers/waitForNetworkSettle';
+export { waitForNetworkSettle, installNetworkTracking } from './page-helpers/waitForNetworkSettle';
 export type { WaitForNetworkSettleOptions } from './page-helpers/waitForNetworkSettle';
 export { waitForFontsReady } from './page-helpers/waitForFontsReady';
 export type { WaitForFontsReadyOptions } from './page-helpers/waitForFontsReady';
