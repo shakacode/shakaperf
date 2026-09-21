@@ -290,11 +290,15 @@ export function matchFrames(
 
 /**
  * Pair the frames `matchFrames` left over. Between two consecutive matches
- * each side holds a run of frames with no counterpart; those runs are joined
- * in order, first with first. The shorter run runs out and the rest stay
- * unpaired. Both index sequences still only ever increase, so these pairs
- * cannot cross each other or the matches. The head before the first match and
- * the tail after the last one are treated as gaps too.
+ * each side holds a run of frames with no counterpart, and the runs are rarely
+ * the same length — one side scrolls in four frames what the other took ten to
+ * do. Joining them first-with-first would crowd every line into the top of the
+ * gap and leave the longer run's tail bare, so the lines are spread instead:
+ * the shorter run gets one line per frame, each meeting the frame at the same
+ * relative position in the longer run, both ends pinned. A run of one meets the
+ * middle. The mapping only ever climbs, so these pairs cross neither each other
+ * nor the matches. The head before the first match and the tail after the last
+ * one are gaps too.
  */
 export function pairUnmatchedFrames(
   matches: readonly FrameMatch[],
@@ -306,9 +310,17 @@ export function pairUnmatchedFrames(
   let experiment = 0;
   const gapEnds = [...matches, { controlIndex: controlCount, experimentIndex: experimentCount }];
   for (const end of gapEnds) {
-    const gap = Math.min(end.controlIndex - control, end.experimentIndex - experiment);
-    for (let i = 0; i < gap; i++) {
-      pairs.push({ controlIndex: control + i, experimentIndex: experiment + i });
+    const controlGap = end.controlIndex - control;
+    const experimentGap = end.experimentIndex - experiment;
+    const lines = Math.min(controlGap, experimentGap);
+    const spread = (line: number, gap: number): number => (
+      lines === 1 ? Math.floor((gap - 1) / 2) : Math.round((line * (gap - 1)) / (lines - 1))
+    );
+    for (let line = 0; line < lines; line++) {
+      pairs.push({
+        controlIndex: control + spread(line, controlGap),
+        experimentIndex: experiment + spread(line, experimentGap),
+      });
     }
     control = end.controlIndex + 1;
     experiment = end.experimentIndex + 1;
