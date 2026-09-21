@@ -259,6 +259,11 @@ describe('dedupeIdenticalScreenshots', () => {
     expect(dedupeIdenticalScreenshots(frames).map((s) => s.timeMs)).toEqual([0, 50]);
   });
 
+  it('keeps a frame one grey level away from the last kept one', () => {
+    const frames = [shot(0, 128, 128, 128), shot(16, 129, 129, 129), shot(33, 129, 129, 129)];
+    expect(dedupeIdenticalScreenshots(frames).map((s) => s.timeMs)).toEqual([0, 16]);
+  });
+
   it('compares against the last kept frame, so a return to an earlier picture keeps its frame', () => {
     const frames = [shot(0, 10, 10, 10), shot(16, 200, 30, 30), shot(33, 10, 10, 10)];
     expect(dedupeIdenticalScreenshots(frames).map((s) => s.timeMs)).toEqual([0, 16, 33]);
@@ -294,5 +299,13 @@ describe('progressMaskDataUris', () => {
       expect(pixel(16, y)).toEqual([255, 0, 0, 255]);
       expect(pixel(31, y)).toEqual([255, 0, 0, 255]);
     }
+  });
+
+  it('marks a one-level change, so every frame the dedupe keeps shows why', () => {
+    const masks = progressMaskDataUris([halves(128, 128), halves(128, 129)]);
+    const png = PNG.sync.read(Buffer.from(masks[1]!.replace('data:image/png;base64,', ''), 'base64'));
+    const pixel = (x: number, y: number) => Array.from(png.data.subarray((y * 32 + x) * 4, (y * 32 + x) * 4 + 4));
+    expect(pixel(0, 8)).toEqual([0, 0, 0, 0]);
+    expect(pixel(24, 8)).toEqual([255, 0, 0, 255]);
   });
 });

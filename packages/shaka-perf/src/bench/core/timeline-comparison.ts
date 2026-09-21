@@ -371,44 +371,32 @@ function encodePngDataUri(pixels: Uint8Array, width: number, height: number): st
   return `data:image/png;base64,${buf.toString('base64')}`;
 }
 
-// Per-pixel colour distance under which two frames count as the same picture.
-// Deliberately far tighter than the change detection elsewhere (0.175): a frame
-// is dropped only when NOTHING moved, so a caret, a hover tint or a one-pixel
-// border shift all keep their frame.
-const IDENTICAL_FRAME_PIXELMATCH_THRESHOLD = 0.02;
-
 /**
- * Drop frames that are pixel-for-pixel what the last kept frame already shows.
- * The trace emits a screenshot per compositor frame, so a page that sits still
- * repeats the same picture for dozens of rows. Only an exact match is dropped
- * (zero differing pixels at a very sensitive threshold), and the FIRST frame of
- * a repeated run survives, so the timeline still shows the moment each state
- * appeared. Frames whose dimensions differ are always kept.
+ * Drop frames whose JPEG bytes match the last kept frame. The trace emits a
+ * screenshot per compositor frame, so a page that sits still repeats the same
+ * picture for dozens of rows. Chrome encodes these deterministically (one
+ * quantization table, and the same picture always gives the same bytes), so a
+ * byte difference is always a real repaint, however faint: comparing bytes
+ * keeps every one and has no compression noise to filter, where any colour
+ * tolerance would also drop real one-level changes. The FIRST frame of a
+ * repeated run survives, so the timeline still shows when each state appeared.
  */
 export function dedupeIdenticalScreenshots(screenshots: readonly Screenshot[]): Screenshot[] {
-  if (screenshots.length === 0) return [];
-  const kept: Screenshot[] = [screenshots[0]];
-  let lastKept = decodeJpeg(screenshots[0].snapshot);
-  for (let i = 1; i < screenshots.length; i++) {
-    const decoded = decodeJpeg(screenshots[i].snapshot);
-    const sameSize = decoded.width === lastKept.width && decoded.height === lastKept.height;
-    const differingPixels = sameSize
-      ? pixelmatch(lastKept.data, decoded.data, null, decoded.width, decoded.height, {
-          threshold: IDENTICAL_FRAME_PIXELMATCH_THRESHOLD,
-        })
-      : 1;
-    if (differingPixels === 0) continue;
-    kept.push(screenshots[i]);
-    lastKept = decoded;
+  const kept: Screenshot[] = [];
+  for (const s of screenshots) {
+    if (kept.length > 0 && s.snapshot.equals(kept[kept.length - 1].snapshot)) continue;
+    kept.push(s);
   }
   return kept;
 }
 
 /**
- * Per frame, a transparent PNG with the pixels that changed since the previous
- * frame painted red. Same threshold as the dedupe, so on a deduped side every
- * frame after the first marks at least the pixels that got it kept. null for
- * the first frame and after a size change: there is nothing to compare against.
+ * Per frame, a transparent PNG with every pixel that changed at all since the
+ * previous frame painted red. Exact, like the dedupe, so on a deduped side
+ * every frame after the first marks the pixels that got it kept. The encoding
+ * is deterministic, so unchanged JPEG blocks decode identically and the red
+ * stays within the blocks a repaint touched. null for the first frame and
+ * after a size change: there is nothing to compare against.
  */
 export function progressMaskDataUris(screenshots: readonly Screenshot[]): (string | null)[] {
   let previous: ReturnType<typeof decodeJpeg> | null = null;
@@ -418,10 +406,16 @@ export function progressMaskDataUris(screenshots: readonly Screenshot[]): (strin
     previous = current;
     if (!before || before.width !== current.width || before.height !== current.height) return null;
     const mask = new Uint8Array(current.width * current.height * 4);
-    pixelmatch(before.data, current.data, mask, current.width, current.height, {
-      threshold: IDENTICAL_FRAME_PIXELMATCH_THRESHOLD,
-      diffMask: true,
-    });
+    for (let p = 0; p < mask.length; p += 4) {
+      if (
+        before.data[p] !== current.data[p] ||
+        before.data[p + 1] !== current.data[p + 1] ||
+        before.data[p + 2] !== current.data[p + 2]
+      ) {
+        mask[p] = 255;
+        mask[p + 3] = 255;
+      }
+    }
     return encodePngDataUri(mask, current.width, current.height);
   });
 }
