@@ -25,7 +25,7 @@ import { decodeJpeg } from './decode-jpeg';
 // Re-exported: this module was decodeJpeg's home before the frame matcher
 // needed it too, and several callers import it from here.
 export { decodeJpeg };
-import { matchFrames, signFrames, type FrameMatch } from './frame-matching';
+import { matchFrames, pairUnmatchedFrames, signFrames, type FrameMatch, type FramePair } from './frame-matching';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const jpeg = require('jpeg-js') as { decode(buf: Buffer, opts?: { useTArray: boolean }): { width: number; height: number; data: Uint8Array } };
@@ -999,7 +999,23 @@ function buildTimelineHtml(
   experiment: ProfileData,
   alignment: TimelineAlignment,
   matches: readonly FrameMatch[],
+  mismatches: readonly FramePair[],
 ): string {
+  // Every line in the middle column: the frames showing the same state
+  // (green) and, between them, the leftovers each side paired in order (red).
+  const connections = [
+    ...matches.map((m) => ({
+      c: m.controlIndex, e: m.experimentIndex, d: Math.round(m.deltaMs), k: 'match',
+    })),
+    ...mismatches.map((p) => ({
+      c: p.controlIndex,
+      e: p.experimentIndex,
+      d: Math.round(
+        experiment.screenshots[p.experimentIndex].timeMs - control.screenshots[p.controlIndex].timeMs,
+      ),
+      k: 'mismatch',
+    })),
+  ];
   const maxTimeMs = Math.max(control.maxTimeMs, experiment.maxTimeMs, 1);
   const pxPerMs = computePxPerMs(control, experiment);
   const totalHeight = Math.ceil(maxTimeMs * pxPerMs) + FRAME_HEIGHT + 50;
@@ -1057,10 +1073,10 @@ function buildTimelineHtml(
     }).join('\n');
   }
 
-  // One line per matched pair. The paths are empty here: their endpoints are
-  // the vertical centres of two frame entries, whose heights depend on the
-  // rendered image, so the browser measures them (see drawArrows in the
-  // script below).
+  // One line per connected pair, matched or not. The paths are empty here:
+  // their endpoints are the vertical centres of two frame entries, whose
+  // heights depend on the rendered image, so the browser measures them (see
+  // drawArrows in the script below).
   function renderMatchArrows(): string {
     return `<svg class="match-arrows" id="match-arrows"><g id="match-arrow-paths"></g></svg>`;
   }
@@ -1434,9 +1450,16 @@ function buildTimelineHtml(
     overflow: visible;
     z-index: 0;
   }
-  .match-arrow { fill: none; stroke: #94a3b8; stroke-width: 1; opacity: 0.75; }
+  .match-arrow { fill: none; stroke-width: 1; opacity: 0.75; }
+  /* Green joins the frames showing the same state; red joins the leftovers
+     between two such pairs, which no frame on the other side matches. */
+  .match-arrow.match { stroke: #16a34a; }
+  .match-arrow.mismatch { stroke: #dc2626; }
   .match-arrow-hit { fill: none; stroke: transparent; stroke-width: 12; cursor: pointer; }
-  .match-arrow.highlight { stroke: #111827; stroke-width: 2; opacity: 1; }
+  .match-arrow.active { stroke-width: 2.5; opacity: 1; }
+  .arrow-kind-label { font: 700 9px system-ui, sans-serif; letter-spacing: 0.04em; paint-order: stroke; stroke: rgba(255, 255, 255, 0.9); stroke-width: 3; }
+  .arrow-kind-label.match { fill: #15803d; }
+  .arrow-kind-label.mismatch { fill: #b91c1c; }
   /* Hovering a connection lifts both of its frames above their neighbours,
      the same way hovering a frame itself does. */
   .screenshot-entry.matched { z-index: 100; }
@@ -1638,37 +1661,45 @@ function buildTimelineHtml(
         document.body.classList.toggle('show-progress', progressBox.checked);
       });
 
-      // Arrows joining the frames that show the same page state. An arrow's
+      // Lines joining the frames of the two runs: green where they show the
+      // same page state, red between those pairs. A line's
       // endpoints are the vertical centres of two frame entries. A frame's
       // height is whatever the browser made of its image, so it is measured
       // rather than computed; it does not change with zoom (frames carry no
       // data-h), so measuring once is enough and only the tops move.
-      var FRAME_MATCHES = ${JSON.stringify(matches.map((m) => ({
-        c: m.controlIndex,
-        e: m.experimentIndex,
-        d: Math.round(m.deltaMs),
-      })))};
+      var FRAME_CONNECTIONS = ${JSON.stringify(connections)};
+      var SVG_NS = 'http://www.w3.org/2000/svg';
       var arrowSvg = document.getElementById('match-arrows');
       var arrowGroup = document.getElementById('match-arrow-paths');
       var arrows = [];
+      var hoveredArrow = null;
 
       function frameEntry(side, idx) {
         return document.querySelector('.screenshot-col.' + side + ' .screenshot-entry[data-frame-idx="' + idx + '"]');
       }
 
-      FRAME_MATCHES.forEach(function(match) {
-        var left = frameEntry('control', match.c);
-        var right = frameEntry('experiment', match.e);
+      FRAME_CONNECTIONS.forEach(function(conn) {
+        var left = frameEntry('control', conn.c);
+        var right = frameEntry('experiment', conn.e);
         if (!left || !right) return;
-        var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('class', 'match-arrow');
-        var hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        var path = document.createElementNS(SVG_NS, 'path');
+        path.setAttribute('class', 'match-arrow ' + conn.k);
+        var hit = document.createElementNS(SVG_NS, 'path');
         hit.setAttribute('class', 'match-arrow-hit');
-        hit.dataset.delta = String(match.d);
         arrowGroup.appendChild(path);
         arrowGroup.appendChild(hit);
-        arrows.push({ left: left, right: right, path: path, hit: hit, delta: match.d, halfLeft: 0, halfRight: 0 });
+        arrows.push({
+          left: left, right: right, path: path, hit: hit,
+          delta: conn.d, kind: conn.k, halfLeft: 0, halfRight: 0,
+        });
       });
+
+      // Sits above the hovered line, in the middle column's own pixel space.
+      var arrowKindLabel = document.createElementNS(SVG_NS, 'text');
+      arrowKindLabel.setAttribute('class', 'arrow-kind-label');
+      arrowKindLabel.setAttribute('text-anchor', 'middle');
+      arrowKindLabel.style.display = 'none';
+      arrowSvg.appendChild(arrowKindLabel);
 
       function measureArrowFrames() {
         arrows.forEach(function(arrow) {
@@ -1696,29 +1727,87 @@ function buildTimelineHtml(
           arrow.path.setAttribute('d', d);
           arrow.hit.setAttribute('d', d);
         });
+        placeArrowKindLabel();
+      }
+
+      function placeArrowKindLabel() {
+        if (!hoveredArrow) return;
+        var width = arrowSvg.clientWidth || arrowSvg.getBoundingClientRect().width;
+        var midY = (arrowY(hoveredArrow.left, hoveredArrow.halfLeft)
+          + arrowY(hoveredArrow.right, hoveredArrow.halfRight)) / 2;
+        arrowKindLabel.setAttribute('x', String(width / 2));
+        arrowKindLabel.setAttribute('y', String(midY - 5));
       }
 
       measureArrowFrames();
 
+      // Sticky: the lift and the label stay on the last line hovered, so the
+      // pair can be compared after the cursor has left the line. The next
+      // hover moves them.
       function setArrowHover(arrow) {
+        hoveredArrow = arrow;
         arrows.forEach(function(other) {
-          other.path.classList.toggle('highlight', other === arrow);
+          other.path.classList.toggle('active', other === arrow);
           other.left.classList.toggle('matched', other === arrow);
           other.right.classList.toggle('matched', other === arrow);
         });
+        if (!arrow) {
+          arrowKindLabel.style.display = 'none';
+          return;
+        }
+        arrowKindLabel.setAttribute('class', 'arrow-kind-label ' + arrow.kind);
+        arrowKindLabel.textContent = arrow.kind === 'match' ? 'MATCH' : 'MISMATCH';
+        arrowKindLabel.style.display = '';
+        placeArrowKindLabel();
       }
 
-      arrowGroup.addEventListener('mouseover', function(e) {
-        var hit = e.target.closest ? e.target.closest('.match-arrow-hit') : null;
-        if (!hit) return;
-        var arrow = arrows.find(function(a) { return a.hit === hit; });
+      // The hit strokes overlap wherever frames are dense, so the line the
+      // cursor is actually closest to wins rather than whichever path is on top.
+      function nearestArrow(clientX, clientY) {
+        var box = arrowSvg.getBoundingClientRect();
+        var px = clientX - box.left;
+        var py = clientY - box.top;
+        var width = arrowSvg.clientWidth || box.width;
+        var x1 = 2;
+        var x2 = Math.max(x1 + 1, width - 2);
+        var best = null;
+        var bestDistance = Infinity;
+        arrows.forEach(function(arrow) {
+          var y1 = arrowY(arrow.left, arrow.halfLeft);
+          var y2 = arrowY(arrow.right, arrow.halfRight);
+          var dx = x2 - x1;
+          var dy = y2 - y1;
+          var t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
+          t = Math.max(0, Math.min(1, t));
+          var ex = px - (x1 + t * dx);
+          var ey = py - (y1 + t * dy);
+          var distance = Math.sqrt(ex * ex + ey * ey);
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            best = arrow;
+          }
+        });
+        return bestDistance <= 10 ? best : null;
+      }
+
+      arrowGroup.addEventListener('mousemove', function(e) {
+        var arrow = nearestArrow(e.clientX, e.clientY);
         if (!arrow) return;
         setArrowHover(arrow);
         showArrowLabel(arrow, e.clientY);
       });
+
+      // Hovering a frame drops the sticky pair: the lift is there to compare
+      // the two frames a line joins, and looking at a frame starts over.
+      document.addEventListener('mouseover', function(e) {
+        var target = e.target instanceof Element ? e.target : null;
+        if (!target || !target.closest('.screenshot-entry')) return;
+        setArrowHover(null);
+        arrowLabel.style.display = 'none';
+      });
       arrowGroup.addEventListener('mouseout', function(e) {
+        // Only the cursor-following delta chip goes; the highlight is sticky.
         if (e.target.closest && e.target.closest('.match-arrow-hit')) {
-          setArrowHover(null);
           arrowLabel.style.display = 'none';
         }
       });
@@ -1729,7 +1818,8 @@ function buildTimelineHtml(
       document.body.appendChild(arrowLabel);
       function showArrowLabel(arrow, clientY) {
         var sign = arrow.delta > 0 ? '+' : '';
-        arrowLabel.textContent = 'experiment ' + sign + arrow.delta + 'ms';
+        var kind = arrow.kind === 'match' ? 'match' : 'no match';
+        arrowLabel.textContent = kind + ' · experiment ' + sign + arrow.delta + 'ms';
         arrowLabel.style.display = 'block';
         arrowLabel.style.top = Math.min(clientY + 18, window.innerHeight - 26) + 'px';
       }
@@ -1947,7 +2037,10 @@ export function generateTimelineComparison(options: GenerateTimelineComparisonOp
   // ones: aligning only moves frames on screen, it does not change which
   // picture is which.
   const { matches } = matchFrames(signFrames(control.screenshots), signFrames(experiment.screenshots));
-  const html = buildTimelineHtml(control, experiment, alignment, matches);
+  const mismatches = pairUnmatchedFrames(
+    matches, control.screenshots.length, experiment.screenshots.length,
+  );
+  const html = buildTimelineHtml(control, experiment, alignment, matches, mismatches);
   writeFileSync(options.outputPath, html);
 }
 

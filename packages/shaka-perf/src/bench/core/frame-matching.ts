@@ -36,6 +36,20 @@ export const SIGNATURE_DIM = 32;
  *  state), so it separates them without ranking near-misses. */
 export const SAME_STATE_MAX_DISTANCE = 0.02;
 
+/** How much of a grid cell's brightness must move before the cell counts as
+ *  repainted, out of 255. Below this is JPEG and antialiasing noise. */
+const CELL_CHANGED_DELTA = 8;
+
+/** Share of the grid that may be repainted while two frames still count as the
+ *  same page state. The mean distance alone lets a real change through when it
+ *  is faint but wide - pale skeleton blocks giving way to text measured 0.017
+ *  across two real runs, under the distance cut, though a tenth of the pixels
+ *  had changed. Counting cells separates those: on the same runs a different
+ *  state moved at least 3% of the grid. The cut sits well below that, which on
+ *  real runs also drops pairs differing only in a row of content, and leaves
+ *  every match of the test fixtures standing. */
+export const SAME_STATE_MAX_CHANGED_CELLS = 0.01;
+
 // Weights of the two tie-breakers. Both together stay below the reward for
 // making a match at all, so the search never trades a match away to improve
 // regularity or image distance: matches first, regular comb second, closest
@@ -73,14 +87,28 @@ export interface FrameMatch {
   deltaMs: number;
 }
 
+/** Two frames joined by a line in the timeline's middle column. */
+export interface FramePair {
+  controlIndex: number;
+  experimentIndex: number;
+}
+
 export interface FrameMatchResult {
   matches: FrameMatch[];
   /** The run's typical delta, the median over the matches. */
   offsetMs: number;
 }
 
+export interface SignatureDifference {
+  /** Mean absolute difference, 0 (identical) to 1. */
+  distance: number;
+  /** Share of grid cells whose brightness moved more than a noise floor. */
+  changedCells: number;
+}
+
 export interface FrameMatchOptions {
   maxDistance?: number;
+  maxChangedCells?: number;
   /** Refinement passes re-estimating the typical delta. */
   offsetPasses?: number;
 }
@@ -119,14 +147,24 @@ export function frameSignature(jpegBuf: Buffer, dim: number = SIGNATURE_DIM): Fr
   return { dim, gray };
 }
 
-/** Mean absolute difference of two signatures, 0 (identical) to 1. */
-export function signatureDistance(a: FrameSignature, b: FrameSignature): number {
+/** How two signatures differ: on average, and over how much of the grid. */
+export function signatureDifference(a: FrameSignature, b: FrameSignature): SignatureDifference {
   if (a.dim !== b.dim) {
     throw new Error(`shaka-perf: cannot compare frame signatures of different sizes (${a.dim} vs ${b.dim})`);
   }
   let sum = 0;
-  for (let i = 0; i < a.gray.length; i++) sum += Math.abs(a.gray[i] - b.gray[i]);
-  return sum / (a.gray.length * 255);
+  let changed = 0;
+  for (let i = 0; i < a.gray.length; i++) {
+    const delta = Math.abs(a.gray[i] - b.gray[i]);
+    sum += delta;
+    if (delta > CELL_CHANGED_DELTA) changed++;
+  }
+  return { distance: sum / (a.gray.length * 255), changedCells: changed / a.gray.length };
+}
+
+/** Mean absolute difference of two signatures, 0 (identical) to 1. */
+export function signatureDistance(a: FrameSignature, b: FrameSignature): number {
+  return signatureDifference(a, b).distance;
 }
 
 /** Signatures for a run's frames, in time order. */
@@ -156,6 +194,7 @@ function alignOnce(
   control: readonly SignedFrame[],
   experiment: readonly SignedFrame[],
   maxDistance: number,
+  maxChangedCells: number,
   offsetRefMs: number,
 ): FrameMatch[] {
   const n = control.length;
@@ -176,8 +215,9 @@ function alignOnce(
         best = score[i][j - 1];
         chosen = MOVE_SKIP_EXPERIMENT;
       }
-      const distance = signatureDistance(control[i - 1].signature, experiment[j - 1].signature);
-      if (distance <= maxDistance) {
+      const { distance, changedCells } =
+        signatureDifference(control[i - 1].signature, experiment[j - 1].signature);
+      if (distance <= maxDistance && changedCells <= maxChangedCells) {
         const deltaMs = experiment[j - 1].timeMs - control[i - 1].timeMs;
         const offsetDeviation = Math.min(1, Math.abs(deltaMs - offsetRefMs) / OFFSET_DEVIATION_SCALE_MS);
         const gain = MATCH_REWARD
@@ -233,16 +273,45 @@ export function matchFrames(
   opts: FrameMatchOptions = {},
 ): FrameMatchResult {
   const maxDistance = opts.maxDistance ?? SAME_STATE_MAX_DISTANCE;
+  const maxChangedCells = opts.maxChangedCells ?? SAME_STATE_MAX_CHANGED_CELLS;
   const passes = opts.offsetPasses ?? 3;
   if (control.length === 0 || experiment.length === 0) return { matches: [], offsetMs: 0 };
 
   let offsetMs = 0;
-  let matches = alignOnce(control, experiment, maxDistance, offsetMs);
+  let matches = alignOnce(control, experiment, maxDistance, maxChangedCells, offsetMs);
   for (let pass = 1; pass < passes && matches.length > 0; pass++) {
     const nextOffset = median(matches.map((match) => match.deltaMs));
     if (nextOffset === offsetMs) break;
     offsetMs = nextOffset;
-    matches = alignOnce(control, experiment, maxDistance, offsetMs);
+    matches = alignOnce(control, experiment, maxDistance, maxChangedCells, offsetMs);
   }
   return { matches, offsetMs: matches.length > 0 ? median(matches.map((match) => match.deltaMs)) : 0 };
+}
+
+/**
+ * Pair the frames `matchFrames` left over. Between two consecutive matches
+ * each side holds a run of frames with no counterpart; those runs are joined
+ * in order, first with first. The shorter run runs out and the rest stay
+ * unpaired. Both index sequences still only ever increase, so these pairs
+ * cannot cross each other or the matches. The head before the first match and
+ * the tail after the last one are treated as gaps too.
+ */
+export function pairUnmatchedFrames(
+  matches: readonly FrameMatch[],
+  controlCount: number,
+  experimentCount: number,
+): FramePair[] {
+  const pairs: FramePair[] = [];
+  let control = 0;
+  let experiment = 0;
+  const gapEnds = [...matches, { controlIndex: controlCount, experimentIndex: experimentCount }];
+  for (const end of gapEnds) {
+    const gap = Math.min(end.controlIndex - control, end.experimentIndex - experiment);
+    for (let i = 0; i < gap; i++) {
+      pairs.push({ controlIndex: control + i, experimentIndex: experiment + i });
+    }
+    control = end.controlIndex + 1;
+    experiment = end.experimentIndex + 1;
+  }
+  return pairs;
 }

@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import {
   frameSignature,
   matchFrames,
+  pairUnmatchedFrames,
   SAME_STATE_MAX_DISTANCE,
   SIGNATURE_DIM,
   signatureDistance,
@@ -256,5 +257,53 @@ describe('matchFrames tie-breaking and degenerate input', () => {
     const signed = signFrames([{ timeMs: 5, snapshot }, { timeMs: 9, snapshot }]);
     expect(signed.map((s) => s.timeMs)).toEqual([5, 9]);
     expect(signatureDistance(signed[0].signature, signed[1].signature)).toBe(0);
+  });
+});
+
+describe('pairUnmatchedFrames', () => {
+  const match = (controlIndex: number, experimentIndex: number): FrameMatch =>
+    ({ controlIndex, experimentIndex, distance: 0, deltaMs: 0 });
+
+  it('joins the leftovers of a gap in order and drops the surplus', () => {
+    // control 1,2,3 and experiment 1,2 sit between the matches at 0 and 4/3.
+    const pairs = pairUnmatchedFrames([match(0, 0), match(4, 3)], 5, 4);
+
+    expect(pairs).toEqual([
+      { controlIndex: 1, experimentIndex: 1 },
+      { controlIndex: 2, experimentIndex: 2 },
+    ]);
+  });
+
+  it('treats the head and the tail as gaps too', () => {
+    const pairs = pairUnmatchedFrames([match(2, 1)], 5, 4);
+
+    expect(pairs).toEqual([
+      { controlIndex: 0, experimentIndex: 0 },
+      { controlIndex: 3, experimentIndex: 2 },
+      { controlIndex: 4, experimentIndex: 3 },
+    ]);
+  });
+
+  it('pairs everything it can when nothing matched', () => {
+    expect(pairUnmatchedFrames([], 3, 5)).toEqual([
+      { controlIndex: 0, experimentIndex: 0 },
+      { controlIndex: 1, experimentIndex: 1 },
+      { controlIndex: 2, experimentIndex: 2 },
+    ]);
+  });
+
+  it('never crosses a match or another pair on real frames', () => {
+    const { control, experiment } = loadFixture('homepage-desktop');
+    const { matches } = matchFrames(control, experiment);
+    const lines = [
+      ...matches.map((m) => ({ controlIndex: m.controlIndex, experimentIndex: m.experimentIndex })),
+      ...pairUnmatchedFrames(matches, control.length, experiment.length),
+    ].sort((a, b) => a.controlIndex - b.controlIndex);
+
+    expect(lines.length).toBeGreaterThan(matches.length);
+    for (let i = 1; i < lines.length; i++) {
+      expect(lines[i].controlIndex).toBeGreaterThan(lines[i - 1].controlIndex);
+      expect(lines[i].experimentIndex).toBeGreaterThan(lines[i - 1].experimentIndex);
+    }
   });
 });
