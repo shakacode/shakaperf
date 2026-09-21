@@ -421,22 +421,21 @@ class LighthouseWorkerSampler {
       await injectINPObserver(page);
       const recorder = captureAuditArtifacts ? createInteractionRecorder() : null;
       if (recorder) await recorder.attach(page);
-      // Emit the timeline `performance.mark` for an annotation. The page can
-      // be torn down concurrently (navigation, or Lighthouse's audit phase
-      // closing the CDP target) — page.evaluate then rejects. A test author
-      // writing `annotate('x')` without `await` would surface that as an
-      // unhandled rejection and could kill the worker, so swallow + warn: the
-      // only visible effect is the missing timeline mark.
-      const markAnnotation = async (label: string): Promise<void> => {
+      // Emit a timeline `performance.mark`. The page can be torn down
+      // concurrently (navigation, or Lighthouse's audit phase closing the CDP
+      // target) — page.evaluate then rejects. A test author writing
+      // `annotate('x')` without `await` would surface that as an unhandled
+      // rejection and could kill the worker, so swallow + warn: the only
+      // visible effect is the missing timeline mark.
+      const markInPage = async (name: string): Promise<void> => {
         try {
-          await page.evaluate(
-            ({ prefix, l }) => { performance.mark(prefix + l); },
-            { prefix: SHAKA_PERF_ANNOTATION_PREFIX, l: label },
-          );
+          await page.evaluate((n) => { performance.mark(n); }, name);
         } catch (err) {
-          console.warn(`annotate(${JSON.stringify(label)}) failed: ${(err as Error).message}`);
+          console.warn(`performance.mark(${JSON.stringify(name)}) failed: ${(err as Error).message}`);
         }
       };
+      const markAnnotation = (label: string): Promise<void> =>
+        markInPage(SHAKA_PERF_ANNOTATION_PREFIX + label);
       // `createTestAnnotate` records the latest label in framework state; the
       // worker's sample boundary attaches that label to any thrown error before
       // sending it over IPC. The engine-specific side effect (timeline mark)
@@ -455,7 +454,7 @@ class LighthouseWorkerSampler {
       })
         // Keep measuring for a while after the last step, so late work the
         // step triggered lands inside the trace instead of after its end.
-        .then(() => settleAfterTest(options.settleAfterTestMs, annotate))
+        .then(() => settleAfterTest(options.settleAfterTestMs, annotate, markInPage))
         .then(() => collectINP(page))
         .then((inp) => {
           assertConsoleClean(context);
