@@ -6,6 +6,7 @@
  */
 
 import type { BrowserContext } from 'playwright-core';
+import { installNetworkTracking } from 'shaka-shared';
 import type { BeforeNavigateHook, TestType, Viewport } from 'shaka-shared';
 import { clearBrowserData } from './clear-browser-data';
 import { installConsoleCapture, type BrowserConsolePolicy } from '../browser-console';
@@ -89,4 +90,5 @@ export async function setUpContextForNavigation(setup: ContextNavigationSetup): 
       testType: setup.testType,
     });
   }
+  installNetworkTracking(setup.context);
 }
