@@ -312,6 +312,7 @@ export function parseProfile(filePath: string): ProfileData {
   const allTimes = [
     ...screenshots.map(s => s.timeMs),
     ...timelineEvents.map(e => e.timeMs),
+    ...mainThreadEvents.map(e => e.startMs + e.durMs),
   ];
   const maxTimeMs = allTimes.length > 0 ? Math.max(...allTimes) : 0;
 
