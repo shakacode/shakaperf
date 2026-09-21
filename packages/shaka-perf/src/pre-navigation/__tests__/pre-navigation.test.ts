@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { EventEmitter } from 'node:events';
 import type { BrowserContext } from 'playwright-core';
 import { setUpContextForNavigation } from '../index';
 import type { Viewport } from 'shaka-shared';
@@ -16,13 +17,13 @@ function fakeContext() {
   const initScripts: string[] = [];
   // No `newCDPSession` → clearBrowserData early-returns (cache clear is CDP-only),
   // which keeps this fake free of page plumbing; we're asserting order here.
-  const context = {
+  const context = Object.assign(new EventEmitter(), {
     clearCookies: jest.fn(async () => { calls.push('clearCookies'); }),
     addInitScript: jest.fn(async (script: string) => {
       calls.push('addInitScript');
       initScripts.push(script);
     }),
-  } as unknown as BrowserContext;
+  }) as unknown as BrowserContext;
   return { context, calls, initScripts };
 }
 

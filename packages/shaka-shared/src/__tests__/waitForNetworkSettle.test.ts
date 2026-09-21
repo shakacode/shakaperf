@@ -7,14 +7,18 @@
 
 import { EventEmitter } from 'node:events';
 
-import { waitForNetworkSettle } from '../page-helpers/waitForNetworkSettle';
+import { installNetworkTracking, waitForNetworkSettle } from '../page-helpers/waitForNetworkSettle';
 
 /** `pageQuietMs` stands in for the in-page read: 0 while loading or busy. */
 function fakePage(pageQuietMs: () => number) {
   const events = new EventEmitter();
+  const context = new EventEmitter();
   return {
+    context,
     events,
     page: {
+      context: () => context,
+      waitForLoadState: jest.fn(async () => {}),
       url: () => 'http://example.test/menu',
       on: (event: string, fn: (...args: unknown[]) => void) => events.on(event, fn),
       off: (event: string, fn: (...args: unknown[]) => void) => events.off(event, fn),
@@ -68,6 +72,32 @@ describe('waitForNetworkSettle', () => {
     setTimeout(() => events.emit('requestfinished', {}), 100);
 
     expect(await msUntilSettled(waitForNetworkSettle(page as never))).toBeLessThan(1_000);
+  });
+
+  it('waits for the initial networkidle state without pre-navigation tracking', async () => {
+    const { page } = fakePage(() => 10_000);
+    page.waitForLoadState.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 2_000)));
+
+    expect(await msUntilSettled(waitForNetworkSettle(page as never))).toBeGreaterThanOrEqual(2_000);
+  });
+
+  it.each(['requestfinished', 'requestfailed'])('waits for an earlier request through %s and a quiet window', async (endEvent) => {
+    const { page, context } = fakePage(() => 10_000);
+    installNetworkTracking(context as never);
+    installNetworkTracking(context as never);
+    expect(context.listenerCount('request')).toBe(1);
+    const request = { serviceWorker: () => null, frame: () => ({ page: () => page }) };
+    context.emit('request', request);
+    setTimeout(() => context.emit(endEvent, request), 2_000);
+
+    expect(await msUntilSettled(waitForNetworkSettle(page as never))).toBeGreaterThanOrEqual(2_500);
+    expect(page.waitForLoadState).not.toHaveBeenCalled();
+    // A second wait must retain tracking even after the first one resolved.
+    context.emit('request', request);
+    setTimeout(() => context.emit(endEvent, request), 2_000);
+    expect(await msUntilSettled(waitForNetworkSettle(page as never))).toBeGreaterThanOrEqual(2_500);
+    context.emit('close');
+    expect(context.listenerCount('request')).toBe(0);
   });
 
   it('treats a navigation mid-read as activity and keeps polling', async () => {
