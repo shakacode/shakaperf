@@ -264,17 +264,27 @@ describe('pairUnmatchedFrames', () => {
   const match = (controlIndex: number, experimentIndex: number): FrameMatch =>
     ({ controlIndex, experimentIndex, distance: 0, deltaMs: 0 });
 
-  it('joins the leftovers of a gap in order and drops the surplus', () => {
-    // control 1,2,3 and experiment 1,2 sit between the matches at 0 and 4/3.
-    const pairs = pairUnmatchedFrames([match(0, 0), match(4, 3)], 5, 4);
+  it('spreads the lines over the longer run instead of crowding them', () => {
+    // Between the matches at 0 and 10/4 the control ran 9 frames where the
+    // experiment ran 3: the three lines land on the first, middle and last.
+    const pairs = pairUnmatchedFrames([match(0, 0), match(10, 4)], 11, 5);
 
     expect(pairs).toEqual([
       { controlIndex: 1, experimentIndex: 1 },
-      { controlIndex: 2, experimentIndex: 2 },
+      { controlIndex: 5, experimentIndex: 2 },
+      { controlIndex: 9, experimentIndex: 3 },
     ]);
   });
 
+  it('meets the middle when the shorter run is a single frame', () => {
+    const pairs = pairUnmatchedFrames([match(0, 0), match(6, 2)], 7, 3);
+
+    expect(pairs).toEqual([{ controlIndex: 3, experimentIndex: 1 }]);
+  });
+
   it('treats the head and the tail as gaps too', () => {
+    // Head: control 0,1 against experiment 0 — one line, on the head's middle.
+    // Tail: control 3,4 against experiment 2,3 — a line each.
     const pairs = pairUnmatchedFrames([match(2, 1)], 5, 4);
 
     expect(pairs).toEqual([
@@ -284,11 +294,11 @@ describe('pairUnmatchedFrames', () => {
     ]);
   });
 
-  it('pairs everything it can when nothing matched', () => {
+  it('spans the whole of both runs when nothing matched', () => {
     expect(pairUnmatchedFrames([], 3, 5)).toEqual([
       { controlIndex: 0, experimentIndex: 0 },
-      { controlIndex: 1, experimentIndex: 1 },
-      { controlIndex: 2, experimentIndex: 2 },
+      { controlIndex: 1, experimentIndex: 2 },
+      { controlIndex: 2, experimentIndex: 4 },
     ]);
   });
 
