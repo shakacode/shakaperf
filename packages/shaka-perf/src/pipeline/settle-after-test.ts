@@ -38,6 +38,8 @@ export function withSettleInTimeout(config: AbTestsConfig, settleMs: number | un
   return { ...config, shared: { ...config.shared, timeoutMs: config.shared.timeoutMs + 2 * settleMs } };
 }
 
+export const SETTLE_FINISHED_MARK = 'shaka-perf-settle-finished';
+
 /**
  * Keep measuring for `ms` after the test body. The period is announced
  * through the test's own `annotate`, so it shows as a labelled band on both
@@ -47,8 +49,10 @@ export function withSettleInTimeout(config: AbTestsConfig, settleMs: number | un
 export async function settleAfterTest(
   ms: number | undefined,
   annotate: (label: string) => Promise<void>,
+  mark: (name: string) => Promise<void>,
 ): Promise<void> {
   if (!ms || ms <= 0) return;
   await annotate(`settling ${ms / 1000}s after the test`);
   await new Promise((resolve) => setTimeout(resolve, ms));
+  await mark(SETTLE_FINISHED_MARK);
 }
