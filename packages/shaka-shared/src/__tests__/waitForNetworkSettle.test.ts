@@ -60,7 +60,7 @@ describe('waitForNetworkSettle', () => {
 
   it('waits for a request Playwright saw start to finish, then a quiet window', async () => {
     const { page, events } = fakePage(() => 10_000);
-    const request = {};
+    const request = { url: () => 'http://example.test/menu.json' };
     setTimeout(() => events.emit('request', request), 100);
     setTimeout(() => events.emit('requestfinished', request), 2_000);
 
@@ -69,7 +69,7 @@ describe('waitForNetworkSettle', () => {
 
   it('ignores finish events for requests that started before it subscribed', async () => {
     const { page, events } = fakePage(() => 10_000);
-    setTimeout(() => events.emit('requestfinished', {}), 100);
+    setTimeout(() => events.emit('requestfinished', { url: () => 'http://example.test/menu.json' }), 100);
 
     expect(await msUntilSettled(waitForNetworkSettle(page as never))).toBeLessThan(1_000);
   });
@@ -86,7 +86,7 @@ describe('waitForNetworkSettle', () => {
     installNetworkTracking(context as never);
     installNetworkTracking(context as never);
     expect(context.listenerCount('request')).toBe(1);
-    const request = { serviceWorker: () => null, frame: () => ({ page: () => page }) };
+    const request = { frame: () => ({ page: () => page }), serviceWorker: () => null, url: () => 'http://example.test/menu.json' };
     context.emit('request', request);
     setTimeout(() => context.emit(endEvent, request), 2_000);
 
@@ -98,6 +98,13 @@ describe('waitForNetworkSettle', () => {
     expect(await msUntilSettled(waitForNetworkSettle(page as never))).toBeGreaterThanOrEqual(2_500);
     context.emit('close');
     expect(context.listenerCount('request')).toBe(0);
+  });
+
+  it('ignores a blob: request that never finishes, such as a terminated Worker script', async () => {
+    const { page, events } = fakePage(() => 10_000);
+    setTimeout(() => events.emit('request', { url: () => 'blob:http://example.test/1234' }), 100);
+
+    expect(await msUntilSettled(waitForNetworkSettle(page as never))).toBeLessThan(1_000);
   });
 
   it('treats a navigation mid-read as activity and keeps polling', async () => {
