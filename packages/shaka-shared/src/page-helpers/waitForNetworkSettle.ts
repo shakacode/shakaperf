@@ -83,15 +83,19 @@ function orAfter<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([promise, expired]).finally(() => clearTimeout(timer));
 }
 
+const isInMemoryUrl = (request: Request): boolean => /^(blob|data):/.test(request.url());
+
 function requestState() {
   const inflight = new Set<Request>();
   let lastEvent = Date.now();
   return {
     started(request: Request) {
+      if (isInMemoryUrl(request)) return;
       inflight.add(request);
       lastEvent = Date.now();
     },
     ended(request: Request) {
+      if (isInMemoryUrl(request)) return;
       inflight.delete(request);
       lastEvent = Date.now();
     },
