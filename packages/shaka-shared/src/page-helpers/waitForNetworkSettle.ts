@@ -104,7 +104,14 @@ function requestState() {
   };
 }
 
-const contextTrackers = new WeakMap<BrowserContext, (page: Page) => ReturnType<typeof requestState>>();
+type ContextTrackers = WeakMap<BrowserContext, (page: Page) => ReturnType<typeof requestState>>;
+
+// The CLI and the project's test files each load their own copy of this module (the project
+// installs shaka-shared next to its tests, the CLI ships its own), so a module-level map would
+// leave a tracker installed by the CLI invisible to a settle wait called from a test body.
+// The registry lives on globalThis so every copy in the process sees the same trackers.
+const TRACKERS_KEY = Symbol.for('shaka-shared.networkTracking.contextTrackers');
+const contextTrackers: ContextTrackers = ((globalThis as Record<symbol, unknown>)[TRACKERS_KEY] ??= new WeakMap()) as ContextTrackers;
 
 /** Install once, before navigation, so settle waits include already-pending requests.
  * Context events cover new pages (including Lighthouse-created pages) and frames.
