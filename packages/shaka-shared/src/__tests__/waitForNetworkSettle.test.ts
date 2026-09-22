@@ -107,6 +107,21 @@ describe('waitForNetworkSettle', () => {
     expect(await msUntilSettled(waitForNetworkSettle(page as never))).toBeLessThan(1_000);
   });
 
+  it('shares installed trackers with another copy of the module in the same process', async () => {
+    const { page, context } = fakePage(() => 10_000);
+    installNetworkTracking(context as never);
+    let otherCopy!: typeof import('../page-helpers/waitForNetworkSettle');
+    jest.isolateModules(() => {
+      otherCopy = require('../page-helpers/waitForNetworkSettle') as typeof otherCopy;
+    });
+    expect(otherCopy.waitForNetworkSettle).not.toBe(waitForNetworkSettle);
+
+    await msUntilSettled(otherCopy.waitForNetworkSettle(page as never));
+
+    expect(page.waitForLoadState).not.toHaveBeenCalled();
+    context.emit('close');
+  });
+
   it('treats a navigation mid-read as activity and keeps polling', async () => {
     let calls = 0;
     const { page } = fakePage(() => {
