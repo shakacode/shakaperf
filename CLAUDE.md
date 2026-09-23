@@ -68,33 +68,41 @@ SHAKAPERF_REAL_CHROME=1 SHAKAPERF_REAL_CHROME_HEADLESS=1 shaka-perf audit --url 
 ```
 
 `SHAKAPERF_REAL_CHROME_HEADLESS=1` takes precedence if it is combined with
-`--headed` across the real-Chrome audit browsers. Performance Lighthouse and
-Playwright apply viewport-matched identities to mobile contexts and non-mobile
-headless contexts; a headed non-mobile context keeps Chrome's native identity.
-On the viewport-matched paths, Lighthouse normalizes only the Chrome version
-milestone to the host browser and keeps the literal platform token. On the
-headed non-mobile path it sends no UA override. Playwright derives the
-platform, platform-version, and architecture client hints from its UA override,
-and sets the mobile hint from the context's `isMobile` option. It forces the
-model hint to an empty value; only the brand list remains browser-controlled.
-After each Playwright navigation the engine polls up to ~25s for the challenge
-to clear.
-Sites that admit only a mobile identity can still block the desktop audit row.
-In real-Chrome mode, Lighthouse uses a viewport-matched emulated identity for
-mobile contexts and explicit-headless non-mobile contexts; a headed non-mobile
-context keeps Chrome's native identity. An explicit
-`lighthouseConfig.emulatedUserAgent` override wins in either case. Baselines
-recorded without real-Chrome mode are unaffected.
-The raw agent-readiness fetch uses the same native identity as a headed
-non-mobile real-Chrome context, so its score can differ from default-mode
-results on sites that vary markup by user agent. On that path the audited host
-receives the operator's native browser identity instead of the neutral raw-fetch
-identity. The standalone Lighthouse accessibility score is omitted in
-real-Chrome mode because it cannot share the interactive challenge state; the
-Playwright accessibility scan still runs.
+`--headed` across the real-Chrome audit browsers. The one identity difference
+from the default mode: a headed non-mobile real-Chrome context keeps Chrome's
+native user agent (it has to look like the operator's own browser to an
+interactive challenge), on Playwright contexts, Lighthouse
+(`emulatedUserAgent: false`), and the raw agent-readiness fetch alike. Every
+other context sends the viewport's device identity, exactly as in the default
+mode (see "Viewport identity" below). After each Playwright navigation the
+engine polls up to ~25s for the challenge to clear. Sites that admit only a
+mobile identity can still block the desktop audit row. The standalone
+Lighthouse accessibility score is omitted in real-Chrome mode because it cannot
+share the interactive challenge state; the Playwright accessibility scan still
+runs.
 Both paths require `google-chrome` and are opt-in: **never set
 `SHAKAPERF_REAL_CHROME` in CI** - CI should use the default browser
 configuration.
+
+### Viewport identity (user agent)
+
+Every test at every viewport sends the user agent of the device that viewport
+stands for, on every engine: Playwright contexts (visreg, code coverage,
+accessibility, agent readiness), Lighthouse's `emulatedUserAgent`, the bench
+worker's Chrome `--user-agent` launch flag, and the raw agent-readiness fetch.
+The device is guessed from the viewport's label: `tablet`, `phone` / `mobile`,
+or `desktop` anywhere in it (`phone-tall` is a phone); any other label falls
+back to `formFactor` (mobile is a phone). Phones and tablets also get
+`hasTouch`. The strings are Chrome's own for each device (`Mobile Safari` on
+phones, an Android tablet without the `Mobile` token, macOS on desktop), with
+the Chrome major rewritten to the launched browser so the client hints agree.
+`Viewport.userAgent` sends an exact string instead, verbatim. The module is
+`src/browser-user-agent.ts` (strings, derivation) plus `src/device-identity.ts`
+(the `newContext` options). Playwright derives the platform, platform-version,
+and architecture client hints from the UA override and the mobile hint from
+`isMobile`; only the brand list stays browser-controlled. Non-Chromium engines
+(`playwrightOptions.browser: 'firefox' | 'webkit'`) keep their own identity. A
+`lighthouseConfig.emulatedUserAgent` override still wins for Lighthouse.
 
 ## Breaking changes
 
