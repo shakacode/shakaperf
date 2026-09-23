@@ -22,7 +22,7 @@ export const DEFAULT_THROTTLE_PROFILE_LABEL = 'Slow-4G';
 
 import type { Flags } from 'lighthouse/types/externs.js';
 import type { Viewport } from 'shaka-shared';
-import { realChromeUserAgentForFormFactor } from '../../browser-user-agent';
+import { userAgentForViewport } from '../../browser-user-agent';
 import type { PlaywrightOptions } from '../../config';
 import type { WindowPlacement } from '../../troubleshoot/window-placement';
 
@@ -87,19 +87,17 @@ export const DEFAULT_LH_CONFIG: PerfLighthouseConfig = {
 export function lhConfigForViewport(
   viewport: Viewport,
   userOverrides: PerfLighthouseConfig = {},
-  userAgentMode: 'default' | 'viewport' | 'native' = 'default',
+  // 'viewport': Lighthouse emulates the viewport's device identity (the same
+  // user agent every Playwright context for it sends; the bench worker matches
+  // its Chrome major to the launched browser). 'native': no override, for the
+  // headed real-Chrome desktop path. A user `emulatedUserAgent` wins in both.
+  userAgentMode: 'viewport' | 'native' = 'viewport',
 ): LighthouseConfig {
   return {
     ...userOverrides,
     formFactor: viewport.formFactor,
-    ...(userAgentMode === 'viewport'
-      ? {
-        emulatedUserAgent:
-          userOverrides.emulatedUserAgent ?? realChromeUserAgentForFormFactor(viewport.formFactor),
-      }
-      : userAgentMode === 'native'
-        ? { emulatedUserAgent: userOverrides.emulatedUserAgent ?? false }
-      : {}),
+    emulatedUserAgent: userOverrides.emulatedUserAgent
+      ?? (userAgentMode === 'native' ? false : userAgentForViewport(viewport)),
     screenEmulation: {
       mobile: viewport.formFactor === 'mobile',
       width: viewport.width,

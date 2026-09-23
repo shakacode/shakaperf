@@ -6,6 +6,7 @@
  */
 
 import type { Browser, BrowserContext, PlaywrightPage, Viewport, EngineBrowserConfig } from '../types';
+import { deviceContextOptions } from '../../../device-identity';
 
 // JSON-bridge safety net only: the compare runner always writes the resolved
 // `waitTimeout` (required on `shared.playwrightOptions`) into the temp config,
@@ -56,15 +57,18 @@ export async function createComparisonSide(
   const VP_W = viewport.width;
   const VP_H = viewport.height;
 
-  // Emulate the viewport's device at context creation — deviceScaleFactor and
-  // mobile form factor, uniform with the accessibility and perf engines (which
-  // have always emulated them). `isMobile` is Chromium/WebKit only; Firefox
-  // rejects it, so it's omitted there.
+  // Emulate the viewport's device at context creation — deviceScaleFactor,
+  // mobile form factor, and the device identity (user agent + touch), uniform
+  // with the accessibility and perf engines. `isMobile` is Chromium/WebKit
+  // only; Firefox rejects it, so it's omitted there. The identity is Chromium
+  // only: another engine keeps its own user agent.
+  const usesChromium = (playwrightOptions.browser ?? 'chromium') === 'chromium';
   const context = await browser.newContext({
     ignoreHTTPSErrors,
     viewport: { width: VP_W, height: VP_H },
     deviceScaleFactor: viewport.deviceScaleFactor,
     isMobile: viewport.formFactor === 'mobile' && playwrightOptions.browser !== 'firefox',
+    ...deviceContextOptions(viewport, browser.version?.(), usesChromium),
   });
   // From here on, anything that throws (a beforeNavigate hook, cookie loading,
   // newPage) must close the context we just created — the caller only tracks it
