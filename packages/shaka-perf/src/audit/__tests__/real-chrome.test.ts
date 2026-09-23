@@ -8,32 +8,12 @@
 import type { Page } from 'playwright-core';
 import {
   applyRealChrome,
-  realChromeContextOptions,
   realChromeUsesNativeIdentity,
   waitForBotWallToClear,
 } from '../real-chrome';
-import {
-  chromeVersionFromProductString,
-  matchRealChromeUserAgentVersion,
-  REAL_CHROME_DESKTOP_USER_AGENT,
-} from '../../browser-user-agent';
+import { chromeVersionFromProductString } from '../../browser-user-agent';
 
-describe('matchRealChromeUserAgentVersion', () => {
-  it.each([undefined, '', 'abc', '150'])(
-    'returns undefined for an unusable browser version (%p)',
-    (browserVersion) => {
-      expect(
-        matchRealChromeUserAgentVersion(REAL_CHROME_DESKTOP_USER_AGENT, browserVersion),
-      ).toBeUndefined();
-    },
-  );
-
-  it('replaces the Chrome major for a valid dotted browser version', () => {
-    expect(
-      matchRealChromeUserAgentVersion(REAL_CHROME_DESKTOP_USER_AGENT, '150.0.0.0'),
-    ).toContain('Chrome/150.0.0.0');
-  });
-
+describe('chromeVersionFromProductString', () => {
   it('extracts a four-part version from Chrome product output', () => {
     expect(chromeVersionFromProductString('Google Chrome 150.0.7339.41')).toBe(
       '150.0.7339.41',
@@ -49,7 +29,7 @@ describe('matchRealChromeUserAgentVersion', () => {
   });
 });
 
-describe('realChromeContextOptions', () => {
+describe('realChromeUsesNativeIdentity', () => {
   const orig = process.env.SHAKAPERF_REAL_CHROME;
   const origHeadless = process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
   afterEach(() => {
@@ -59,46 +39,15 @@ describe('realChromeContextOptions', () => {
     else process.env.SHAKAPERF_REAL_CHROME_HEADLESS = origHeadless;
   });
 
-  it('is undefined when real-Chrome mode is off (default path unchanged)', () => {
+  it('is only the headed real-Chrome desktop path', () => {
     delete process.env.SHAKAPERF_REAL_CHROME;
-    expect(realChromeContextOptions('mobile', '150.0.0.0')).toBeUndefined();
-  });
-
-  it('does not apply Chrome identity options to another browser engine', () => {
-    process.env.SHAKAPERF_REAL_CHROME = '1';
-    expect(realChromeContextOptions('mobile', '18.2.0.0', false)).toBeUndefined();
-  });
-
-  it('uses a desktop UA without the headless token for non-mobile viewports', () => {
-    process.env.SHAKAPERF_REAL_CHROME = '1';
-    process.env.SHAKAPERF_REAL_CHROME_HEADLESS = '1';
-    expect(realChromeContextOptions('desktop', '150.0.0.0')).toEqual({
-      userAgent: expect.stringMatching(/Chrome\/150\.0\.0\.0 Safari\/537\.36$/),
-    });
-    expect(realChromeContextOptions('tablet', '150.0.0.0')).toEqual({
-      userAgent: expect.not.stringContaining('Mobile'),
-    });
-  });
-
-  it('returns a mobile UA + touch for a mobile viewport in real-Chrome mode', () => {
-    process.env.SHAKAPERF_REAL_CHROME = '1';
-    const out = realChromeContextOptions('mobile', '150.0.0.0');
-    expect(out?.hasTouch).toBe(true);
-    expect(out?.userAgent).toMatch(/Mobile/);
-    expect(out?.userAgent).toMatch(/Chrome\/150\.0\.0\.0/);
-  });
-
-  it('keeps the native desktop UA on the headed path', () => {
+    expect(realChromeUsesNativeIdentity('desktop')).toBe(false);
     process.env.SHAKAPERF_REAL_CHROME = '1';
     delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
-    expect(realChromeContextOptions('desktop', '150.0.0.0')).toBeUndefined();
     expect(realChromeUsesNativeIdentity('desktop')).toBe(true);
-  });
-
-  it('keeps the native identity when the browser version is unavailable', () => {
-    process.env.SHAKAPERF_REAL_CHROME = '1';
+    expect(realChromeUsesNativeIdentity('mobile')).toBe(false);
     process.env.SHAKAPERF_REAL_CHROME_HEADLESS = '1';
-    expect(realChromeContextOptions('mobile')).toBeUndefined();
+    expect(realChromeUsesNativeIdentity('desktop')).toBe(false);
   });
 });
 

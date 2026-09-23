@@ -32,6 +32,7 @@ export const ViewportSchema: z.ZodType<Viewport> = z.object({
   height: z.number().int().positive(),
   formFactor: z.enum(['mobile', 'desktop']),
   deviceScaleFactor: z.number().positive(),
+  userAgent: z.string().min(1).optional(),
 }).strict();
 
 /**

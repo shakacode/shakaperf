@@ -65,9 +65,9 @@ export interface SharedConfigInput {
   testPathPattern?: string;
   filter?: string;
   /**
-   * Full-definition viewports (label + dimensions + formFactor + DPR) — the
-   * registry every viewport LABEL elsewhere must resolve against. Defining a
-   * viewport does not run it.
+   * Full-definition viewports (label + dimensions + formFactor + DPR, plus an
+   * optional exact `userAgent`) — the registry every viewport LABEL elsewhere
+   * must resolve against. Defining a viewport does not run it.
    */
   viewportDefinitions?: [Viewport, ...Viewport[]];
   /**

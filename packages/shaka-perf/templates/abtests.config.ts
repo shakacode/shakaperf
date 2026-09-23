@@ -70,7 +70,9 @@ export default defineConfig({
     experimentURL: `http://localhost:${EXPERIMENT_PORT}`,
     // The viewport REGISTRY: every label used below (and in any test's
     // `config.<category>.viewports`) must resolve to an entry here. Defining a
-    // viewport does not run it — `viewports` decides that.
+    // viewport does not run it — `viewports` decides that. Every engine sends
+    // Chrome's user agent for the device named by the label (phone / tablet /
+    // desktop); set `userAgent` on a viewport to send an exact string instead.
     viewportDefinitions: [DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT],
     // The breakpoints EVERY category runs at unless it sets its own
     // `viewports` below. One place to widen or narrow a whole run.
