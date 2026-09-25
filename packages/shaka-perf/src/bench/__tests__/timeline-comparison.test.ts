@@ -11,7 +11,6 @@ import { join } from 'node:path';
 import { PNG } from 'pngjs';
 import {
   bucketEventsToFrames,
-  dedupeIdenticalScreenshots,
   progressMaskDataUris,
   bucketPlacedInteractions,
   keepFramesAt,
@@ -247,30 +246,6 @@ describe('Playwright interaction placement on the synced screencast', () => {
     const placed = placeInteractions([{ timeMs: 30, kind: 'fill' as const, text: 'x' }], [], raw);
     expect(placed[0].frameTimeMs).toBe(50);
     expect(placed[0].label).toBe('fill "x"');
-  });
-});
-
-describe('dedupeIdenticalScreenshots', () => {
-  const shot = (timeMs: number, r: number, g: number, b: number): Screenshot =>
-    ({ timeMs, dataUri: '', snapshot: jpegBuffer(r, g, b) });
-
-  it('keeps the first frame of a repeated run and drops the repeats', () => {
-    const frames = [shot(0, 10, 10, 10), shot(16, 10, 10, 10), shot(33, 10, 10, 10), shot(50, 200, 30, 30), shot(66, 200, 30, 30)];
-    expect(dedupeIdenticalScreenshots(frames).map((s) => s.timeMs)).toEqual([0, 50]);
-  });
-
-  it('keeps a frame one grey level away from the last kept one', () => {
-    const frames = [shot(0, 128, 128, 128), shot(16, 129, 129, 129), shot(33, 129, 129, 129)];
-    expect(dedupeIdenticalScreenshots(frames).map((s) => s.timeMs)).toEqual([0, 16]);
-  });
-
-  it('compares against the last kept frame, so a return to an earlier picture keeps its frame', () => {
-    const frames = [shot(0, 10, 10, 10), shot(16, 200, 30, 30), shot(33, 10, 10, 10)];
-    expect(dedupeIdenticalScreenshots(frames).map((s) => s.timeMs)).toEqual([0, 16, 33]);
-  });
-
-  it('returns an empty list unchanged', () => {
-    expect(dedupeIdenticalScreenshots([])).toEqual([]);
   });
 });
 

@@ -87,7 +87,12 @@ export interface FrameMatch {
   deltaMs: number;
 }
 
-/** Two frames joined by a line in the timeline's middle column. */
+/**
+ * Two ends of a line in the timeline's middle column. An index is usually a
+ * frame, but it can be fractional: where a gap has frames on one side only,
+ * the free end slides between the two frames that bound the gap on the other,
+ * so the line lies with its neighbours instead of fanning out of one frame.
+ */
 export interface FramePair {
   controlIndex: number;
   experimentIndex: number;
@@ -289,16 +294,19 @@ export function matchFrames(
 }
 
 /**
- * Pair the frames `matchFrames` left over. Between two consecutive matches
- * each side holds a run of frames with no counterpart, and the runs are rarely
- * the same length — one side scrolls in four frames what the other took ten to
- * do. Joining them first-with-first would crowd every line into the top of the
- * gap and leave the longer run's tail bare, so the lines are spread instead:
- * the shorter run gets one line per frame, each meeting the frame at the same
- * relative position in the longer run, both ends pinned. A run of one meets the
- * middle. The mapping only ever climbs, so these pairs cross neither each other
- * nor the matches. The head before the first match and the tail after the last
- * one are gaps too.
+ * Pair the frames `matchFrames` left over, so every frame of both runs ends up
+ * on a line. Between two consecutive matches each side holds a run with no
+ * counterpart, and the runs are rarely the same length — one side scrolls in
+ * four frames what the other took ten to do, and often one side repaints while
+ * the other holds a single picture.
+ *
+ * Every frame of the longer run gets its own line, meeting the frame at the
+ * same relative position in the shorter run, so the lines spread over the gap
+ * instead of crowding its top. When the other side has nothing in the gap at
+ * all, its frames still fan to the frame it is holding — the match that opens
+ * the gap, or closes it at the head of the run. Indices never move backwards
+ * within a gap and never leave it, so these pairs cross neither each other nor
+ * the matches; several may share an endpoint, which is the fan.
  */
 export function pairUnmatchedFrames(
   matches: readonly FrameMatch[],
@@ -308,19 +316,48 @@ export function pairUnmatchedFrames(
   const pairs: FramePair[] = [];
   let control = 0;
   let experiment = 0;
-  const gapEnds = [...matches, { controlIndex: controlCount, experimentIndex: experimentCount }];
-  for (const end of gapEnds) {
+  for (let gap = 0; gap <= matches.length; gap++) {
+    const end = matches[gap] ?? { controlIndex: controlCount, experimentIndex: experimentCount };
     const controlGap = end.controlIndex - control;
     const experimentGap = end.experimentIndex - experiment;
-    const lines = Math.min(controlGap, experimentGap);
-    const spread = (line: number, gap: number): number => (
-      lines === 1 ? Math.floor((gap - 1) / 2) : Math.round((line * (gap - 1)) / (lines - 1))
-    );
-    for (let line = 0; line < lines; line++) {
-      pairs.push({
-        controlIndex: control + spread(line, controlGap),
-        experimentIndex: experiment + spread(line, experimentGap),
-      });
+    if (controlGap > 0 && experimentGap > 0) {
+      const controlLeads = controlGap >= experimentGap;
+      const lines = Math.max(controlGap, experimentGap);
+      const facing = Math.min(controlGap, experimentGap);
+      for (let line = 0; line < lines; line++) {
+        const other = lines === 1
+          ? Math.floor((facing - 1) / 2)
+          : Math.round((line * (facing - 1)) / (lines - 1));
+        pairs.push(controlLeads
+          ? { controlIndex: control + line, experimentIndex: experiment + other }
+          : { controlIndex: control + other, experimentIndex: experiment + line });
+      }
+    } else if (controlGap > 0 || experimentGap > 0) {
+      // The other side painted nothing here, so there is no frame to land on.
+      // The line ends between the frames that bound the gap, one step further
+      // down for each leftover, which keeps these lines parallel to the rest.
+      // At the head or the tail of a run only one bound exists and the lines
+      // meet there.
+      const before = matches[gap - 1];
+      const after = matches[gap];
+      if (!before && !after) continue;
+      const lines = Math.max(controlGap, experimentGap);
+      const opposite = (from: FrameMatch | undefined, to: FrameMatch | undefined, side: 'controlIndex' | 'experimentIndex', line: number): number => {
+        if (!from) return to![side];
+        if (!to) return from[side];
+        return from[side] + (to[side] - from[side]) * ((line + 1) / (lines + 1));
+      };
+      for (let line = 0; line < lines; line++) {
+        pairs.push(controlGap > 0
+          ? {
+            controlIndex: control + line,
+            experimentIndex: opposite(before, after, 'experimentIndex', line),
+          }
+          : {
+            controlIndex: opposite(before, after, 'controlIndex', line),
+            experimentIndex: experiment + line,
+          });
+      }
     }
     control = end.controlIndex + 1;
     experiment = end.experimentIndex + 1;

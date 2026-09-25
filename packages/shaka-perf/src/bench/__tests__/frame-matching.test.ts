@@ -264,42 +264,73 @@ describe('pairUnmatchedFrames', () => {
   const match = (controlIndex: number, experimentIndex: number): FrameMatch =>
     ({ controlIndex, experimentIndex, distance: 0, deltaMs: 0 });
 
-  it('spreads the lines over the longer run instead of crowding them', () => {
-    // Between the matches at 0 and 10/4 the control ran 9 frames where the
-    // experiment ran 3: the three lines land on the first, middle and last.
-    const pairs = pairUnmatchedFrames([match(0, 0), match(10, 4)], 11, 5);
+  it('gives every frame of the longer run its own line, spread over the shorter', () => {
+    // Between the matches at 0 and 6/3 the control ran 5 frames, the experiment 2.
+    const pairs = pairUnmatchedFrames([match(0, 0), match(6, 3)], 7, 4);
+
+    expect(pairs.map((p) => p.controlIndex)).toEqual([1, 2, 3, 4, 5]);
+    expect(pairs.map((p) => p.experimentIndex)).toEqual([1, 1, 2, 2, 2]);
+  });
+
+  it('fans the leftovers onto the held frame when the other side painted nothing', () => {
+    // The experiment flickers three extra frames after the only match; the
+    // control is still showing frame 0, so all three join it.
+    const pairs = pairUnmatchedFrames([match(0, 0)], 1, 4);
 
     expect(pairs).toEqual([
-      { controlIndex: 1, experimentIndex: 1 },
-      { controlIndex: 5, experimentIndex: 2 },
-      { controlIndex: 9, experimentIndex: 3 },
+      { controlIndex: 0, experimentIndex: 1 },
+      { controlIndex: 0, experimentIndex: 2 },
+      { controlIndex: 0, experimentIndex: 3 },
     ]);
   });
 
-  it('meets the middle when the shorter run is a single frame', () => {
-    const pairs = pairUnmatchedFrames([match(0, 0), match(6, 2)], 7, 3);
+  it('slides the free end between the frames bounding a one-sided gap', () => {
+    // The experiment paints three frames where the control paints none, so the
+    // lines end a quarter, a half and three quarters of the way between the
+    // control frames on either side of the gap - never all on one frame.
+    const pairs = pairUnmatchedFrames([match(0, 0), match(1, 4)], 2, 5);
 
-    expect(pairs).toEqual([{ controlIndex: 3, experimentIndex: 1 }]);
+    expect(pairs).toEqual([
+      { controlIndex: 0.25, experimentIndex: 1 },
+      { controlIndex: 0.5, experimentIndex: 2 },
+      { controlIndex: 0.75, experimentIndex: 3 },
+    ]);
   });
 
-  it('treats the head and the tail as gaps too', () => {
-    // Head: control 0,1 against experiment 0 — one line, on the head's middle.
-    // Tail: control 3,4 against experiment 2,3 — a line each.
-    const pairs = pairUnmatchedFrames([match(2, 1)], 5, 4);
+  it('fans onto the closing match when the extra frames come before any match', () => {
+    const pairs = pairUnmatchedFrames([match(3, 0)], 4, 1);
 
     expect(pairs).toEqual([
       { controlIndex: 0, experimentIndex: 0 },
-      { controlIndex: 3, experimentIndex: 2 },
-      { controlIndex: 4, experimentIndex: 3 },
+      { controlIndex: 1, experimentIndex: 0 },
+      { controlIndex: 2, experimentIndex: 0 },
     ]);
   });
 
   it('spans the whole of both runs when nothing matched', () => {
     expect(pairUnmatchedFrames([], 3, 5)).toEqual([
       { controlIndex: 0, experimentIndex: 0 },
+      { controlIndex: 1, experimentIndex: 1 },
       { controlIndex: 1, experimentIndex: 2 },
+      { controlIndex: 2, experimentIndex: 3 },
       { controlIndex: 2, experimentIndex: 4 },
     ]);
+  });
+
+  it('leaves no frame of either run without a line, on real frames', () => {
+    const { control, experiment } = loadFixture('homepage-desktop');
+    const { matches } = matchFrames(control, experiment);
+    const lines = [
+      ...matches.map((m) => ({ controlIndex: m.controlIndex, experimentIndex: m.experimentIndex })),
+      ...pairUnmatchedFrames(matches, control.length, experiment.length),
+    ];
+
+    for (let i = 0; i < control.length; i++) {
+      expect(lines.some((l) => l.controlIndex === i)).toBe(true);
+    }
+    for (let j = 0; j < experiment.length; j++) {
+      expect(lines.some((l) => l.experimentIndex === j)).toBe(true);
+    }
   });
 
   it('never crosses a match or another pair on real frames', () => {
@@ -308,12 +339,13 @@ describe('pairUnmatchedFrames', () => {
     const lines = [
       ...matches.map((m) => ({ controlIndex: m.controlIndex, experimentIndex: m.experimentIndex })),
       ...pairUnmatchedFrames(matches, control.length, experiment.length),
-    ].sort((a, b) => a.controlIndex - b.controlIndex);
+    ].sort((a, b) => a.controlIndex - b.controlIndex || a.experimentIndex - b.experimentIndex);
 
     expect(lines.length).toBeGreaterThan(matches.length);
+    // Lines may share an endpoint (that is the fan), but one must never reach
+    // back past another: no pair of lines crosses.
     for (let i = 1; i < lines.length; i++) {
-      expect(lines[i].controlIndex).toBeGreaterThan(lines[i - 1].controlIndex);
-      expect(lines[i].experimentIndex).toBeGreaterThan(lines[i - 1].experimentIndex);
+      expect(lines[i].experimentIndex).toBeGreaterThanOrEqual(lines[i - 1].experimentIndex);
     }
   });
 });
