@@ -59,40 +59,36 @@ describe('selectReviewPairs', () => {
     };
   }
 
-  it('keeps the ends of the matching and mismatching runs', () => {
+  it('gives every stripe its own ends, matching and mismatching alike', () => {
     const { matches, mismatches, control, experiment } = fixture('homepage-desktop');
 
     const pairs = selectReviewPairs(matches, mismatches, control, experiment);
 
-    const kinds = pairs.map((p) => `${p.kind} ${p.role}`);
-    expect(kinds).toContain('match first');
-    expect(kinds).toContain('match last');
-    expect(kinds).toContain('mismatch first');
-    expect(kinds).toContain('mismatch last');
-    // The first match is the first of the run, the last is the last of it.
-    const firstMatch = pairs.find((p) => p.kind === 'match' && p.role === 'first')!;
-    const lastMatch = pairs.find((p) => p.kind === 'match' && p.role === 'last')!;
-    expect(firstMatch.controlIndex).toBe(matches[0].controlIndex);
-    expect(lastMatch.controlIndex).toBe(matches[matches.length - 1].controlIndex);
+    // Walk the timeline and count the stripes: runs of neighbouring lines of
+    // one kind. Every stripe must be represented.
+    const lines = [
+      ...matches.map((m) => ({ kind: 'match', c: m.controlIndex })),
+      ...mismatches.map((p) => ({ kind: 'mismatch', c: Math.round(p.controlIndex) })),
+    ].sort((a, b) => a.c - b.c);
+    const stripes = lines.filter((l, i) => i === 0 || l.kind !== lines[i - 1].kind).length;
+    expect(stripes).toBeGreaterThan(1);
+
+    const firsts = pairs.filter((p) => p.role === 'first');
+    expect(firsts.length).toBe(stripes);
+    expect(pairs.filter((p) => p.role === 'last').length).toBeLessThanOrEqual(stripes);
+    expect(new Set(pairs.map((p) => p.kind))).toEqual(new Set(['match', 'mismatch']));
   });
 
-  it('adds the biggest-differing pair only when it stands clear of the ends', () => {
+  it('adds the biggest-differing pair of a stripe only when it stands clear of that stripe\'s ends', () => {
     const { matches, mismatches, control, experiment } = fixture('homepage-desktop');
     const pairs = selectReviewPairs(matches, mismatches, control, experiment);
 
-    const largest = pairs.find((p) => p.role === 'largest');
-    const ends = pairs.filter((p) => p.kind === 'mismatch' && p.role !== 'largest');
-    const endMax = Math.max(...ends.map((p) => p.changedPixels));
-    if (largest) {
-      expect(largest.changedPixels).toBeGreaterThanOrEqual(endMax * LARGEST_DIFF_FACTOR);
-      // It is never one of the two ends repeated.
-      expect(ends.some((p) => p.controlIndex === largest.controlIndex)).toBe(false);
-    } else {
-      // Nothing in between differed by enough to be worth a third picture.
-      for (const pair of mismatches) {
-        const one = selectReviewPairs([], [pair], control, experiment)[0];
-        expect(one.changedPixels).toBeLessThan(endMax * LARGEST_DIFF_FACTOR);
-      }
+    for (const largest of pairs.filter((p) => p.role === 'largest')) {
+      expect(largest.kind).toBe('mismatch');
+      // Its own stripe's ends are the pairs around it in the returned order.
+      const at = pairs.indexOf(largest);
+      const ends = pairs.slice(0, at).reverse().find((p) => p.role === 'first')!;
+      expect(largest.changedPixels).toBeGreaterThanOrEqual(ends.changedPixels * LARGEST_DIFF_FACTOR);
     }
   });
 
