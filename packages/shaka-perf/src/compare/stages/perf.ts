@@ -53,6 +53,9 @@ export interface PerfArtifact {
   framesHref?: string;
   benchReportHref?: string;
   diffHrefs?: { label: string; href: string }[];
+  /** Report-relative path to the plain-text profile summary diff written for
+   *  an AI reviewer (`the_only_file_ai_needs_to_analyze.diff`). */
+  aiAnalysisDiffHref?: string;
 }
 
 export type PerfResult = PerfArtifact;
