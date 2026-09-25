@@ -79,43 +79,55 @@ export function selectReviewPairs(
     experimentIndex,
     changedPixels: changedPixels(controlIndex, experimentIndex),
   });
-  const ordered = <T extends { controlIndex: number; experimentIndex: number }>(list: readonly T[]) =>
-    [...list].sort((a, b) => a.controlIndex - b.controlIndex || a.experimentIndex - b.experimentIndex);
 
-  const pairs: ReviewPair[] = [];
+  // Every line of the timeline in order, each tagged with its kind. A line
+  // across a one-sided gap ends between two frames; the nearest one is the
+  // picture a reviewer would hold against the other side.
+  const lines = [
+    ...matches.map((m) => ({
+      kind: 'match' as const,
+      controlIndex: m.controlIndex,
+      experimentIndex: m.experimentIndex,
+    })),
+    ...mismatches.map((p) => ({
+      kind: 'mismatch' as const,
+      controlIndex: Math.round(p.controlIndex),
+      experimentIndex: Math.round(p.experimentIndex),
+    })),
+  ].sort((a, b) => a.controlIndex - b.controlIndex || a.experimentIndex - b.experimentIndex);
 
-  const matchList = ordered(matches);
-  if (matchList.length > 0) {
-    const first = matchList[0];
-    const last = matchList[matchList.length - 1];
-    pairs.push(pairOf('match', 'first', first.controlIndex, first.experimentIndex));
-    if (last !== first) pairs.push(pairOf('match', 'last', last.controlIndex, last.experimentIndex));
+  // A stripe is a run of neighbouring lines of the same kind - one stretch
+  // where the runs agree, or one stretch where they part. Each stripe gets its
+  // own pictures, so a reviewer sees every place the two runs diverged rather
+  // than the first and last of the whole profile.
+  const stripes: (typeof lines)[] = [];
+  for (const line of lines) {
+    const current = stripes[stripes.length - 1];
+    if (current && current[0].kind === line.kind) current.push(line);
+    else stripes.push([line]);
   }
 
-  // A line across a one-sided gap ends between two frames; the nearest one is
-  // the picture a reviewer would hold against the other side.
-  const mismatchList = ordered(mismatches).map((pair) => ({
-    controlIndex: Math.round(pair.controlIndex),
-    experimentIndex: Math.round(pair.experimentIndex),
-  }));
-  if (mismatchList.length > 0) {
-    const first = pairOf('mismatch', 'first', mismatchList[0].controlIndex, mismatchList[0].experimentIndex);
-    const end = mismatchList[mismatchList.length - 1];
-    const last = end === mismatchList[0]
-      ? undefined
-      : pairOf('mismatch', 'last', end.controlIndex, end.experimentIndex);
+  const pairs: ReviewPair[] = [];
+  for (const stripe of stripes) {
+    const kind = stripe[0].kind;
+    const first = pairOf(kind, 'first', stripe[0].controlIndex, stripe[0].experimentIndex);
     pairs.push(first);
+    const end = stripe[stripe.length - 1];
+    const last = stripe.length > 1
+      ? pairOf(kind, 'last', end.controlIndex, end.experimentIndex)
+      : undefined;
     if (last) pairs.push(last);
+    if (kind !== 'mismatch' || stripe.length <= 2) continue;
 
     let largest = first;
-    for (const pair of mismatchList) {
-      const candidate = pairOf('mismatch', 'largest', pair.controlIndex, pair.experimentIndex);
+    for (const line of stripe) {
+      const candidate = pairOf(kind, 'largest', line.controlIndex, line.experimentIndex);
       if (candidate.changedPixels > largest.changedPixels) largest = candidate;
     }
     const ends = Math.max(first.changedPixels, last?.changedPixels ?? 0);
-    const isEnd = (p: ReviewPair) => p.controlIndex === first.controlIndex
-      || (last != null && p.controlIndex === last.controlIndex);
-    if (!isEnd(largest) && largest.changedPixels >= ends * LARGEST_DIFF_FACTOR) {
+    const isEnd = largest.controlIndex === first.controlIndex
+      || (last != null && largest.controlIndex === last.controlIndex);
+    if (!isEnd && largest.changedPixels >= ends * LARGEST_DIFF_FACTOR) {
       pairs.push({ ...largest, role: 'largest' });
     }
   }
@@ -180,7 +192,7 @@ export function reviewFramesSummarySection(
 ): string {
   const lines = [
     '',
-    'Frames to review (the first and last matching pair, and the first, last and biggest-differing mismatching pair). LOOK at these images before drawing any conclusion about what the two sides rendered: the numbers above cannot tell you what changed on screen. Each mismatch also names a ready-made control-vs-experiment diff, red where the two disagree:',
+    'Frames to review. The timeline is a run of stripes - a stretch where the two runs agree, then a stretch where they part, and so on. Each stripe is stood for by its first and last pair, and a stripe of mismatches also by the pair that differs most when it stands well clear of the ends of that stripe. LOOK at these images before drawing any conclusion about what the two sides rendered: the numbers above cannot tell you what changed on screen. Each mismatch also names a ready-made control-vs-experiment diff, red where the two disagree:',
   ];
   if (!endsMatch) {
     lines.push(`  WARNING (${side}): the last frame is different. Either the test is unstable or the content has changed (both making perf-comparison unfair). Consider re-launching the low-noise perf-test.`);
