@@ -40,6 +40,14 @@ export const SAME_STATE_MAX_DISTANCE = 0.02;
  *  repainted, out of 255. Below this is JPEG and antialiasing noise. */
 const CELL_CHANGED_DELTA = 8;
 
+/**
+ * Biggest patch of touching changed pixels two frames may still show while
+ * counting as the same state. Measured over two real runs: pairs that look
+ * identical leave no connected patch at all, while every pair a person would
+ * call different showed one of at least 50 pixels - a scrolled chip list, say.
+ */
+export const SAME_STATE_MAX_CHANGED_PATCH = 50;
+
 /** Share of the grid that may be repainted while two frames still count as the
  *  same page state. The mean distance alone lets a real change through when it
  *  is faint but wide - pale skeleton blocks giving way to text measured 0.017
@@ -170,6 +178,68 @@ export function signatureDifference(a: FrameSignature, b: FrameSignature): Signa
 /** Mean absolute difference of two signatures, 0 (identical) to 1. */
 export function signatureDistance(a: FrameSignature, b: FrameSignature): number {
   return signatureDifference(a, b).distance;
+}
+
+/**
+ * Pixels must move this much in some channel to count as repainted, out of 255.
+ * Same floor as the grid cells: below it is JPEG and antialiasing noise.
+ */
+const PIXEL_CHANGED_DELTA = 8;
+
+/**
+ * Size of the biggest connected patch of pixels that differ between two
+ * frames. A signature says how MUCH of a frame changed; this says whether the
+ * change holds together. A repaint - a chip list scrolled by one row, a price
+ * that arrived - moves a compact patch of pixels, while the scattered pixels
+ * left by JPEG and antialiasing never join up, so a pair can be told apart on
+ * far fewer pixels once they sit together.
+ */
+export function largestChangedPatch(control: Buffer, experiment: Buffer): number {
+  const a = decodeJpeg(control);
+  const b = decodeJpeg(experiment);
+  if (a.width !== b.width || a.height !== b.height) return Infinity;
+  const width = a.width;
+  const height = a.height;
+  const changed = new Uint8Array(width * height);
+  for (let pixel = 0, i = 0; pixel < changed.length; pixel++, i += 4) {
+    const moved = Math.max(
+      Math.abs(a.data[i] - b.data[i]),
+      Math.abs(a.data[i + 1] - b.data[i + 1]),
+      Math.abs(a.data[i + 2] - b.data[i + 2]),
+    );
+    if (moved > PIXEL_CHANGED_DELTA) changed[pixel] = 1;
+  }
+
+  const seen = new Uint8Array(width * height);
+  const stack: number[] = [];
+  let largest = 0;
+  for (let start = 0; start < changed.length; start++) {
+    if (changed[start] === 0 || seen[start] === 1) continue;
+    let size = 0;
+    stack.length = 0;
+    stack.push(start);
+    seen[start] = 1;
+    while (stack.length > 0) {
+      const pixel = stack.pop()!;
+      size++;
+      const x = pixel % width;
+      const neighbours = [
+        x > 0 ? pixel - 1 : -1,
+        x < width - 1 ? pixel + 1 : -1,
+        pixel - width,
+        pixel + width,
+      ];
+      for (const neighbour of neighbours) {
+        if (neighbour < 0 || neighbour >= changed.length) continue;
+        if (changed[neighbour] === 1 && seen[neighbour] === 0) {
+          seen[neighbour] = 1;
+          stack.push(neighbour);
+        }
+      }
+    }
+    if (size > largest) largest = size;
+  }
+  return largest;
 }
 
 /** Signatures for a run's frames, in time order. */
