@@ -426,6 +426,9 @@ const NET_LANE_W = 14;
 // no labels and no arrowheads, so the space is better spent on the frames.
 const MATCH_COL_W = 64;
 
+/** Width of the strip beside the frames that the stage label reads down. */
+const ANNOTATION_GUTTER_W = 22;
+
 // Point-in-time events (paint marks, user timings, layout shifts, interactions)
 // have no duration, so their rectangle gets a fixed pixel height — tall enough
 // to show a few characters of vertical label before truncating. This height is
@@ -1133,6 +1136,18 @@ function buildTimelineHtml(
   // sections). The accent border + chip sit on the screenshot-facing inner edge.
   // A band keeps its raw height in the aligned view: the wait for the other
   // side sits just before the band's own annotation, outside the band.
+  // One line per stage boundary, spanning that side's half of the graph so a
+  // stage can be read across the frames, the network and the main thread at
+  // once. Positioned in the container itself; the bands stay in their column.
+  function renderStageDividers(side: 'control' | 'experiment', profile: ProfileData): string {
+    return buildAnnotationGroups(profile).map((g) => {
+      const color = TIMELINE_GROUP_PALETTE[g.colorIndex % TIMELINE_GROUP_PALETTE.length]!;
+      const top = Math.round(g.startMs * pxPerMs);
+      const aligned = alignedAttrs(side, g.startMs, g.startMs, top, null);
+      return `<div class="stage-divider ${side}"${aligned} style="top:${top}px;border-color:${color.accent}"></div>`;
+    }).join('\n');
+  }
+
   function renderGroupBands(side: 'control' | 'experiment', profile: ProfileData): string {
     return buildAnnotationGroups(profile).map(g => {
       const color = TIMELINE_GROUP_PALETTE[g.colorIndex % TIMELINE_GROUP_PALETTE.length]!;
@@ -1161,12 +1176,15 @@ function buildTimelineHtml(
   // 9-col grid: other | main-thread | network | screenshot | match | screenshot |
   // network | main-thread | other. Network sits innermost (nearest the
   // screenshots), then the main-thread occupancy track, then the event markers.
-  const gridColumns = `${otherColW}px ${mainColW}px ${netColW}px ${frameWidth}px ${MATCH_COL_W}px ${frameWidth}px ${netColW}px ${mainColW}px ${otherColW}px`;
+  // The frames columns carry a gutter on their outer edge, kept clear of
+  // pictures so the annotation stage's label always has somewhere to live.
+  const frameColW = frameWidth + ANNOTATION_GUTTER_W;
+  const gridColumns = `${otherColW}px ${mainColW}px ${netColW}px ${frameColW}px ${MATCH_COL_W}px ${frameColW}px ${netColW}px ${mainColW}px ${otherColW}px`;
   // Total grid width. The legend is given this exact width and centred the same
   // way (margin: 0 auto), so its centre tracks the diff column / screenshots even
   // when the grid is wider than the viewport (where `margin:auto` collapses to 0
   // and the diagram is no longer at the page centre).
-  const timelineWidthPx = otherColW * 2 + mainColW * 2 + netColW * 2 + frameWidth * 2 + MATCH_COL_W;
+  const timelineWidthPx = otherColW * 2 + mainColW * 2 + netColW * 2 + frameColW * 2 + MATCH_COL_W;
 
   // Legend chips so the category colours are self-explanatory.
   const legendHtml = STRIP_LEGEND.map(({ cat, label }) =>
@@ -1246,6 +1264,47 @@ function buildTimelineHtml(
     display: none;
   }
   body.has-baseline .baseline-line { display: block; }
+  /* Where one annotated stage gives way to the next, drawn across the half of
+     the graph that side owns - the two sides reach a stage at their own time. */
+  .stage-divider {
+    position: absolute;
+    border-top: 1px dashed;
+    opacity: 0.55;
+    z-index: 4;
+    pointer-events: none;
+  }
+  /* They stop at the match column: that column belongs to both sides, and a
+     line crossing it would claim one side's timing for the other. */
+  .stage-divider.control { left: 0; right: calc(50% + ${MATCH_COL_W / 2}px); }
+  .stage-divider.experiment { left: calc(50% + ${MATCH_COL_W / 2}px); right: 0; }
+
+  /* Time zero. The frames are centred on their moment, so the first one reaches
+     above this line; the line says where the clock actually starts. */
+  .nav-start-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    border-top: 1px dashed #64748b;
+    z-index: 6;
+    pointer-events: none;
+  }
+  .nav-start-line span {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: #64748b;
+    color: #ffffff;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
   /* Follows the cursor across the whole graph, for reading one moment off
      every column at once. */
   .cursor-line {
@@ -1287,7 +1346,10 @@ function buildTimelineHtml(
     grid-template-columns: ${gridColumns};
     gap: 0;
     width: fit-content;
-    margin: 0 auto;
+    /* Half a frame of air at the top: frames are centred on their moment, so
+       the first one reaches above time zero and would otherwise sit under the
+       sticky header. */
+    margin: ${FRAME_HEIGHT / 2}px auto 0;
     position: relative;
   }
   .header-row {
@@ -1373,23 +1435,28 @@ function buildTimelineHtml(
   }
   .screenshot-col.control .group-band { border-right: 3px solid var(--accent); }
   .screenshot-col.experiment .group-band { border-left: 3px solid var(--accent); }
+  /* Read down the gutter rather than across the frames: a centred frame is as
+     wide as its column and would otherwise cover a horizontal label. */
   .group-chip {
     position: absolute;
     top: 2px;
+    writing-mode: vertical-rl;
     font-family: ui-sans-serif, system-ui, sans-serif;
     font-size: 10px;
     font-weight: 700;
     color: #ffffff;
-    padding: 1px 6px;
+    padding: 6px 1px;
     border-radius: 3px;
-    max-width: calc(100% - 8px);
+    max-height: calc(100% - 8px);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     z-index: 5;
   }
-  .screenshot-col.control .group-chip { right: 4px; }
-  .screenshot-col.experiment .group-chip { left: 4px; }
+  .screenshot-col.control .group-chip { right: 2px; }
+  .screenshot-col.experiment .group-chip { left: 2px; }
+  .screenshot-col.control .screenshot-entry { padding-right: ${ANNOTATION_GUTTER_W}px; }
+  .screenshot-col.experiment .screenshot-entry { padding-left: ${ANNOTATION_GUTTER_W}px; }
 
   /* Aligned view: the earlier side's wait for the other side, drawn in the
      frames column. Sits under the frames (z-index 0) because the frame just
@@ -1441,6 +1508,10 @@ function buildTimelineHtml(
     right: 0;
     z-index: 1;
     text-align: center;
+    /* The entry's top is the frame's moment on the timeline, and the frame is
+       centred on it rather than starting there: scrubbing then puts the picture
+       of that moment beside the events and requests of that moment. */
+    transform: translateY(-50%);
   }
   /* Frames hidden under later overlapping frames bump to the front on hover. */
   .screenshot-entry:hover { z-index: 100; }
@@ -1473,6 +1544,32 @@ function buildTimelineHtml(
   /* Catches the cursor in the gaps between lines, where the scrub line lives. */
   .match-arrows-surface { fill: transparent; pointer-events: all; }
   .scrub-line { fill: none; stroke: #64748b; stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.9; pointer-events: none; }
+  .scrub-line.match { stroke: #16a34a; stroke-width: 2; }
+  .scrub-line.mismatch { stroke: #dc2626; stroke-width: 2; }
+  /* The pair riding the cursor: a copy of each side's current frame, drawn at
+     its end of the line so the frames on the timeline never move. */
+  .scrub-ghost {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 120;
+    text-align: center;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  .screenshot-col.control .scrub-ghost { padding-right: ${ANNOTATION_GUTTER_W}px; }
+  .screenshot-col.experiment .scrub-ghost { padding-left: ${ANNOTATION_GUTTER_W}px; }
+  .scrub-ghost img {
+    max-width: 100%;
+    max-height: ${FRAME_HEIGHT}px;
+    display: block;
+    margin: 0 auto;
+    border-radius: 3px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  .scrub-ghost.control img { outline: 2px solid #2563eb; }
+  .scrub-ghost.experiment img { outline: 2px solid #dc2626; }
+
   /* The pixels the hovered pair disagrees about, beside the experiment frame. */
   .pixel-diff {
     position: absolute;
@@ -1488,15 +1585,11 @@ function buildTimelineHtml(
     z-index: 101;
   }
   .arrow-kind-label { pointer-events: none; }
-  .match-arrow.active { stroke-width: 2.5; opacity: 1; }
   .arrow-kind-label { font: 700 9px system-ui, sans-serif; letter-spacing: 0.04em; paint-order: stroke; stroke: rgba(255, 255, 255, 0.9); stroke-width: 3; }
   .arrow-kind-label.match { fill: #15803d; }
   .arrow-kind-label.mismatch { fill: #b91c1c; }
   /* Hovering a connection lifts both of its frames above their neighbours,
      the same way hovering a frame itself does. */
-  .screenshot-entry.matched { z-index: 100; }
-  .screenshot-entry.matched img { outline: 2px solid #2563eb; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); }
-  .screenshot-col.experiment .screenshot-entry.matched img { outline-color: #dc2626; }
 
   /* The frame and its annotation overlay share a shrink-to-fit positioned
      wrapper, so the SVG (stretched edge-to-edge) lines its pixel-space viewBox
@@ -1591,6 +1684,9 @@ function buildTimelineHtml(
   </div>
 
   <div class="timeline-container">
+    ${renderStageDividers('control', control)}
+    ${renderStageDividers('experiment', experiment)}
+    <div class="nav-start-line"><span>navigation start</span></div>
     <div class="cursor-line" id="cursor-line"></div>
     <div class="baseline-line" id="baseline-line"><span class="baseline-label"><span id="baseline-text"></span><span class="baseline-clear" id="baseline-clear" title="reset the baseline to 0ms">&times;</span></span></div>
     <div class="net-col control col-other">
@@ -1643,7 +1739,7 @@ function buildTimelineHtml(
       // data-atop / data-ah hold the aligned-view position and height where
       // they differ from the raw ones.
       const positioned = [];
-      document.querySelectorAll('.screenshot-entry, .net-bar, .group-band, .wait-box').forEach(function(el) {
+      document.querySelectorAll('.screenshot-entry, .net-bar, .group-band, .wait-box, .stage-divider').forEach(function(el) {
         var top = parseFloat(el.style.top);
         var h = el.dataset.h ? parseFloat(el.dataset.h) : null;
         positioned.push({
@@ -1678,7 +1774,7 @@ function buildTimelineHtml(
       applyScale();
       // The frames are data URIs, so their boxes may not be laid out at first
       // paint; re-measure once everything has loaded.
-      window.addEventListener('load', function() { measureSideFrames(); drawArrows(); });
+      window.addEventListener('load', function() { measureSideFrames(); applyTopSpace(); drawArrows(); });
 
       var alignBox = document.getElementById('align-annotations');
       alignBox.addEventListener('change', function() {
@@ -1709,7 +1805,6 @@ function buildTimelineHtml(
       var arrowSvg = document.getElementById('match-arrows');
       var arrowGroup = document.getElementById('match-arrow-paths');
       var arrows = [];
-      var hoveredArrow = null;
 
       // Every frame of a side, in time order, so the scrub can name the one
       // showing at a given height.
@@ -1725,6 +1820,22 @@ function buildTimelineHtml(
         });
       }
       measureSideFrames();
+
+      // A centred frame reaches half its own height above its moment, and an
+      // entry is taller than its picture (the timestamp sits above it), so the
+      // air at the top is measured rather than guessed.
+      function applyTopSpace() {
+        var tallest = 0;
+        ['control', 'experiment'].forEach(function(side) {
+          sideFrames[side].forEach(function(frame) {
+            if (frame.half > tallest) tallest = frame.half;
+          });
+        });
+        if (tallest > 0) {
+          document.querySelector('.timeline-container').style.marginTop = Math.ceil(tallest + 8) + 'px';
+        }
+      }
+      applyTopSpace();
 
       FRAME_CONNECTIONS.forEach(function(conn) {
         var path = document.createElementNS(SVG_NS, 'path');
@@ -1749,10 +1860,11 @@ function buildTimelineHtml(
       arrowKindLabel.style.display = 'none';
       arrowSvg.appendChild(arrowKindLabel);
 
-      function arrowY(el, half) {
+      function frameCentreY(el) {
         // The element's own style.top is already scaled by applyScale, so read
-        // it back rather than tracking the scale twice.
-        return parseFloat(el.style.top) + half;
+        // it back rather than tracking the scale twice. CSS centres the frame
+        // on that line, so its centre IS the top.
+        return parseFloat(el.style.top);
       }
 
       // Centre of a frame, or the point between two of them when the index is
@@ -1762,9 +1874,9 @@ function buildTimelineHtml(
         if (list.length === 0) return 0;
         var low = Math.max(0, Math.min(list.length - 1, Math.floor(idx)));
         var high = Math.max(0, Math.min(list.length - 1, Math.ceil(idx)));
-        var yLow = arrowY(list[low].el, list[low].half);
+        var yLow = frameCentreY(list[low].el);
         if (high === low) return yLow;
-        return yLow + (arrowY(list[high].el, list[high].half) - yLow) * (idx - low);
+        return yLow + (frameCentreY(list[high].el) - yLow) * (idx - low);
       }
 
       function drawArrows() {
@@ -1780,72 +1892,78 @@ function buildTimelineHtml(
           arrow.path.setAttribute('d', d);
           arrow.hit.setAttribute('d', d);
         });
-        placeArrowKindLabel();
-      }
-
-      function placeArrowKindLabel() {
-        if (!hoveredArrow) return;
-        var width = arrowSvg.clientWidth || arrowSvg.getBoundingClientRect().width;
-        var midY = (frameIndexY('control', hoveredArrow.c)
-          + frameIndexY('experiment', hoveredArrow.e)) / 2;
-        arrowKindLabel.setAttribute('x', String(width / 2));
-        arrowKindLabel.setAttribute('y', String(midY - 5));
       }
 
 
-      // Sticky: the lift and the label stay on the last line hovered, so the
+
+      // Sticky: the copies and the label stay on the last line hovered, so the
       // pair can be compared after the cursor has left the line. The next
       // hover moves them.
-      var liftedFrames = [];
       // The two frames the cursor is on. Each is slid so its centre sits on its
       // end of the line: the pair then travels with the cursor instead of
       // jumping from one frame's place to the next. Without heights the frames
       // stay where the timeline put them.
-      function liftPair(left, right, leftY, rightY) {
-        liftedFrames.forEach(function(el) {
-          el.classList.remove('matched');
-          el.style.transform = '';
-        });
-        liftedFrames = [];
-        [[left, leftY], [right, rightY]].forEach(function(entry) {
-          var frame = entry[0];
-          if (!frame) return;
-          frame.el.classList.add('matched');
-          if (entry[1] != null) {
-            frame.el.style.transform =
-              'translateY(' + (entry[1] - arrowY(frame.el, frame.half)) + 'px)';
-          }
-          liftedFrames.push(frame.el);
-        });
+      // The pair that rides the cursor is a copy: the frames themselves stay
+      // where their moment puts them, and only gain the outline.
+      var ghosts = {};
+      ['control', 'experiment'].forEach(function(side) {
+        var ghost = document.createElement('div');
+        ghost.className = 'scrub-ghost ' + side;
+        ghost.innerHTML = '<img alt="" />';
+        ghost.style.display = 'none';
+        document.querySelector('.screenshot-col.' + side).appendChild(ghost);
+        ghosts[side] = ghost;
+      });
+
+      function showGhost(side, frame, y) {
+        var ghost = ghosts[side];
+        if (!frame || y == null) {
+          ghost.style.display = 'none';
+          return;
+        }
+        var source = frame.el.querySelector('img');
+        var src = source ? source.getAttribute('src') : '';
+        var image = ghost.querySelector('img');
+        if (image.getAttribute('src') !== src) image.setAttribute('src', src);
+        ghost.style.top = y + 'px';
+        ghost.style.display = 'block';
       }
 
-      function setArrowHover(arrow) {
-        hoveredArrow = arrow;
-        arrows.forEach(function(other) {
-          other.path.classList.toggle('active', other === arrow);
-        });
+      // Only the copies at the cursor are marked; the timeline's own frames are
+      // left exactly as they are, neither moved nor outlined.
+      function liftPair(left, right, leftY, rightY) {
+        showGhost('control', left, leftY);
+        showGhost('experiment', right, rightY);
+      }
+
+      // The dotted line the cursor drags carries the verdict: it turns green or
+      // red and takes the label. The lines on the timeline are never restyled -
+      // they belong to their frames, not to the pointer.
+      function setScrubKind(arrow, midY) {
+        scrubLine.setAttribute('class', 'scrub-line' + (arrow ? ' ' + arrow.kind : ''));
         if (!arrow) {
           arrowKindLabel.style.display = 'none';
           return;
         }
+        var width = arrowSvg.clientWidth || arrowSvg.getBoundingClientRect().width;
         arrowKindLabel.setAttribute('class', 'arrow-kind-label ' + arrow.kind);
         arrowKindLabel.textContent = arrow.kind === 'match' ? 'MATCH' : 'MISMATCH';
+        arrowKindLabel.setAttribute('x', String(width / 2));
+        arrowKindLabel.setAttribute('y', String(midY - 5));
         arrowKindLabel.style.display = '';
-        placeArrowKindLabel();
       }
 
 
       // The frame nearest the line's end on that side, so the pair travels with
       // the cursor: it swaps at the midpoint between two frames rather than
       // staying on the one above for the whole stretch.
-      function frameNearest(side, y) {
+      // The frame a side is SHOWING at this height: the last one it painted at
+      // or before it, never the one it paints next.
+      function frameShowing(side, y) {
         var list = sideFrames[side];
         var found = list[0];
-        var bestDistance = Infinity;
         for (var i = 0; i < list.length; i++) {
-          var distance = Math.abs(arrowY(list[i].el, list[i].half) - y);
-          if (distance > bestDistance) break;
-          bestDistance = distance;
+          if (frameCentreY(list[i].el) > y) break;
           found = list[i];
         }
         return found;
@@ -1887,15 +2005,14 @@ function buildTimelineHtml(
         var x2 = Math.max(3, width - 2);
         scrubLine.setAttribute('d', 'M2,' + y1 + ' L' + x2 + ',' + y2);
         scrubLine.style.display = '';
-        var left = frameNearest('control', y1);
-        var right = frameNearest('experiment', y2);
+        var left = frameShowing('control', y1);
+        var right = frameShowing('experiment', y2);
         liftPair(left, right, y1, y2);
         showPixelDiff(left, right);
-        // Highlight whatever joins the pair now on screen: reading the cursor's
-        // distance to a line instead would light up a line whose frames are not
-        // the ones being shown.
+        // The verdict for the pair now on screen, shown on the dotted line
+        // rather than by lighting up a line on the timeline.
         var arrow = left && right ? arrowByPair[left.idx + ':' + right.idx] : null;
-        setArrowHover(arrow || null);
+        setScrubKind(arrow || null, (y1 + y2) / 2);
         if (arrow) showArrowLabel(arrow, clientY);
         else showScrubLabel(left, right, clientY);
       }
@@ -1967,21 +2084,46 @@ function buildTimelineHtml(
           pixelDiffKey = key;
         }
         pixelDiff.style.width = experimentImage.clientWidth + 'px';
-        right.el.appendChild(pixelDiff);
+        ghosts.experiment.appendChild(pixelDiff);
       }
 
+      // Everything the scrub draws lives and dies with the cursor being over
+      // the middle column: the copies, the dotted line and its verdict.
       function hideScrub() {
         hidePixelDiff();
         scrubLine.style.display = 'none';
-        // Back to their own places in time; the outline stays until the next hover.
-        liftedFrames.forEach(function(el) { el.style.transform = ''; });
+        arrowKindLabel.style.display = 'none';
+        ghosts.control.style.display = 'none';
+        ghosts.experiment.style.display = 'none';
       }
 
+      var lastPointer = null;
+      var pointerOverColumn = false;
       arrowSvg.addEventListener('mousemove', function(e) {
+        lastPointer = { x: e.clientX, y: e.clientY };
+        pointerOverColumn = true;
         showScrub(e.clientY);
       });
+      // Scrolling slides the graph under a cursor that never moved, so the
+      // reading is taken again from where the pointer now sits - but only while
+      // the cursor is still over the column. The last position it held there is
+      // not reason enough to draw the pair again.
+      window.addEventListener('scroll', function() {
+        if (!pointerOverColumn || !lastPointer) return;
+        var box = arrowSvg.getBoundingClientRect();
+        var inside = lastPointer.x >= box.left && lastPointer.x <= box.right
+          && lastPointer.y >= box.top && lastPointer.y <= box.bottom;
+        if (inside) {
+          showScrub(lastPointer.y);
+        } else {
+          // The column scrolled out from under it.
+          pointerOverColumn = false;
+          hideScrub();
+        }
+      }, { passive: true });
 
       arrowSvg.addEventListener('mouseleave', function() {
+        pointerOverColumn = false;
         hideScrub();
         arrowLabel.style.display = 'none';
       });
@@ -1991,9 +2133,8 @@ function buildTimelineHtml(
       document.addEventListener('mouseover', function(e) {
         var target = e.target instanceof Element ? e.target : null;
         if (!target || !target.closest('.screenshot-entry')) return;
-        setArrowHover(null);
-        liftPair(null, null);
-        hidePixelDiff();
+        setScrubKind(null, 0);
+        hideScrub();
         arrowLabel.style.display = 'none';
       });
       arrowGroup.addEventListener('mouseout', function(e) {
@@ -2110,12 +2251,22 @@ function buildTimelineHtml(
 
       var container = document.querySelector('.timeline-container');
       var cursorLine = document.getElementById('cursor-line');
-      container.addEventListener('mousemove', function(e) {
-        var y = e.clientY - container.getBoundingClientRect().top;
-        updateStatus(Math.max(0, y / scale), e.clientY);
+      var lastContainerPointer = null;
+      function readAt(clientY) {
+        var y = clientY - container.getBoundingClientRect().top;
+        updateStatus(Math.max(0, y / scale), clientY);
         cursorLine.style.top = y + 'px';
         cursorLine.style.display = 'block';
+      }
+      container.addEventListener('mousemove', function(e) {
+        lastContainerPointer = e.clientY;
+        readAt(e.clientY);
       });
+      window.addEventListener('scroll', function() {
+        if (lastContainerPointer != null && cursorLine.style.display === 'block') {
+          readAt(lastContainerPointer);
+        }
+      }, { passive: true });
       container.addEventListener('mouseleave', function() {
         cursorLine.style.display = 'none';
       });
