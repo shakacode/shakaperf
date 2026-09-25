@@ -373,25 +373,6 @@ function encodePngDataUri(pixels: Uint8Array, width: number, height: number): st
 }
 
 /**
- * Drop frames whose JPEG bytes match the last kept frame. The trace emits a
- * screenshot per compositor frame, so a page that sits still repeats the same
- * picture for dozens of rows. Chrome encodes these deterministically (one
- * quantization table, and the same picture always gives the same bytes), so a
- * byte difference is always a real repaint, however faint: comparing bytes
- * keeps every one and has no compression noise to filter, where any colour
- * tolerance would also drop real one-level changes. The FIRST frame of a
- * repeated run survives, so the timeline still shows when each state appeared.
- */
-export function dedupeIdenticalScreenshots(screenshots: readonly Screenshot[]): Screenshot[] {
-  const kept: Screenshot[] = [];
-  for (const s of screenshots) {
-    if (kept.length > 0 && s.snapshot.equals(kept[kept.length - 1].snapshot)) continue;
-    kept.push(s);
-  }
-  return kept;
-}
-
-/**
  * Per frame, a transparent PNG with every pixel that changed at all since the
  * previous frame painted red. Exact, like the dedupe, so on a deduped side
  * every frame after the first marks the pixels that got it kept. The encoding
@@ -1001,6 +982,13 @@ function buildTimelineHtml(
   matches: readonly FrameMatch[],
   mismatches: readonly FramePair[],
 ): string {
+  // A line's end is usually a frame, but across a one-sided gap it sits between
+  // two of them, so the index can be fractional and the time reads the same way.
+  const frameTimeAt = (frames: readonly Screenshot[], index: number): number => {
+    const low = Math.max(0, Math.min(frames.length - 1, Math.floor(index)));
+    const high = Math.max(0, Math.min(frames.length - 1, Math.ceil(index)));
+    return frames[low].timeMs + (frames[high].timeMs - frames[low].timeMs) * (index - low);
+  };
   // Every line in the middle column: the frames showing the same state
   // (green) and, between them, the leftovers each side paired in order (red).
   const connections = [
@@ -1011,7 +999,8 @@ function buildTimelineHtml(
       c: p.controlIndex,
       e: p.experimentIndex,
       d: Math.round(
-        experiment.screenshots[p.experimentIndex].timeMs - control.screenshots[p.controlIndex].timeMs,
+        frameTimeAt(experiment.screenshots, p.experimentIndex)
+        - frameTimeAt(control.screenshots, p.controlIndex),
       ),
       k: 'mismatch',
     })),
@@ -1078,7 +1067,9 @@ function buildTimelineHtml(
   // heights depend on the rendered image, so the browser measures them (see
   // drawArrows in the script below).
   function renderMatchArrows(): string {
-    return `<svg class="match-arrows" id="match-arrows"><g id="match-arrow-paths"></g></svg>`;
+    return `<svg class="match-arrows" id="match-arrows">`
+      + `<rect class="match-arrows-surface" x="0" y="0" width="100%" height="100%"></rect>`
+      + `<g id="match-arrow-paths"></g></svg>`;
   }
 
   // The stretch a side spent waiting for the other to reach the same
@@ -1456,6 +1447,10 @@ function buildTimelineHtml(
   .match-arrow.match { stroke: #16a34a; }
   .match-arrow.mismatch { stroke: #dc2626; }
   .match-arrow-hit { fill: none; stroke: transparent; stroke-width: 12; cursor: pointer; }
+  /* Catches the cursor in the gaps between lines, where the scrub line lives. */
+  .match-arrows-surface { fill: transparent; pointer-events: all; }
+  .scrub-line { fill: none; stroke: #64748b; stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.9; pointer-events: none; }
+  .arrow-kind-label { pointer-events: none; }
   .match-arrow.active { stroke-width: 2.5; opacity: 1; }
   .arrow-kind-label { font: 700 9px system-ui, sans-serif; letter-spacing: 0.04em; paint-order: stroke; stroke: rgba(255, 255, 255, 0.9); stroke-width: 3; }
   .arrow-kind-label.match { fill: #15803d; }
@@ -1645,7 +1640,7 @@ function buildTimelineHtml(
       applyScale();
       // The frames are data URIs, so their boxes may not be laid out at first
       // paint; re-measure once everything has loaded.
-      window.addEventListener('load', function() { measureArrowFrames(); drawArrows(); });
+      window.addEventListener('load', function() { measureSideFrames(); drawArrows(); });
 
       var alignBox = document.getElementById('align-annotations');
       alignBox.addEventListener('change', function() {
@@ -1668,50 +1663,70 @@ function buildTimelineHtml(
       // rather than computed; it does not change with zoom (frames carry no
       // data-h), so measuring once is enough and only the tops move.
       var FRAME_CONNECTIONS = ${JSON.stringify(connections)};
+      var FRAME_TIMES = ${JSON.stringify({
+        control: control.screenshots.map((s) => Math.round(s.timeMs)),
+        experiment: experiment.screenshots.map((s) => Math.round(s.timeMs)),
+      })};
       var SVG_NS = 'http://www.w3.org/2000/svg';
       var arrowSvg = document.getElementById('match-arrows');
       var arrowGroup = document.getElementById('match-arrow-paths');
       var arrows = [];
       var hoveredArrow = null;
 
-      function frameEntry(side, idx) {
-        return document.querySelector('.screenshot-col.' + side + ' .screenshot-entry[data-frame-idx="' + idx + '"]');
+      // Every frame of a side, in time order, so the scrub can name the one
+      // showing at a given height.
+      var sideFrames = { control: [], experiment: [] };
+      function measureSideFrames() {
+        ['control', 'experiment'].forEach(function(side) {
+          sideFrames[side] = [].map.call(
+            document.querySelectorAll('.screenshot-col.' + side + ' .screenshot-entry'),
+            function(el) {
+              return { el: el, idx: Number(el.getAttribute('data-frame-idx')), half: el.offsetHeight / 2 };
+            },
+          );
+        });
       }
+      measureSideFrames();
 
       FRAME_CONNECTIONS.forEach(function(conn) {
-        var left = frameEntry('control', conn.c);
-        var right = frameEntry('experiment', conn.e);
-        if (!left || !right) return;
         var path = document.createElementNS(SVG_NS, 'path');
         path.setAttribute('class', 'match-arrow ' + conn.k);
         var hit = document.createElementNS(SVG_NS, 'path');
         hit.setAttribute('class', 'match-arrow-hit');
         arrowGroup.appendChild(path);
         arrowGroup.appendChild(hit);
-        arrows.push({
-          left: left, right: right, path: path, hit: hit,
-          delta: conn.d, kind: conn.k, halfLeft: 0, halfRight: 0,
-        });
+        arrows.push({ c: conn.c, e: conn.e, path: path, hit: hit, delta: conn.d, kind: conn.k });
       });
 
       // Sits above the hovered line, in the middle column's own pixel space.
+      // Drawn between two connections while the cursor slides down the column.
+      var scrubLine = document.createElementNS(SVG_NS, 'path');
+      scrubLine.setAttribute('class', 'scrub-line');
+      scrubLine.style.display = 'none';
+      arrowSvg.appendChild(scrubLine);
+
       var arrowKindLabel = document.createElementNS(SVG_NS, 'text');
       arrowKindLabel.setAttribute('class', 'arrow-kind-label');
       arrowKindLabel.setAttribute('text-anchor', 'middle');
       arrowKindLabel.style.display = 'none';
       arrowSvg.appendChild(arrowKindLabel);
 
-      function measureArrowFrames() {
-        arrows.forEach(function(arrow) {
-          arrow.halfLeft = arrow.left.offsetHeight / 2;
-          arrow.halfRight = arrow.right.offsetHeight / 2;
-        });
-      }
-
       function arrowY(el, half) {
         // The element's own style.top is already scaled by applyScale, so read
         // it back rather than tracking the scale twice.
         return parseFloat(el.style.top) + half;
+      }
+
+      // Centre of a frame, or the point between two of them when the index is
+      // fractional — the free end of a line drawn across a one-sided gap.
+      function frameIndexY(side, idx) {
+        var list = sideFrames[side];
+        if (list.length === 0) return 0;
+        var low = Math.max(0, Math.min(list.length - 1, Math.floor(idx)));
+        var high = Math.max(0, Math.min(list.length - 1, Math.ceil(idx)));
+        var yLow = arrowY(list[low].el, list[low].half);
+        if (high === low) return yLow;
+        return yLow + (arrowY(list[high].el, list[high].half) - yLow) * (idx - low);
       }
 
       function drawArrows() {
@@ -1721,8 +1736,8 @@ function buildTimelineHtml(
         var x1 = 2;
         var x2 = Math.max(x1 + 1, width - 2);
         arrows.forEach(function(arrow) {
-          var y1 = arrowY(arrow.left, arrow.halfLeft);
-          var y2 = arrowY(arrow.right, arrow.halfRight);
+          var y1 = frameIndexY('control', arrow.c);
+          var y2 = frameIndexY('experiment', arrow.e);
           var d = 'M' + x1 + ',' + y1 + ' L' + x2 + ',' + y2;
           arrow.path.setAttribute('d', d);
           arrow.hit.setAttribute('d', d);
@@ -1733,23 +1748,43 @@ function buildTimelineHtml(
       function placeArrowKindLabel() {
         if (!hoveredArrow) return;
         var width = arrowSvg.clientWidth || arrowSvg.getBoundingClientRect().width;
-        var midY = (arrowY(hoveredArrow.left, hoveredArrow.halfLeft)
-          + arrowY(hoveredArrow.right, hoveredArrow.halfRight)) / 2;
+        var midY = (frameIndexY('control', hoveredArrow.c)
+          + frameIndexY('experiment', hoveredArrow.e)) / 2;
         arrowKindLabel.setAttribute('x', String(width / 2));
         arrowKindLabel.setAttribute('y', String(midY - 5));
       }
 
-      measureArrowFrames();
 
       // Sticky: the lift and the label stay on the last line hovered, so the
       // pair can be compared after the cursor has left the line. The next
       // hover moves them.
+      var liftedFrames = [];
+      // The two frames the cursor is on. Each is slid so its centre sits on its
+      // end of the line: the pair then travels with the cursor instead of
+      // jumping from one frame's place to the next. Without heights the frames
+      // stay where the timeline put them.
+      function liftPair(left, right, leftY, rightY) {
+        liftedFrames.forEach(function(el) {
+          el.classList.remove('matched');
+          el.style.transform = '';
+        });
+        liftedFrames = [];
+        [[left, leftY], [right, rightY]].forEach(function(entry) {
+          var frame = entry[0];
+          if (!frame) return;
+          frame.el.classList.add('matched');
+          if (entry[1] != null) {
+            frame.el.style.transform =
+              'translateY(' + (entry[1] - arrowY(frame.el, frame.half)) + 'px)';
+          }
+          liftedFrames.push(frame.el);
+        });
+      }
+
       function setArrowHover(arrow) {
         hoveredArrow = arrow;
         arrows.forEach(function(other) {
           other.path.classList.toggle('active', other === arrow);
-          other.left.classList.toggle('matched', other === arrow);
-          other.right.classList.toggle('matched', other === arrow);
         });
         if (!arrow) {
           arrowKindLabel.style.display = 'none';
@@ -1773,8 +1808,8 @@ function buildTimelineHtml(
         var best = null;
         var bestDistance = Infinity;
         arrows.forEach(function(arrow) {
-          var y1 = arrowY(arrow.left, arrow.halfLeft);
-          var y2 = arrowY(arrow.right, arrow.halfRight);
+          var y1 = frameIndexY('control', arrow.c);
+          var y2 = frameIndexY('experiment', arrow.e);
           var dx = x2 - x1;
           var dy = y2 - y1;
           var t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
@@ -1787,14 +1822,80 @@ function buildTimelineHtml(
             best = arrow;
           }
         });
-        return bestDistance <= 10 ? best : null;
+        return bestDistance <= 5 ? best : null;
       }
 
-      arrowGroup.addEventListener('mousemove', function(e) {
+
+      // The frame nearest the line's end on that side, so the pair travels with
+      // the cursor: it swaps at the midpoint between two frames rather than
+      // staying on the one above for the whole stretch.
+      function frameNearest(side, y) {
+        var list = sideFrames[side];
+        var found = list[0];
+        var bestDistance = Infinity;
+        for (var i = 0; i < list.length; i++) {
+          var distance = Math.abs(arrowY(list[i].el, list[i].half) - y);
+          if (distance > bestDistance) break;
+          bestDistance = distance;
+          found = list[i];
+        }
+        return found;
+      }
+
+      function arrowMidY(arrow) {
+        return (frameIndexY('control', arrow.c) + frameIndexY('experiment', arrow.e)) / 2;
+      }
+
+      // Connections never cross, so their vertical order is fixed once.
+      var arrowsByHeight = arrows.slice().sort(function(a, b) { return arrowMidY(a) - arrowMidY(b); });
+
+      // Between two connections the timeline has no line of its own, yet both
+      // runs are still showing a frame. Interpolating between the neighbours
+      // gives that in-between moment a line: it slides with the cursor, and the
+      // two frames it lands on light up, so dragging down the column plays the
+      // pair like a video.
+      function showScrub(clientY, arrow) {
+        if (arrowsByHeight.length === 0) return;
+        var box = arrowSvg.getBoundingClientRect();
+        var cursorY = clientY - box.top;
+        var next = 0;
+        while (next < arrowsByHeight.length && arrowMidY(arrowsByHeight[next]) < cursorY) next++;
+        var below = arrowsByHeight[Math.min(next, arrowsByHeight.length - 1)];
+        var above = arrowsByHeight[Math.max(0, next - 1)];
+        var spanTop = arrowMidY(above);
+        var spanBottom = arrowMidY(below);
+        var t = spanBottom > spanTop
+          ? Math.max(0, Math.min(1, (cursorY - spanTop) / (spanBottom - spanTop)))
+          : 0;
+        var lerp = function(a, b) { return a + (b - a) * t; };
+        var y1 = lerp(frameIndexY('control', above.c), frameIndexY('control', below.c));
+        var y2 = lerp(frameIndexY('experiment', above.e), frameIndexY('experiment', below.e));
+        var width = arrowSvg.clientWidth || box.width;
+        var x2 = Math.max(3, width - 2);
+        scrubLine.setAttribute('d', 'M2,' + y1 + ' L' + x2 + ',' + y2);
+        scrubLine.style.display = '';
+        var left = frameNearest('control', y1);
+        var right = frameNearest('experiment', y2);
+        liftPair(left, right, y1, y2);
+        if (arrow) showArrowLabel(arrow, clientY);
+        else showScrubLabel(left, right, clientY);
+      }
+
+      function hideScrub() {
+        scrubLine.style.display = 'none';
+        // Back to their own places in time; the outline stays until the next hover.
+        liftedFrames.forEach(function(el) { el.style.transform = ''; });
+      }
+
+      arrowSvg.addEventListener('mousemove', function(e) {
         var arrow = nearestArrow(e.clientX, e.clientY);
-        if (!arrow) return;
         setArrowHover(arrow);
-        showArrowLabel(arrow, e.clientY);
+        showScrub(e.clientY, arrow);
+      });
+
+      arrowSvg.addEventListener('mouseleave', function() {
+        hideScrub();
+        arrowLabel.style.display = 'none';
       });
 
       // Hovering a frame drops the sticky pair: the lift is there to compare
@@ -1803,6 +1904,7 @@ function buildTimelineHtml(
         var target = e.target instanceof Element ? e.target : null;
         if (!target || !target.closest('.screenshot-entry')) return;
         setArrowHover(null);
+        liftPair(null, null);
         arrowLabel.style.display = 'none';
       });
       arrowGroup.addEventListener('mouseout', function(e) {
@@ -1816,6 +1918,17 @@ function buildTimelineHtml(
       arrowLabel.className = 'status-chip';
       arrowLabel.style.display = 'none';
       document.body.appendChild(arrowLabel);
+      function showScrubLabel(left, right, clientY) {
+        if (!left || !right) return;
+        var lt = FRAME_TIMES.control[left.idx];
+        var rt = FRAME_TIMES.experiment[right.idx];
+        var sign = rt - lt > 0 ? '+' : '';
+        arrowLabel.textContent = 'control ' + (lt / 1000).toFixed(2) + 's · experiment '
+          + (rt / 1000).toFixed(2) + 's (' + sign + (rt - lt) + 'ms)';
+        arrowLabel.style.display = 'block';
+        arrowLabel.style.top = Math.min(clientY + 18, window.innerHeight - 26) + 'px';
+      }
+
       function showArrowLabel(arrow, clientY) {
         var sign = arrow.delta > 0 ? '+' : '';
         var kind = arrow.kind === 'match' ? 'match' : 'no match';
@@ -2028,10 +2141,6 @@ export interface GenerateTimelineComparisonOptions {
 export function generateTimelineComparison(options: GenerateTimelineComparisonOptions): void {
   const control = parseProfile(options.controlProfilePath);
   const experiment = parseProfile(options.experimentProfilePath);
-  // Before anything reads the frames: the arrows, the frame-to-event bucketing
-  // and the px-per-ms scale all follow from this set.
-  control.screenshots = dedupeIdenticalScreenshots(control.screenshots);
-  experiment.screenshots = dedupeIdenticalScreenshots(experiment.screenshots);
   const alignment = alignAnnotations(annotationPoints(control), annotationPoints(experiment));
   // Pair the frames showing the same page state. Raw trace times, not aligned
   // ones: aligning only moves frames on screen, it does not change which
