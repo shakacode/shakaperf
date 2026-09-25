@@ -78,7 +78,7 @@ export async function runLighthouse(
         profilePath,
         JSON.stringify(runnerResult.artifacts.Trace)
       );
-      summarizePerformanceProfile(profilePath, profilePath.replace('.json', '.summary.txt'));
+      summarizePerformanceProfile(profilePath, profilePath.replace('.json', '.summary.txt'), group);
     }
   }
 

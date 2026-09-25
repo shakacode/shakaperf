@@ -12,7 +12,7 @@ import {
   createPipeline,
   type ChipStageResults,
 } from '../pipeline/pipeline';
-import { emptyMachineReadableSummary } from '../stage/stage';
+import { emptyMachineReadableSummary, type JsonValue } from '../stage/stage';
 import {
   type PerfLowNoiseResult,
   type PerfMetric,
@@ -174,7 +174,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
         saveArtifacts: true,
         statisticalAnalysis: false,
       },
-      machineReadableSummary: emptyMachineReadableSummary,
+      machineReadableSummary: lowNoisePerfSummary,
       applies(_test, _viewport, priorOutcomes) {
         return priorOutcomes.get('visreg')?.kind !== 'error' &&
           priorOutcomes.get('perf-warmup')?.kind !== 'error' &&
@@ -321,6 +321,16 @@ function entriesHave<M>(
 }
 
 type PerfMetricListKey = 'regressedMetrics' | 'improvedMetrics';
+// report.json points an AI reviewer at the one artifact it should read: the
+// plain-text diff of the two performance profile summaries.
+function lowNoisePerfSummary(measurement: PerfLowNoiseResult): JsonValue {
+  if (!measurement.aiAnalysisDiffHref) return {};
+  return {
+    aiAnalysisDiffHref: measurement.aiAnalysisDiffHref,
+    instructions: 'Read this plain-text diff of the control and experiment performance profile summaries for the details behind the numbers. Its last section lists the screenshot pairs to look at; open them before drawing conclusions.',
+  };
+}
+
 type PerfChipResult = PerfResult | PerfLowNoiseResult;
 type AccessibilityChipResult = AccessibilityCompareResult;
 
