@@ -25,7 +25,15 @@ import { decodeJpeg } from './decode-jpeg';
 // Re-exported: this module was decodeJpeg's home before the frame matcher
 // needed it too, and several callers import it from here.
 export { decodeJpeg };
-import { matchFrames, pairUnmatchedFrames, signFrames, type FrameMatch, type FramePair } from './frame-matching';
+import {
+  largestChangedPatch,
+  matchFrames,
+  pairUnmatchedFrames,
+  signFrames,
+  SAME_STATE_MAX_CHANGED_PATCH,
+  type FrameMatch,
+  type FramePair,
+} from './frame-matching';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const jpeg = require('jpeg-js') as { decode(buf: Buffer, opts?: { useTArray: boolean }): { width: number; height: number; data: Uint8Array } };
@@ -981,6 +989,7 @@ function buildTimelineHtml(
   alignment: TimelineAlignment,
   matches: readonly FrameMatch[],
   mismatches: readonly FramePair[],
+  changedMatches: ReadonlySet<FrameMatch>,
 ): string {
   // A line's end is usually a frame, but across a one-sided gap it sits between
   // two of them, so the index can be fractional and the time reads the same way.
@@ -993,7 +1002,10 @@ function buildTimelineHtml(
   // (green) and, between them, the leftovers each side paired in order (red).
   const connections = [
     ...matches.map((m) => ({
-      c: m.controlIndex, e: m.experimentIndex, d: Math.round(m.deltaMs), k: 'match',
+      c: m.controlIndex,
+      e: m.experimentIndex,
+      d: Math.round(m.deltaMs),
+      k: changedMatches.has(m) ? 'mismatch' : 'match',
     })),
     ...mismatches.map((p) => ({
       c: p.controlIndex,
@@ -1234,6 +1246,17 @@ function buildTimelineHtml(
     display: none;
   }
   body.has-baseline .baseline-line { display: block; }
+  /* Follows the cursor across the whole graph, for reading one moment off
+     every column at once. */
+  .cursor-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px solid rgba(17, 24, 39, 0.35);
+    z-index: 7;
+    pointer-events: none;
+    display: none;
+  }
   .baseline-label {
     position: absolute;
     display: inline-flex;
@@ -1450,6 +1473,20 @@ function buildTimelineHtml(
   /* Catches the cursor in the gaps between lines, where the scrub line lives. */
   .match-arrows-surface { fill: transparent; pointer-events: all; }
   .scrub-line { fill: none; stroke: #64748b; stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.9; pointer-events: none; }
+  /* The pixels the hovered pair disagrees about, beside the experiment frame. */
+  .pixel-diff {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    margin-left: 8px;
+    height: auto;
+    border: 2px solid #dc2626;
+    border-radius: 3px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+    z-index: 101;
+  }
   .arrow-kind-label { pointer-events: none; }
   .match-arrow.active { stroke-width: 2.5; opacity: 1; }
   .arrow-kind-label { font: 700 9px system-ui, sans-serif; letter-spacing: 0.04em; paint-order: stroke; stroke: rgba(255, 255, 255, 0.9); stroke-width: 3; }
@@ -1554,6 +1591,7 @@ function buildTimelineHtml(
   </div>
 
   <div class="timeline-container">
+    <div class="cursor-line" id="cursor-line"></div>
     <div class="baseline-line" id="baseline-line"><span class="baseline-label"><span id="baseline-text"></span><span class="baseline-clear" id="baseline-clear" title="reset the baseline to 0ms">&times;</span></span></div>
     <div class="net-col control col-other">
       ${renderStrip('control', 'other', controlStrip.other)}
@@ -1796,35 +1834,6 @@ function buildTimelineHtml(
         placeArrowKindLabel();
       }
 
-      // The hit strokes overlap wherever frames are dense, so the line the
-      // cursor is actually closest to wins rather than whichever path is on top.
-      function nearestArrow(clientX, clientY) {
-        var box = arrowSvg.getBoundingClientRect();
-        var px = clientX - box.left;
-        var py = clientY - box.top;
-        var width = arrowSvg.clientWidth || box.width;
-        var x1 = 2;
-        var x2 = Math.max(x1 + 1, width - 2);
-        var best = null;
-        var bestDistance = Infinity;
-        arrows.forEach(function(arrow) {
-          var y1 = frameIndexY('control', arrow.c);
-          var y2 = frameIndexY('experiment', arrow.e);
-          var dx = x2 - x1;
-          var dy = y2 - y1;
-          var t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
-          t = Math.max(0, Math.min(1, t));
-          var ex = px - (x1 + t * dx);
-          var ey = py - (y1 + t * dy);
-          var distance = Math.sqrt(ex * ex + ey * ey);
-          if (distance < bestDistance) {
-            bestDistance = distance;
-            best = arrow;
-          }
-        });
-        return bestDistance <= 5 ? best : null;
-      }
-
 
       // The frame nearest the line's end on that side, so the pair travels with
       // the cursor: it swaps at the midpoint between two frames rather than
@@ -1854,7 +1863,11 @@ function buildTimelineHtml(
       // gives that in-between moment a line: it slides with the cursor, and the
       // two frames it lands on light up, so dragging down the column plays the
       // pair like a video.
-      function showScrub(clientY, arrow) {
+      // The line joining two frames, when one does.
+      var arrowByPair = {};
+      arrows.forEach(function(arrow) { arrowByPair[arrow.c + ':' + arrow.e] = arrow; });
+
+      function showScrub(clientY) {
         if (arrowsByHeight.length === 0) return;
         var box = arrowSvg.getBoundingClientRect();
         var cursorY = clientY - box.top;
@@ -1877,20 +1890,95 @@ function buildTimelineHtml(
         var left = frameNearest('control', y1);
         var right = frameNearest('experiment', y2);
         liftPair(left, right, y1, y2);
+        showPixelDiff(left, right);
+        // Highlight whatever joins the pair now on screen: reading the cursor's
+        // distance to a line instead would light up a line whose frames are not
+        // the ones being shown.
+        var arrow = left && right ? arrowByPair[left.idx + ':' + right.idx] : null;
+        setArrowHover(arrow || null);
         if (arrow) showArrowLabel(arrow, clientY);
         else showScrubLabel(left, right, clientY);
       }
 
+      // What the two pictures actually disagree about, drawn beside the
+      // experiment frame: the frames are already on the page, so the diff is
+      // computed here rather than shipped as another image per pair. Only for
+      // a pair no match line joins - matched frames are the same state.
+      var matchedPairs = {};
+      FRAME_CONNECTIONS.forEach(function(conn) {
+        if (conn.k === 'match') matchedPairs[conn.c + ':' + conn.e] = true;
+      });
+      var pixelDiff = document.createElement('canvas');
+      pixelDiff.className = 'pixel-diff';
+      var pixelDiffScratch = document.createElement('canvas');
+      var pixelDiffKey = null;
+
+      function hidePixelDiff() {
+        if (pixelDiff.parentNode) pixelDiff.parentNode.removeChild(pixelDiff);
+      }
+
+      function showPixelDiff(left, right) {
+        var key = left && right ? left.idx + ':' + right.idx : null;
+        if (!key || matchedPairs[key]) {
+          hidePixelDiff();
+          return;
+        }
+        var controlImage = left.el.querySelector('img');
+        var experimentImage = right.el.querySelector('img');
+        if (!controlImage || !experimentImage
+          || !controlImage.naturalWidth || !experimentImage.naturalWidth) {
+          hidePixelDiff();
+          return;
+        }
+        if (pixelDiffKey !== key) {
+          var w = Math.min(controlImage.naturalWidth, experimentImage.naturalWidth);
+          var h = Math.min(controlImage.naturalHeight, experimentImage.naturalHeight);
+          pixelDiffScratch.width = w;
+          pixelDiffScratch.height = h;
+          var scratch = pixelDiffScratch.getContext('2d');
+          scratch.drawImage(controlImage, 0, 0);
+          var controlPixels = scratch.getImageData(0, 0, w, h).data;
+          scratch.clearRect(0, 0, w, h);
+          scratch.drawImage(experimentImage, 0, 0);
+          var experimentPixels = scratch.getImageData(0, 0, w, h).data;
+          var out = scratch.createImageData(w, h);
+          for (var i = 0; i < out.data.length; i += 4) {
+            var moved = Math.max(
+              Math.abs(controlPixels[i] - experimentPixels[i]),
+              Math.abs(controlPixels[i + 1] - experimentPixels[i + 1]),
+              Math.abs(controlPixels[i + 2] - experimentPixels[i + 2]),
+            );
+            if (moved > 8) {
+              out.data[i] = 220;
+              out.data[i + 1] = 38;
+              out.data[i + 2] = 38;
+            } else {
+              // A pale ghost of the experiment frame, so the red has a page to sit on.
+              var faded = 255 - (255 - experimentPixels[i + 1]) * 0.15;
+              out.data[i] = faded;
+              out.data[i + 1] = faded;
+              out.data[i + 2] = faded;
+            }
+            out.data[i + 3] = 255;
+          }
+          pixelDiff.width = w;
+          pixelDiff.height = h;
+          pixelDiff.getContext('2d').putImageData(out, 0, 0);
+          pixelDiffKey = key;
+        }
+        pixelDiff.style.width = experimentImage.clientWidth + 'px';
+        right.el.appendChild(pixelDiff);
+      }
+
       function hideScrub() {
+        hidePixelDiff();
         scrubLine.style.display = 'none';
         // Back to their own places in time; the outline stays until the next hover.
         liftedFrames.forEach(function(el) { el.style.transform = ''; });
       }
 
       arrowSvg.addEventListener('mousemove', function(e) {
-        var arrow = nearestArrow(e.clientX, e.clientY);
-        setArrowHover(arrow);
-        showScrub(e.clientY, arrow);
+        showScrub(e.clientY);
       });
 
       arrowSvg.addEventListener('mouseleave', function() {
@@ -1905,6 +1993,7 @@ function buildTimelineHtml(
         if (!target || !target.closest('.screenshot-entry')) return;
         setArrowHover(null);
         liftPair(null, null);
+        hidePixelDiff();
         arrowLabel.style.display = 'none';
       });
       arrowGroup.addEventListener('mouseout', function(e) {
@@ -2020,9 +2109,15 @@ function buildTimelineHtml(
       }
 
       var container = document.querySelector('.timeline-container');
+      var cursorLine = document.getElementById('cursor-line');
       container.addEventListener('mousemove', function(e) {
         var y = e.clientY - container.getBoundingClientRect().top;
         updateStatus(Math.max(0, y / scale), e.clientY);
+        cursorLine.style.top = y + 'px';
+        cursorLine.style.display = 'block';
+      });
+      container.addEventListener('mouseleave', function() {
+        cursorLine.style.display = 'none';
       });
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') setBaseline(0);
@@ -2146,10 +2241,20 @@ export function generateTimelineComparison(options: GenerateTimelineComparisonOp
   // ones: aligning only moves frames on screen, it does not change which
   // picture is which.
   const { matches } = matchFrames(signFrames(control.screenshots), signFrames(experiment.screenshots));
+  // The signatures say how much of a frame moved, which misses a small change
+  // that holds together - a chip list scrolled by a row. Those pairs keep
+  // their place in the sequence, since the runs are still at the same step,
+  // but the line is drawn as a mismatch.
+  const changedMatches = new Set(matches.filter((m) => (
+    largestChangedPatch(
+      control.screenshots[m.controlIndex].snapshot,
+      experiment.screenshots[m.experimentIndex].snapshot,
+    ) > SAME_STATE_MAX_CHANGED_PATCH
+  )));
   const mismatches = pairUnmatchedFrames(
     matches, control.screenshots.length, experiment.screenshots.length,
   );
-  const html = buildTimelineHtml(control, experiment, alignment, matches, mismatches);
+  const html = buildTimelineHtml(control, experiment, alignment, matches, mismatches, changedMatches);
   writeFileSync(options.outputPath, html);
 }
 
