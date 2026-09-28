@@ -8,6 +8,7 @@
 import type { RunnerResult } from 'lighthouse';
 
 import type { Marker, PhaseSample } from './lighthouse-config';
+import { SHAKA_PERF_ANNOTATION_PREFIX } from './timeline-comparison';
 
 function extractPerformanceMarkerTime(
   result: RunnerResult,
@@ -105,4 +106,21 @@ export function extractMarkers(
   }
 
   return results;
+}
+
+export interface TestAnnotationMark {
+  label: string;
+  /** Raw trace `ts` in microseconds (devtools-log clock). */
+  timestampUs: number;
+}
+
+/** The `annotate(label)` marks of a run, in trace order. */
+export function extractTestAnnotationMarks(result: RunnerResult): TestAnnotationMark[] {
+  const marks: TestAnnotationMark[] = [];
+  for (const event of result.artifacts.Trace.traceEvents as any[]) {
+    if (typeof event.name !== 'string' || !event.name.startsWith(SHAKA_PERF_ANNOTATION_PREFIX)) continue;
+    if (!event.cat?.includes('blink.user_timing') || event.ts == null) continue;
+    marks.push({ label: event.name.slice(SHAKA_PERF_ANNOTATION_PREFIX.length), timestampUs: event.ts });
+  }
+  return marks;
 }

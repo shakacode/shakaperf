@@ -10,7 +10,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { LighthouseConfig, PhaseSample } from './lighthouse-config';
-import { extractLcpRawTraceTimestamp } from './extract-markers';
+import { extractLcpRawTraceTimestamp, extractTestAnnotationMarks } from './extract-markers';
 import { saveNetworkActivity, analyzeNetworkResources } from './network-activity';
 import { runPatchedLighthouse } from './patched-lighthouse';
 import { summarizePerformanceProfile } from './summarize-performance-profile';
@@ -90,6 +90,7 @@ export async function runLighthouse(
     url,
     saveArtifacts ? `${namePrefix}_network_activity.txt` : null,
     lcpTs,
+    extractTestAnnotationMarks(runnerResult),
   );
 
   // Console messages are no longer read off Lighthouse's `ConsoleMessages`

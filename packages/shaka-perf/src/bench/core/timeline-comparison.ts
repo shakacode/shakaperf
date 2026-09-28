@@ -125,7 +125,7 @@ function loadGraphqlOps(networkActivityPath: string): string[] {
   try { text = readFileSync(networkActivityPath, 'utf-8'); } catch { return []; }
   const ops: string[] = [];
   for (const line of text.split('\n')) {
-    // e.g. `[12.345s] [6.78 KB] /graphql?operationName="popmenuConfig"` — the URL
+    // e.g. `[6.78 KB] /graphql?operationName="popmenuConfig"` — the URL
     // is the last whitespace-separated token (op names never contain spaces).
     const url = line.trim().split(/\s+/).pop() ?? '';
     const q = url.indexOf('?');
