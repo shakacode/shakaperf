@@ -195,6 +195,11 @@ function runInit(opts: { out?: string; force?: boolean }): void {
   }
 
   console.log('');
-  console.log(chalk.gray('Next steps — In Claude code:'));
-  console.log(`${chalk.green('/goal /shaka-perf-dockerize')}${chalk.gray(' use playwright mcp to verify control and experiment builds look good.')}`);
+  console.log(chalk.gray('Next steps in Claude Code:'));
+  console.log(chalk.green('  /shaka-perf-dockerize'));
+  console.log(
+    chalk.gray(
+      'Or ask your agent: "Set up twin servers for this project and verify that the control and experiment builds look good."',
+    ),
+  );
 }
