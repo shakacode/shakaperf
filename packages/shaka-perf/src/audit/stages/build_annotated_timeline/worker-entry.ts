@@ -10,7 +10,9 @@ import { writeFileSync } from 'node:fs';
 import { parentPort } from 'node:worker_threads';
 import sharp from 'sharp';
 import {
-  attachPwInteractionsToKeptFrames,
+  bucketPlacedInteractions,
+  keepFramesAt,
+  placeInteractions,
   bucketEventsToFrames,
   copyPreviousFramesForAnnotations,
   deriveInteractionsPath,
@@ -21,13 +23,13 @@ import {
   loadScreenshotsFromVideo,
   parseProfile,
   profileFramesWithAnnotations,
-  syncDedupedVideoToTraceViaPixelmatchAnchors,
   type ArrowSpec,
   type FrameAnnotation,
   type ProfileData,
   type ProfileFrame,
   type Screenshot,
 } from '../../../bench/core';
+import { syncVideoToTraceViaFlashMarkers } from '../../../bench/core/screencast-flash-sync';
 import type { RecordedInteraction } from '../../../bench/core/interaction-recorder';
 import type {
   WorkerRequest,
@@ -174,22 +176,12 @@ async function runSyncScreencastToTrace(limitVideoFramesCount: number): Promise<
       inputFrameCount: state.profile.screenshots.length,
       keptFrameCount: state.profile.screenshots.length,
       removedFrameCount: 0,
-      anchorCount: 0,
       frameCapDropped: 0,
     };
   }
-  // Hard cap BEFORE dedupe: if the raw screencast has more frames than
-  // `limitVideoFramesCount`, evenly downsample it to the cap first. Dedupe is
-  // O(frames) of pixel work, so an unbounded screencast (slow page, long flow)
-  // can blow the per-task timeout; this bounds it regardless of input length.
-  // Even downsampling keeps the first and last frame and spreads the survivors
-  // uniformly, so the timeline still spans the whole load.
-  const shots = downsampleEvenly(rawShots, limitVideoFramesCount);
-  const frameCapDropped = rawShots.length - shots.length;
-  const synced = await syncDedupedVideoToTraceViaPixelmatchAnchors(
-    state.profile.screenshots,
-    shots,
-  );
+  const synced = await syncVideoToTraceViaFlashMarkers(state.profile.events, rawShots, {
+    limitVideoFramesCount,
+  });
   state.profile.screenshots = synced.screenshots.filter((s) => s.timeMs >= 0);
   state.rawSyncedScreencastShots = synced.rawSyncedScreenshots.filter((s) => s.timeMs >= 0);
   state.profile.maxTimeMs = state.profile.screenshots.length > 0
@@ -201,27 +193,8 @@ async function runSyncScreencastToTrace(limitVideoFramesCount: number): Promise<
     inputFrameCount: synced.stats.inputFrameCount,
     keptFrameCount: synced.stats.keptFrameCount,
     removedFrameCount: synced.stats.removedFrameCount,
-    anchorCount: synced.stats.anchorCount,
-    frameCapDropped,
+    frameCapDropped: synced.stats.frameCapDropped,
   };
-}
-
-/**
- * Evenly downsample `items` to at most `limit` elements, keeping the first and
- * last and spreading the survivors uniformly across the sequence. Returns the
- * input unchanged when it's already within the cap (or the cap is non-positive,
- * which disables the cap). Picks `limit` indices at `round(i*(n-1)/(limit-1))`;
- * since `n > limit` the step is > 1, so no index repeats.
- */
-function downsampleEvenly<T>(items: T[], limit: number): T[] {
-  if (limit <= 0 || items.length <= limit) return items;
-  if (limit === 1) return [items[0]];
-  const n = items.length;
-  const out: T[] = [];
-  for (let i = 0; i < limit; i++) {
-    out.push(items[Math.round((i * (n - 1)) / (limit - 1))]);
-  }
-  return out;
 }
 
 function runComputeFrames(profilePath: string, interactionsPathParam?: string): ComputeFramesResult {
@@ -230,6 +203,9 @@ function runComputeFrames(profilePath: string, interactionsPathParam?: string): 
   const interactionsPath = interactionsPathParam ?? deriveInteractionsPath(profilePath);
   const playwrightInteractions = loadPlaywrightInteractions(interactionsPath);
   state.playwrightInteractions = playwrightInteractions;
+  const rawSynced = state.rawSyncedScreencastShots ?? profile.screenshots;
+  const placed = placeInteractions(playwrightInteractions ?? [], profile.events, rawSynced);
+  profile.screenshots = keepFramesAt(profile.screenshots, rawSynced, placed.map((p) => p.frameTimeMs));
   const annotationFrames = copyPreviousFramesForAnnotations(
     profile.screenshots,
     profile.events,
@@ -251,23 +227,7 @@ function runComputeFrames(profilePath: string, interactionsPathParam?: string): 
   state.frames = computed.frames;
   state.arrows = computed.arrows;
   state.keptBuckets = computed.keptBuckets;
-  if (playwrightInteractions && playwrightInteractions.length > 0) {
-    const interactionRawFrames: ProfileFrame[] = (state.rawSyncedScreencastShots ?? profile.screenshots).map((s) => ({
-      timeMs: s.timeMs,
-      snapshot: s.snapshot,
-      imgW: 0,
-      imgH: 0,
-      copiedForAnnotation: s.copiedForAnnotation,
-    }));
-    attachPwInteractionsToKeptFrames(
-      interactionRawFrames,
-      computed.frames,
-      computed.arrows,
-      computed.keptBuckets,
-      playwrightInteractions,
-      profile.events,
-    );
-  }
+  bucketPlacedInteractions(computed.frames, computed.keptBuckets, placed);
   state.frameImages = new Array(computed.frames.length);
   return {
     frameCount: computed.frames.length,

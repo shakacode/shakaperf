@@ -38,7 +38,9 @@ export { summarizePerformanceProfile } from './summarize-performance-profile';
 export { generateHtmlDiffs } from './html-diff';
 export type { GenerateHtmlDiffsOptions } from './html-diff';
 export {
-  attachPwInteractionsToKeptFrames,
+  bucketPlacedInteractions,
+  keepFramesAt,
+  placeInteractions,
   bucketEventsToFrames,
   copyPreviousFramesForAnnotations,
   deriveInteractionsPath,
@@ -51,7 +53,6 @@ export {
   loadScreenshotsFromVideo,
   parseProfile,
   profileFramesWithAnnotations,
-  syncDedupedVideoToTraceViaPixelmatchAnchors,
 } from './timeline-comparison';
 export type {
   ArrowSpec,
@@ -65,3 +66,4 @@ export type {
   ScreencastSyncStats,
   Screenshot,
 } from './timeline-comparison';
+export { syncVideoToTraceViaFlashMarkers } from './screencast-flash-sync';

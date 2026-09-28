@@ -149,7 +149,7 @@ for (const sub of fs.readdirSync(RESULTS)) {
   // The contract is "every click's blue chip frame is also a red
   // overlay frame" — i.e. for each click we want to see both
   // annotations on the same captured frame. The interaction-overlay's
-  // 25 ms hide window straddles 1-2 video frames at 60 fps and dedup
+  // 50 ms hide window straddles 2-3 video frames at 60 fps and dedup
   // can keep neighbouring frames either side of the blue chip placement
   // (e.g. red rising before the chip lands, or lingering after). Those
   // extra red frames don't matter — the contract checks that the first

@@ -9,7 +9,7 @@ import type { BrowserContext } from 'playwright-core';
 
 // Injected into the page at document-start. Every click and every keydown
 // drops one red dot at the centre of the interacted element AND a large
-// red chip in the bottom-right corner, both for exactly 25 ms. Same dot,
+// red chip in the bottom-right corner, both for exactly 50 ms. Same dot,
 // same chip, same timer — clicks and key presses share one
 // `flash(target, text)` helper so they're visually identical except for
 // the chip's text. Chips are placed at fixed `bottom` slots so new chips
@@ -28,7 +28,9 @@ function overlayScript(): void {
   if (w.__shakaperfOverlayInstalled) return;
   w.__shakaperfOverlayInstalled = true;
 
-  const HIDE_MS = 25;
+  // Three 60fps frames: the chip must outlive the one-frame jitter between
+  // the interaction's next-paint time and the screencast frame that shows it.
+  const HIDE_MS = 50;
   const TARGET_W = 720;
   // Chip + font sizes are deliberately large so tesseract.js OCR (used by
   // the verify-click-coincidence validator) reliably reads the "Click" /
@@ -86,11 +88,19 @@ function overlayScript(): void {
     }
 
     const slot = takeSlot();
+    // Anchor to the bottom-right of what is ON SCREEN (the visual viewport),
+    // not with `right`/`bottom`: on a phone page wider than the screen, Chrome
+    // lays fixed elements out against the full content width (e.g. 901px
+    // while the screen shows 375px), so `right: 12px` lands off-screen.
+    const vv = window.visualViewport;
+    const cornerX = vv ? vv.offsetLeft + vv.width : root.clientWidth;
+    const cornerY = vv ? vv.offsetTop + vv.height : root.clientHeight;
     const chip = document.createElement('div');
     chip.textContent = text;
     chip.style.position = 'fixed';
-    chip.style.right = vw(EDGE_PX);
-    chip.style.bottom = vw(EDGE_PX + slot * SLOT_PX);
+    chip.style.left = 'calc(' + cornerX + 'px - ' + vw(EDGE_PX) + ')';
+    chip.style.top = 'calc(' + cornerY + 'px - ' + vw(EDGE_PX + slot * SLOT_PX) + ')';
+    chip.style.transform = 'translate(-100%, -100%)';
     chip.style.minWidth = vw(CHIP_PX);
     chip.style.minHeight = vw(CHIP_PX);
     chip.style.padding = vw(CHIP_PAD_Y) + ' ' + vw(CHIP_PAD_X);
