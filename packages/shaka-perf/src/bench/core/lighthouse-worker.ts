@@ -59,8 +59,7 @@ import { screencastRecorder } from './screencast-recorder';
 import { flashSyncMarker } from '../../pipeline/sync-flash-overlay';
 import {
   chromeVersionFromProductString,
-  matchRealChromeUserAgentVersion,
-  realChromeUserAgentForFormFactor,
+  matchUserAgentChromeVersion,
 } from '../../browser-user-agent';
 
 const execFileAsync = promisify(execFile);
@@ -151,6 +150,8 @@ class LighthouseWorkerSampler {
   private chrome: LaunchedChrome | null = null;
   private userDataDir: string | null = null;
   private keepBrowserOpen = false;
+  /** The viewport identity Chrome launched with, Chrome major already matched. */
+  private viewportUserAgent: string | undefined;
 
   async setupBrowser(options: {
     headed?: boolean;
@@ -173,23 +174,20 @@ class LighthouseWorkerSampler {
     if (!options.headed) {
       chromeFlags.unshift('--headless');
     }
-    // Pin pre-emulation traffic when the matching Playwright context also uses
-    // a viewport identity. Lighthouse applies its own CDP override before the
-    // measured navigation.
     if (process.env.SHAKAPERF_REAL_CHROME === '1') {
-      const formFactor = process.env.SHAKA_PERF_VIEWPORT_FORM_FACTOR;
       chromeFlags.push('--disable-blink-features=AutomationControlled');
-      const useViewportUserAgent =
-        formFactor === 'mobile'
-        || process.env.SHAKAPERF_REAL_CHROME_HEADLESS === '1';
-      if (formFactor && useViewportUserAgent) {
-        const browserVersion = await installedChromeVersion();
-        const userAgent = matchRealChromeUserAgentVersion(
-          realChromeUserAgentForFormFactor(formFactor),
-          browserVersion,
-        );
-        if (userAgent) chromeFlags.push(`--user-agent=${userAgent}`);
-      }
+    }
+    // The viewport's device identity, for everything before Lighthouse applies
+    // its own CDP override to the measured navigation (pre-navigation hooks,
+    // warm-ups). Empty on the headed real-Chrome desktop path, which keeps
+    // Chrome's native identity.
+    const viewportUserAgent = process.env.SHAKA_PERF_VIEWPORT_USER_AGENT;
+    if (viewportUserAgent) {
+      this.viewportUserAgent =
+        process.env.SHAKA_PERF_VIEWPORT_USER_AGENT_IS_EXPLICIT === '1'
+          ? viewportUserAgent
+          : matchUserAgentChromeVersion(viewportUserAgent, await installedChromeVersion());
+      chromeFlags.push(`--user-agent=${this.viewportUserAgent}`);
     }
 
     // Launch flags rather than a post-hoc move: this side owns its own Chrome.
@@ -294,6 +292,16 @@ class LighthouseWorkerSampler {
     let lhSettings = await this.getLighthouseSettings();
 
     lhSettings = { ...lhSettings, ...msg.options.lhConfig, port: this.chrome!.port };
+    // The parent lowers the viewport identity into `emulatedUserAgent` without
+    // knowing the installed Chrome; give Lighthouse the same version-matched
+    // string the launch flag got, so the measured navigation and everything
+    // before it claim one identity.
+    if (
+      this.viewportUserAgent
+      && lhSettings.emulatedUserAgent === process.env.SHAKA_PERF_VIEWPORT_USER_AGENT
+    ) {
+      lhSettings = { ...lhSettings, emulatedUserAgent: this.viewportUserAgent };
+    }
 
     const markers = testDef.markers ?? msg.options.markers;
     const { phases, accessibilityScore } = await this.runLighthouseWithPlaywright(

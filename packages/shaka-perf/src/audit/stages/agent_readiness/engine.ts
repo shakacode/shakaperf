@@ -13,7 +13,6 @@ import { isPublicHost } from '../../../net/public-host';
 import { looksLikeBotWall, scanLandedOnBotWall } from '../../bot-wall';
 import {
   isRealChromeEnabled,
-  realChromeContextOptions,
   realChromeUsesNativeIdentity,
   waitForBotWallToClear,
 } from '../../real-chrome';
@@ -22,21 +21,16 @@ import { resolveAgentReadinessConfig, type AgentReadinessEngineOptions, type Age
 import { extractPageSignals } from './extract';
 import type { AgentReadinessResult, PageSignals, RawFetchResult } from './types';
 import {
-  matchRealChromeUserAgentVersion,
-  realChromeUserAgentForFormFactor,
+  DESKTOP_USER_AGENT,
+  matchUserAgentChromeVersion,
+  userAgentForViewport,
 } from '../../../browser-user-agent';
+import { deviceContextOptions, type IdentityViewport } from '../../../device-identity';
 
 interface AgentReadinessSlotState extends PoolWorkerState {
   agentReadinessBrowser?: Browser;
 }
 
-// A realistic browser UA: we want the server's NORMAL initial HTML (what it
-// hands any first-time visitor before JS runs), not a bot-specific response and
-// not a challenge page triggered by an obvious crawler UA. The copy only ever
-// claims "the HTML your server returns before JavaScript runs", which is true
-// for whatever UA we send.
-const RAW_FETCH_UA =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 const RAW_HTML_MAX_BYTES = 3 * 1024 * 1024;
 const RAW_FETCH_MAX_REDIRECT_HOPS = 5;
 const nativeUserAgentByBrowser = new WeakMap<Browser, Promise<string | undefined>>();
@@ -74,7 +68,7 @@ export async function runAgentReadinessStage(
 export async function fetchRawHtml(
   url: string,
   timeoutMs: number,
-  userAgent = RAW_FETCH_UA,
+  userAgent = DESKTOP_USER_AGENT,
 ): Promise<{ html: string | null; status?: number; contentType?: string; bytes?: number }> {
   let target: URL;
   try {
@@ -143,20 +137,26 @@ export async function fetchRawHtml(
   }
 }
 
+// The raw fetch sends the same device identity as the rendered context for
+// this viewport row: we want the server's NORMAL initial HTML for that device
+// (what it hands any first-time visitor before JS runs), not a bot-specific
+// response and not a challenge page triggered by an obvious crawler UA. The
+// copy only ever claims "the HTML your server returns before JavaScript runs",
+// which is true for whatever UA we send. A headed real-Chrome desktop row uses
+// the browser's native identity, like its rendered context; a non-Chromium
+// engine has no Chrome version to match, so the device default goes as is.
 export function rawFetchUserAgentFor(
-  formFactor: string,
+  viewport: IdentityViewport,
   browserVersion?: string,
   nativeUserAgent?: string,
   usesChromium = true,
 ): string {
-  if (!usesChromium || !isRealChromeEnabled()) return RAW_FETCH_UA;
-  if (realChromeUsesNativeIdentity(formFactor)) {
-    return nativeUserAgent ?? RAW_FETCH_UA;
+  const deviceUserAgent = userAgentForViewport(viewport);
+  if (usesChromium && realChromeUsesNativeIdentity(viewport.formFactor)) {
+    return nativeUserAgent ?? deviceUserAgent;
   }
-  return matchRealChromeUserAgentVersion(
-    realChromeUserAgentForFormFactor(formFactor),
-    browserVersion,
-  ) ?? RAW_FETCH_UA;
+  if (viewport.userAgent || !usesChromium) return deviceUserAgent;
+  return matchUserAgentChromeVersion(deviceUserAgent, browserVersion);
 }
 
 function nativeBrowserUserAgent(browser: Browser): Promise<string | undefined> {
@@ -199,8 +199,8 @@ async function readRenderedSignals(
     // crawler ever reaches, which is the opposite of what this metric means.
     context = await browser.newContext({
       ...stageContextOptions(ctx.viewport, engineOptions.playwrightOptions),
-      ...realChromeContextOptions(
-        ctx.viewport.formFactor,
+      ...deviceContextOptions(
+        ctx.viewport,
         browser.version?.(),
         engineOptions.playwrightOptions.browser === 'chromium',
       ),
@@ -274,7 +274,7 @@ async function scanAgentReadiness(
     ? await nativeBrowserUserAgent(browser)
     : undefined;
   const rawFetchUserAgent = rawFetchUserAgentFor(
-    ctx.viewport.formFactor,
+    ctx.viewport,
     browser.version?.(),
     nativeUserAgent,
     usesChromium,

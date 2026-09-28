@@ -19,11 +19,30 @@ import { withLogPrefix } from '../../visreg/core/util/testContext';
 import { formatLogPrefix, type Group } from '../../pipeline/log-prefix-format';
 import type { WindowPlacement } from '../../troubleshoot/window-placement';
 import type { LogFrame, WorkerLogFrame } from './worker-log';
+import { userAgentForViewport } from '../../browser-user-agent';
 
 // stdio slots 0-3 are stdin, stdout, stderr, and Node's IPC channel.
 // Slot 4 is reserved for the worker-to-worker barrier synchronization fd.
 const BARRIER_SYNCHRONIZATION_FD_INDEX = 4;
 let realChromeHeadlessWarningEmitted = false;
+
+/**
+ * The user agent the worker's Chrome launches with for this viewport: the
+ * viewport's device identity, or nothing on the headed real-Chrome desktop
+ * path, which keeps Chrome's native identity. The worker rewrites the Chrome
+ * major to the installed browser (a viewport's explicit `userAgent` is sent as
+ * is). Lighthouse re-applies the same identity for the measured navigation;
+ * the flag covers everything before it (pre-navigation hooks, warm-ups).
+ */
+export function lighthouseWorkerUserAgent(
+  options: Pick<LighthouseBenchmarkOptions, 'realChrome' | 'viewport'>,
+): string | undefined {
+  const nativeIdentity =
+    options.realChrome !== undefined
+    && options.realChrome.headless !== true
+    && options.viewport.formFactor !== 'mobile';
+  return nativeIdentity ? undefined : userAgentForViewport(options.viewport);
+}
 
 export function lighthouseWorkerEnvironment(
   options: Pick<LighthouseBenchmarkOptions, 'realChrome' | 'viewport'>,
@@ -35,8 +54,8 @@ export function lighthouseWorkerEnvironment(
     SHAKA_PERF_SAMPLING_MODE: samplingMode,
     SHAKAPERF_REAL_CHROME: options.realChrome ? '1' : '0',
     SHAKAPERF_REAL_CHROME_HEADLESS: forceRealChromeHeadless ? '1' : '0',
-    SHAKA_PERF_VIEWPORT_FORM_FACTOR:
-      options.realChrome ? options.viewport.formFactor : '',
+    SHAKA_PERF_VIEWPORT_USER_AGENT: lighthouseWorkerUserAgent(options) ?? '',
+    SHAKA_PERF_VIEWPORT_USER_AGENT_IS_EXPLICIT: options.viewport.userAgent ? '1' : '0',
   };
 }
 
@@ -334,7 +353,9 @@ export default function createLighthouseBenchmark(
   return {
     group,
     sampleState,
-    workerReuseKey: options.realChrome ? options.viewport.formFactor : undefined,
+    // A worker's Chrome keeps the `--user-agent` it launched with, so only
+    // benchmarks that send the same identity may share one.
+    workerReuseKey: lighthouseWorkerUserAgent(options) ?? 'native',
     async setup(raceCancellation, barrierSynchronizationFd: number, samplingMode: SamplingMode) {
       const workerPath = join(__dirname, 'lighthouse-worker-entry.js');
       warnIfRealChromeHeadlessOverridesHeaded(options);

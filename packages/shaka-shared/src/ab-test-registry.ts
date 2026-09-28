@@ -24,16 +24,22 @@ export interface Viewport {
   width: number;
   height: number;
   /**
-   * Drives Lighthouse's `formFactor` and `screenEmulation.mobile` when this
-   * viewport feeds a perf run. Visreg ignores this field.
+   * Drives Lighthouse's `formFactor` / `screenEmulation.mobile` and the
+   * Playwright `isMobile` flag.
    */
   formFactor: FormFactor;
   /**
-   * Device pixel ratio fed to Lighthouse's
-   * `screenEmulation.deviceScaleFactor` when this viewport feeds a perf run.
-   * Visreg ignores this field.
+   * Device pixel ratio: Lighthouse's `screenEmulation.deviceScaleFactor` and
+   * the Playwright context's `deviceScaleFactor`.
    */
   deviceScaleFactor: number;
+  /**
+   * Exact user-agent string every engine sends for this viewport, verbatim.
+   * When omitted, the device is guessed from `label` (`tablet`, `phone` /
+   * `mobile`, `desktop`; else from `formFactor`) and Chrome's user agent for
+   * that device is sent, with the Chrome major matched to the launched browser.
+   */
+  userAgent?: string;
 }
 
 // Named singletons so visreg and perf share the exact same device dimensions
@@ -48,8 +54,7 @@ export const DESKTOP_VIEWPORT: Viewport = { label: 'desktop', width: 1280, heigh
 // element clipped to its bounding box WITHIN the current viewport and no longer
 // resizes the page to fit it, so an element taller than the viewport needs one
 // of these added to `config.viewports`. The width matches the base device;
-// only the height grows. (formFactor/deviceScaleFactor only feed
-// perf/Lighthouse; visreg ignores them.)
+// only the height grows, so the identity (user agent) is the same.
 export const PHONE_TALL_VIEWPORT: Viewport = { label: 'phone-tall', width: 375, height: 3000, formFactor: 'mobile', deviceScaleFactor: 3 };
 export const TABLET_TALL_VIEWPORT: Viewport = { label: 'tablet-tall', width: 768, height: 3000, formFactor: 'mobile', deviceScaleFactor: 3 };
 export const DESKTOP_TALL_VIEWPORT: Viewport = { label: 'desktop-tall', width: 1280, height: 3000, formFactor: 'desktop', deviceScaleFactor: 1 };

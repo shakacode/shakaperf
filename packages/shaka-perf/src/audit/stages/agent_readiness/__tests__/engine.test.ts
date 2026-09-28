@@ -30,24 +30,38 @@ describe('rawFetchUserAgentFor', () => {
     else process.env.SHAKAPERF_REAL_CHROME_HEADLESS = originalHeadless;
   });
 
-  it('keeps the default raw-fetch identity outside real-Chrome mode', () => {
+  const phone = { label: 'phone', formFactor: 'mobile' } as const;
+  const tablet = { label: 'tablet', formFactor: 'mobile' } as const;
+  const desktop = { label: 'desktop', formFactor: 'desktop' } as const;
+
+  it('sends the viewport device identity, version-matched, in the default mode', () => {
     delete process.env.SHAKAPERF_REAL_CHROME;
 
-    expect(rawFetchUserAgentFor('mobile', '150.0.0.0')).toContain('Chrome/124.0.0.0');
+    expect(rawFetchUserAgentFor(phone, '150.0.0.0')).toMatch(/Chrome\/150\.0\.0\.0 Mobile/);
+    const tabletUa = rawFetchUserAgentFor(tablet, '150.0.0.0');
+    expect(tabletUa).toMatch(/Android.*Chrome\/150\.0\.0\.0/);
+    expect(tabletUa).not.toContain('Mobile');
+    expect(rawFetchUserAgentFor(desktop, '150.0.0.0')).toMatch(/Macintosh.*Chrome\/150\.0\.0\.0/);
   });
 
-  it('keeps a neutral raw-fetch identity for a non-Chromium engine', () => {
+  it('sends an explicit viewport user agent verbatim', () => {
+    delete process.env.SHAKAPERF_REAL_CHROME;
+
+    expect(rawFetchUserAgentFor({ ...phone, userAgent: 'custom-ua' }, '150.0.0.0')).toBe('custom-ua');
+  });
+
+  it('sends the device default unversioned for a non-Chromium engine', () => {
     process.env.SHAKAPERF_REAL_CHROME = '1';
 
-    expect(rawFetchUserAgentFor('mobile', '133.0.0.0', undefined, false)).toContain(
-      'Chrome/124.0.0.0',
+    expect(rawFetchUserAgentFor(phone, '133.0.0.0', undefined, false)).toMatch(
+      /Chrome\/120\.0\.0\.0 Mobile/,
     );
   });
 
   it('selects a version-matched mobile identity in real-Chrome mode', () => {
     process.env.SHAKAPERF_REAL_CHROME = '1';
 
-    expect(rawFetchUserAgentFor('mobile', '150.0.0.0')).toMatch(
+    expect(rawFetchUserAgentFor(phone, '150.0.0.0')).toMatch(
       /Chrome\/150\.0\.0\.0 Mobile/,
     );
   });
@@ -57,19 +71,19 @@ describe('rawFetchUserAgentFor', () => {
     delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
 
     expect(rawFetchUserAgentFor(
-      'desktop',
+      desktop,
       '150.0.0.0',
       'native-browser-user-agent',
     )).toBe('native-browser-user-agent');
   });
 
-  it('falls back to the neutral identity when a native or versioned identity is unavailable', () => {
+  it('falls back to the device default when the native or the browser version is unavailable', () => {
     process.env.SHAKAPERF_REAL_CHROME = '1';
     delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
 
-    expect(rawFetchUserAgentFor('desktop')).toContain('Chrome/124.0.0.0');
+    expect(rawFetchUserAgentFor(desktop)).toMatch(/Macintosh.*Chrome\/120\.0\.0\.0/);
     process.env.SHAKAPERF_REAL_CHROME_HEADLESS = '1';
-    expect(rawFetchUserAgentFor('mobile')).toContain('Chrome/124.0.0.0');
+    expect(rawFetchUserAgentFor(phone)).toMatch(/Chrome\/120\.0\.0\.0 Mobile/);
   });
 });
 

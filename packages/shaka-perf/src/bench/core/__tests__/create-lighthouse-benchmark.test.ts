@@ -14,6 +14,7 @@ import {
 import createLighthouseBenchmark, {
   lighthouseWorkerEnvironment,
   lighthouseWorkerSetupOptions,
+  lighthouseWorkerUserAgent,
   resetRealChromeHeadlessWarning,
   warnIfRealChromeHeadlessOverridesHeaded,
 } from '../create-lighthouse-benchmark';
@@ -22,6 +23,7 @@ import {
 } from '../lighthouse-sampling-worker-pool';
 
 const desktopViewport = {
+  label: 'desktop',
   formFactor: 'desktop',
   width: 1440,
   height: 900,
@@ -46,6 +48,17 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
+const phoneViewport = { ...desktopViewport, label: 'phone', formFactor: 'mobile', width: 375 } as LighthouseBenchmarkOptions['viewport'];
+const tabletViewport = { ...desktopViewport, label: 'tablet', formFactor: 'mobile', width: 768 } as LighthouseBenchmarkOptions['viewport'];
+
+function benchmarkFor(options: Partial<LighthouseBenchmarkOptions> & { viewport: LighthouseBenchmarkOptions['viewport'] }) {
+  return createLighthouseBenchmark(
+    'experiment',
+    { file: null, name: 'example' } as Parameters<typeof createLighthouseBenchmark>[1],
+    { lhConfig: {}, targetUrl: 'https://example.com', ...options },
+  );
+}
+
 describe('lighthouseWorkerEnvironment', () => {
   it('forces an audit real-Chrome worker headless and forwards its viewport identity', () => {
     expect(lighthouseWorkerEnvironment({
@@ -56,40 +69,58 @@ describe('lighthouseWorkerEnvironment', () => {
       SHAKA_PERF_SAMPLING_MODE: 'sequential',
       SHAKAPERF_REAL_CHROME: '1',
       SHAKAPERF_REAL_CHROME_HEADLESS: '1',
-      SHAKA_PERF_VIEWPORT_FORM_FACTOR: 'desktop',
+      SHAKA_PERF_VIEWPORT_USER_AGENT: expect.stringMatching(/Macintosh.*Chrome\/\d+.*Safari/),
+      SHAKA_PERF_VIEWPORT_USER_AGENT_IS_EXPLICIT: '0',
     });
   });
 
-  it('binds sampler reuse to the viewport form factor only in real-Chrome mode', () => {
-    const benchmark = createLighthouseBenchmark(
-      'experiment',
-      { file: null, name: 'example' } as Parameters<typeof createLighthouseBenchmark>[1],
-      {
-        viewport: desktopViewport,
-        lhConfig: {},
-        targetUrl: 'https://example.com',
-      },
-    );
-    const desktopKey = lighthouseSamplerReuseKey([benchmark]);
-    const mobileKey = lighthouseSamplerReuseKey([{
-      ...benchmark,
-      workerReuseKey: 'mobile',
-    }]);
+  it('gives every worker its viewport device identity, in every mode', () => {
+    expect(lighthouseWorkerUserAgent({ viewport: desktopViewport })).toMatch(/Macintosh/);
+    expect(lighthouseWorkerUserAgent({ viewport: phoneViewport })).toMatch(/Android.*Mobile Safari/);
+    const tablet = lighthouseWorkerUserAgent({ viewport: tabletViewport });
+    expect(tablet).toMatch(/Android/);
+    expect(tablet).not.toContain('Mobile');
+    expect(lighthouseWorkerUserAgent({
+      viewport: { ...phoneViewport, userAgent: 'custom-ua' },
+    })).toBe('custom-ua');
+    expect(lighthouseWorkerEnvironment({
+      viewport: { ...phoneViewport, userAgent: 'custom-ua' },
+    }, 'sequential')).toEqual(expect.objectContaining({
+      SHAKA_PERF_VIEWPORT_USER_AGENT: 'custom-ua',
+      SHAKA_PERF_VIEWPORT_USER_AGENT_IS_EXPLICIT: '1',
+    }));
+  });
 
-    expect(benchmark.workerReuseKey).toBeUndefined();
-    expect(desktopKey).not.toBe(mobileKey);
+  it('keeps the native identity only for a headed real-Chrome desktop worker', () => {
+    expect(lighthouseWorkerUserAgent({
+      viewport: desktopViewport,
+      realChrome: { headless: false },
+    })).toBeUndefined();
+    expect(lighthouseWorkerUserAgent({
+      viewport: phoneViewport,
+      realChrome: { headless: false },
+    })).toMatch(/Mobile/);
+    expect(lighthouseWorkerUserAgent({
+      viewport: desktopViewport,
+      realChrome: { headless: true },
+    })).toMatch(/Macintosh/);
+    expect(lighthouseWorkerEnvironment({
+      viewport: desktopViewport,
+      realChrome: { headless: false },
+    }, 'sequential')).toEqual(expect.objectContaining({ SHAKA_PERF_VIEWPORT_USER_AGENT: '' }));
+  });
 
-    const realChromeBenchmark = createLighthouseBenchmark(
-      'experiment',
-      { file: null, name: 'example' } as Parameters<typeof createLighthouseBenchmark>[1],
-      {
-        viewport: desktopViewport,
-        lhConfig: {},
-        targetUrl: 'https://example.com',
-        realChrome: { headless: false },
-      },
-    );
-    expect(realChromeBenchmark.workerReuseKey).toBe('desktop');
+  it('shares a sampler only between benchmarks that launch Chrome with the same identity', () => {
+    const desktop = benchmarkFor({ viewport: desktopViewport });
+    const phone = benchmarkFor({ viewport: phoneViewport });
+    const tablet = benchmarkFor({ viewport: tabletViewport });
+    const nativeDesktop = benchmarkFor({ viewport: desktopViewport, realChrome: { headless: false } });
+
+    expect(desktop.workerReuseKey).toMatch(/Macintosh/);
+    expect(lighthouseSamplerReuseKey([desktop])).toBe(lighthouseSamplerReuseKey([benchmarkFor({ viewport: desktopViewport })]));
+    const keys = new Set([desktop, phone, tablet, nativeDesktop].map((b) => lighthouseSamplerReuseKey([b])));
+    expect(keys.size).toBe(4);
+    expect(nativeDesktop.workerReuseKey).toBe('native');
   });
 
   it('does not enable audit real-Chrome mode from ambient state', () => {
@@ -113,18 +144,13 @@ describe('lighthouseWorkerEnvironment', () => {
     }));
   });
 
-  it('pins the Lighthouse identity to the viewport only in real-Chrome mode', () => {
-    expect(lhConfigForViewport(desktopViewport).emulatedUserAgent).toBeUndefined();
-    expect(lhConfigForViewport({
-      ...desktopViewport,
-      formFactor: 'mobile',
-    }).emulatedUserAgent).toBeUndefined();
-    expect(lhConfigForViewport(desktopViewport, {}, 'viewport').emulatedUserAgent)
-      .not.toContain('Mobile');
-    expect(lhConfigForViewport({
-      ...desktopViewport,
-      formFactor: 'mobile',
-    }, {}, 'viewport').emulatedUserAgent).toContain('Mobile');
+  it('emulates the viewport device identity by default, and none in native mode', () => {
+    expect(lhConfigForViewport(desktopViewport).emulatedUserAgent).toMatch(/Macintosh/);
+    expect(lhConfigForViewport(phoneViewport).emulatedUserAgent).toContain('Mobile');
+    expect(lhConfigForViewport(tabletViewport).emulatedUserAgent).toMatch(/Android/);
+    expect(lhConfigForViewport(tabletViewport).emulatedUserAgent).not.toContain('Mobile');
+    expect(lhConfigForViewport({ ...phoneViewport, userAgent: 'custom-ua' }).emulatedUserAgent)
+      .toBe('custom-ua');
     expect(lhConfigForViewport(desktopViewport, {}, 'native').emulatedUserAgent).toBe(false);
   });
 
