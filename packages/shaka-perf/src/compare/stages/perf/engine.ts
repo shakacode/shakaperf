@@ -12,9 +12,11 @@ import {
   createWorkerLighthouseSamplingPool,
   createLighthouseBenchmark,
   generateHtmlDiffs,
+  writeAiAnalysisDiff,
   generateTimelineComparison,
   generateTimelinePreviewSvg,
   measureTest,
+  writeReviewFrames,
   type Benchmark,
   type LighthouseBenchmarkOptions,
   type NavigationSample,
@@ -174,8 +176,11 @@ async function runPerfPhase(
   }
 
   if (config.saveArtifacts) {
-    generateHtmlDiffs({ testResultsFolder: artifactsDir });
+    // The timeline pass appends the frames-to-review section to both profile
+    // summaries, so it has to run before those summaries are diffed.
     writeTimelineArtifacts(artifactsDir);
+    generateHtmlDiffs({ testResultsFolder: artifactsDir });
+    writeAiAnalysisDiff(artifactsDir);
   }
 
   if (config.statisticalAnalysis) {
@@ -241,5 +246,10 @@ function writeTimelineArtifacts(artifactsDir: string): void {
     controlProfilePath: controlProfile,
     experimentProfilePath: experimentProfile,
     outputPath: path.join(artifactsDir, 'timeline_preview.svg'),
+  });
+  writeReviewFrames({
+    controlProfilePath: controlProfile,
+    experimentProfilePath: experimentProfile,
+    artifactsDir,
   });
 }
