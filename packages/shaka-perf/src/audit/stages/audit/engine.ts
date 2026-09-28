@@ -100,7 +100,7 @@ export async function runAuditStage(
   ensureLighthousePatchRegistered();
   const realChrome = process.env.SHAKAPERF_REAL_CHROME === '1';
   const lighthouseUserAgentMode = !realChrome
-    ? 'default'
+    ? 'viewport'
     : realChromeUsesNativeIdentity(ctx.viewport.formFactor)
       ? 'native'
       : 'viewport';

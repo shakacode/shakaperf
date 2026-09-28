@@ -76,7 +76,8 @@ export const DEFAULT_LH_CONFIG: PerfLighthouseConfig = {
  * Builds the viewport-specific Lighthouse overlay written to the temp file
  * consumed by the bench worker: user overrides (from `perf.lighthouseConfig`,
  * which can't carry viewport options by type) plus the viewport's
- * `formFactor` / `screenEmulation` on top.
+ * `formFactor` / `screenEmulation` on top. The user agent follows the viewport
+ * too because Lighthouse otherwise keeps its mobile default for desktop runs.
  *
  * `DEFAULT_LH_CONFIG` is intentionally NOT spread in here; the Lighthouse
  * worker layers those defaults under the loaded user config.
@@ -87,7 +88,7 @@ export const DEFAULT_LH_CONFIG: PerfLighthouseConfig = {
 export function lhConfigForViewport(
   viewport: Viewport,
   userOverrides: PerfLighthouseConfig = {},
-  userAgentMode: 'default' | 'viewport' | 'native' = 'default',
+  userAgentMode: 'default' | 'viewport' | 'native' = 'viewport',
 ): LighthouseConfig {
   return {
     ...userOverrides,

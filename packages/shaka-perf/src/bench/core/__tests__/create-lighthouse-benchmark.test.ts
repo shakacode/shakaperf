@@ -113,12 +113,14 @@ describe('lighthouseWorkerEnvironment', () => {
     }));
   });
 
-  it('pins the Lighthouse identity to the viewport only in real-Chrome mode', () => {
-    expect(lhConfigForViewport(desktopViewport).emulatedUserAgent).toBeUndefined();
+  it('pins the Lighthouse identity to the viewport by default', () => {
+    expect(lhConfigForViewport(desktopViewport).emulatedUserAgent)
+      .not.toContain('Mobile');
     expect(lhConfigForViewport({
       ...desktopViewport,
       formFactor: 'mobile',
-    }).emulatedUserAgent).toBeUndefined();
+    }).emulatedUserAgent).toContain('Mobile');
+    expect(lhConfigForViewport(desktopViewport, {}, 'default').emulatedUserAgent).toBeUndefined();
     expect(lhConfigForViewport(desktopViewport, {}, 'viewport').emulatedUserAgent)
       .not.toContain('Mobile');
     expect(lhConfigForViewport({
