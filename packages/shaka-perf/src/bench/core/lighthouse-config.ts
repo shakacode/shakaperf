@@ -231,6 +231,12 @@ export interface LighthouseBenchmarkOptions {
    * preserve measurement fidelity. Audit opts in.
    */
   captureAuditArtifacts?: boolean;
+  /**
+   * How long to keep measuring after the test body finishes, before
+   * Lighthouse is released. Driven by `--seconds-to-settle-after-test`.
+   * Skipped when the test body throws: that sample is failing anyway.
+   */
+  settleAfterTestMs?: number;
 }
 
 export interface PhaseSample {

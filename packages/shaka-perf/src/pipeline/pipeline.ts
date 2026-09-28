@@ -278,15 +278,25 @@ export function resolveStageSelection(
   opts: {
     categories?: string | string[];
     skipStages?: string | string[];
+    stages?: string | string[];
     restartFromStage?: string | undefined;
   },
 ): StageSelection {
+  if (opts.stages != null && (opts.categories != null || opts.skipStages != null)) {
+    throw new Error('--stages cannot be combined with --categories or --skip-stages.');
+  }
   const validCategories = stageCategories(pipeline);
   const validStages = stageNames(pipeline);
   const categories = splitList(opts.categories, validCategories);
   const requestedSkipStages = splitList(opts.skipStages, []);
+  const onlyStages = opts.stages == null ? null : splitList(opts.stages, []);
   const restartFromStage = opts.restartFromStage?.trim() || undefined;
 
+  for (const stage of onlyStages ?? []) {
+    if (!validStages.includes(stage as StageName)) {
+      throw new Error(`Unknown stage "${stage}" in --stages. Valid: ${validStages.join(', ')}`);
+    }
+  }
   for (const category of categories) {
     if (!validCategories.includes(category as StageCategory)) {
       throw new Error(`Unknown category "${category}". Valid: ${validCategories.join(', ')}`);
@@ -307,11 +317,13 @@ export function resolveStageSelection(
 
   const categoryFilter = new Set(categories as StageCategory[]);
   const skippedStages = new Set(skipStages);
+  const onlyStageSet = onlyStages ? new Set(onlyStages) : null;
   const restartIndex = restartFromStage
     ? pipeline.stages.findIndex((stage) => stage.name === restartFromStage)
     : -1;
   const selectedStages = pipeline.stages.filter((stage) => {
     if (restartIndex >= 0 && pipeline.stages.indexOf(stage) < restartIndex) return false;
+    if (onlyStageSet && !onlyStageSet.has(stage.name)) return false;
     if (!categoryFilter.has(stage.category)) return false;
     if (skippedStages.has(stage.name)) return false;
     return true;
@@ -330,7 +342,12 @@ export function resolveStageSelection(
           reason: `retained from previous run by --restart-from-stage ${restartFromStage}`,
           persistOutcome: false,
         }
-        : skippedStages.has(stage.name)
+        : onlyStages
+          ? {
+            reason: `skipped by --stages ${onlyStages.join(',')}`,
+            persistOutcome: true,
+          }
+          : skippedStages.has(stage.name)
           ? {
             reason: `skipped by --skip-stages ${stage.name}`,
             persistOutcome: true,

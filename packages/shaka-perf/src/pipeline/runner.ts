@@ -321,6 +321,8 @@ export interface RuntimeOptions {
   readonly filter?: string | undefined;
   readonly categories?: string | string[] | undefined;
   readonly skipStages?: string | string[] | undefined;
+  /** Run only these stages. Cannot be combined with `categories` or `skipStages`. */
+  readonly stages?: string | string[] | undefined;
   /**
    * Restart the run from this stage: discard this stage's and every later
    * stage's results, then re-run them. Earlier stages are retained — their
@@ -374,6 +376,12 @@ export interface RuntimeOptions {
    * config by the CLI. Undefined = off.
    */
   readonly burn?: number | undefined;
+  /**
+   * `--seconds-to-settle-after-test`, in milliseconds: how long the perf
+   * stages keep measuring after a test body finishes. Surfaced to them via
+   * `StageRuntime.settleAfterTestMs`. Undefined = 0.
+   */
+  readonly settleAfterTestMs?: number | undefined;
 }
 
 export async function runPipeline(
@@ -513,6 +521,7 @@ async function runConfiguredPipelineWithSelection(
     keepBrowserOpen: runtime.keepBrowserOpen ?? false,
     ...(runtime.cdpPorts ? { cdpPorts: runtime.cdpPorts } : {}),
     burn: runtime.burn ?? null,
+    settleAfterTestMs: runtime.settleAfterTestMs ?? 0,
   };
   const units = expandWorkUnits(
     runTests,
