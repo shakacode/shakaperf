@@ -12,6 +12,29 @@ version being released and updates the "Current version" line at the bottom.
 
 ---
 
+## Unreleased
+
+### `init` creates config only; install agent skills with `npx skills`
+
+`shaka-perf init` no longer copies skills into `.claude/skills`. It creates
+`abtests.config.ts`; `--out` still chooses the destination and `--force` replaces
+only that config. Existing skill files are left untouched, including when forced.
+
+Install ShakaPerf skills from your target repository directory:
+
+```bash
+npx skills add shakacode/shakaperf \
+  --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage \
+    shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs \
+  --agent claude-code codex
+```
+
+Choose one or more supported agents, or add `-g` for global installation.
+See the
+[agent installation guide](docs/for-ai-agents.md#install-and-scaffold) for discovery,
+individual selection, and updates. The npm package retains discovery browser
+scripts for CLI helpers; skill instructions now come from the GitHub repository.
+
 ## 0.3.0 — 2026-09-13
 
 ### `--full-report-zip` removed from `compare` and `audit`
