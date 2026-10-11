@@ -1,5 +1,7 @@
 ---
 name: react-patterns
+metadata:
+  internal: true
 description: "React 19 performance patterns and composition architecture for Vite + Cloudflare projects. 50+ rules ranked by impact — eliminating waterfalls, bundle optimisation, re-render prevention, composition over boolean props, server/client boundaries, and React 19 APIs. Use when writing, reviewing, or refactoring React components. Triggers: 'react patterns', 'react review', 'react performance', 'optimise components', 'react best practices', 'composition patterns', 'why is it slow', 'reduce re-renders', 'fix waterfall'."
 compatibility: claude-code-only
 allowed-tools:

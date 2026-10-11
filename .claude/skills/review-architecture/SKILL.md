@@ -1,5 +1,7 @@
 ---
 name: review-architecture
+metadata:
+  internal: true
 description: "Use when reviewing or designing shaka-perf framework extension points, pipeline or stage variants, artifact ownership, report serialization boundaries, or name-keyed behavior dispatch."
 ---
 
