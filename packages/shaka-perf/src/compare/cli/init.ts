@@ -15,35 +15,14 @@ import chalk from 'chalk';
 // `shaka-perf compare` working immediately after `init` without a -c flag.
 const DEFAULT_DEST_FILENAME = 'abtests.config.ts';
 
-// Bundled Claude Code skills shipped alongside the config so a fresh project
-// gets both the runtime config and the agent tooling in one step:
-//   - shaka-perf: map of the CLI commands; tells an agent to read each
-//     command's --help before using it.
-//   - shaka-perf-add-coverage: adds focused source-aware visual-regression tests.
-//   - shaka-perf-coverage: estimates screenshot coverage from code + visibility maps.
-//   - shaka-perf-dockerize: walks an agent through standing up the
-//     twin-servers Docker A/B infrastructure (Dockerfile, Procfile, config).
-//   - shaka-perf-find-bugs: drives twin-servers as a QA rig to reproduce
-//     regressions a branch introduces and writes a paired-screenshot report.
-const SKILL_NAMES = [
-  'shaka-perf',
-  'shaka-perf-add-coverage',
-  'shaka-perf-coverage',
-  'shaka-perf-dockerize',
-  'shaka-perf-find-bugs',
-];
-
 // At runtime __dirname is dist/compare/cli/, so go up three levels to the
-// package root. `templates/` and `dist/skills/` both ship with the npm tarball
-// (templates listed in package.json `files`, dist/ is the build output).
+// package root. `templates/` ships with the npm tarball via package.json `files`.
 const PACKAGE_ROOT = path.resolve(__dirname, '..', '..', '..');
 const CONFIG_TEMPLATE_PATH = path.resolve(
   PACKAGE_ROOT,
   'templates',
   DEFAULT_DEST_FILENAME,
 );
-const skillTemplatePath = (name: string) =>
-  path.resolve(PACKAGE_ROOT, 'dist', 'skills', name);
 
 /**
  * Resolve the `shaka-shared` version as seen from `anchorFile`'s directory,
@@ -110,7 +89,7 @@ function assertShakaSharedInstalled(cwd: string): void {
 export function createInitCommand(): Command {
   return new Command('init')
     .description(
-      `Copy the bundled ${DEFAULT_DEST_FILENAME} template and the ${SKILL_NAMES.join(', ')} Claude Code skills into the current directory. Refuses to overwrite an existing config or skill directory unless --force is passed.`,
+      `Create ${DEFAULT_DEST_FILENAME} from the bundled config template. Refuses to overwrite an existing config unless --force is passed.`,
     )
     .option(
       '-o, --out <path>',
@@ -118,7 +97,7 @@ export function createInitCommand(): Command {
     )
     .option(
       '-f, --force',
-      'Overwrite an existing config and recursively replace the skill directory (any user edits inside it will be lost)',
+      'Overwrite an existing config (any user edits in it will be lost)',
       false,
     )
     .action((opts: { out?: string; force?: boolean }) => {
@@ -143,11 +122,6 @@ function runInit(opts: { out?: string; force?: boolean }): void {
   assertShakaSharedInstalled(cwd);
 
   const configDest = path.resolve(cwd, opts.out ?? DEFAULT_DEST_FILENAME);
-  const skillDests = SKILL_NAMES.map((name) => ({
-    name,
-    src: skillTemplatePath(name),
-    dest: path.resolve(cwd, '.claude', 'skills', name),
-  }));
   const force = opts.force === true;
 
   // Fail loud if any bundled source is missing — silently falling back to
@@ -158,48 +132,25 @@ function runInit(opts: { out?: string; force?: boolean }): void {
         'Re-install shaka-perf or file an issue — the package may be missing its templates/ folder.',
     );
   }
-  for (const { src } of skillDests) {
-    if (!fs.existsSync(src)) {
-      throw new Error(
-        `bundled skill not found at ${src}. ` +
-          'Re-install shaka-perf, or run `yarn build` if you are running from a source checkout.',
-      );
-    }
-  }
-
   if (fs.existsSync(configDest) && !force) {
     throw new Error(
       `refusing to overwrite ${configDest}. Pass --force to replace it.`,
     );
   }
-  for (const { dest } of skillDests) {
-    if (fs.existsSync(dest) && !force) {
-      throw new Error(
-        `refusing to replace ${dest}. Pass --force to recursively recopy ` +
-          'the bundled skill (any local edits inside it will be lost).',
-      );
-    }
-  }
-
   fs.mkdirSync(path.dirname(configDest), { recursive: true });
   fs.copyFileSync(CONFIG_TEMPLATE_PATH, configDest);
   console.log(`shaka-perf init: wrote ${configDest}`);
 
-  // Wipe each skill dir before re-copying so files removed in newer skill
-  // versions don't linger. cpSync overwrites/adds but never prunes.
-  for (const { src, dest } of skillDests) {
-    fs.rmSync(dest, { recursive: true, force: true });
-    fs.mkdirSync(dest, { recursive: true });
-    fs.cpSync(src, dest, { recursive: true });
-    console.log(`shaka-perf init: wrote ${dest}`);
-  }
-
   console.log('');
-  console.log(chalk.gray('Next steps in Claude Code:'));
-  console.log(chalk.green('  /shaka-perf-dockerize'));
+  console.log(chalk.gray('Next steps:'));
+  console.log(chalk.gray('  Install ShakaPerf skills from your repository directory:'));
+  console.log(chalk.green('    npx skills add shakacode/shakaperf --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs --agent claude-code codex'));
+  console.log(chalk.gray('  Choose your agent(s); add -g for a global skill installation.'));
+  console.log('');
+  console.log(chalk.gray('  After installing, ask your agent:'));
   console.log(
-    chalk.gray(
-      'Or ask your agent: "Set up twin servers for this project and verify that the control and experiment builds look good."',
+    chalk.green(
+      '    Use shaka-perf-dockerize to set up twin servers for this project and verify that the control and experiment builds look good.',
     ),
   );
 }
