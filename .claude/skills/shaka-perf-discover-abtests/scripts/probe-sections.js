@@ -1,14 +1,15 @@
 /**
  * Probe page sections and score candidate CSS selectors for visual regression tests.
  *
- * Run via mcp__claude-in-chrome__javascript_tool on the target tab AFTER the page
+ * Run in the target page via Claude mcp__claude-in-chrome__javascript_tool,
+ * Playwright browser_evaluate, or a permitted equivalent browser adapter AFTER the page
  * has fully loaded (networkidle + scrolling complete).
  *
  * Returns an array of scored candidate sections sorted by vertical position,
  * with overlap removed. The agent should review these candidates and apply
  * AI visual heuristics before finalizing selector choices.
  *
- * Usage:
+ * Usage (Claude javascript_tool input; adapt to the selected browser API):
  *   const result = await javascript_tool({ code: fs.readFileSync('probe-sections.js', 'utf8') });
  *   // result.sections = [{ selector, height, width, widthRatio, score, depth, absTop, ... }]
  */

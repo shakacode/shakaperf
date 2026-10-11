@@ -10,6 +10,8 @@ This skill guides creation of distinctive, production-grade frontend interfaces 
 
 The user provides frontend requirements: a component, page, application, or interface to build. They may include context about the purpose, audience, or technical constraints.
 
+Use the host’s file/edit and shell tools: Claude `Read` / `Edit` / `Write` / `Bash`, Codex `exec_command` / `apply_patch`, or equivalents. For visual review, use available Claude Chrome tools, Codex `mcp__cua_repl.js`, Playwright MCP, or equivalent browser automation; inspect screenshots with Claude `Read`, Codex `view_image`, or an equivalent image viewer. Follow the available tools’ documentation and session restrictions.
+
 ## Design Thinking
 
 Before coding, understand the context and commit to a BOLD aesthetic direction:
@@ -41,4 +43,4 @@ Interpret creatively and make unexpected choices that feel genuinely designed fo
 
 **IMPORTANT**: Match implementation complexity to the aesthetic vision. Maximalist designs need elaborate code with extensive animations and effects. Minimalist or refined designs need restraint, precision, and careful attention to spacing, typography, and subtle details. Elegance comes from executing the vision well.
 
-Remember: Claude is capable of extraordinary creative work. Don't hold back, show what can truly be created when thinking outside the box and committing fully to a distinctive vision.
+Aim for extraordinary creative work. Don't hold back, show what can truly be created when thinking outside the box and committing fully to a distinctive vision.

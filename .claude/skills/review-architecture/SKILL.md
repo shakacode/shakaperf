@@ -7,6 +7,8 @@ description: "Use when reviewing or designing shaka-perf framework extension poi
 
 # Review Architecture
 
+This skill requires a shaka-perf source checkout; source paths below are relative to that checkout, not this installed skill folder. Inspect files with Claude `Read` / `Grep` / `Glob`, Codex `exec_command` with file/search commands, or equivalent tools. Use the user’s requested review or design scope; installation alone does not authorize edits.
+
 shaka-perf's framework primitives (`Pipeline`, `Stage`, …) are designed to be
 extended polymorphically. Variant-specific behaviour belongs **inside the
 variant**, surfaced through the framework via mandatory factory options.

@@ -1,12 +1,15 @@
 ---
 name: shaka-perf-discover-abtests
 description: Crawl a website and auto-generate .abtest.ts files for shaka-perf visreg visual regression testing. Use this skill whenever the user wants to discover, generate, or scaffold AB tests for a URL — even if they just say "set up tests for localhost:3020", "generate tests for this site", or "create visreg tests". Only use this skill when having no access to sources. When sources are present, use shaka-perf-add-coverage and shaka-perf-coverage instead.
+compatibility: Requires the ShakaPerf CLI and browser automation with page JavaScript execution, user scrolling, viewport resizing, and screenshots.
 argument-hint: <url> [depth=2] [output=./ab-tests/] [mode=twin-server|single-server]
 ---
 
 # shaka-perf-discover-abtests
 
-Crawl a target site in Chrome, probe pages interactively to understand their behavior, then generate validated `.abtest.ts` files for shaka-perf visual regression testing (run via `shaka-perf compare --categories visreg`).
+Crawl a target site in a real browser, probe pages interactively to understand their behavior, then generate validated `.abtest.ts` files for shaka-perf visual regression testing (run via `shaka-perf compare --categories visreg`).
+
+Read [browser tool options](references/browser-tools.md) before browser work: Claude Chrome tools, Codex `mcp__cua_repl.js` when available, Playwright MCP, or equivalent browser automation. Use the exposed tool descriptions and follow their restrictions. Report missing essential capabilities before the dependent phase.
 
 The goal is to produce tests that _actually work_ — not just syntactically valid files. That's why each page is probed in the browser before writing any code: it avoids generating tests for interactions that don't exist, CSS overrides that don't work, or skeleton waits for elements that never appear.
 
@@ -16,9 +19,9 @@ The browser-side scripts and report parser ship inside the `shaka-perf` CLI — 
 
 | Command                                    | When to use                                                                |
 | ------------------------------------------ | -------------------------------------------------------------------------- |
-| `shaka-perf discover-abtests extract-links`   | Prints JS source — capture stdout and pass to `javascript_tool` to collect internal links from any page |
-| `shaka-perf discover-abtests probe-lazy-load` | Prints JS source — capture stdout and pass to `javascript_tool` to test whether scrolling triggers new content |
-| `shaka-perf discover-abtests probe-sections`  | Prints JS source — capture stdout and pass to `javascript_tool` on tall pages (>2000px) to score candidate CSS selectors |
+| `shaka-perf discover-abtests extract-links`   | Prints JS source — execute stdout in the target browser page to collect internal links |
+| `shaka-perf discover-abtests probe-lazy-load` | Prints JS source — execute stdout in the target browser page to test whether scrolling triggers new content |
+| `shaka-perf discover-abtests probe-sections`  | Prints JS source — execute stdout in the target browser page on tall pages (>2000px) to score candidate CSS selectors |
 | `shaka-perf discover-abtests parse-report [path]` | Run after `compare` to summarize pass/fail, diff %, whitespace metrics, and engine errors (without a path, discovers per-unit reports under `compare-results/`) |
 | `references/patterns.md`                   | Read when writing `.abtest.ts` files — contains code patterns and selector strategy |
 | `references/api.md`                        | Read when you need the full `abTest()` config API or helpers reference     |
@@ -26,6 +29,8 @@ The browser-side scripts and report parser ship inside the `shaka-perf` CLI — 
 Read the reference docs as needed rather than trying to keep the full details in mind. The patterns and API reference are too detailed to hold mentally — just load them.
 
 ## Inputs
+
+Invocation examples: Claude `/shaka-perf-discover-abtests <url>`, Codex `$shaka-perf-discover-abtests <url>`, or ask another agent to use this skill with a URL and optional settings.
 
 Parse from the user's message:
 
@@ -43,7 +48,7 @@ If no URL was provided, ask for it before proceeding.
 
 ## Phase 1: Crawl (links only)
 
-Load `mcp__claude-in-chrome__tabs_context_mcp` first to get a tab, then navigate to the URL.
+Obtain a tab with Claude `mcp__claude-in-chrome__tabs_context_mcp`, Codex's documented CUA tab entry point, Playwright `browser_tabs`, or equivalent. Then navigate to the URL with the selected adapter.
 
 This phase ONLY extracts links — no probing, no testing. The goal is to build a list of pages to process.
 
@@ -56,8 +61,8 @@ Maintain throughout:
 Process the queue in BFS order, **up to `concurrency` pages in parallel**:
 
 1. Dequeue up to `concurrency` entries not yet visited.
-2. Open each in its own tab (`tabs_create_mcp` for tabs 2–N; reuse existing for first).
-3. For each: navigate, mark visited, capture `shaka-perf discover-abtests extract-links` and pass its stdout to `javascript_tool`. If `depth < crawlDepth`, enqueue new paths as `{ path, depth: depth + 1 }`.
+2. Open each in its own tab (Claude `tabs_create_mcp`, documented Codex CUA tab creation, Playwright `browser_tabs`, or equivalent; reuse existing for first).
+3. For each: navigate, mark visited, capture `shaka-perf discover-abtests extract-links` and execute stdout in the target browser page using the adapter's documented JavaScript input format. If `depth < crawlDepth`, enqueue new paths as `{ path, depth: depth + 1 }`.
 4. Close extra tabs after each batch.
 
 **Hard limits**: max 40 unique paths.
@@ -87,19 +92,19 @@ Maintain across pages:
 
 ### Step A — Probe the page
 
-Navigate to the page in Chrome. Complete all probing steps _in sequence_ before writing any code.
+Navigate to the page in the selected browser. Complete all probing steps _in sequence_ before writing any code.
 
 **A1. Check for lazy-loaded content** (always, every page):
-Capture `shaka-perf discover-abtests probe-lazy-load` and pass its stdout to `javascript_tool`. Wait for `networkidle` first — probing during an in-flight API call gives false results. Then scroll incrementally using **real mouse scroll actions** (not `window.scrollTo` in JS) — IntersectionObserver-based lazy loaders only fire on genuine scroll events. Scroll 10 ticks at a time via `mcp__claude-in-chrome__scroll`, wait 500ms between each, until `window.scrollY + window.innerHeight >= document.body.scrollHeight`. Wait 2 more seconds, compare image count and scroll height to baseline. Record the result.
+Capture `shaka-perf discover-abtests probe-lazy-load` and execute its stdout in the target browser page (Claude `javascript_tool`, Playwright `browser_evaluate`, or a permitted equivalent). Wait for `networkidle` first — probing during an in-flight API call gives false results. Then scroll incrementally using **real mouse scroll actions** (not `window.scrollTo` in JS) — IntersectionObserver-based lazy loaders only fire on genuine scroll events. Scroll 10 ticks at a time via Claude `mcp__claude-in-chrome__scroll`, documented Codex CUA scrolling, Playwright `page.mouse.wheel()` through an available browser code runner, or equivalent user input, wait 500ms between each, until `window.scrollY + window.innerHeight >= document.body.scrollHeight`. Wait 2 more seconds, compare image count and scroll height to baseline. Record the result.
 
 **A2. Wait for loading indicators to clear** (always, every page):
-Check for spinners, skeleton screens, loading indicators. Use `javascript_tool` to look for: `aria-label="Loading"`, `role="progressbar"`, class names containing `skeleton`, `spinner`, `loading`, `placeholder`. Add any found to `knownLoadingSelectors` and wait for them to disappear. Also check all selectors already in `knownLoadingSelectors`. Do not proceed until all loading indicators are gone.
+Check for spinners, skeleton screens, loading indicators. Use browser JavaScript execution (Claude `javascript_tool`, Playwright `browser_evaluate`, or a permitted equivalent) to look for: `aria-label="Loading"`, `role="progressbar"`, class names containing `skeleton`, `spinner`, `loading`, `placeholder`. Add any found to `knownLoadingSelectors` and wait for them to disappear. Also check all selectors already in `knownLoadingSelectors`. Do not proceed until all loading indicators are gone.
 
-**A3. CSS animation overrides** (if you see moving elements): inject via `javascript_tool` and screenshot to confirm it stopped. Only include in tests if the screenshot shows the element frozen.
+**A3. CSS animation overrides** (if you see moving elements): inject via the selected adapter’s permitted browser JavaScript tool and screenshot to confirm it stopped. Only include in tests if the screenshot shows the element frozen.
 
 **A4. Page sections**: run `document.body.scrollHeight` (after real scrolling in A1). If >~2000px, use both strategies to find the best CSS selectors for section-based testing:
 
-**Strategy 1 — Algorithmic probe**: Capture `shaka-perf discover-abtests probe-sections` and pass its stdout to `javascript_tool`. It walks the DOM from the layout root, scores elements by size (100-800px = best), width, depth, semantic class name, heading inclusion, content density, and uniqueness. Returns up to 15 scored candidates with overlap removed. Elements >1000px tall are deprioritized so their children get picked instead.
+**Strategy 1 — Algorithmic probe**: Capture `shaka-perf discover-abtests probe-sections` and execute its stdout in the target browser page (Claude `javascript_tool`, Playwright `browser_evaluate`, or a permitted equivalent). It walks the DOM from the layout root, scores elements by size (100-800px = best), width, depth, semantic class name, heading inclusion, content density, and uniqueness. Returns up to 15 scored candidates with overlap removed. Elements >1000px tall are deprioritized so their children get picked instead.
 
 **Strategy 2 — AI visual analysis**: Scroll through the page and identify the **natural visual sections** a user would recognize — hero, content blocks, sidebars, forms, navigation, footer. For each, find the closest DOM element that wraps it. Evaluate: "If I capture just this element, will the screenshot show a recognizable, self-contained piece of UI?"
 
@@ -115,9 +120,9 @@ Check for spinners, skeleton screens, loading indicators. Use `javascript_tool` 
 
 **A5–A7 are not optional.** Interaction tests (clicking buttons, filling forms, opening modals) are just as important as section snapshots — they catch regressions in dynamic behavior that static screenshots miss. A page with 5 section snapshots and 0 interaction tests has a coverage gap.
 
-**A5. Catalog interactive elements**: use `javascript_tool` to find all clickable/interactive elements on the page. Query for `button`, `a[href]` (non-navigation), `input`, `select`, `textarea`, `[role="tab"]`, `[aria-expanded]`, `[data-toggle]`, `.btn`, etc. Record each with its selector, visible text, and location on the page.
+**A5. Catalog interactive elements**: use the selected adapter’s browser JavaScript tool to find all clickable/interactive elements on the page. Query for `button`, `a[href]` (non-navigation), `input`, `select`, `textarea`, `[role="tab"]`, `[aria-expanded]`, `[data-toggle]`, `.btn`, etc. Record each with its selector, visible text, and location on the page.
 
-**A6. Test interactions**: click each interactive element in Chrome and document what happens:
+**A6. Test interactions**: click each interactive element in the selected browser and document what happens:
 - Button opens a modal or drawer? → record the modal's content and selectors
 - Checkbox changes visible state? → record
 - Button scrolls? → record
@@ -150,10 +155,10 @@ This applies to inline forms too (forms that are already visible on the page wit
 
 After completing desktop probing (A1-A7), resize the browser to mobile width and re-probe:
 
-1. Resize to 375×667 via `mcp__claude-in-chrome__resize_window`
+1. Resize to 375×667 via Claude `mcp__claude-in-chrome__resize_window`, documented Codex viewport controls, Playwright `browser_resize`, or equivalent
 2. Take a screenshot and scroll through the mobile layout — visually note what's different from desktop (stacked columns, hidden sidebars, hamburger menus, mobile-specific UI)
-3. Re-run `shaka-perf discover-abtests probe-sections` (via `javascript_tool`) at this width
-4. Check each desktop selector from A4 — does it exist on mobile? Use `javascript_tool` to query visibility:
+3. Re-run `shaka-perf discover-abtests probe-sections` (via the selected adapter’s browser JavaScript tool) at this width
+4. Check each desktop selector from A4 — does it exist on mobile? Use the selected adapter’s browser JavaScript tool to query visibility:
    ```js
    const el = document.querySelector('.rate-form-wrapper');
    el ? { display: getComputedStyle(el).display, height: el.getBoundingClientRect().height } : 'NOT FOUND'
@@ -272,7 +277,7 @@ This prints status, diff%, whitespace%, and engine errors per test. Act on these
 
 A test that passes (0 diff) can still be broken if both control and experiment captured blank/useless content. The `whitePixelPercent` field catches this — high whitespace on a passing test means the selector is wrong.
 
-**2. Inspect screenshots visually** — use the Read tool on `.png` files. Each test+viewport gets a unit dir under `compare-results/` (named `<test-name-slug>-<viewport>-<hash>`):
+**2. Inspect screenshots visually** — use Claude `Read`, Codex `view_image`, or an equivalent image viewer on `.png` files. Each test+viewport gets a unit dir under `compare-results/` (named `<test-name-slug>-<viewport>-<hash>`):
 
 - `compare-results/<unit>/artifacts/control_screenshots/`
 - `compare-results/<unit>/artifacts/experiment_screenshots/`
@@ -290,8 +295,8 @@ After all TODO stubs are implemented:
 
 ### Step E — Coverage comparison (loop until covered)
 
-1. Open the unified report (`compare-results/report.html`) in Chrome
-2. Open the live page in another Chrome tab
+1. Open the unified report (`compare-results/report.html`) in the selected browser
+2. Open the live page in another browser tab
 3. Go through the report images and compare with the live page to find:
    - Missing page sections (important content not captured by any test)
    - Missing interactions (buttons, forms, modals that should be tested but aren't)
@@ -309,7 +314,7 @@ A test only counts as PASS when **all** of the following are met:
 | 2   | No mid-animation carousels — frames frozen at deterministic position                  | Add CSS override confirmed in probing                                                         |
 | 3   | No missing lazy-loaded content                                                        | Add scroll + networkidle + scroll-to-top. Blank screenshot check is ground truth — add scrolling even if probing didn't detect it |
 | 4   | Thresholds appropriate — `0.01` static, `0.05` dynamic, `0.1` very dynamic            | Fix root cause                                                                                |
-| 5   | All selectors resolve without timeout                                                 | Inspect DOM in Chrome, use a more reliable selector                                           |
+| 5   | All selectors resolve without timeout                                                 | Inspect DOM in the selected browser, use a more reliable selector                                           |
 | 6   | Every non-trivial action is annotated                                                 | Add missing `annotate(...)` calls                                                             |
 | 7   | No auth-gated content (login page/access denied in screenshot)                        | Remove the test                                                                               |
 | 8   | No unconfirmed interactions — every click/scroll/CSS override validated in probing     | Remove unconfirmed action                                                                     |
@@ -328,7 +333,7 @@ A test only counts as PASS when **all** of the following are met:
 | Skeleton/spinner visible                       | `waitForLoadState('networkidle')`                                             |
 | Content missing (lazy)                         | scroll + networkidle + scroll-to-top                                          |
 | Carousel moving                                | CSS override from probing                                                     |
-| Selector timeout                               | Inspect DOM in Chrome, use more reliable selector                             |
+| Selector timeout                               | Inspect DOM in the selected browser, use more reliable selector                             |
 | High diff on dynamic content                   | Hide/remove the element in the test body (`page.locator(sel).evaluateAll(...)`) or wait for settle — do not raise threshold |
 | Selector not found on some viewports           | Element is `display:none` at that breakpoint — split into viewport-scoped tests via `config.visreg.viewports` (see patterns.md) |
 | High whitespace (whitePixelPercent > 90%)       | Wrong selector — try child, parent, or different section. Read screenshot to verify. |

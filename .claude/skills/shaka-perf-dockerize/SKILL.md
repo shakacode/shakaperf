@@ -1,10 +1,17 @@
 ---
 name: shaka-perf-dockerize
 description: Set up shaka-perf twin-servers — the Docker A/B testing infrastructure that runs your app twice (control vs experiment) so visreg/perf can compare two branches. Use this skill whenever the user wants to set up, configure, or debug twin-servers, "dockerize" their app for shaka-perf, write the twin-servers Dockerfile/Procfile/docker-compose, fill in the `twinServers` config, or get `shaka-perf servers` building and running — even if they just say "set up twin servers", "get the A/B servers running", or "make my app run under shaka-perf for perf testing".
-argument-hint: [path-to-existing-Dockerfile] [services e.g. postgres,redis,elasticsearch]
+argument-hint: "[path-to-existing-Dockerfile] [services e.g. postgres,redis,elasticsearch]"
 ---
 
 # shaka-perf-dockerize
+
+## Inputs and tools
+
+Accept an optional existing Dockerfile path and backing-service list (for example, postgres, redis, elasticsearch). Survey the project when these are omitted.
+Use file, search, edit, and shell tools: Claude `Read` / `Grep` / `Glob` / `Edit` / `Bash`, Codex `exec_command` / `apply_patch`, or equivalents.
+Use Claude `AskUserQuestion`, Codex question tools when available, or ordinary conversation for unresolved setup choices; wait for required answers.
+For visual verification, use Claude Chrome tools, Codex `mcp__cua_repl.js`, Playwright MCP, or equivalent browser automation. Inspect available tool descriptions and follow their restrictions; report blockers if browser access is unavailable.
 
 Twin-servers runs **two production-mode copies of one app side by side** by default — `control` (the baseline branch) and `experiment` (your branch) — so `shaka-perf compare` can diff them for visual and performance regressions. This skill sets up the Docker infrastructure, including an opt-in instrumented development mode for coverage, in the current project.
 
