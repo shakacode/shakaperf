@@ -1,29 +1,31 @@
 /**
  * Probe whether scrolling triggers lazy-loaded content on the current page.
  *
- * Run via Claude Chrome, a permitted Codex browser adapter, Playwright,
- * or equivalent browser tools AFTER the page's initial network requests have
+ * Run via Claude Chrome javascript_tool or agent-browser eval --stdin in the
+ * selected page AFTER the page's initial network requests have
  * settled (wait for networkidle first — probing while an API call is still in
  * flight gives misleading results).
  *
- * IMPORTANT: Use real mouse scroll actions, NOT window.scrollTo() or
- * window.scrollBy() in JS. Many sites use IntersectionObserver-based lazy
- * loaders that only fire on genuine scroll events — JS jumps bypass them and
- * give false negatives.
+ * IMPORTANT: Use incremental mouse wheel input and waits. IntersectionObserver
+ * reacts to intersection changes from user or JavaScript scrolling; large jumps
+ * can skip intermediate lazy-loading states. agent-browser scroll uses JavaScript
+ * scrolling, so use its mouse wheel command for this workflow.
  *
  * Full probe sequence:
  *
  *   // Step 1 — capture baseline
- *   run STEP1 in the page via Claude javascript_tool, Playwright browser_evaluate, or equivalent
+ *   evaluate the STEP1 expression string via Claude javascript_tool or agent-browser eval --stdin
+ *   Save its returned result as before; declarations alone do not execute it.
  *
  *   // Step 2 — scroll down incrementally using mouse scroll actions
- *   //   Loop: scroll down 10 ticks via Claude mcp__claude-in-chrome__scroll, documented Codex
- *   //   CUA scrolling, Playwright page.mouse.wheel(), or equivalent user input,
- *   //   wait 500ms, check (window.scrollY + window.innerHeight >= document.body.scrollHeight)
+ *   //   Loop: use Claude mcp__claude-in-chrome__computer with its scroll action,
+ *   //   or agent-browser --session "$AB_SESSION" mouse wheel 500,
+ *   //   wait 500ms, then evaluate the AT_BOTTOM expression string.
  *   //   Repeat until at the bottom.
  *
  *   // Step 3 — wait 2s, then capture after-state
- *   run STEP2 in the page via Claude javascript_tool, Playwright browser_evaluate, or equivalent
+ *   evaluate the STEP2 expression string and save its returned result as after.
+ *   Use a fresh function scope for each phase; see SKILL.md for scoped eval examples.
  *
  *   // If after.imageCount > before.imageCount or after.scrollHeight > before.scrollHeight
  *   // → lazy loading confirmed, add scroll pattern to the test.

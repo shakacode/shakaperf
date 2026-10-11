@@ -27,7 +27,7 @@ See [writing-good-ab-tests.md](https://github.com/shakacode/shakaperf/blob/main/
 Use a two-strategy approach:
 
 **Strategy 1 — Algorithmic probe** (`shaka-perf discover-abtests probe-sections`):
-Capture its stdout and execute in the target browser page after it loads (Claude `javascript_tool`, Playwright `browser_evaluate`, or a permitted equivalent from [browser tool options](browser-tools.md)). It walks the DOM, scores elements by size, width, depth, semantic name, heading inclusion, content density, and uniqueness. Elements >1000px tall are penalized so their children get picked. Returns up to 15 non-overlapping candidates.
+Capture its stdout and execute in the selected page after it loads with Claude `mcp__claude-in-chrome__javascript_tool` or `agent-browser --session "$AB_SESSION" eval --stdin` (see the inline browser setup and helper instructions in [SKILL.md](../SKILL.md)). It walks the DOM, scores elements by size, width, depth, semantic name, heading inclusion, content density, and uniqueness. Elements >1000px tall are penalized so their children get picked. Returns up to 15 non-overlapping candidates.
 
 **Strategy 2 — AI visual analysis**:
 Scroll through the page and identify natural visual sections a user would recognize. For each, find the closest DOM element that wraps it. Evaluate: "If I capture just this element, will the screenshot show recognizable, self-contained UI?"
