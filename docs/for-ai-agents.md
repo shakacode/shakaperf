@@ -15,9 +15,94 @@ What ShakaPerf gives an agent that a raw Lighthouse run or DevTools trace cannot
 ## Install and scaffold
 
 Install `shaka-perf` and `shaka-shared`, then run `yarn shaka-perf init` (see the
-[README](../README.md)). `init` scaffolds `abtests.config.ts` and the Claude Code
-skills; the `shaka-perf` skill is the command map and sends you to each command's
-`--help`, which is the reference for every flag mentioned below.
+[README](../README.md)). `init` creates only `abtests.config.ts`. Its `--out` chooses
+another config path; `--force` replaces only that config and leaves existing skills untouched.
+
+The `skills` installer requires Node >= 22.20.0. Select a supported Node version
+for the installation commands.
+
+Run from the target repository directory for a project installation:
+
+```bash
+# Discover available skills without installing.
+npx skills add shakacode/shakaperf --list
+
+# Install ShakaPerf skills for both agents.
+npx skills add shakacode/shakaperf \
+  --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage \
+    shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs \
+  --agent claude-code codex
+
+# Or choose one agent.
+npx skills add shakacode/shakaperf \
+  --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage \
+    shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs \
+  --agent claude-code
+npx skills add shakacode/shakaperf \
+  --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage \
+    shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs \
+  --agent codex
+
+# Global installation: available across projects for the selected agents.
+npx skills add shakacode/shakaperf \
+  --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage \
+    shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs \
+  --agent claude-code codex -g
+
+# Select an individual skill by its YAML name (not its description).
+npx skills add shakacode/shakaperf --skill shaka-perf-dockerize --agent codex
+
+# Update installed skills; choose the intended scope.
+npx skills update --project
+npx skills update --global
+```
+
+Replace agent names with another agent supported by the [skills installer](https://github.com/vercel-labs/skills).
+Project installations use the current directory, so start at your repository root
+if skills should apply to the whole project.
+By default, the installer copies skills into `.agents/skills` (or `~/.agents/skills`
+with `-g`) and links agent-specific locations such as `.claude/skills` or
+`~/.claude/skills`. Codex reads the shared location. Use `--copy` if separate copies
+are required. Source instructions remain in this repository's `.claude/skills`.
+
+The ShakaPerf skills cover the following workflows:
+
+- `shaka-perf`: CLI command map; read each command's `--help` before using it.
+- `shaka-perf-dockerize`: set up twin servers.
+- `shaka-perf-discover-abtests`: discover tests from a URL when sources are unavailable.
+- `shaka-perf-add-coverage`: add tests when sources are available; also install `shaka-perf-coverage` if selecting it individually.
+- `shaka-perf-coverage`: estimate screenshot coverage and compare baselines.
+- `shaka-perf-find-bugs`: reproduce branch regressions and create paired screenshot reports.
+
+Repository maintenance skills carry the YAML boolean `metadata.internal: true`.
+The installer hides them from normal discovery. To install a maintenance skill,
+select its YAML name with `--skill <name>`. Set `INSTALL_INTERNAL_SKILLS=1` to
+include maintenance skills in discovery. This metadata controls installer filtering;
+it does not grant permissions or disable an installed skill. The `skill-creator`
+evaluation scripts require Claude Code.
+
+Invoke skills with Claude `/shaka-perf-dockerize`, Codex `$shaka-perf-dockerize`, or
+ask an agent: "Use shaka-perf-dockerize to set up twin servers for this project."
+Use the same forms for other skill names. Companion references resolve from the
+installed skill folder, while application commands run from the target application's directory.
+
+Browser workflows need actual browser automation: Claude Chrome tools, Codex
+`mcp__cua_repl.js` when available, Playwright MCP/CLI, or equivalent tools. Tool names
+and capabilities depend on the session; follow their documentation and restrictions.
+The discovery skill requires page JavaScript execution, user scrolling, viewport
+resizing, and screenshots. Missing essential capabilities block that phase; HTTP
+requests alone cannot verify a UI. Use available question tools or conversation and
+wait for required answers. Delegate only when tools and session authorization allow it.
+
+The `shaka-perf` skill sends you to each command's `--help`, which is the reference
+for every flag mentioned below. If a skill mentions an unavailable command or option,
+check CLI help and update the relevant component.
+
+For maintainers using [the global bootstrap helper](../scripts/bootstrap-shakaperf-global.sh),
+the helper installs the source-built CLI and its global Claude directive.
+It links ShakaPerf skills directly from the checkout into Claude Code's global
+skills directory, so source edits are reflected immediately. Use the commands
+above for other agents.
 
 ## The PR loop (twin servers)
 
