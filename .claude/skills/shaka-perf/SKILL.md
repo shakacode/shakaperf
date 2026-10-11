@@ -15,7 +15,7 @@ Lighthouse, and accessibility between them. In a Yarn project call it as
 
 | Command | What it does |
 | --- | --- |
-| `shaka-perf init` | Drops `abtests.config.ts` and these skills into the project. |
+| `shaka-perf init` | Creates `abtests.config.ts`. |
 | `shaka-perf servers` | Builds and runs the control/experiment Docker pair. Bare `servers` is an interactive menu for humans; agents use its subcommands (`build`, `checkout`, `start-containers`, `start-servers`, `stop-containers`, `run-cmd`, `sync-changes`). |
 | `shaka-perf compare` | Runs every `.abtest.ts` on both sides and writes the A/B report (visreg, perf, accessibility). |
 | `shaka-perf troubleshoot` | Runs one test at one viewport and leaves the browsers open for inspection over CDP. Never finishes; not for measuring. |
@@ -32,9 +32,20 @@ shaka-perf servers --help
 shaka-perf compare --help
 ```
 
-Setup from scratch is the `/shaka-perf-dockerize` skill; writing tests is
-`/shaka-perf-add-coverage`; checking what is covered is `/shaka-perf-coverage`;
-hunting regressions on a branch is `/shaka-perf-find-bugs`.
+Setup from scratch uses [shaka-perf-dockerize](../shaka-perf-dockerize/SKILL.md); writing tests uses
+[shaka-perf-add-coverage](../shaka-perf-add-coverage/SKILL.md); checking coverage uses
+[shaka-perf-coverage](../shaka-perf-coverage/SKILL.md); hunting regressions uses
+[shaka-perf-find-bugs](../shaka-perf-find-bugs/SKILL.md). Load the named skill or read its sibling file.
+If a required companion is missing, ask the user to install it with `npx skills add shakacode/shakaperf --skill <name> --agent <agent>`.
+
+## Agent capabilities and invocation
+
+Use Claude Code `/shaka-perf`, Codex `$shaka-perf`, or ask any compatible agent to use the skill by name.
+Use available file and shell tools: Claude `Read`, `Grep`, `Glob`, and `Bash`; Codex `exec_command` with file/search commands; or equivalents.
+View screenshots with Claude `Read`, Codex `view_image`, or an equivalent image viewer.
+For questions, use Claude `AskUserQuestion`, Codex `request_user_input` / `request_user_input_async` when available, or ordinary conversation; wait when an answer is required.
+Browser workflows can use Claude's `mcp__claude-in-chrome__*`, Codex's `mcp__cua_repl.js` when exposed, Playwright MCP, or equivalent browser automation.
+Inspect available tool descriptions and follow their restrictions. Tool names and MCP prefixes vary by host; skill metadata does not grant permissions.
 
 Read this guide before writing or editing a test.
 https://github.com/shakacode/shakaperf/blob/main/writing-good-ab-tests.md.

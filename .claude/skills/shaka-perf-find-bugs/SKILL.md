@@ -6,6 +6,8 @@ allowed-tools: Bash Read Grep Glob Edit Write Agent
 
 # QA with local twin servers
 
+Use file/search, editing, and shell tools: Claude `Read` / `Grep` / `Glob` / `Edit` / `Write` / `Bash`, Codex `exec_command` / `apply_patch`, or equivalents. The `allowed-tools` field retains Claude tool names; it is not a Codex permission grant. Use the browser options in step 4 for live verification.
+
 Two checkouts side by side: the configured `twinServers.controlDir` (the base) and `twinServers.experimentDir` (the change under test). Same seed data, two servers. Your job is to find something that misbehaves on experiment and works on control.
 
 Ports and hosts come from the configured application's `abtests.config.ts` (`shared.controlURL`, `shared.experimentURL`, and `twinServers.ports`).
@@ -16,7 +18,7 @@ Some obvious crashes or typos in known API calls don't need to have a reproducti
 
 ## 1. Sanity-check twin-servers commits
 
-What commits are checked out in `twinServers.experimentDir`/`twinServers.controlDir`? Usually control should contain the merge-base with the main branch. Or it can be the previous PR in `gh stack` (given it's installed). If the control branch looks off, use prompt tool asking what branch to use as control, and then run the corresponding `shaka-perf servers checkout` command.
+What commits are checked out in `twinServers.experimentDir`/`twinServers.controlDir`? Usually control should contain the merge-base with the main branch. Or it can be the previous PR in `gh stack` (given it's installed). If the control branch looks off, ask which branch to use as control with Claude `AskUserQuestion`, available Codex question tools, or ordinary conversation. Wait for the answer, then run the corresponding `shaka-perf servers checkout` command.
 
 
 ## 2. Read the diff first
@@ -25,7 +27,7 @@ What commits are checked out in `twinServers.experimentDir`/`twinServers.control
 
 ## 3. Boot the servers
 
-See `packages/shaka-perf/README-twin-servers.md` to understand the desired experiment/control layout and server lifecycle. Use the configured application's `abtests.config.ts` for databases, seed setup, and build commands. Run the following from that application's directory (`demo-ecommerce` for this repository's demo):
+See [the twin-server lifecycle guide](https://github.com/shakacode/shakaperf/blob/main/packages/shaka-perf/README-twin-servers.md) to understand the desired experiment/control layout and server lifecycle. Use the configured application's `abtests.config.ts` for databases, seed setup, and build commands. Run the following from that application's directory (`demo-ecommerce` for this repository's demo):
 
 ```bash
 yarn shaka-perf servers build
@@ -37,9 +39,11 @@ The start-servers command runs Overmind and blocks until stopped. Use the docume
 
 ## 4. Reproduce
 
-Follow the project's browser interaction instructions: drive the browser through MCP, never through curl or the Task tool. Do every step on both servers in the same order and take a screenshot at each step where you expect a difference. Save screenshots under `tmp/twin-qa/`.
+Follow the project's browser interaction instructions. Use Claude's `mcp__claude-in-chrome__*`, Codex's `mcp__cua_repl.js` when available, Playwright MCP (`browser_navigate`, `browser_take_screenshot`, `browser_resize`), or equivalent browser automation. Inspect the session's tool descriptions; prefixes and APIs vary. Follow each integration's restrictions.
 
-Run headless browser.
+Drive a real browser; HTTP requests or a delegated report alone cannot verify a UI regression. If required browser capabilities are unavailable, report the blocker. Prefer headless mode when supported; attached browser integrations may run visibly.
+
+Do every step on both servers in the same order and take a screenshot at each step where you expect a difference. Save screenshots under `tmp/twin-qa/`. View them with Claude `Read`, Codex `view_image`, or an equivalent image viewer.
 
 Seeds not enough? Edit the application's seed data or fixtures, then apply the same data to both sides using the project's seed commands (see `twinServers.setupCommands` in the application's `abtests.config.ts`).
 
@@ -69,6 +73,6 @@ Screenshot rules:
 
 The template's two copy buttons are what make the report pasteable into a PR. "Copy markdown" copies the headline, the numbered steps, expected/actual, and every section below the screenshots as one markdown block with a slot for the image. "Copy image" copies the screenshot stage as one PNG with the titles, annotations, and verdicts baked in (an SVG overlay does not survive a paste, a flattened image does); it is pasted separately. Keep all text in those sections and all screenshot content inside the stage.
 
-After you proved the bug exists, you need to explain it. Spawn a subagent with "Draw an insightful SVG explaining <bug description>. Use playwright-mcp to polish it. Don't stop iterating until it is clean and insigthful. You are expected to run at least 2 iterations. The SVG can contain 30 words top. Before you start drawing you have to plan what you will show to the user, don't expect them to be familiar with implementation details. Get creative."
+After you proved the bug exists, you need to explain it. If delegation is available and authorized by the session, use Claude `Agent`, Codex `spawn_agent`, or an equivalent with "Draw an insightful SVG explaining <bug description>. Use available browser automation to polish it. Don't stop iterating until it is clean and insigthful. You are expected to run at least 2 iterations. The SVG can contain 30 words top. Before you start drawing you have to plan what you will show to the user, don't expect them to be familiar with implementation details. Get creative." If delegation is unavailable or unauthorized, create and review the SVG yourself using the same requirements.
 
 In the "Why it happens" section, write the explanation in plain language, 70 words max, then inline that SVG under it, and list the relevant sources in the section below. Screenshot PNGs should be inlined as base64.

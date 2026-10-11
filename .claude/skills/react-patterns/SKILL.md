@@ -3,14 +3,13 @@ name: react-patterns
 metadata:
   internal: true
 description: "React 19 performance patterns and composition architecture for Vite + Cloudflare projects. 50+ rules ranked by impact — eliminating waterfalls, bundle optimisation, re-render prevention, composition over boolean props, server/client boundaries, and React 19 APIs. Use when writing, reviewing, or refactoring React components. Triggers: 'react patterns', 'react review', 'react performance', 'optimise components', 'react best practices', 'composition patterns', 'why is it slow', 'reduce re-renders', 'fix waterfall'."
-compatibility: claude-code-only
-allowed-tools:
-  - Read
-  - Glob
-  - Grep
+compatibility: Requires access to the application source files.
+allowed-tools: Read Glob Grep
 ---
 
 # React Patterns
+
+Inspect source files with Claude `Read` / `Glob` / `Grep`, Codex `exec_command` with file/search commands, or equivalent tools. The `allowed-tools` names are Claude examples, not a permission grant for other agents. Follow session permissions and the user’s requested review or editing scope.
 
 Performance and composition patterns for React 19 + Vite + Cloudflare Workers projects. Use as a checklist when writing new components, a review guide when auditing existing code, or a refactoring playbook when something feels slow or tangled.
 
