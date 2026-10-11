@@ -35,6 +35,11 @@ See the
 individual selection, and updates. The npm package retains discovery browser
 scripts for CLI helpers; skill instructions now come from the GitHub repository.
 
+Browser skills use Claude Chrome tools when available and `agent-browser` otherwise.
+Skills installation does not install the browser automation executable. See
+[browser setup](docs/for-ai-agents.md#browser-executable-setup) for npm/Homebrew
+installation and reuse of an existing Chrome/Chromium binary.
+
 ## 0.3.0 — 2026-09-13
 
 ### `--full-report-zip` removed from `compare` and `audit`
