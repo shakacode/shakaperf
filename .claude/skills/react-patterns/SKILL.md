@@ -9,7 +9,7 @@ allowed-tools: Read Glob Grep
 
 # React Patterns
 
-Inspect source files with Claude `Read` / `Glob` / `Grep`, Codex `exec_command` with file/search commands, or equivalent tools. The `allowed-tools` names are Claude examples, not a permission grant for other agents. Follow session permissions and the user’s requested review or editing scope.
+Use the host’s file and search tools within the requested scope. `allowed-tools` lists Claude tool names; other hosts follow their own permissions.
 
 Performance and composition patterns for React 19 + Vite + Cloudflare Workers projects. Use as a checklist when writing new components, a review guide when auditing existing code, or a refactoring playbook when something feels slow or tangled.
 

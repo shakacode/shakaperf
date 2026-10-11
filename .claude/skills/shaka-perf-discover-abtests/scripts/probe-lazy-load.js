@@ -25,7 +25,7 @@
  *
  *   // Step 3 — wait 2s, then capture after-state
  *   evaluate the STEP2 expression string and save its returned result as after.
- *   Use a fresh function scope for each phase; see SKILL.md for scoped eval examples.
+ *   Use a fresh function scope for each phase.
  *
  *   // If after.imageCount > before.imageCount or after.scrollHeight > before.scrollHeight
  *   // → lazy loading confirmed, add scroll pattern to the test.

@@ -7,72 +7,7 @@ argument-hint: <url> [depth=2] [output=./ab-tests/] [mode=twin-server|single-ser
 
 # shaka-perf-discover-abtests
 
-## Browser selection and setup
-
-Before live browser work, use Claude Chrome tools when available in Claude Code;
-otherwise use `agent-browser` (including non-Claude agents). Read the exposed tool
-descriptions and `agent-browser --help` plus relevant command help. Follow the
-session's permissions and browser restrictions; report a blocker if this route
-is prohibited or lacks an essential capability. HTTP responses do not verify UI.
-
-Check `command -v agent-browser` before using the CLI. If missing, provide
-`npm install -g agent-browser` or, on macOS, `brew install agent-browser`. Install
-it when the session authorizes package installation. `npx skills` installs
-instructions, not this executable or a browser.
-ShakaPerf's global installation does not guarantee a downloaded browser either.
-
-For standalone inspection, choose a unique `AB_SESSION` per worker and open the
-requested `URL` with `agent-browser --session "$AB_SESSION" open "$URL"`.
-Allow automatic detection of existing Chrome/Chromium. If detection fails, inspect
-the effective ShakaPerf browser options for `executablePath` or `channel`. Resolve
-its active package from the CLI symlink or development wrapper, then load that
-package's `playwright` with Node `createRequire` rooted there (and its Yarn PnP
-runtime for a source install); inspect `chromium.executablePath()` and check that
-the file exists. Do not resolve the target project's unrelated Playwright or
-hard-code a machine path. Retry with
-`agent-browser --session "$AB_SESSION" --executable-path "$BROWSER_EXECUTABLE" open "$URL"`.
-This reuses the binary but launches a new process; it does not attach to ShakaPerf.
-If no compatible browser exists, stop and provide the platform's
-[Chrome installer](https://www.google.com/chrome/) or Chromium package instructions.
-For a missing ShakaPerf Playwright build, use the exact bundled Playwright
-installation command printed by ShakaPerf's error.
-
-For troubleshooting, wait until the relevant side is parked: visreg logs
-`Test completed`; perf labels its page `[PERF]` after its test function settles.
-A session manifest alone does not establish readiness. Run
-`shaka-perf troubleshoot session` in the application's directory and use
-the endpoint printed for the desired side:
-`agent-browser --session "$AB_SESSION" connect "$CDP_ENDPOINT"`.
-List tabs with `agent-browser --session "$AB_SESSION" tab`, match the full
-control/experiment URL, then select its returned tab ID with `tab "$TAB_ID"`.
-The reported URLs are starting targets. If the test navigated, use its known
-navigation and the side's origin to identify the parked tab. If identity remains
-ambiguous, resolve it before interacting; do not guess.
-Visreg's endpoint contains both sides; perf endpoints are per side. Confirm
-`get url` before interacting. Never assume port 9222, auto-attach to another
-browser, or manipulate browsers during active measurements.
-
-Keep the selected session and tab for subsequent commands. Use separate sessions
-and tabs for parallel workers; an agent-browser session has one active tab.
-Finish with `agent-browser --session "$AB_SESSION" close`: it closes browsers
-launched by that session and only disconnects from external CDP browsers.
-Do not run `tab close` on ShakaPerf-owned tabs. With Claude Chrome, retain the tab
-ID, follow the tool's lifecycle rules, and close only tabs created by this skill.
-
-Use Claude `mcp__claude-in-chrome__tabs_context_mcp` / `tabs_create_mcp` to obtain
-a tab and `navigate` to open the URL; retain that ID. For inspection and actions,
-use Chrome `read_page` / `find` / `computer` / `form_input`, or agent-browser
-`snapshot -i` followed by `click`, `fill`, `check`, and `select`. Run page probes
-with Chrome `javascript_tool` or agent-browser `eval --stdin`. Capture with
-Chrome `computer` with its screenshot action or agent-browser
-`screenshot "$SCREENSHOT"`, then inspect the image with Claude `Read`, Codex
-`view_image`, or another image viewer.
-Resize with Chrome `resize_window` or agent-browser `set viewport <width> <height>`,
-and verify `window.innerWidth` / `window.innerHeight` through page JavaScript.
-Use Chrome `computer` with its scroll action or agent-browser
-`mouse wheel <delta>` for incremental scrolling; agent-browser `scroll` uses
-JavaScript. Pass the chosen
-`--session "$AB_SESSION"` on every agent-browser browser command.
+For browser work, use Claude Chrome tools when available in Claude Code; otherwise use `agent-browser`.
 
 Crawl a target site in a real browser, probe pages interactively to understand their behavior, then generate validated `.abtest.ts` files for shaka-perf visual regression testing (run via `shaka-perf compare --categories visreg`).
 
@@ -93,35 +28,7 @@ The browser-side scripts and report parser ship inside the `shaka-perf` CLI — 
 
 Read the reference docs as needed rather than trying to keep the full details in mind. The patterns and API reference are too detailed to hold mentally — just load them.
 
-Execute helpers in the selected page with Claude
-`mcp__claude-in-chrome__javascript_tool`, or pipe their source to
-`agent-browser --session "$AB_SESSION" eval --stdin` for `extract-links` and
-`probe-sections`. Keep the returned links and scored candidates; these are DOM
-probes, so running their source in a shell's Node process cannot inspect the page.
-
-`probe-lazy-load` prints declarations containing three expression strings,
-not an immediately executed probe. Save its output to a temporary `LAZY_PROBE`
-file. Run each phase in a fresh function scope to avoid redeclaring bindings:
-
-```bash
-shaka-perf discover-abtests probe-lazy-load > "$LAZY_PROBE"
-{ printf '(() => {\n'; cat "$LAZY_PROBE"; printf '\nreturn eval(STEP1);\n})()\n'; } |
-  agent-browser --session "$AB_SESSION" eval --stdin
-# Save STEP1's result as before. Scroll incrementally with mouse wheel below.
-{ printf '(() => {\n'; cat "$LAZY_PROBE"; printf '\nreturn eval(AT_BOTTOM);\n})()\n'; } |
-  agent-browser --session "$AB_SESSION" eval --stdin
-# Repeat wheel input and AT_BOTTOM until bottom; wait 2 seconds, then:
-{ printf '(() => {\n'; cat "$LAZY_PROBE"; printf '\nreturn eval(STEP2);\n})()\n'; } |
-  agent-browser --session "$AB_SESSION" eval --stdin
-```
-
-With Claude `javascript_tool`, execute the same scoped source in the chosen tab.
-Save STEP2's result as after and compare image count and scroll height with before.
-Do not assume bindings or returned results persist between browser calls.
-
 ## Inputs
-
-Invocation examples: Claude `/shaka-perf-discover-abtests <url>`, Codex `$shaka-perf-discover-abtests <url>`, or ask another agent to use this skill with a URL and optional settings.
 
 Parse from the user's message:
 
@@ -139,7 +46,7 @@ If no URL was provided, ask for it before proceeding.
 
 ## Phase 1: Crawl (links only)
 
-Obtain a tab with Claude `mcp__claude-in-chrome__tabs_context_mcp` or `agent-browser --session "$AB_SESSION" tab`; retain its ID. Navigate with Claude Chrome `navigate` or `agent-browser --session "$AB_SESSION" open "$URL"` using the setup above.
+Open the URL in the selected browser and retain the tab ID.
 
 This phase ONLY extracts links — no probing, no testing. The goal is to build a list of pages to process.
 
@@ -152,9 +59,9 @@ Maintain throughout:
 Process the queue in BFS order, **up to `concurrency` pages in parallel**:
 
 1. Dequeue up to `concurrency` entries not yet visited.
-2. Open each in its own tab (Claude `tabs_create_mcp` or `agent-browser --session "$AB_SESSION" tab new "$URL"`; reuse existing for first). For parallel agent-browser workers, use a distinct session per worker; serialize tab selection and actions within each session.
-3. For each: navigate, mark visited, capture `shaka-perf discover-abtests extract-links` and execute stdout in the target browser page using the adapter's documented JavaScript input format. If `depth < crawlDepth`, enqueue new paths as `{ path, depth: depth + 1 }`.
-4. Close extra tabs created by this skill after each batch. For agent-browser, select the owned tab and use `tab close`; follow Claude Chrome's documented tab lifecycle.
+2. Open each in its own tab; reuse the first tab. Use separate agent-browser sessions for parallel workers.
+3. For each: navigate, mark visited, execute `shaka-perf discover-abtests extract-links` stdout in the browser page. If `depth < crawlDepth`, enqueue new paths as `{ path, depth: depth + 1 }`.
+4. Close extra tabs created by this skill after each batch.
 
 **Hard limits**: max 40 unique paths.
 
@@ -186,16 +93,16 @@ Maintain across pages:
 Navigate to the page in the selected browser. Complete all probing steps _in sequence_ before writing any code.
 
 **A1. Check for lazy-loaded content** (always, every page):
-Capture `shaka-perf discover-abtests probe-lazy-load` and execute STEP1 in the selected page as described above. Wait for page readiness first (`agent-browser --session "$AB_SESSION" wait --load networkidle` on pages whose network becomes idle); probing during an in-flight API call gives false results. Scroll incrementally with **mouse wheel input**: Claude `mcp__claude-in-chrome__computer` with its scroll action, or `agent-browser --session "$AB_SESSION" mouse wheel 500`. Preserve the 500ms waits between batches and evaluate AT_BOTTOM after each batch. IntersectionObserver reacts to intersection changes from either user or JavaScript scrolling; incremental scrolling and waits avoid jumping past intermediate lazy-loading states. Agent-browser's `scroll` command uses JavaScript scrolling, so use `mouse wheel` here. Once AT_BOTTOM is true, wait 2 more seconds, evaluate STEP2, compare image count and scroll height with STEP1, and record the result.
+Capture `shaka-perf discover-abtests probe-lazy-load` and evaluate `STEP1` after page readiness (`networkidle` where applicable). Scroll incrementally with **mouse wheel input**, waiting 500ms between batches and evaluating `AT_BOTTOM` until true. Wait 2 more seconds, evaluate `STEP2`, compare image count and scroll height with `STEP1`, and record the result. Incremental scrolling avoids skipping lazy-loading states.
 
 **A2. Wait for loading indicators to clear** (always, every page):
-Check for spinners, skeleton screens, loading indicators. Use Claude `javascript_tool` or `agent-browser --session "$AB_SESSION" eval --stdin` to look for: `aria-label="Loading"`, `role="progressbar"`, class names containing `skeleton`, `spinner`, `loading`, `placeholder`. Add any found to `knownLoadingSelectors` and wait for them to disappear. Also check all selectors already in `knownLoadingSelectors`. Do not proceed until all loading indicators are gone.
+Check for spinners, skeleton screens, loading indicators. Use page JavaScript to look for: `aria-label="Loading"`, `role="progressbar"`, class names containing `skeleton`, `spinner`, `loading`, `placeholder`. Add any found to `knownLoadingSelectors` and wait for them to disappear. Also check all selectors already in `knownLoadingSelectors`. Do not proceed until all loading indicators are gone.
 
-**A3. CSS animation overrides** (if you see moving elements): inject via Claude `javascript_tool` or `agent-browser --session "$AB_SESSION" eval --stdin`, then capture with Chrome `computer` with its screenshot action or `agent-browser --session "$AB_SESSION" screenshot "$SCREENSHOT"` and inspect the image to confirm it stopped. Only include in tests if the screenshot shows the element frozen.
+**A3. CSS animation overrides** (if you see moving elements): inject in the browser, then inspect a screenshot to confirm it stopped. Only include in tests if the screenshot shows the element frozen.
 
 **A4. Page sections**: run `document.body.scrollHeight` (after real scrolling in A1). If >~2000px, use both strategies to find the best CSS selectors for section-based testing:
 
-**Strategy 1 — Algorithmic probe**: Capture `shaka-perf discover-abtests probe-sections` and execute its stdout in the selected page with Claude `javascript_tool` or `agent-browser --session "$AB_SESSION" eval --stdin`. It walks the DOM from the layout root, scores elements by size (100-800px = best), width, depth, semantic class name, heading inclusion, content density, and uniqueness. Returns up to 15 scored candidates with overlap removed. Elements >1000px tall are deprioritized so their children get picked instead.
+**Strategy 1 — Algorithmic probe**: Capture `shaka-perf discover-abtests probe-sections` and execute its stdout in the selected page. It walks the DOM from the layout root, scores elements by size (100-800px = best), width, depth, semantic class name, heading inclusion, content density, and uniqueness. Returns up to 15 scored candidates with overlap removed. Elements >1000px tall are deprioritized so their children get picked instead.
 
 **Strategy 2 — AI visual analysis**: Scroll through the page and identify the **natural visual sections** a user would recognize — hero, content blocks, sidebars, forms, navigation, footer. For each, find the closest DOM element that wraps it. Evaluate: "If I capture just this element, will the screenshot show a recognizable, self-contained piece of UI?"
 
@@ -211,13 +118,11 @@ Check for spinners, skeleton screens, loading indicators. Use Claude `javascript
 
 **A5–A7 are not optional.** Interaction tests (clicking buttons, filling forms, opening modals) are just as important as section snapshots — they catch regressions in dynamic behavior that static screenshots miss. A page with 5 section snapshots and 0 interaction tests has a coverage gap.
 
-**A5. Catalog interactive elements**: use Claude `javascript_tool` or `agent-browser --session "$AB_SESSION" eval --stdin` to find all clickable/interactive elements on the page. Query for `button`, `a[href]` (non-navigation), `input`, `select`, `textarea`, `[role="tab"]`, `[aria-expanded]`, `[data-toggle]`, `.btn`, etc. Record each with its selector, visible text, and location on the page.
+**A5. Catalog interactive elements**: use page JavaScript to find all clickable/interactive elements on the page. Query for `button`, `a[href]` (non-navigation), `input`, `select`, `textarea`, `[role="tab"]`, `[aria-expanded]`, `[data-toggle]`, `.btn`, etc. Record each with its selector, visible text, and location on the page.
 
 **A6. Test interactions**: click each interactive element in the selected browser and document what happens:
 
-Use Claude Chrome `read_page` / `find` and `computer` / `form_input`, or
-`agent-browser --session "$AB_SESSION" snapshot -i` followed by `click`, `fill`,
-`check`, or `select` with the current refs/selectors. Refresh refs after page changes.
+Refresh browser interaction refs after page changes.
 
 - Button opens a modal or drawer? → record the modal's content and selectors
 - Checkbox changes visible state? → record
@@ -251,10 +156,10 @@ This applies to inline forms too (forms that are already visible on the page wit
 
 After completing desktop probing (A1-A7), resize the browser to mobile width and re-probe:
 
-1. Resize to 375×667 via Claude `mcp__claude-in-chrome__resize_window` or `agent-browser --session "$AB_SESSION" set viewport 375 667`. Verify actual `{ width: window.innerWidth, height: window.innerHeight }` with Claude `javascript_tool` or agent-browser `eval` before probing; correct mismatches rather than assuming the requested dimensions applied.
+1. Resize to 375×667. Verify actual `window.innerWidth` / `window.innerHeight` before probing; correct mismatches.
 2. Take a screenshot and scroll through the mobile layout — visually note what's different from desktop (stacked columns, hidden sidebars, hamburger menus, mobile-specific UI)
-3. Re-run `shaka-perf discover-abtests probe-sections` (via the selected adapter’s browser JavaScript tool) at this width
-4. Check each desktop selector from A4 — does it exist on mobile? Use the selected adapter’s browser JavaScript tool to query visibility:
+3. Re-run `shaka-perf discover-abtests probe-sections` (in the selected browser page) at this width
+4. Check each desktop selector from A4 — does it exist on mobile? Use page JavaScript to query visibility:
    ```js
    const el = document.querySelector('.rate-form-wrapper');
    el ? { display: getComputedStyle(el).display, height: el.getBoundingClientRect().height } : 'NOT FOUND'
@@ -373,7 +278,7 @@ This prints status, diff%, whitespace%, and engine errors per test. Act on these
 
 A test that passes (0 diff) can still be broken if both control and experiment captured blank/useless content. The `whitePixelPercent` field catches this — high whitespace on a passing test means the selector is wrong.
 
-**2. Inspect screenshots visually** — use Claude `Read`, Codex `view_image`, or an equivalent image viewer on `.png` files. Each test+viewport gets a unit dir under `compare-results/` (named `<test-name-slug>-<viewport>-<hash>`):
+**2. Inspect screenshots visually** — use the host’s image viewer on `.png` files. Each test+viewport gets a unit dir under `compare-results/` (named `<test-name-slug>-<viewport>-<hash>`):
 
 - `compare-results/<unit>/artifacts/control_screenshots/`
 - `compare-results/<unit>/artifacts/experiment_screenshots/`
@@ -391,8 +296,8 @@ After all TODO stubs are implemented:
 
 ### Step E — Coverage comparison (loop until covered)
 
-1. Open the unified report (`compare-results/report.html`) with Claude Chrome `navigate` or `agent-browser --session "$AB_SESSION" open "$REPORT_URL"`; resolve its absolute `file://` URL or use the report server URL.
-2. Open the live page in another tab with Claude `tabs_create_mcp` / `navigate` or `agent-browser --session "$AB_SESSION" tab new "$URL"`; retain both tab IDs.
+1. Open the unified report (`compare-results/report.html`) in the browser.
+2. Open the live page in another tab; retain both tab IDs.
 3. Go through the report images and compare with the live page to find:
    - Missing page sections (important content not captured by any test)
    - Missing interactions (buttons, forms, modals that should be tested but aren't)
