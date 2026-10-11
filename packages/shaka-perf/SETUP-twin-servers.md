@@ -18,24 +18,13 @@ This guide walks you through adding twin-servers to a project that already has a
 ## 1. Create the config file
 
 Run `shaka-perf init` to create a starter `abtests.config.ts` in your project.
-Install ShakaPerf skills from the target repository directory:
-
-```bash
-npx skills add shakacode/shakaperf \
-  --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage \
-    shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs \
-  --agent claude-code codex
-```
-
-Choose your agent(s), or add `-g` for global skill installation. See the
-[agent installation guide](../../docs/for-ai-agents.md#install-and-scaffold) for individual
-selection and updates. The skills can do the setup work, including:
+Install the skills using the [agent guide](../../docs/for-ai-agents.md#install-and-scaffold). They cover:
 
 - `shaka-perf` — a map of the CLI commands that points the agent at each command's `--help`.
 - `shaka-perf-add-coverage` — adds focused source-aware visual-regression tests.
 - `shaka-perf-coverage` — estimates screenshot coverage and compares baselines.
 - `shaka-perf-find-bugs` — once the twin servers run, reads the branch diff, reproduces regressions on control vs experiment, and writes a paired-screenshot bug report.
-- `shaka-perf-dockerize` — walks an agent through this entire guide: filling the `twinServers` config, writing the production `twin-servers/Dockerfile`/`Procfile`, adding the `TWIN_SERVERS` guards, and driving `shaka-perf servers` until both sides build and serve. If you'd rather not follow the steps below by hand, ask Claude Code, Codex, or another compatible agent to "use shaka-perf-dockerize to set up twin servers for this project" and it will use that skill.
+- `shaka-perf-dockerize` — follows this guide through config, Dockerfile/Procfile, app guards, and verification. Ask your agent to "use shaka-perf-dockerize to set up twin servers for this project".
 
 The generated config already auto-assigns the host ports used everywhere — see
 the `CONTROL_PORT` / `EXPERIMENT_PORT` block in

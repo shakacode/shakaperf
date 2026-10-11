@@ -17,7 +17,7 @@ Or it can be your AI-driven visual-regression catching pipeline.
 
 ## Usage
 
-Setting up takes one to four hours. Install the CLI and agent skills, then let Claude Code, Codex, or another compatible agent do the Docker work:
+Setting up takes one to four hours. Install the CLI and skills, then ask your agent to do the Docker work:
 
 ```bash
 # small helpers and types
@@ -36,24 +36,15 @@ npx skills add shakacode/shakaperf \
   --agent claude-code codex
 ```
 
-Choose only your agent with `--agent claude-code` or `--agent codex`; add `-g` to install skills globally.
-For discovery, individual skill selection, updates, and tool requirements, see the [agent installation guide](docs/for-ai-agents.md#install-and-scaffold).
-
-Browser skills use Claude Chrome tools when available, otherwise `agent-browser`.
-Skills installation does not install that executable: use `npm install -g agent-browser`
-or `brew install agent-browser` on macOS when needed. Reuse an existing Chrome/Chromium
-installation; see [browser setup](docs/for-ai-agents.md#browser-executable-setup) for executable detection and ShakaPerf troubleshooting attachments.
-
-In Claude Code, use `/shaka-perf-dockerize`, then `/shaka-perf-add-coverage`.
-In Codex, use `$shaka-perf-dockerize`, then `$shaka-perf-add-coverage`.
-In either host, or another compatible agent, these prompts work:
+Choose your agent(s) with `--agent`; add `-g` for global installation. See the [agent guide](docs/for-ai-agents.md#install-and-scaffold) for selection and updates. Then ask your agent:
 
 ```text
-Use shaka-perf-dockerize to set up twin servers for this project.
+# ~30 minutes
+Use shaka-perf-dockerize to set up twin servers for this project. # Optionally provide details about how to seed your app (e.g. instruct it to visit your production site with agent-browser and re-use the data)
+
+# start small, expand later. ~30 minutes
 Use shaka-perf-add-coverage to write a minimal test suite. Add seeded data if needed.
 ```
-
-Optionally provide details about seeding the app and browser access. Start with a small suite, then expand it.
 
 Then run the same image as two containers, `control` on the merge base of your branch and `experiment` on your branch, and compare them:
 
@@ -83,7 +74,7 @@ Or something more ambitous (2-8 hours)
 ```
 1. Use shaka-perf-add-coverage to ensure screenshot coverage of all components
 2. Switch the stack to React RSC
-3. Use shaka-perf-find-bugs to check for critical regressions; delegate only when available and authorized
+3. Use shaka-perf-find-bugs to check for critical regressions
 4. No visual changes
 5. When done, hit me up with performance comparison report from shaka-perf
 ```
@@ -99,12 +90,12 @@ Or something more ambitous (2-8 hours)
 
 ## Instrumented screenshot coverage makes AI generated tests work
 
-Install the agent skills with `npx skills` to generate hi-fi tests. If any component in the app changes no matter how deap in the tree, shaka-perf will screenshot it and alert you. This works without needing you to polish the tests manually.
+The agent skills generate hi-fi tests. If any component in the app changes no matter how deap in the tree, shaka-perf will screenshot it and alert you. This works without needing you to polish the tests manually.
 ![Code coverage vs instrumented screenshot coverage](./docs/screenshot-coverage.svg)
 
 ## Shakaperf can be used as AI QA-Engineer. Minimal amount of false positives.
 
-The `shaka-perf-find-bugs` skill turns twin-servers into a QA rig: agents use the control server to generate the `expected/actual` screenshots. Install it with the ShakaPerf skills using `npx skills`.
+The `shaka-perf-find-bugs` skill turns twin-servers into a QA rig: agents use the control server to generate the `expected/actual` screenshots.
 
 ![shaka-perf-find-bugs report: the banner says the menu is closed, but the experiment still offers add-to-cart](./docs/find-bugs.svg)
 
