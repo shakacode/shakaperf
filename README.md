@@ -39,6 +39,11 @@ npx skills add shakacode/shakaperf \
 Choose only your agent with `--agent claude-code` or `--agent codex`; add `-g` to install skills globally.
 For discovery, individual skill selection, updates, and tool requirements, see the [agent installation guide](docs/for-ai-agents.md#install-and-scaffold).
 
+Browser skills use Claude Chrome tools when available, otherwise `agent-browser`.
+Skills installation does not install that executable: use `npm install -g agent-browser`
+or `brew install agent-browser` on macOS when needed. Reuse an existing Chrome/Chromium
+installation; see [browser setup](docs/for-ai-agents.md#browser-executable-setup) for executable detection and ShakaPerf troubleshooting attachments.
+
 In Claude Code, use `/shaka-perf-dockerize`, then `/shaka-perf-add-coverage`.
 In Codex, use `$shaka-perf-dockerize`, then `$shaka-perf-add-coverage`.
 In either host, or another compatible agent, these prompts work:
