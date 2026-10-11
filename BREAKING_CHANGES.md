@@ -14,31 +14,14 @@ version being released and updates the "Current version" line at the bottom.
 
 ## Unreleased
 
-### `init` creates config only; install agent skills with `npx skills`
+### `init` creates config only; install agent skills separately
 
-`shaka-perf init` no longer copies skills into `.claude/skills`. It creates
-`abtests.config.ts`; `--out` still chooses the destination and `--force` replaces
-only that config. Existing skill files are left untouched, including when forced.
+`shaka-perf init` creates `abtests.config.ts` without copying skills into
+`.claude/skills`. `--out` still selects the config path; `--force` replaces only
+that config and leaves existing skills untouched.
 
-Install ShakaPerf skills from your target repository directory:
-
-```bash
-npx skills add shakacode/shakaperf \
-  --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage \
-    shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs \
-  --agent claude-code codex
-```
-
-Choose one or more supported agents, or add `-g` for global installation.
-See the
-[agent installation guide](docs/for-ai-agents.md#install-and-scaffold) for discovery,
-individual selection, and updates. The npm package retains discovery browser
-scripts for CLI helpers; skill instructions now come from the GitHub repository.
-
-Browser skills use Claude Chrome tools when available and `agent-browser` otherwise.
-Skills installation does not install the browser automation executable. See
-[browser setup](docs/for-ai-agents.md#browser-executable-setup) for npm/Homebrew
-installation and reuse of an existing Chrome/Chromium binary.
+Install skills with `npx skills add shakacode/shakaperf` using the
+[agent installation guide](docs/for-ai-agents.md#install-and-scaffold).
 
 ## 0.3.0 — 2026-09-13
 

@@ -60,8 +60,7 @@ ad-hoc setup. It is the house toolset for this.
   an app into the control/experiment twin-servers pair), `shaka-perf-find-bugs`
   (reproduce regressions a branch introduces on the twin servers).
 - New project? Run `shaka-perf init` in that repo to create `abtests.config.ts`
-  only. Skills were installed globally by this helper; for a project install use
-  `npx skills add shakacode/shakaperf --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs --agent claude-code`.
+  only. This helper already installed the skills globally.
   Then ask for "use shaka-perf-dockerize to set up twin servers".
 EOF
   echo "appended ShakaPerf directive to CLAUDE.md"

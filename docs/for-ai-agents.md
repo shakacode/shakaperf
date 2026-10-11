@@ -14,178 +14,39 @@ What ShakaPerf gives an agent that a raw Lighthouse run or DevTools trace cannot
 
 ## Install and scaffold
 
-Install `shaka-perf` and `shaka-shared`, then run `yarn shaka-perf init` (see the
-[README](../README.md)). `init` creates only `abtests.config.ts`. Its `--out` chooses
-another config path; `--force` replaces only that config and leaves existing skills untouched.
+Install `shaka-perf` and `shaka-shared`, then run `shaka-perf init` (see the
+[README](../README.md)). It creates only `abtests.config.ts`: `--out` selects its
+path, and `--force` replaces it without touching existing skills.
 
-The `skills` installer requires Node >= 22.20.0. Select a supported Node version
-for the installation commands.
-
-Run from the target repository directory for a project installation:
+Install skills from your target repository directory using Node >= 22.20.0:
 
 ```bash
-# Discover available skills without installing.
-npx skills add shakacode/shakaperf --list
-
-# Install ShakaPerf skills for both agents.
 npx skills add shakacode/shakaperf \
   --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage \
     shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs \
   --agent claude-code codex
-
-# Or choose one agent.
-npx skills add shakacode/shakaperf \
-  --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage \
-    shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs \
-  --agent claude-code
-npx skills add shakacode/shakaperf \
-  --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage \
-    shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs \
-  --agent codex
-
-# Global installation: available across projects for the selected agents.
-npx skills add shakacode/shakaperf \
-  --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage \
-    shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs \
-  --agent claude-code codex -g
-
-# Select an individual skill by its YAML name (not its description).
-npx skills add shakacode/shakaperf --skill shaka-perf-dockerize --agent codex
-
-# Update installed skills; choose the intended scope.
-npx skills update --project
-npx skills update --global
 ```
 
-Replace agent names with another agent supported by the [skills installer](https://github.com/vercel-labs/skills).
-Project installations use the current directory, so start at your repository root
-if skills should apply to the whole project.
-By default, the installer copies skills into `.agents/skills` (or `~/.agents/skills`
-with `-g`) and links agent-specific locations such as `.claude/skills` or
-`~/.claude/skills`. Codex reads the shared location. Use `--copy` if separate copies
-are required. Source instructions remain in this repository's `.claude/skills`.
+Choose your agent(s) with `--agent`, select individual skills with `--skill`, or
+add `-g` for global installation. List available skills with
+`npx skills add shakacode/shakaperf --list`; update with
+`npx skills update --project` or `npx skills update --global`.
+See the [skills installer](https://github.com/vercel-labs/skills) for other options.
+When installing `shaka-perf-add-coverage` alone, also install `shaka-perf-coverage`.
+Maintenance skills marked `metadata.internal: true` are hidden from discovery;
+select them by name or set `INSTALL_INTERNAL_SKILLS=1` to list them.
 
-The ShakaPerf skills cover the following workflows:
+Invoke skills by name, Claude Code `/shaka-perf-dockerize`, or Codex
+`$shaka-perf-dockerize`. For browser work, use Claude Chrome tools when available
+in Claude Code; otherwise use `agent-browser`.
 
-- `shaka-perf`: CLI command map; read each command's `--help` before using it.
-- `shaka-perf-dockerize`: set up twin servers.
-- `shaka-perf-discover-abtests`: discover tests from a URL when sources are unavailable.
-- `shaka-perf-add-coverage`: add tests when sources are available; also install `shaka-perf-coverage` if selecting it individually.
-- `shaka-perf-coverage`: estimate screenshot coverage and compare baselines.
-- `shaka-perf-find-bugs`: reproduce branch regressions and create paired screenshot reports.
+Run application commands from the application directory and resolve skill
+references from the installed skill folder. The `shaka-perf` skill provides the
+[command map](../.claude/skills/shaka-perf/SKILL.md); each command's `--help` is the
+reference for its flags.
 
-Repository maintenance skills carry the YAML boolean `metadata.internal: true`.
-The installer hides them from normal discovery. To install a maintenance skill,
-select its YAML name with `--skill <name>`. Set `INSTALL_INTERNAL_SKILLS=1` to
-include maintenance skills in discovery. This metadata controls installer filtering;
-it does not grant permissions or disable an installed skill. The `skill-creator`
-evaluation scripts require Claude Code.
-
-Invoke skills with Claude `/shaka-perf-dockerize`, Codex `$shaka-perf-dockerize`, or
-ask an agent: "Use shaka-perf-dockerize to set up twin servers for this project."
-Use the same forms for other skill names. Companion references resolve from the
-installed skill folder, while application commands run from the target application's directory.
-
-Browser workflows use Claude Chrome tools when available in Claude Code, and
-`agent-browser` for other agents or when Chrome tools are unavailable. Inspect the
-session's tool descriptions and CLI help, and follow its restrictions and permissions.
-The discovery skill requires page JavaScript execution, wheel input, viewport
-resizing, and screenshot inspection; HTTP responses alone cannot verify a UI.
-Use available question tools or conversation and wait for required answers. Delegate
-only when tools and session authorization allow it.
-
-The `shaka-perf` skill sends you to each command's `--help`, which is the reference
-for every flag mentioned below. If a skill mentions an unavailable command or option,
-check CLI help and update the relevant component.
-
-For maintainers using [the global bootstrap helper](../scripts/bootstrap-shakaperf-global.sh),
-the helper installs the source-built CLI and its global Claude directive.
-It links ShakaPerf skills directly from the checkout into Claude Code's global
-skills directory, so source edits are reflected immediately. Use the commands
-above for other agents.
-
-### Browser executable setup
-
-Check `command -v agent-browser`, then read `agent-browser --help` and the relevant
-command help. If the executable is missing, install it using either:
-
-```bash
-npm install -g agent-browser
-# Or on macOS:
-brew install agent-browser
-```
-
-`npx skills` installs skill instructions; it does not install the agent-browser
-executable or Chrome/Chromium. ShakaPerf's global CLI installation does not guarantee
-that a browser binary has been downloaded. Reuse existing browsers instead of
-requiring a new agent-browser browser download.
-
-For discovery or standalone verification, choose a unique session name and let
-agent-browser detect an existing browser:
-
-```bash
-agent-browser --session "$AB_SESSION" open "$URL"
-```
-
-If detection fails, inspect the effective ShakaPerf `playwrightOptions`, including
-category/test overrides, for an explicit `executablePath` or `channel`. Otherwise
-resolve the active ShakaPerf package from its CLI symlink or development wrapper.
-Load **that package's** Playwright, using its Yarn PnP runtime for a source checkout.
-For example, after setting `SHAKA_PERF_ENTRY` to an absolute JavaScript entry file
-inside that package, resolve its default Chromium binary with:
-
-```bash
-node - "$SHAKA_PERF_ENTRY" <<'JS'
-const { createRequire } = require('node:module');
-const { existsSync } = require('node:fs');
-const requireFromShakaPerf = createRequire(process.argv[2]);
-const executable = requireFromShakaPerf('playwright').chromium.executablePath();
-if (!existsSync(executable)) throw new Error('ShakaPerf Chromium is not installed');
-console.log(executable);
-JS
-```
-
-Run the same snippet with `yarn node` from the source checkout when it uses PnP.
-An explicit configured executable/channel takes precedence over the default above.
-Do not assume the target project's Playwright version uses the same binary, or
-hard-code a machine path. Pass the resolved compatible executable with:
-
-```bash
-agent-browser --session "$AB_SESSION" --executable-path "$BROWSER_EXECUTABLE" open "$URL"
-```
-
-This launches a new process using the existing binary. If none is available,
-use [Chrome's platform installer](https://www.google.com/chrome/) or the platform's
-Chromium package; for a missing ShakaPerf
-Playwright build, follow the exact bundled Playwright command printed by ShakaPerf's
-error rather than installing the target project's unrelated Playwright build.
-
-### Parked troubleshooting browsers
-
-Wait until the relevant troubleshooting side has completed its test and is parked:
-visreg logs `Test completed`; perf labels its page `[PERF]` when its test function
-settles. The manifest exists before browser startup, so its presence is not readiness.
-Run `shaka-perf troubleshoot session` from that application's directory and use the
-reported endpoint for the desired control/experiment side:
-
-```bash
-agent-browser --session "$AB_SESSION" connect "$CDP_ENDPOINT"
-agent-browser --session "$AB_SESSION" tab
-agent-browser --session "$AB_SESSION" tab "$TAB_ID"
-agent-browser --session "$AB_SESSION" get url
-```
-
-Match the tab's full URL to the desired side. The reported URLs are starting targets;
-if the test navigated, use its known navigation and the side's origin to identify
-the parked tab. Resolve ambiguous identity before interacting. Visreg shares one
-browser containing both sides; perf uses separate endpoints. Never assume port 9222, attach to an
-unrelated browser, or interact during active measurements. Reuse the session/tab;
-give parallel workers separate sessions because tab selection is shared within one
-agent-browser session.
-
-Finish with `agent-browser --session "$AB_SESSION" close`. For browsers it launched,
-this closes the owned browser; for external CDP attachments, it disconnects without
-closing ShakaPerf's browser. Do not close ShakaPerf-owned tabs.
+For source development, the [global bootstrap helper](../scripts/bootstrap-shakaperf-global.sh)
+installs the CLI and links skills from the checkout into Claude Code globally.
 
 ## The PR loop (twin servers)
 

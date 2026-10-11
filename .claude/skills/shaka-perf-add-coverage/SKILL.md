@@ -26,7 +26,7 @@ If missing, ask the user to install it with `npx skills add shakacode/shakaperf 
 5. If these fixes are not enough for the coverage and you genuinely need to add more tests, write them and add them to `relevant-tests`.
 6. If `relevant-tests` violate any rules in https://github.com/shakacode/shakaperf/blob/main/writing-good-ab-tests.md, fix them
 7. Run `shaka-perf compare --categories=visreg --filter=<relevant-tests> --controlURL=<experiment-url> --burn 3` and fix all the flakiness coming from tests themselves. Do not fix flaky errors on the page or in the server, instead let the user know there is a bug and give them reproduction cmd (the failing --burn command you were running). Tell them that the problem is in the App, not in the tests.
-8. Adversarially review steps 3-6 for missed coverage. Delegate when available and authorized; otherwise do a separate self-review pass.
+8. Adversarially review steps 3-6 for missed coverage. Delegate using subagents, check if you missed some things.
 9. Re-audit, save the AFTER baseline, and `diff` it against the BEFORE (per `shaka-perf-coverage`). Restart from 3 with the AFTER as the new BEFORE.
 
 Stop the loop when all the components are fully covered by hi-quality tests that don't flake.
