@@ -13,8 +13,7 @@ import type {
   PerfMetric,
   PerfMetricGroup,
 } from '../perf';
-import type { RegressionThresholdStat } from '../../../bench/cli/command-config/tb-config';
-import { classifyPracticalDelta } from '../../../bench/cli/compare/regression-thresholds';
+import { classifyDisplayDirection } from '../../../bench/cli/compare/regression-thresholds';
 import { AI_ANALYSIS_DIFF_FILENAME } from '../../../bench/core/html-diff';
 import type { ArtifactScope } from '../../../pipeline/artifact-store';
 import { safeReaddir } from '../../../pipeline/path-utils';
@@ -51,19 +50,6 @@ function formatPercentDelta(percentMedian: number | undefined): string {
   return `${sign}${rounded}%`;
 }
 
-function thresholdDelta(
-  entry: BenchJsonMetric,
-  regressionThresholdStat: RegressionThresholdStat,
-): { value: number; unit: string } {
-  if (regressionThresholdStat === 'ci-lower') {
-    return parseEstimatorDelta(entry.confidenceInterval?.[0] ?? entry.estimatorDelta);
-  }
-  if (regressionThresholdStat === 'ci-upper') {
-    return parseEstimatorDelta(entry.confidenceInterval?.[1] ?? entry.estimatorDelta);
-  }
-  return parseEstimatorDelta(entry.estimatorDelta);
-}
-
 interface BenchSevenFigureSummary {
   '10'?: number;
   '25'?: number;
@@ -96,13 +82,10 @@ interface BenchJsonMetric {
 interface BenchCompareJsonResults {
   vitalsTableData?: BenchJsonMetric[];
   diagnosticsTableData?: BenchJsonMetric[];
-  regressionThresholdStat?: RegressionThresholdStat;
 }
 
 export interface ReadPerfArtifactOptions {
   artifacts: ArtifactScope;
-  regressionThreshold: number;
-  regressionThresholdStat?: RegressionThresholdStat;
   saveArtifacts: boolean;
   statisticalAnalysis: boolean;
 }
@@ -133,25 +116,16 @@ export function readPerfArtifact(opts: ReadPerfArtifactOptions): PerfArtifact {
       ...(raw.vitalsTableData ?? []),
       ...(raw.diagnosticsTableData ?? []),
     ];
-    const regressionThresholdStat = raw.regressionThresholdStat
-      ?? opts.regressionThresholdStat
-      ?? 'estimator';
     for (const entry of allEntries) {
       const { value: deltaValue, unit } = parseEstimatorDelta(entry.estimatorDelta);
-      const threshold = thresholdDelta(entry, regressionThresholdStat);
       const controlValue = entry.controlSevenFigureSummary?.['50'] ?? 0;
       const experimentValue = entry.experimentSevenFigureSummary?.['50'] ?? 0;
-      const direction: PerfDirection = classifyPracticalDelta({
-        phaseName: entry.phaseName,
-        directionDeltaValue: deltaValue,
-        thresholdDeltaValue: threshold.value,
-        unit: threshold.unit || unit,
-        isSignificant: entry.isSignificant,
-        controlValue,
-        experimentValue,
-        regressionThreshold: opts.regressionThreshold,
-        sign: entry.sign,
-      });
+      const direction: PerfDirection = classifyDisplayDirection(
+        entry.phaseName,
+        deltaValue,
+        entry.isSignificant,
+        entry.sign,
+      );
 
       metrics.push({
         label: entry.phaseName,
