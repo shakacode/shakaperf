@@ -11,12 +11,11 @@ import * as path from 'node:path';
 import {
   matchFrames,
   pairUnmatchedFrames,
-  signFrames,
   type FrameMatch,
   type FramePair,
 } from './frame-matching';
 import { decodeJpeg } from './decode-jpeg';
-import { parseProfile, type Screenshot } from './timeline-comparison';
+import { parseProfile, signFramesWithMarks, type Screenshot } from './timeline-comparison';
 
 const { PNG } = require('pngjs') as typeof import('pngjs');
 
@@ -225,7 +224,8 @@ export interface WriteReviewFramesOptions {
 export function writeReviewFrames(options: WriteReviewFramesOptions): ReviewPair[] {
   const control = parseProfile(options.controlProfilePath);
   const experiment = parseProfile(options.experimentProfilePath);
-  const { matches } = matchFrames(signFrames(control.screenshots), signFrames(experiment.screenshots));
+  // The same marks the timeline matches on, so both agree on every pair.
+  const { matches } = matchFrames(signFramesWithMarks(control), signFramesWithMarks(experiment));
   const mismatches = pairUnmatchedFrames(matches, control.screenshots.length, experiment.screenshots.length);
   const pairs = selectReviewPairs(matches, mismatches, control.screenshots, experiment.screenshots);
   if (pairs.length === 0) return pairs;
