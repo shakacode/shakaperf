@@ -33,6 +33,7 @@ import {
   SAME_STATE_MAX_CHANGED_PATCH,
   type FrameMatch,
   type FramePair,
+  type SignedFrame,
 } from './frame-matching';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -894,6 +895,24 @@ const FRAME_ANNOTATION_FILL: Record<FrameAnnotationKind, string> = {
  * frame that shows the post-shift layout, matching the audit's "next frame"
  * placement). Returns a map keyed by screenshot index.
  */
+/**
+ * Per frame, what the timeline pins on it as one comparable key - the kinds of
+ * its annotations, with interactions named by their type: "LCP", "CLS",
+ * "click", or "CLS|click" when several land on one frame. Frames with nothing
+ * pinned get "". The matcher only pairs frames whose keys agree.
+ */
+export function frameMarks(profile: ProfileData): string[] {
+  const annotations = buildFrameAnnotations(profile);
+  return profile.screenshots.map((_, i) => {
+    const kinds = (annotations.get(i) ?? []).map((a) => (
+      a.kind === 'lcp' ? 'LCP'
+        : a.kind === 'layout-shift' ? 'CLS'
+          : a.label.split(' ')[0]
+    ));
+    return [...new Set(kinds)].sort().join('|');
+  });
+}
+
 function buildFrameAnnotations(profile: ProfileData): Map<number, FrameOverlayAnnotation[]> {
   const out = new Map<number, FrameOverlayAnnotation[]>();
   const times = profile.screenshots.map(s => s.timeMs);
@@ -1909,7 +1928,6 @@ function buildTimelineHtml(
       ['control', 'experiment'].forEach(function(side) {
         var ghost = document.createElement('div');
         ghost.className = 'scrub-ghost ' + side;
-        ghost.innerHTML = '<img alt="" />';
         ghost.style.display = 'none';
         document.querySelector('.screenshot-col.' + side).appendChild(ghost);
         ghosts[side] = ghost;
@@ -1921,10 +1939,14 @@ function buildTimelineHtml(
           ghost.style.display = 'none';
           return;
         }
-        var source = frame.el.querySelector('img');
-        var src = source ? source.getAttribute('src') : '';
-        var image = ghost.querySelector('img');
-        if (image.getAttribute('src') !== src) image.setAttribute('src', src);
+        // The whole frame, not just its picture: the click, LCP and layout-shift
+        // marks pinned on it travel with the copy.
+        if (ghost.dataset.idx !== String(frame.idx)) {
+          var wrap = frame.el.querySelector('.frame-wrap');
+          ghost.textContent = '';
+          if (wrap) ghost.appendChild(wrap.cloneNode(true));
+          ghost.dataset.idx = String(frame.idx);
+        }
         ghost.style.top = y + 'px';
         ghost.style.display = 'block';
       }
@@ -2384,6 +2406,12 @@ export interface GenerateTimelineComparisonOptions {
   outputPath: string;
 }
 
+/** A side's frames signed for matching, each carrying what is pinned on it. */
+export function signFramesWithMarks(profile: ProfileData): SignedFrame[] {
+  const marks = frameMarks(profile);
+  return signFrames(profile.screenshots).map((frame, i) => ({ ...frame, marks: marks[i] }));
+}
+
 export function generateTimelineComparison(options: GenerateTimelineComparisonOptions): void {
   const control = parseProfile(options.controlProfilePath);
   const experiment = parseProfile(options.experimentProfilePath);
@@ -2391,7 +2419,10 @@ export function generateTimelineComparison(options: GenerateTimelineComparisonOp
   // Pair the frames showing the same page state. Raw trace times, not aligned
   // ones: aligning only moves frames on screen, it does not change which
   // picture is which.
-  const { matches } = matchFrames(signFrames(control.screenshots), signFrames(experiment.screenshots));
+  const { matches } = matchFrames(
+    signFramesWithMarks(control),
+    signFramesWithMarks(experiment),
+  );
   // The signatures say how much of a frame moved, which misses a small change
   // that holds together - a chip list scrolled by a row. Those pairs keep
   // their place in the sequence, since the runs are still at the same step,

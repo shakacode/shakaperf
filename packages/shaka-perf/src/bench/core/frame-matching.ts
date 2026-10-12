@@ -84,6 +84,13 @@ export interface FrameSignature {
 export interface SignedFrame {
   timeMs: number;
   signature: FrameSignature;
+  /**
+   * What the timeline pins on this frame - a click, the LCP, a layout shift -
+   * as one comparable key. Two frames only match when these agree: the same
+   * picture before and after a click is not the same moment of the test.
+   * Omitted means nothing is pinned.
+   */
+  marks?: string;
 }
 
 export interface FrameMatch {
@@ -292,7 +299,8 @@ function alignOnce(
       }
       const { distance, changedCells } =
         signatureDifference(control[i - 1].signature, experiment[j - 1].signature);
-      if (distance <= maxDistance && changedCells <= maxChangedCells) {
+      const sameMarks = (control[i - 1].marks ?? '') === (experiment[j - 1].marks ?? '');
+      if (sameMarks && distance <= maxDistance && changedCells <= maxChangedCells) {
         const deltaMs = experiment[j - 1].timeMs - control[i - 1].timeMs;
         const offsetDeviation = Math.min(1, Math.abs(deltaMs - offsetRefMs) / OFFSET_DEVIATION_SCALE_MS);
         const gain = MATCH_REWARD
