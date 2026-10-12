@@ -1816,10 +1816,6 @@ function buildTimelineHtml(
       // rather than computed; it does not change with zoom (frames carry no
       // data-h), so measuring once is enough and only the tops move.
       var FRAME_CONNECTIONS = ${JSON.stringify(connections)};
-      var FRAME_TIMES = ${JSON.stringify({
-        control: control.screenshots.map((s) => Math.round(s.timeMs)),
-        experiment: experiment.screenshots.map((s) => Math.round(s.timeMs)),
-      })};
       var SVG_NS = 'http://www.w3.org/2000/svg';
       var arrowSvg = document.getElementById('match-arrows');
       var arrowGroup = document.getElementById('match-arrow-paths');
@@ -2035,8 +2031,6 @@ function buildTimelineHtml(
         // rather than by lighting up a line on the timeline.
         var arrow = left && right ? arrowByPair[left.idx + ':' + right.idx] : null;
         setScrubKind(arrow || null, (y1 + y2) / 2);
-        if (arrow) showArrowLabel(arrow, clientY);
-        else showScrubLabel(left, right, clientY);
       }
 
       // What the two pictures actually disagree about, drawn beside the
@@ -2147,7 +2141,6 @@ function buildTimelineHtml(
       arrowSvg.addEventListener('mouseleave', function() {
         pointerOverColumn = false;
         hideScrub();
-        arrowLabel.style.display = 'none';
       });
 
       // Hovering a frame drops the sticky pair: the lift is there to compare
@@ -2157,38 +2150,7 @@ function buildTimelineHtml(
         if (!target || !target.closest('.screenshot-entry')) return;
         setScrubKind(null, 0);
         hideScrub();
-        arrowLabel.style.display = 'none';
       });
-      arrowGroup.addEventListener('mouseout', function(e) {
-        // Only the cursor-following delta chip goes; the highlight is sticky.
-        if (e.target.closest && e.target.closest('.match-arrow-hit')) {
-          arrowLabel.style.display = 'none';
-        }
-      });
-
-      var arrowLabel = document.createElement('div');
-      arrowLabel.className = 'status-chip';
-      arrowLabel.style.display = 'none';
-      document.body.appendChild(arrowLabel);
-      function showScrubLabel(left, right, clientY) {
-        if (!left || !right) return;
-        var lt = FRAME_TIMES.control[left.idx];
-        var rt = FRAME_TIMES.experiment[right.idx];
-        var sign = rt - lt > 0 ? '+' : '';
-        arrowLabel.textContent = 'control ' + (lt / 1000).toFixed(2) + 's · experiment '
-          + (rt / 1000).toFixed(2) + 's (' + sign + (rt - lt) + 'ms)';
-        arrowLabel.style.display = 'block';
-        arrowLabel.style.top = Math.min(clientY + 18, window.innerHeight - 26) + 'px';
-      }
-
-      function showArrowLabel(arrow, clientY) {
-        var sign = arrow.delta > 0 ? '+' : '';
-        var kind = arrow.kind === 'match' ? 'match' : 'no match';
-        arrowLabel.textContent = kind + ' · experiment ' + sign + arrow.delta + 'ms';
-        arrowLabel.style.display = 'block';
-        arrowLabel.style.top = Math.min(clientY + 18, window.innerHeight - 26) + 'px';
-      }
-
       // Tally of the span between the baseline and the cursor. Every strip bar
       // is a counted item: its kind (network / main-thread / events column)
       // plus the size, CLS score or task duration it carries. Positions come
