@@ -260,6 +260,25 @@ describe('matchFrames tie-breaking and degenerate input', () => {
   });
 });
 
+describe('matchFrames with pinned marks', () => {
+  it('only pairs frames whose marks agree, even when the pictures are identical', () => {
+    const { control, experiment } = loadFixture('homepage-desktop');
+    const plain = matchFrames(control, experiment).matches;
+    const first = plain[0];
+
+    // Pin a click on the first matched control frame only: its picture still
+    // matches, but it is no longer the same moment of the test.
+    const clicked = control.map((f, i) => (i === first.controlIndex ? { ...f, marks: 'click' } : f));
+    const gated = matchFrames(clicked, experiment).matches;
+    expect(gated.some((m) => m.controlIndex === first.controlIndex && m.experimentIndex === first.experimentIndex)).toBe(false);
+
+    // Pin the same click on its partner too, and they pair again.
+    const both = experiment.map((f, i) => (i === first.experimentIndex ? { ...f, marks: 'click' } : f));
+    const paired = matchFrames(clicked, both).matches;
+    expect(paired.some((m) => m.controlIndex === first.controlIndex && m.experimentIndex === first.experimentIndex)).toBe(true);
+  });
+});
+
 describe('pairUnmatchedFrames', () => {
   const match = (controlIndex: number, experimentIndex: number): FrameMatch =>
     ({ controlIndex, experimentIndex, distance: 0, deltaMs: 0 });
