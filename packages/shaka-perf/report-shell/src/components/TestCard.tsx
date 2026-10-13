@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
@@ -111,6 +111,29 @@ function TroubleshootCommands({ meta, test }: { meta: ReportMeta; test: TestResu
   );
 }
 
+// Reviewed marks live in the browser, keyed by report and test, so a reload
+// keeps them and a newer report of the same tests starts unreviewed.
+function reviewedKey(meta: ReportMeta, test: TestResult): string {
+  return `shaka-perf:reviewed:${meta.generatedAt}:${test.id}`;
+}
+
+function readReviewed(key: string): boolean {
+  try {
+    return window.localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeReviewed(key: string, reviewed: boolean): void {
+  try {
+    if (reviewed) window.localStorage.setItem(key, '1');
+    else window.localStorage.removeItem(key);
+  } catch {
+    // Storage blocked (private window, file:// quirks): the mark lasts the session.
+  }
+}
+
 function compareChips(a: ChipDescriptor, b: ChipDescriptor): number {
   return a.sortingWeight - b.sortingWeight ||
     a.tag.localeCompare(b.tag) ||
@@ -141,6 +164,9 @@ export function TestCard({
   const [codeOpen, setCodeOpen] = useState(false);
   const [artifactsOpen, setArtifactsOpen] = useState(false);
   const [logsOpen, setLogsOpen] = useState(false);
+  const storageKey = reviewedKey(meta, test);
+  const [reviewed, setReviewed] = useState(() => readReviewed(storageKey));
+  useEffect(() => writeReviewed(storageKey, reviewed), [storageKey, reviewed]);
   const logs = logsForTest(test, visibleStages);
   const groups = outcomeGroups(test, visibleStages);
   const chips = [...test.chips].sort(compareChips);
@@ -151,6 +177,7 @@ export function TestCard({
       data-report-test-id={test.id}
       data-chip-color={chips[0]?.color ?? 'gray'}
       data-dimmed={dimmed ? 'true' : undefined}
+      data-reviewed={reviewed ? 'true' : undefined}
       tabIndex={-1}
       style={{ animationDelay: `${animationDelayMs}ms` }}
     >
@@ -163,6 +190,14 @@ export function TestCard({
           </div>
         </div>
         <div className="card__pills">
+          <label className="card__reviewed">
+            <input
+              type="checkbox"
+              checked={reviewed}
+              onChange={(e) => setReviewed(e.target.checked)}
+            />
+            reviewed
+          </label>
           {runLabel ? (
             <span className={`pill pill--${runLabel === 'latest' ? 'blue' : 'gray'}`}>
               <span className="pill__label">{runLabel} run</span>
@@ -184,57 +219,61 @@ export function TestCard({
         </div>
       </div>
 
-      <dl className="card__urls">
-        {renderPipelineTestCardUrls(meta, test)}
-      </dl>
+      {reviewed ? null : (
+        <>
+          <dl className="card__urls">
+            {renderPipelineTestCardUrls(meta, test)}
+          </dl>
 
-      <div className="card__body">
-        <StageArtifactProvider test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}>
-          {groups.map((outcomes, index) => (
-            <OutcomeSlot
-              key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
-              meta={meta}
-              outcomes={outcomes}
-            />
-          ))}
-        </StageArtifactProvider>
+          <div className="card__body">
+            <StageArtifactProvider test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}>
+              {groups.map((outcomes, index) => (
+                <OutcomeSlot
+                  key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
+                  meta={meta}
+                  outcomes={outcomes}
+                />
+              ))}
+            </StageArtifactProvider>
 
-        {test.code ? (
-          <div>
-            <button
-              type="button"
-              className="card__code-toggle"
-              onClick={() => setCodeOpen((prev) => !prev)}
-              aria-expanded={codeOpen}
-            >
-              {codeOpen ? '▾ test source' : '▸ test source'}
-            </button>
-            {codeOpen ? <pre className="card__code">{test.code}</pre> : null}
-          </div>
-        ) : null}
+            {test.code ? (
+              <div>
+                <button
+                  type="button"
+                  className="card__code-toggle"
+                  onClick={() => setCodeOpen((prev) => !prev)}
+                  aria-expanded={codeOpen}
+                >
+                  {codeOpen ? '▾ test source' : '▸ test source'}
+                </button>
+                {codeOpen ? <pre className="card__code">{test.code}</pre> : null}
+              </div>
+            ) : null}
 
-        <TroubleshootCommands meta={meta} test={test} />
+            <TroubleshootCommands meta={meta} test={test} />
 
-        {test.viewportArtifactPaths && test.viewportArtifactPaths.length > 0 ? (
-          <div>
-            <button
-              type="button"
-              className="card__code-toggle"
-              onClick={() => setArtifactsOpen((prev) => !prev)}
-              aria-expanded={artifactsOpen}
-            >
-              {artifactsOpen ? '▾ artifact paths' : '▸ artifact paths'}
-            </button>
-            {artifactsOpen ? (
-              <pre className="card__code">
-                {test.viewportArtifactPaths
-                  .map(({ viewport, path }) => `${viewport}: ${path}`)
-                  .join('\n')}
-              </pre>
+            {test.viewportArtifactPaths && test.viewportArtifactPaths.length > 0 ? (
+              <div>
+                <button
+                  type="button"
+                  className="card__code-toggle"
+                  onClick={() => setArtifactsOpen((prev) => !prev)}
+                  aria-expanded={artifactsOpen}
+                >
+                  {artifactsOpen ? '▾ artifact paths' : '▸ artifact paths'}
+                </button>
+                {artifactsOpen ? (
+                  <pre className="card__code">
+                    {test.viewportArtifactPaths
+                      .map(({ viewport, path }) => `${viewport}: ${path}`)
+                      .join('\n')}
+                  </pre>
+                ) : null}
+              </div>
             ) : null}
           </div>
-        ) : null}
-      </div>
+        </>
+      )}
 
       <Dialog
         open={logsOpen}
