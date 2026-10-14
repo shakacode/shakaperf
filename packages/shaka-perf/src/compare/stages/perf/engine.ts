@@ -20,6 +20,12 @@ import {
   type NavigationSample,
 } from '../../../bench/core';
 import { lhConfigForViewport } from '../../../bench/core/lighthouse-config';
+import { parseProfile } from '../../../bench/core/timeline-comparison';
+import {
+  SIDE_BY_SIDE_FRAMES_FILENAME,
+  buildSideBySideFrames,
+  renderSideBySideFramesScript,
+} from '../../../bench/core/side-by-side-frames';
 import { resolvePlaywrightOptions } from '../../../config';
 import type { Group } from '../../../pipeline/log-prefix-format';
 import { formatWindowLabel, windowPlacementFor } from '../../../troubleshoot/window-placement';
@@ -242,4 +248,10 @@ function writeTimelineArtifacts(artifactsDir: string): void {
     experimentProfilePath: experimentProfile,
     outputPath: path.join(artifactsDir, 'timeline_preview.svg'),
   });
+  fs.writeFileSync(
+    path.join(artifactsDir, SIDE_BY_SIDE_FRAMES_FILENAME),
+    renderSideBySideFramesScript(
+      buildSideBySideFrames(parseProfile(controlProfile), parseProfile(experimentProfile)),
+    ),
+  );
 }

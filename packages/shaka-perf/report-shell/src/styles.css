@@ -1849,6 +1849,110 @@ input {
   color: #fff;
 }
 
+.frame-player {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.frame-player__status {
+  color: var(--fg-muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 24px 0;
+}
+
+.frame-player__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.frame-player__play {
+  width: 34px;
+  height: var(--control-height);
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.frame-player__scrub {
+  flex: 1 1 200px;
+  min-width: 120px;
+  accent-color: var(--fg);
+}
+
+.frame-player__time {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+.frame-player__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.frame-player__option input {
+  margin: 0;
+  accent-color: var(--fg-muted);
+}
+
+.frame-player__option select {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+  padding: 2px 4px;
+}
+
+.frame-player__stage {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.frame-player__stage--with-diff {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.frame-player__side {
+  margin: 0;
+  min-width: 0;
+}
+
+.frame-player__side canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+}
+
+.frame-player__side figcaption {
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.frame-player__side figcaption b {
+  color: var(--fg);
+  margin-right: 6px;
+}
+
 .artifact-dialog__frame {
   border: 0;
   flex: 1;

@@ -125,6 +125,10 @@ function TestMetaUrls({ test }: { test: StageArtifactTestMeta }) {
   return <>{renderPipelineDialogMetaUrls(test)}</>;
 }
 
+export function useStageArtifactTest(): StageArtifactTestMeta | null {
+  return useContext(StageArtifactContext);
+}
+
 export function StageArtifactProvider({
   children,
   test,
