@@ -60,6 +60,7 @@ describe('readPerfArtifact', () => {
     fs.mkdirSync(perTestDir, { recursive: true });
     fs.writeFileSync(path.join(perTestDir, 'timeline_comparison.html'), '<html></html>');
     fs.writeFileSync(path.join(perTestDir, 'timeline_preview.svg'), '<svg></svg>');
+    fs.writeFileSync(path.join(perTestDir, 'side_by_side_frames.js'), ';');
 
     try {
       const artifact = await readPerfArtifact({
@@ -72,6 +73,7 @@ describe('readPerfArtifact', () => {
       expect(artifact).toMatchObject({
         timelineHref: 'checkout-desktop/artifacts/timeline_comparison.html',
         timelinePreviewHref: 'checkout-desktop/artifacts/timeline_preview.svg',
+        framesHref: 'checkout-desktop/artifacts/side_by_side_frames.js',
       });
       expect(JSON.stringify(artifact)).not.toContain('data:');
     } finally {
