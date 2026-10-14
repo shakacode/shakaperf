@@ -17,6 +17,7 @@ import type { RegressionThresholdStat } from '../../../bench/cli/command-config/
 import { classifyPracticalDelta } from '../../../bench/cli/compare/regression-thresholds';
 import type { ArtifactScope } from '../../../pipeline/artifact-store';
 import { safeReaddir } from '../../../pipeline/path-utils';
+import { SIDE_BY_SIDE_FRAMES_FILENAME } from '../../../bench/core/side-by-side-frames';
 
 function classifyGroup(heading: string | undefined): PerfMetricGroup {
   return heading && heading.toLowerCase().includes('diagnostic') ? 'diagnostics' : 'vitals';
@@ -195,6 +196,7 @@ export function readPerfArtifact(opts: ReadPerfArtifactOptions): PerfArtifact {
   const experimentLh = files.find((f) => f === 'experiment_lighthouse_report.html') ?? null;
   const timeline = files.find((f) => f === 'timeline_comparison.html') ?? null;
   const timelinePreview = files.find((f) => f === 'timeline_preview.svg') ?? null;
+  const frames = files.find((f) => f === SIDE_BY_SIDE_FRAMES_FILENAME) ?? null;
   // Legacy bench Handlebars report: `artifact-<n>.html`. Pick the highest-numbered
   // one so re-runs into the same results folder surface the freshest render.
   const benchReport = files
@@ -230,6 +232,8 @@ export function readPerfArtifact(opts: ReadPerfArtifactOptions): PerfArtifact {
   const timelineHref = relativeHref(timeline);
   if (timelineHref) artifact.timelineHref = timelineHref;
   if (timelinePreviewHref) artifact.timelinePreviewHref = timelinePreviewHref;
+  const framesHref = relativeHref(frames);
+  if (framesHref) artifact.framesHref = framesHref;
   if (benchReportHref) artifact.benchReportHref = benchReportHref;
   if (diffHrefs.length > 0) artifact.diffHrefs = diffHrefs;
   return artifact;
