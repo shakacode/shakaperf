@@ -58,10 +58,15 @@ async function decodeFrames(frames: readonly SideBySideFrame[]): Promise<HTMLIma
   }));
 }
 
-/** Index of the last frame captured at or before `timeMs`, or -1 before the first. */
+/**
+ * Index of the last frame captured at or before `timeMs`. Before the first
+ * capture the first frame stands in, so a side is never empty; -1 only when
+ * the side has no frames at all.
+ */
 export function frameIndexAt(frames: readonly { timeMs: number }[], timeMs: number): number {
-  let index = -1;
-  for (let i = 0; i < frames.length && frames[i].timeMs <= timeMs; i++) index = i;
+  if (frames.length === 0) return -1;
+  let index = 0;
+  for (let i = 1; i < frames.length && frames[i].timeMs <= timeMs; i++) index = i;
   return index;
 }
 
@@ -81,13 +86,6 @@ function changed(a: Uint8ClampedArray, b: Uint8ClampedArray, i: number): boolean
     Math.abs(a[i + 1] - b[i + 1]),
     Math.abs(a[i + 2] - b[i + 2]),
   ) > CHANGED_PIXEL_THRESHOLD;
-}
-
-/** Blank at the size of `like`, so a side keeps its footprint before its first frame. */
-function paintBlank(canvas: HTMLCanvasElement, like: HTMLImageElement | undefined): void {
-  canvas.width = like?.naturalWidth ?? 1;
-  canvas.height = like?.naturalHeight ?? 1;
-  canvas.getContext('2d', READ_BACK)!.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 /** Paints `image` and, over it, every pixel that differs from `previous`. */
@@ -251,20 +249,18 @@ function LoadedFramePlayer({ frames, images }: Loaded) {
       const canvas = canvases.current[side];
       if (!canvas) continue;
       const index = indices[side];
-      if (index < 0) {
-        paintBlank(canvas, images[side][0]);
-        continue;
-      }
+      if (index < 0) continue;
       const previous = highlightUpdates && index > 0 ? images[side][index - 1] : null;
       paintFrame(canvas, scratch.current!, images[side][index], previous);
     }
     if (highlightDiff && diffCanvas.current) {
-      const control = images.control[indices.control];
-      const experiment = images.experiment[indices.experiment];
       if (indices.control >= 0 && indices.experiment >= 0) {
-        paintDiff(diffCanvas.current, scratch.current!, control, experiment);
-      } else {
-        paintBlank(diffCanvas.current, control ?? experiment ?? images.experiment[0]);
+        paintDiff(
+          diffCanvas.current,
+          scratch.current!,
+          images.control[indices.control],
+          images.experiment[indices.experiment],
+        );
       }
     }
   }, [indices, images, highlightUpdates, highlightDiff]);
@@ -278,7 +274,7 @@ function LoadedFramePlayer({ frames, images }: Loaded) {
 
   const frameCaption = (side: Side): string => {
     const index = indices[side];
-    if (index < 0) return 'before first frame';
+    if (index < 0) return 'no frames';
     return `frame ${index + 1}/${frames[side].length} · ${formatSeconds(frames[side][index].timeMs)}`;
   };
 
