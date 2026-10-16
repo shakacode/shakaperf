@@ -110,9 +110,9 @@ export function projectPathSlug(absPath: string): string {
   );
   if (slug === unchanged) return slug || 'root';
   // Trimming can merge two checkouts (`repo/.claude/x` and `repo/claude/x`), so a
-  // name it changed carries a hash of the resolved path to keep their images and
-  // volume dirs apart.
-  const hash = createHash('sha256').update(path.resolve(absPath)).digest('hex').slice(0, 8);
+  // name it changed carries a hash of the untrimmed name, which still tells them
+  // apart and, like the rest of the slug, ignores case and trailing separators.
+  const hash = createHash('sha256').update(unchanged).digest('hex').slice(0, 8);
   return `${slug || 'root'}-${hash}`;
 }
 

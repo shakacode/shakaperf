@@ -49,6 +49,7 @@ describe('projectPathSlug', () => {
     const home = os.homedir();
     const checkout = path.join(home, 'repo', '.claude', 'wt');
     expect(projectPathSlug(`${checkout}/`)).toBe(projectPathSlug(checkout));
+    expect(projectPathSlug(path.join(home, 'Repo', '.claude', 'wt'))).toBe(projectPathSlug(checkout));
   });
 
   it('produces distinct slugs for distinct paths', () => {
