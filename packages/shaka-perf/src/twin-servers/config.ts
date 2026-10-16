@@ -95,7 +95,8 @@ export function projectPathSlug(absPath: string): string {
   }
   // Docker image names only allow `.`/`_` between alphanumerics, so a segment
   // that starts or ends with one (e.g. `.claude`) would put it next to the `--`
-  // separator and produce an invalid tag. Trim those per segment.
+  // separator and produce an invalid tag. Trim those per segment. This covers
+  // dot-directories; `.`/`_` runs inside a segment (`a._b`) can still be invalid.
   const slug = rel
     .split(path.sep)
     .map((segment) =>
