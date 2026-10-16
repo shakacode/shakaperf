@@ -30,6 +30,14 @@ describe('projectPathSlug', () => {
       .toBe('weird');
   });
 
+  it('trims dots and underscores at segment edges so the slug is a valid docker tag', () => {
+    // e.g. a worktree under `.claude/worktrees/`: `--.claude` is rejected by docker.
+    const home = os.homedir();
+    const slug = projectPathSlug(path.join(home, 'repo', '.claude', 'worktrees', '_wt.'));
+    expect(slug).toBe('repo--claude--worktrees--wt');
+    expect(`${slug}:control`).toMatch(/^[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*:control$/);
+  });
+
   it('produces distinct slugs for distinct paths', () => {
     expect(projectPathSlug('/Users/x/a/my-app'))
       .not.toBe(projectPathSlug('/Users/x/b/my-app'));

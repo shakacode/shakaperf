@@ -93,11 +93,19 @@ export function projectPathSlug(absPath: string): string {
         `names. Rename the checkout directory to remove "--".`,
     );
   }
+  // Docker image names only allow `.`/`_` between alphanumerics, so a segment
+  // that starts or ends with one (e.g. `.claude`) would put it next to the `--`
+  // separator and produce an invalid tag. Trim those per segment.
   const slug = rel
     .split(path.sep)
+    .map((segment) =>
+      segment
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]+/g, '-')
+        .replace(/^[._]+|[._]+$/g, ''),
+    )
+    .filter(Boolean)
     .join('--')
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
     .replace(/^[.-]+|[.-]+$/g, '');
   return slug || 'root';
 }
