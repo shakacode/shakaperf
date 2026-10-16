@@ -15,6 +15,7 @@ import type {
 } from '../perf';
 import type { RegressionThresholdStat } from '../../../bench/cli/command-config/tb-config';
 import { classifyPracticalDelta } from '../../../bench/cli/compare/regression-thresholds';
+import { AI_ANALYSIS_DIFF_FILENAME } from '../../../bench/core/html-diff';
 import type { ArtifactScope } from '../../../pipeline/artifact-store';
 import { safeReaddir } from '../../../pipeline/path-utils';
 
@@ -205,8 +206,9 @@ export function readPerfArtifact(opts: ReadPerfArtifactOptions): PerfArtifact {
       return nb - na;
     })[0] ?? null;
   // bench emits one `<artifact>.diff.html` per txt pair (network_activity,
-  // performance_profile.summary, …) so each gets its own button in the report.
+  // performance_profile.summary, …) so each gets its own button.
   const diffFiles = files.filter((f) => f.endsWith('.diff.html')).sort();
+  const aiDiff = files.find((f) => f === AI_ANALYSIS_DIFF_FILENAME) ?? null;
 
   // Only expose the preview SVG when the test actually moved off
   // `no_difference` — a flat row doesn't need the glanceable triplet grid,
@@ -232,6 +234,8 @@ export function readPerfArtifact(opts: ReadPerfArtifactOptions): PerfArtifact {
   if (timelinePreviewHref) artifact.timelinePreviewHref = timelinePreviewHref;
   if (benchReportHref) artifact.benchReportHref = benchReportHref;
   if (diffHrefs.length > 0) artifact.diffHrefs = diffHrefs;
+  const aiAnalysisDiffHref = relativeHref(aiDiff);
+  if (aiAnalysisDiffHref) artifact.aiAnalysisDiffHref = aiAnalysisDiffHref;
   return artifact;
 }
 
