@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -93,22 +94,25 @@ export function projectPathSlug(absPath: string): string {
         `names. Rename the checkout directory to remove "--".`,
     );
   }
+  const sanitize = (text: string) => text.toLowerCase().replace(/[^a-z0-9._-]+/g, '-');
+  const trimEnds = (text: string) => text.replace(/^[.-]+|[.-]+$/g, '');
+  const segments = rel.split(path.sep);
+  const unchanged = trimEnds(sanitize(segments.join('--')));
   // Docker image names only allow `.`/`_` between alphanumerics, so a segment
   // that starts or ends with one (e.g. `.claude`) would put it next to the `--`
   // separator and produce an invalid tag. Trim those per segment. This covers
   // dot-directories; `.`/`_` runs inside a segment (`a._b`) can still be invalid.
-  const slug = rel
-    .split(path.sep)
-    .map((segment) =>
-      segment
-        .toLowerCase()
-        .replace(/[^a-z0-9._-]+/g, '-')
-        .replace(/^[._]+|[._]+$/g, ''),
-    )
-    .filter(Boolean)
-    .join('--')
-    .replace(/^[.-]+|[.-]+$/g, '');
-  return slug || 'root';
+  const slug = trimEnds(
+    segments
+      .map((segment) => sanitize(segment).replace(/^[._]+|[._]+$/g, ''))
+      .filter(Boolean)
+      .join('--'),
+  );
+  if (slug === unchanged) return slug || 'root';
+  // Trimming can merge two checkouts (`.claude/x` and `claude/x`), so a name it
+  // changed carries a hash of the full path to keep their images and volume dirs apart.
+  const hash = createHash('sha256').update(absPath).digest('hex').slice(0, 8);
+  return `${slug || 'root'}-${hash}`;
 }
 
 export function resolveConfig(config: unknown, cwd: string = process.cwd()): ResolvedConfig {

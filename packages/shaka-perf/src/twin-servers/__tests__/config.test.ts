@@ -34,8 +34,15 @@ describe('projectPathSlug', () => {
     // e.g. a worktree under `.claude/worktrees/`: `--.claude` is rejected by docker.
     const home = os.homedir();
     const slug = projectPathSlug(path.join(home, 'repo', '.claude', 'worktrees', '_wt.'));
-    expect(slug).toBe('repo--claude--worktrees--wt');
+    expect(slug).toMatch(/^repo--claude--worktrees--wt-[0-9a-f]{8}$/);
     expect(`${slug}:control`).toMatch(/^[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*:control$/);
+  });
+
+  it('keeps checkouts that differ only by trimmed characters apart', () => {
+    // Start-up deletes the volume dirs, so a shared slug would wipe the other checkout's.
+    const home = os.homedir();
+    expect(projectPathSlug(path.join(home, 'repo', '.claude', 'wt')))
+      .not.toBe(projectPathSlug(path.join(home, 'repo', 'claude', 'wt')));
   });
 
   it('produces distinct slugs for distinct paths', () => {
