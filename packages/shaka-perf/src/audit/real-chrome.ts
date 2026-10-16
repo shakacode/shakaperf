@@ -6,10 +6,6 @@
  */
 
 import type { LaunchOptions, Page } from 'playwright-core';
-import {
-  matchRealChromeUserAgentVersion,
-  realChromeUserAgentForFormFactor,
-} from '../browser-user-agent';
 import { looksLikeBotWall } from './bot-wall';
 
 // Opt-in (SHAKAPERF_REAL_CHROME=1): drive the real installed Chrome with the
@@ -39,30 +35,16 @@ export function isRealChromeEnabled(): boolean {
   return process.env.SHAKAPERF_REAL_CHROME === '1';
 }
 
+// A headed real-Chrome desktop context is the one place the browser keeps its
+// own identity: it has to look exactly like the operator's Chrome to an
+// interactive bot challenge. Every other context sends the viewport's device
+// identity (see `device-identity.ts`).
 export function realChromeUsesNativeIdentity(formFactor: string): boolean {
   return (
     isRealChromeEnabled()
     && process.env.SHAKAPERF_REAL_CHROME_HEADLESS !== '1'
     && formFactor !== 'mobile'
   );
-}
-
-// Give mobile contexts, plus non-mobile contexts in explicit headless mode, a
-// UA string without the HeadlessChrome token. Mobile contexts also need touch.
-export function realChromeContextOptions(
-  formFactor: string,
-  browserVersion?: string,
-  usesChromium = true,
-): { userAgent: string; hasTouch?: boolean } | undefined {
-  if (!usesChromium || !isRealChromeEnabled()) return undefined;
-  const mobile = formFactor === 'mobile';
-  if (realChromeUsesNativeIdentity(formFactor)) return undefined;
-  const userAgent = matchRealChromeUserAgentVersion(
-    realChromeUserAgentForFormFactor(formFactor),
-    browserVersion,
-  );
-  if (!userAgent) return undefined;
-  return mobile ? { userAgent, hasTouch: true } : { userAgent };
 }
 
 // In real-Chrome mode a bot challenge can still flash for a second or two before

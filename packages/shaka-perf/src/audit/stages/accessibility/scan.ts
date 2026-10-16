@@ -15,7 +15,8 @@ import type { TestContext } from '../../../stage/stage';
 import { captureFailureScreenshot } from '../../../stage/stage-failure';
 import { runWithLastAnnotation } from '../../../test-annotation';
 import { scanLandedOnBotWall } from '../../bot-wall';
-import { realChromeContextOptions, waitForBotWallToClear } from '../../real-chrome';
+import { waitForBotWallToClear } from '../../real-chrome';
+import { deviceContextOptions } from '../../../device-identity';
 import { launchStageBrowser, stageContextOptions } from '../../stage-browser';
 import { resolvePlaywrightOptions, type PlaywrightOptions } from '../../../config';
 import { normalizeViolation } from './artifacts';
@@ -95,8 +96,8 @@ export async function scanAccessibilityPage(
     const effectivePwOptions = resolvePlaywrightOptions(ctx.config, 'accessibility');
     context = await browser.newContext({
       ...stageContextOptions(ctx.viewport, effectivePwOptions),
-      ...realChromeContextOptions(
-        ctx.viewport.formFactor,
+      ...deviceContextOptions(
+        ctx.viewport,
         browser.version?.(),
         config.playwrightOptions.browser === 'chromium',
       ),
