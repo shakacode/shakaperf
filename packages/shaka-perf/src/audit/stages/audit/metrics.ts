@@ -45,6 +45,7 @@ const PHASE_SPECS: Record<string, PhaseSpec> = {
   'downloads-count': { group: 'diagnostics' },
   js: { group: 'diagnostics' },
   'js-count': { group: 'diagnostics' },
+  'js-tasks': { group: 'diagnostics' },
   images: { group: 'diagnostics' },
   'images-count': { group: 'diagnostics' },
   fonts: { group: 'diagnostics' },
