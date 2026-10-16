@@ -109,9 +109,10 @@ export function projectPathSlug(absPath: string): string {
       .join('--'),
   );
   if (slug === unchanged) return slug || 'root';
-  // Trimming can merge two checkouts (`.claude/x` and `claude/x`), so a name it
-  // changed carries a hash of the full path to keep their images and volume dirs apart.
-  const hash = createHash('sha256').update(absPath).digest('hex').slice(0, 8);
+  // Trimming can merge two checkouts (`repo/.claude/x` and `repo/claude/x`), so a
+  // name it changed carries a hash of the resolved path to keep their images and
+  // volume dirs apart.
+  const hash = createHash('sha256').update(path.resolve(absPath)).digest('hex').slice(0, 8);
   return `${slug || 'root'}-${hash}`;
 }
 

@@ -45,6 +45,12 @@ describe('projectPathSlug', () => {
       .not.toBe(projectPathSlug(path.join(home, 'repo', 'claude', 'wt')));
   });
 
+  it('gives a hashed checkout the same slug however its path is written', () => {
+    const home = os.homedir();
+    const checkout = path.join(home, 'repo', '.claude', 'wt');
+    expect(projectPathSlug(`${checkout}/`)).toBe(projectPathSlug(checkout));
+  });
+
   it('produces distinct slugs for distinct paths', () => {
     expect(projectPathSlug('/Users/x/a/my-app'))
       .not.toBe(projectPathSlug('/Users/x/b/my-app'));
