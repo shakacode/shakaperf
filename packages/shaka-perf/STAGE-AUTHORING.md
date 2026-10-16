@@ -91,7 +91,7 @@ Field-by-field:
 
 - **`name`** — unique within the pipeline. Used as the outcome JSON
   filename (`<testAndViewportId>/<name>.json`), the report shell's
-  `<section data-stage="<name>">`, the CLI's `--skip-stages` value, and
+  `<section data-stage="<name>">`, the CLI's `--stages` / `--skip-stages` value, and
   the key in `chipsForAllTests`'s `results` map. Stage names with
   spaces or non-`[a-zA-Z0-9_-]+` characters will fight you later.
 
