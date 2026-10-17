@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // save "<sources>" | list | diff [<older> <newer>]  — see SKILL.md for the loop and how to read
-// a snapshot. AUDIT_ROOT points `save` at a run stashed elsewhere.
+// a snapshot. AUDIT_ROOT points `save` at a run stashed elsewhere; SOURCE_ROOT at a frontend
+// that does not live under app/javascript.
 //
 // A snapshot is one file per source under `audit-results/coverage-baselines/<stamp>/`, plus a
 // `legend.txt`. Each line is the source line, then `// <tests that executed it> | <what a
@@ -13,7 +14,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 const DIR = path.join('audit-results', 'coverage-baselines');
-const ROOT = 'app/javascript';
+const ROOT = process.env.SOURCE_ROOT || 'app/javascript';
 const AUDIT = process.env.AUDIT_ROOT || 'audit-results';
 const SOURCES = '# sources: ';
 const NOTE = '# screenshot column: ';
@@ -53,15 +54,18 @@ const parse = (line: string): Parsed | null => {
 };
 
 // Screenshot cells (`A=33%[:reason]`) first — they are the answer; statements are the supporting
-// signal. A not-estimated note in the same field is not a cell.
+// signal. A not-estimated note in the same field is not a cell. Counts are per element line,
+// seen when ANY screenshot showed it: a second test showing the same element adds no coverage.
 const tally = (lines: string[]): Tally => {
   const parts = lines.flatMap((l) => parse(l) ?? []);
-  const pcts = parts.flatMap((p) => p.seen.split(',')).flatMap((c) => /^[A-Z]+=(\d+)%/.exec(c)?.[1] ?? []).map(Number);
+  const elements = parts
+    .map((p) => p.seen.split(',').flatMap((c) => /^[A-Z]+=(\d+)%/.exec(c)?.[1] ?? []).map(Number))
+    .filter((pcts) => pcts.length);
   const statements = parts.filter((p) => p.cover);
-  const seen = pcts.filter(Boolean).length;
+  const seen = elements.filter((pcts) => pcts.some(Boolean)).length;
   return {
     seen,
-    blind: pcts.length - seen,
+    blind: elements.length - seen,
     statements: statements.length,
     covered: statements.filter((p) => p.cover !== '0').length,
   };
@@ -121,7 +125,9 @@ function scaffold(patterns: string[], dir: string, tests: Test[], note: string |
   for (const [source, { map, tests: ran }] of per) if (map) grids.set(source, gutters(map, ran));
   const width = Math.max(1, ...[...grids.values()].flatMap((g) => [...g.values()].map((v) => v.length)));
 
-  fs.mkdirSync(dir, { recursive: true });
+  // Not recursive for the snapshot itself: an existing one fails instead of being overwritten.
+  fs.mkdirSync(path.dirname(dir), { recursive: true });
+  fs.mkdirSync(dir);
   fs.writeFileSync(path.join(dir, 'legend.txt'), [
     `${SOURCES}${patterns.join(',')}`,
     `# audit: ${path.resolve(AUDIT)}`,
@@ -200,7 +206,11 @@ function fillCells(dir: string, byTest: Map<string, Row[]>, letterOf: Map<string
     }
     for (const [lineNo, seen] of best) {
       const here = parse(lines[lineNo - 1] ?? '');
-      const statement = lines.slice(0, lineNo).map(parse).findLast((p) => p?.cover && p.cover !== '0');
+      // Every test with a row here rendered the element, so the statement that drew it ran in
+      // all of them: skip a nearer statement only some of them ran, such as a `.map` callback.
+      const rendered = [...seen.keys()];
+      const statement = lines.slice(0, lineNo).map(parse).findLast((p) => p?.cover && p.cover !== '0'
+        && rendered.every((letter) => p.cover.split('+').includes(letter)));
       if (!here || !statement) { stats.unattached += 1; continue; }
       const cells = statement.cover.split('+').filter((letter) => mapped.has(letter)).map((letter) => {
         const row = seen.get(letter);
@@ -234,7 +244,8 @@ function save(sources?: string): void {
   const maps = readMaps(tests);
   if (!maps.byTest.size) throw new Error(`no visibility maps under ${AUDIT} — audit with --categories code_coverage`);
 
-  const dir = path.join(DIR, new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-'));
+  // Millisecond stamps, so two saves in the same second get separate snapshots.
+  const dir = path.join(DIR, new Date().toISOString().slice(0, 23).replace(/[:T.]/g, '-'));
   const patterns = sources.split(',').map((s) => s.trim()).filter(Boolean);
   const note = maps.located ? null
     : `impossible to estimate, ${maps.plugin ? `${maps.plugin} located no elements` : 'no screenshotCoveragePlugin installed'}`;
