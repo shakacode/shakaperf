@@ -31,7 +31,7 @@ shaka-perf init           # creates abtests.config.ts only
 
 # Install ShakaPerf skills from your target repo directory (installer needs Node >= 22.20).
 npx skills add shakacode/shakaperf \
-  --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage \
+  --skill shaka-perf shaka-perf-add-coverage \
     shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs \
   --agent claude-code codex
 ```

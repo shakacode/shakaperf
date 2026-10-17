@@ -7,8 +7,6 @@ description: "Use when reviewing or designing shaka-perf framework extension poi
 
 # Review Architecture
 
-Requires a shaka-perf source checkout. Paths below are relative to that checkout. Use the host’s file and search tools within the requested review or design scope.
-
 shaka-perf's framework primitives (`Pipeline`, `Stage`, …) are designed to be
 extended polymorphically. Variant-specific behaviour belongs **inside the
 variant**, surfaced through the framework via mandatory factory options.

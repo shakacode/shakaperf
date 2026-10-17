@@ -55,13 +55,18 @@ const assets = [
     'dist/config-loader/resolve-ts-extensions.mjs',
   ],
   ...lighthousePatchAssets,
-  // Browser scripts printed by the discover-abtests CLI helpers. Agent skill
-  // instructions are installed from GitHub with `npx skills`.
-  ['../../.claude/skills/shaka-perf-discover-abtests/scripts', 'dist/skills/shaka-perf-discover-abtests/scripts'],
+  // Bundled Claude Code skills — `shaka-perf init` copies these into the
+  // user's project at .claude/skills/<name>/. Source of truth lives at the
+  // repo-root .claude/ dir so they're also active in this repo.
+  // shaka-perf-discover-abtests is not installed by init; it ships only for the
+  // browser scripts the `shaka-perf discover-abtests` CLI helpers print.
+  ['../../.claude/skills/shaka-perf-discover-abtests', 'dist/skills/shaka-perf-discover-abtests'],
+  ['../../.claude/skills/shaka-perf', 'dist/skills/shaka-perf'],
+  ['../../.claude/skills/shaka-perf-add-coverage', 'dist/skills/shaka-perf-add-coverage'],
+  ['../../.claude/skills/shaka-perf-coverage', 'dist/skills/shaka-perf-coverage'],
+  ['../../.claude/skills/shaka-perf-dockerize', 'dist/skills/shaka-perf-dockerize'],
+  ['../../.claude/skills/shaka-perf-find-bugs', 'dist/skills/shaka-perf-find-bugs'],
 ];
-
-// Prune legacy skill bundles so an incremental build cannot ship old copies.
-rmSync('dist/skills', { recursive: true, force: true });
 
 for (const [src, dest] of assets) {
   cpSync(src, dest, { recursive: true });

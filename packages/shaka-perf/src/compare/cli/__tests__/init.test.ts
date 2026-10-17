@@ -59,7 +59,7 @@ describe('init config scaffolding', () => {
     expect(fs.existsSync(path.join(project, '.claude'))).toBe(false);
     expect(fs.existsSync(path.join(project, '.agents'))).toBe(false);
     expect(log.mock.calls.flat().join('\n'))
-      .toContain('npx skills add shakacode/shakaperf --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs --agent claude-code codex');
+      .toContain('npx skills add shakacode/shakaperf --skill shaka-perf shaka-perf-add-coverage shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs --agent claude-code codex');
   });
 
   it.each(['nested/config.ts', '/absolute'])('supports --out %s', (destination) => {

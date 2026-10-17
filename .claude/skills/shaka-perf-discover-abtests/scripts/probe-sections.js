@@ -1,8 +1,7 @@
 /**
  * Probe page sections and score candidate CSS selectors for visual regression tests.
  *
- * Run in the target page via Claude mcp__claude-in-chrome__javascript_tool,
- * or agent-browser --session "$AB_SESSION" eval --stdin AFTER the page
+ * Run via mcp__claude-in-chrome__javascript_tool on the target tab AFTER the page
  * has fully loaded (networkidle + scrolling complete).
  *
  * Returns an array of scored candidate sections sorted by vertical position,
@@ -10,10 +9,7 @@
  * AI visual heuristics before finalizing selector choices.
  *
  * Usage:
- *   shaka-perf discover-abtests probe-sections |
- *     agent-browser --session "$AB_SESSION" eval --stdin
- * For Claude, pass the printed source to javascript_tool in the selected tab
- * using the session's documented parameters. Preserve its returned result.
+ *   const result = await javascript_tool({ code: fs.readFileSync('probe-sections.js', 'utf8') });
  *   // result.sections = [{ selector, height, width, widthRatio, score, depth, absTop, ... }]
  */
 (function () {

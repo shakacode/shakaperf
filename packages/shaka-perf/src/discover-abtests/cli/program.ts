@@ -41,22 +41,22 @@ export function findDefaultVisregReports(resultsRoot = DEFAULT_RESULTS_ROOT): st
 
 export function createDiscoverAbtestsCommand(): Command {
   const cmd = new Command('discover-abtests').description(
-    'Helpers for the shaka-perf-discover-abtests agent skill: prints browser script sources and summarizes visreg reports.',
+    'Helpers for the shaka-perf-discover-abtests Claude Code skill: prints browser script sources and summarizes visreg reports.',
   );
 
   cmd
     .command('extract-links')
-    .description('Print the JS source that collects internal links on the current page (execute in the target browser page).')
+    .description('Print the JS source that collects internal links on the current page (feed into javascript_tool).')
     .action(() => printScript('extract-links.js'));
 
   cmd
     .command('probe-lazy-load')
-    .description('Print the JS source for the lazy-load probe (execute in the target browser page).')
+    .description('Print the JS source for the lazy-load probe (feed into javascript_tool).')
     .action(() => printScript('probe-lazy-load.js'));
 
   cmd
     .command('probe-sections')
-    .description('Print the JS source that scores candidate section selectors on tall pages (execute in the target browser page).')
+    .description('Print the JS source that scores candidate section selectors on tall pages (feed into javascript_tool).')
     .action(() => printScript('probe-sections.js'));
 
   cmd

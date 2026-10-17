@@ -144,7 +144,7 @@ function runInit(opts: { out?: string; force?: boolean }): void {
   console.log('');
   console.log(chalk.gray('Next steps:'));
   console.log(chalk.gray('  Install ShakaPerf skills from your repository directory:'));
-  console.log(chalk.green('    npx skills add shakacode/shakaperf --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs --agent claude-code codex'));
+  console.log(chalk.green('    npx skills add shakacode/shakaperf --skill shaka-perf shaka-perf-add-coverage shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs --agent claude-code codex'));
   console.log(chalk.gray('  Choose your agent(s); add -g for a global skill installation.'));
   console.log('');
   console.log(chalk.gray('  After installing, ask your agent:'));

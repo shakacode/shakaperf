@@ -1,15 +1,11 @@
 /**
  * Extract unique internal link pathnames from the current page.
  *
- * Run in the target page via Claude mcp__claude-in-chrome__javascript_tool,
- * or agent-browser --session "$AB_SESSION" eval --stdin.
+ * Run via mcp__claude-in-chrome__javascript_tool on the target tab.
  * Returns an array of pathname strings (deduped, no hash fragments).
  *
  * Usage:
- *   shaka-perf discover-abtests extract-links |
- *     agent-browser --session "$AB_SESSION" eval --stdin
- * For Claude, pass the printed source to javascript_tool in the selected tab
- * using the session's documented parameters. Preserve its returned links.
+ *   const links = await javascript_tool({ code: fs.readFileSync('extract-links.js', 'utf8') });
  */
 [...document.querySelectorAll('a[href]')]
   .map(a => {

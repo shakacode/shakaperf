@@ -22,7 +22,7 @@ Install skills from your target repository directory using Node >= 22.20.0:
 
 ```bash
 npx skills add shakacode/shakaperf \
-  --skill shaka-perf shaka-perf-discover-abtests shaka-perf-add-coverage \
+  --skill shaka-perf shaka-perf-add-coverage \
     shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs \
   --agent claude-code codex
 ```
@@ -33,8 +33,10 @@ add `-g` for global installation. List available skills with
 `npx skills update --project` or `npx skills update --global`.
 See the [skills installer](https://github.com/vercel-labs/skills) for other options.
 When installing `shaka-perf-add-coverage` alone, also install `shaka-perf-coverage`.
-Maintenance skills marked `metadata.internal: true` are hidden from discovery;
-select them by name or set `INSTALL_INTERNAL_SKILLS=1` to list them.
+Internal skills, including `shaka-perf-discover-abtests` and its browser scripts,
+retain their repository tooling and are hidden from installer discovery with
+`metadata.internal: true`. Select them by name or set `INSTALL_INTERNAL_SKILLS=1`
+to list them.
 
 Invoke skills by name, Claude Code `/shaka-perf-dockerize`, or Codex
 `$shaka-perf-dockerize`. For browser work, use Claude Chrome tools when available

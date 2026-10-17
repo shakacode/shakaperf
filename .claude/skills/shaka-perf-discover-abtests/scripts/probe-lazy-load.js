@@ -1,31 +1,27 @@
 /**
  * Probe whether scrolling triggers lazy-loaded content on the current page.
  *
- * Run via Claude Chrome javascript_tool or agent-browser eval --stdin in the
- * selected page AFTER the page's initial network requests have
+ * Run via the Chrome MCP tools AFTER the page's initial network requests have
  * settled (wait for networkidle first — probing while an API call is still in
  * flight gives misleading results).
  *
- * IMPORTANT: Use incremental mouse wheel input and waits. IntersectionObserver
- * reacts to intersection changes from user or JavaScript scrolling; large jumps
- * can skip intermediate lazy-loading states. agent-browser scroll uses JavaScript
- * scrolling, so use its mouse wheel command for this workflow.
+ * IMPORTANT: Use real mouse scroll actions, NOT window.scrollTo() or
+ * window.scrollBy() in JS. Many sites use IntersectionObserver-based lazy
+ * loaders that only fire on genuine scroll events — JS jumps bypass them and
+ * give false negatives.
  *
  * Full probe sequence:
  *
  *   // Step 1 — capture baseline
- *   evaluate the STEP1 expression string via Claude javascript_tool or agent-browser eval --stdin
- *   Save its returned result as before; declarations alone do not execute it.
+ *   run STEP1 via javascript_tool
  *
  *   // Step 2 — scroll down incrementally using mouse scroll actions
- *   //   Loop: use Claude mcp__claude-in-chrome__computer with its scroll action,
- *   //   or agent-browser --session "$AB_SESSION" mouse wheel 500,
- *   //   wait 500ms, then evaluate the AT_BOTTOM expression string.
+ *   //   Loop: scroll down 10 ticks via mcp__claude-in-chrome__scroll (or mouse_wheel),
+ *   //   wait 500ms, check (window.scrollY + window.innerHeight >= document.body.scrollHeight)
  *   //   Repeat until at the bottom.
  *
  *   // Step 3 — wait 2s, then capture after-state
- *   evaluate the STEP2 expression string and save its returned result as after.
- *   Use a fresh function scope for each phase.
+ *   run STEP2 via javascript_tool
  *
  *   // If after.imageCount > before.imageCount or after.scrollHeight > before.scrollHeight
  *   // → lazy loading confirmed, add scroll pattern to the test.
