@@ -204,11 +204,14 @@ function fillCells(dir: string, byTest: Map<string, Row[]>, letterOf: Map<string
         if ((seen.get(letter)?.pct ?? -1) < row.pct) seen.set(letter, row);
       }
     }
+    // Tests that ran any statement in this file; one with a row but no coverage here cannot
+    // say which statement drew the element.
+    const ranHere = new Set(lines.flatMap((l) => parse(l)?.cover.split('+') ?? []));
     for (const [lineNo, seen] of best) {
       const here = parse(lines[lineNo - 1] ?? '');
       // Every test with a row here rendered the element, so the statement that drew it ran in
       // all of them: skip a nearer statement only some of them ran, such as a `.map` callback.
-      const rendered = [...seen.keys()];
+      const rendered = [...seen.keys()].filter((letter) => ranHere.has(letter));
       const statement = lines.slice(0, lineNo).map(parse).findLast((p) => p?.cover && p.cover !== '0'
         && rendered.every((letter) => p.cover.split('+').includes(letter)));
       if (!here || !statement) { stats.unattached += 1; continue; }
