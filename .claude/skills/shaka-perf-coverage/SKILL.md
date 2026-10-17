@@ -43,7 +43,7 @@ node <skill-dir>/coverage-baseline.mts diff                          # the last 
 node <skill-dir>/coverage-baseline.mts diff <older-dir> <newer-dir>
 ```
 
-`<relevant-sources>` is a comma-separated list of regexes matched against paths under `app/javascript`: narrow enough to name the components in question, and **reused verbatim for every save** — changing it makes the diff meaningless.
+`<relevant-sources>` is a comma-separated list of regexes matched against paths under `app/javascript` (or under `SOURCE_ROOT` when the frontend lives elsewhere, such as `SOURCE_ROOT=client/app`): narrow enough to name the components in question, and **reused verbatim for every save**, with the same `SOURCE_ROOT` — changing either makes the diff meaningless.
 
 `save` writes a timestamped directory under `audit-results/coverage-baselines/` — one file per source, mirroring its path, plus `legend.txt` mapping test letters to test names. It never overwrites.
 
