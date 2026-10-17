@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -93,13 +94,26 @@ export function projectPathSlug(absPath: string): string {
         `names. Rename the checkout directory to remove "--".`,
     );
   }
-  const slug = rel
-    .split(path.sep)
-    .join('--')
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^[.-]+|[.-]+$/g, '');
-  return slug || 'root';
+  const sanitize = (text: string) => text.toLowerCase().replace(/[^a-z0-9._-]+/g, '-');
+  const trimEnds = (text: string) => text.replace(/^[.-]+|[.-]+$/g, '');
+  const segments = rel.split(path.sep);
+  const unchanged = trimEnds(sanitize(segments.join('--')));
+  // Docker image names only allow `.`/`_` between alphanumerics, so a segment
+  // that starts or ends with one (e.g. `.claude`) would put it next to the `--`
+  // separator and produce an invalid tag. Trim those per segment. This covers
+  // dot-directories; `.`/`_` runs inside a segment (`a._b`) can still be invalid.
+  const slug = trimEnds(
+    segments
+      .map((segment) => sanitize(segment).replace(/^[._]+|[._]+$/g, ''))
+      .filter(Boolean)
+      .join('--'),
+  );
+  if (slug === unchanged) return slug || 'root';
+  // Trimming can merge two checkouts (`repo/.claude/x` and `repo/claude/x`), so a
+  // name it changed carries a hash of the untrimmed name, which still tells them
+  // apart and, like the rest of the slug, ignores case and trailing separators.
+  const hash = createHash('sha256').update(unchanged).digest('hex').slice(0, 8);
+  return `${slug || 'root'}-${hash}`;
 }
 
 export function resolveConfig(config: unknown, cwd: string = process.cwd()): ResolvedConfig {
