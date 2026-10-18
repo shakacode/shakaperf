@@ -35,14 +35,13 @@ npx skills add shakacode/shakaperf \
   --agent claude-code codex
 ```
 
-Choose your agent(s) with `--agent`; add `-g` for global installation. See the [agent guide](docs/for-ai-agents.md#install-and-scaffold) for selection and updates. Then ask your agent:
-
-```text
+In your agent, run the two prompts:
+```bash
 # ~30 minutes
-Use shaka-perf-dockerize to set up twin servers for this project. # Optionally provide details about how to seed your app (e.g. instruct it to visit your production site in a browser and re-use the data)
+/shaka-perf-dockerize # Optionally provide details about how to seed your app (e.g. instruct it to visit your production site with playwright-mcp and re-use the data)
 
 # start small, expand later. ~30 minutes
-Use shaka-perf-add-coverage to write a minimal test suite. Add seeded data if needed.
+/shaka-perf-add-coverage write a mimimal test suite. Add seeded data if needed.
 ```
 
 Then run the same image as two containers, `control` on the merge base of your branch and `experiment` on your branch, and compare them:
@@ -64,16 +63,18 @@ shaka-perf compare --categories=visreg # way faster
 
 Now you can start optimizing your pages. (~1 hour)
 ```
-Run shaka-perf audit and read sources to find the largest bottleneck. Minimal change should produce maximum result.
+/goal run shaka-perf audit and read sources to find the largest bottleneck. Minimal change should produce maximum result.
 
-Before announcing the victory, use shaka-perf-add-coverage to ensure all affected components are screenshot-covered.
+Before announcing the victory, ensure all the affected components are screenshot-covered /shaka-perf-add-coverage
 ```
 
 Or something more ambitous (2-8 hours)
 ```
-1. Use shaka-perf-add-coverage to ensure screenshot coverage of all components
+/goal
+
+1. /shaka-perf-add-coverage ensure screenshot coverage of all components
 2. Switch the stack to React RSC
-3. Use shaka-perf-find-bugs to check for critical regressions
+3. Subagent with /shaka-perf-find-bugs should not find anything critical
 4. No visual changes
 5. When done, hit me up with performance comparison report from shaka-perf
 ```

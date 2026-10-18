@@ -38,8 +38,6 @@ Setup from scratch uses [shaka-perf-dockerize](../shaka-perf-dockerize/SKILL.md)
 [shaka-perf-find-bugs](../shaka-perf-find-bugs/SKILL.md). Load the named skill or read its sibling file.
 If a required companion is missing, ask the user to install it with `npx skills add shakacode/shakaperf --skill <name> --agent <agent>`.
 
-Invoke by name, Claude Code `/shaka-perf`, or Codex `$shaka-perf`. Use the host’s file, shell, image, and question tools within session permissions; wait for required answers.
-
 Read [Writing Good AB Tests](references/writing-good-ab-tests.md) before writing or editing a test.
 
 

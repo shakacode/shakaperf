@@ -22,7 +22,7 @@ Install the skills with:
 ```bash
 npx skills add shakacode/shakaperf \
   --skill '*' \
-  --agent claude-code codex
+  --agent claude-code codex # For another agent, check https://github.com/vercel-labs/skills#supported-agents
 ```
 
 The `shaka-perf` skill is the command map and sends you to each command's

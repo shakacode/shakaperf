@@ -38,9 +38,9 @@ The start-servers command runs Overmind and blocks until stopped. Use the docume
 
 ## 4. Reproduce
 
-Follow the project's browser interaction instructions. Use a real browser, preferably headless; HTTP requests or a delegated report alone cannot verify a UI regression. Report unavailable browser capabilities.
+Follow the project's browser interaction instructions: drive the browser through MCP, never through curl or the Task tool. Do every step on both servers in the same order and take a screenshot at each step where you expect a difference. Save screenshots under `tmp/twin-qa/`.
 
-Do every step on both servers in the same order. Match viewport dimensions and scroll positions; verify dimensions after resizing. Save and inspect paired screenshots under `tmp/twin-qa/` at each expected difference. Use separate browser sessions for control and experiment.
+Run headless browser.
 
 Seeds not enough? Edit the application's seed data or fixtures, then apply the same data to both sides using the project's seed commands (see `twinServers.setupCommands` in the application's `abtests.config.ts`).
 
@@ -70,6 +70,6 @@ Screenshot rules:
 
 The template's two copy buttons are what make the report pasteable into a PR. "Copy markdown" copies the headline, the numbered steps, expected/actual, and every section below the screenshots as one markdown block with a slot for the image. "Copy image" copies the screenshot stage as one PNG with the titles, annotations, and verdicts baked in (an SVG overlay does not survive a paste, a flattened image does); it is pasted separately. Keep all text in those sections and all screenshot content inside the stage.
 
-After you proved the bug exists, you need to explain it. Delegate when available and authorized, using "Draw an insightful SVG explaining <bug description>. Use available browser automation to polish it. Don't stop iterating until it is clean and insigthful. You are expected to run at least 2 iterations. The SVG can contain 30 words top. Before you start drawing you have to plan what you will show to the user, don't expect them to be familiar with implementation details. Get creative." If delegation is unavailable or unauthorized, create and review the SVG yourself using the same requirements.
+After you proved the bug exists, you need to explain it. Spawn a subagent with "Draw an insightful SVG explaining <bug description>. Use playwright-mcp to polish it. Don't stop iterating until it is clean and insigthful. You are expected to run at least 2 iterations. The SVG can contain 30 words top. Before you start drawing you have to plan what you will show to the user, don't expect them to be familiar with implementation details. Get creative."
 
 In the "Why it happens" section, write the explanation in plain language, 70 words max, then inline that SVG under it, and list the relevant sources in the section below. Screenshot PNGs should be inlined as base64.
