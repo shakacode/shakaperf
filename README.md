@@ -40,7 +40,7 @@ Choose your agent(s) with `--agent`; add `-g` for global installation. See the [
 
 ```text
 # ~30 minutes
-Use shaka-perf-dockerize to set up twin servers for this project. # Optionally provide details about how to seed your app (e.g. instruct it to visit your production site with agent-browser and re-use the data)
+Use shaka-perf-dockerize to set up twin servers for this project. # Optionally provide details about how to seed your app (e.g. instruct it to visit your production site in a browser and re-use the data)
 
 # start small, expand later. ~30 minutes
 Use shaka-perf-add-coverage to write a minimal test suite. Add seeded data if needed.

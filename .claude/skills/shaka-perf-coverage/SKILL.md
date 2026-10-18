@@ -5,8 +5,6 @@ description: Use to check if there are A/B tests for some scenario. Load this sk
 
 # shaka-perf-coverage
 
-For browser work, use Claude Chrome tools when available in Claude Code; otherwise use `agent-browser`.
-
 Resolve `<skill-dir>` to this installed skill folder, not the application directory.
 
 Estimate **screenshot coverage**: not "how many lines did the tests run", but "did the elements those lines render end up in a screenshot".

@@ -6,8 +6,6 @@ argument-hint: what elements to cover. Might be path or textual description of a
 
 # shaka-perf-add-coverage
 
-For browser work, use Claude Chrome tools when available in Claude Code; otherwise use `agent-browser`.
-
 Your goal is to add tests without unnecessarily bloating the test suite. The endgoal is all the interested components should be screenshoted without duplication (happy paths only).
 
 **REQUIRED SUB-SKILL:** Load [shaka-perf-coverage](../shaka-perf-coverage/SKILL.md) to estimate coverage, save the pre-edit baseline, read snapshots, and compare the final coverage.

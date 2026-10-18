@@ -5,8 +5,6 @@ description: Map of the shaka-perf CLI. Load whenever a task mentions shaka-perf
 
 # shaka-perf
 
-For browser work, use Claude Chrome tools when available in Claude Code; otherwise use `agent-browser`.
-
 `shaka-perf` is a frontend performance toolkit: it runs your app twice in Docker
 (control = main, experiment = your branch) and diffs screenshots, Web Vitals,
 Lighthouse, and accessibility between them. In a Yarn project call it as

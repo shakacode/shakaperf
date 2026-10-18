@@ -6,8 +6,6 @@ argument-hint: "[path-to-existing-Dockerfile] [services e.g. postgres,redis,elas
 
 # shaka-perf-dockerize
 
-For browser work, use Claude Chrome tools when available in Claude Code; otherwise use `agent-browser`.
-
 Twin-servers runs **two production-mode copies of one app side by side** by default — `control` (the baseline branch) and `experiment` (your branch) — so `shaka-perf compare` can diff them for visual and performance regressions. This skill sets up the Docker infrastructure, including an opt-in instrumented development mode for coverage, in the current project.
 
 The whole point is an **apples-to-apples comparison**: control and experiment must be identical in every way *except the application code under test* — same base image, dependencies, services, environment, data. Any incidental drift (a service only one side has, an env var that differs, a slower disk path) surfaces later as a phantom regression that's brutal to trace. Keep asking: *are these two sides truly identical?*

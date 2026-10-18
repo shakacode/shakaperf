@@ -6,8 +6,6 @@ allowed-tools: Bash Read Grep Glob Edit Write Agent
 
 # QA with local twin servers
 
-For browser work, use Claude Chrome tools when available in Claude Code; otherwise use `agent-browser`.
-
 `allowed-tools` lists Claude tool names; other hosts follow their own permissions.
 
 Two checkouts side by side: the configured `twinServers.controlDir` (the base) and `twinServers.experimentDir` (the change under test). Same seed data, two servers. Your job is to find something that misbehaves on experiment and works on control.
@@ -42,7 +40,7 @@ The start-servers command runs Overmind and blocks until stopped. Use the docume
 
 Follow the project's browser interaction instructions. Use a real browser, preferably headless; HTTP requests or a delegated report alone cannot verify a UI regression. Report unavailable browser capabilities.
 
-Do every step on both servers in the same order. Match viewport dimensions and scroll positions; verify dimensions after resizing. Save and inspect paired screenshots under `tmp/twin-qa/` at each expected difference. Use separate agent-browser sessions per side.
+Do every step on both servers in the same order. Match viewport dimensions and scroll positions; verify dimensions after resizing. Save and inspect paired screenshots under `tmp/twin-qa/` at each expected difference. Use separate browser sessions for control and experiment.
 
 Seeds not enough? Edit the application's seed data or fixtures, then apply the same data to both sides using the project's seed commands (see `twinServers.setupCommands` in the application's `abtests.config.ts`).
 

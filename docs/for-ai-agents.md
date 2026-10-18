@@ -39,8 +39,7 @@ retain their repository tooling and are hidden from installer discovery with
 to list them.
 
 Invoke skills by name, Claude Code `/shaka-perf-dockerize`, or Codex
-`$shaka-perf-dockerize`. For browser work, use Claude Chrome tools when available
-in Claude Code; otherwise use `agent-browser`.
+`$shaka-perf-dockerize`.
 
 Run application commands from the application directory and resolve skill
 references from the installed skill folder. The `shaka-perf` skill provides the
