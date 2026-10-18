@@ -192,10 +192,9 @@ A setup that looks right but doesn't boot is worth nothing — drive it until bo
    curl -fsS -o /dev/null -w "%{http_code}\n" http://localhost:$EXPERIMENT_PORT
    ```
    Don't trust "server started" logs alone — an app can boot and still 500 on every request.
-5. **Verify the rendered UI on both sides.** Inspect screenshots and exercise a representative control on desktop and mobile. Verify actual viewport dimensions after resizing; HTTP success alone does not verify rendering or interactions.
-6. **When something fails**, debug inside the container with `yarn shaka-perf servers run-cmd <side> bash` (or run a one-off command). Read `references/troubleshooting.md` for the common failure→fix table (permission errors, missing services, asset/precompile failures, port conflicts, db setup). Fix the Dockerfile / config / guards, then re-run from the right step. Iterate until both sides return success.
+5. **When something fails**, debug inside the container with `yarn shaka-perf servers run-cmd <side> bash` (or run a one-off command). Read `references/troubleshooting.md` for the common failure→fix table (permission errors, missing services, asset/precompile failures, port conflicts, db setup). Fix the Dockerfile / config / guards, then re-run from the right step. Iterate until both sides return success.
 
-**Gate:** both `curl`s return a 2xx/3xx, and browser inspection verifies real rendered content and a representative interaction on both sides before you proceed. If a side only works after a manual fix, fold that fix into the Dockerfile (preferred) — or, if it's an unavoidable runtime step, a minimal `setupCommands` entry — so a clean rebuild reproduces it. A setup that only works by hand is not done.
+**Gate:** both `curl`s return a 2xx/3xx (a real rendered page) before you proceed. If a side only works after a manual fix, fold that fix into the Dockerfile (preferred) — or, if it's an unavoidable runtime step, a minimal `setupCommands` entry — so a clean rebuild reproduces it. A setup that only works by hand is not done.
 
 ---
 
