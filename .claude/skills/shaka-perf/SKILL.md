@@ -40,8 +40,7 @@ If a required companion is missing, ask the user to install it with `npx skills 
 
 Invoke by name, Claude Code `/shaka-perf`, or Codex `$shaka-perf`. Use the host’s file, shell, image, and question tools within session permissions; wait for required answers.
 
-Read this guide before writing or editing a test.
-https://github.com/shakacode/shakaperf/blob/main/writing-good-ab-tests.md.
+Read [Writing Good AB Tests](references/writing-good-ab-tests.md) before writing or editing a test.
 
 
 Whenever you are talking about results of your findings with users, give them full path to the generated report.
