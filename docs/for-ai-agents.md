@@ -14,40 +14,19 @@ What ShakaPerf gives an agent that a raw Lighthouse run or DevTools trace cannot
 
 ## Install and scaffold
 
-Install `shaka-perf` and `shaka-shared`, then run `shaka-perf init` (see the
-[README](../README.md)). It creates only `abtests.config.ts`: `--out` selects its
-path, and `--force` replaces it without touching existing skills.
+Install `shaka-perf` and `shaka-shared`, then run `yarn shaka-perf init` (see the
+[README](../README.md)). `init` scaffolds `abtests.config.ts`.
 
-Install skills from your target repository directory using Node >= 22.20.0:
+Install the skills with:
 
 ```bash
 npx skills add shakacode/shakaperf \
-  --skill shaka-perf shaka-perf-add-coverage \
-    shaka-perf-coverage shaka-perf-dockerize shaka-perf-find-bugs \
+  --skill '*' \
   --agent claude-code codex
 ```
 
-Choose your agent(s) with `--agent`, select individual skills with `--skill`, or
-add `-g` for global installation. List available skills with
-`npx skills add shakacode/shakaperf --list`; update with
-`npx skills update --project` or `npx skills update --global`.
-See the [skills installer](https://github.com/vercel-labs/skills) for other options.
-When installing `shaka-perf-add-coverage` alone, also install `shaka-perf-coverage`.
-Internal skills, including `shaka-perf-discover-abtests` and its browser scripts,
-retain their repository tooling and are hidden from installer discovery with
-`metadata.internal: true`. Select them by name or set `INSTALL_INTERNAL_SKILLS=1`
-to list them.
-
-Invoke skills by name, Claude Code `/shaka-perf-dockerize`, or Codex
-`$shaka-perf-dockerize`.
-
-Run application commands from the application directory and resolve skill
-references from the installed skill folder. The `shaka-perf` skill provides the
-[command map](../.claude/skills/shaka-perf/SKILL.md); each command's `--help` is the
-reference for its flags.
-
-For source development, the [global bootstrap helper](../scripts/bootstrap-shakaperf-global.sh)
-installs the CLI and links skills from the checkout into Claude Code globally.
+The `shaka-perf` skill is the command map and sends you to each command's
+`--help`, which is the reference for every flag mentioned below.
 
 ## The PR loop (twin servers)
 
