@@ -117,7 +117,7 @@ A `compare` verdict says whether a metric moved and by how much, not why. Before
 
 ## Writing tests (for agents)
 
-Tests are `abTest()` calls in `ab-tests/*.abtest.ts` — one Playwright-driven scenario each, used by perf and visreg alike. The non-negotiable rules live in [writing-good-ab-tests.md](../writing-good-ab-tests.md); the short version: **fail loudly and run linearly** — no `try/catch` swallowing, no loops, no `if`-branching on page state (assert with `waitForSelector`/`waitForURL` instead), wait for conditions not the clock, deterministic inputs, `annotate('...')` before every non-trivial action, one behaviour per test.
+Tests are `abTest()` calls in `ab-tests/*.abtest.ts` — one Playwright-driven scenario each, used by perf and visreg alike. The non-negotiable rules live in [writing-good-ab-tests.md](../.claude/skills/shaka-perf/references/writing-good-ab-tests.md); the short version: **fail loudly and run linearly** — no `try/catch` swallowing, no loops, no `if`-branching on page state (assert with `waitForSelector`/`waitForURL` instead), wait for conditions not the clock, deterministic inputs, `annotate('...')` before every non-trivial action, one behaviour per test.
 
 ## Concurrent agents
 
@@ -155,7 +155,7 @@ https://github.com/shakacode/shakaperf/blob/main/docs/for-ai-agents.md. Config: 
 - A perf `regression` = p < 0.05 AND the paired estimate exceeds the configured
   threshold — iterate on the code and re-run the filtered compare; confirm with a
   full run before pushing.
-- Writing/editing `.abtest.ts` files: follow `writing-good-ab-tests.md`
+- Writing/editing `.abtest.ts` files: follow [writing-good-ab-tests.md](../.claude/skills/shaka-perf/references/writing-good-ab-tests.md)
   (fail loudly: no try/catch, no loops, no if-branches; wait for conditions, not time).
 ````
 
