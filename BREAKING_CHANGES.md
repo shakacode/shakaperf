@@ -12,6 +12,17 @@ version being released and updates the "Current version" line at the bottom.
 
 ---
 
+## Unreleased
+
+### `init` creates config only; install agent skills separately
+
+`shaka-perf init` creates `abtests.config.ts` without copying skills into
+`.claude/skills`. `--out` still selects the config path; `--force` replaces only
+that config and leaves existing skills untouched.
+
+Install skills with `npx skills add shakacode/shakaperf` using the
+[agent installation guide](docs/for-ai-agents.md#install-and-scaffold).
+
 ## 0.3.0 — 2026-09-13
 
 ### `--full-report-zip` removed from `compare` and `audit`

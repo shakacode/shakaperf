@@ -6,6 +6,8 @@ allowed-tools: Bash Read Grep Glob Edit Write Agent
 
 # QA with local twin servers
 
+`allowed-tools` lists Claude tool names; other hosts follow their own permissions.
+
 Two checkouts side by side: the configured `twinServers.controlDir` (the base) and `twinServers.experimentDir` (the change under test). Same seed data, two servers. Your job is to find something that misbehaves on experiment and works on control.
 
 Ports and hosts come from the configured application's `abtests.config.ts` (`shared.controlURL`, `shared.experimentURL`, and `twinServers.ports`).
@@ -16,8 +18,7 @@ Some obvious crashes or typos in known API calls don't need to have a reproducti
 
 ## 1. Sanity-check twin-servers commits
 
-What commits are checked out in `twinServers.experimentDir`/`twinServers.controlDir`? Usually control should contain the merge-base with the main branch. Or it can be the previous PR in `gh stack` (given it's installed). If the control branch looks off, use prompt tool asking what branch to use as control, and then run the corresponding `shaka-perf servers checkout` command.
-
+What commits are checked out in `twinServers.experimentDir`/`twinServers.controlDir`? Usually control should contain the merge-base with the main branch. Or it can be the previous PR in `gh stack` (given it's installed). If the control branch looks off, ask the user which branch to use as control. Wait for the answer, then run the corresponding `shaka-perf servers checkout` command.
 
 ## 2. Read the diff first
 
@@ -25,7 +26,7 @@ What commits are checked out in `twinServers.experimentDir`/`twinServers.control
 
 ## 3. Boot the servers
 
-See `packages/shaka-perf/README-twin-servers.md` to understand the desired experiment/control layout and server lifecycle. Use the configured application's `abtests.config.ts` for databases, seed setup, and build commands. Run the following from that application's directory (`demo-ecommerce` for this repository's demo):
+See [the twin-server lifecycle guide](https://github.com/shakacode/shakaperf/blob/main/packages/shaka-perf/README-twin-servers.md) to understand the desired experiment/control layout and server lifecycle. Use the configured application's `abtests.config.ts` for databases, seed setup, and build commands. Run the following from that application's directory (`demo-ecommerce` for this repository's demo):
 
 ```bash
 yarn shaka-perf servers build

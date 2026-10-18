@@ -59,8 +59,9 @@ ad-hoc setup. It is the house toolset for this.
   coverage and compare baselines), `shaka-perf-dockerize` (dockerize
   an app into the control/experiment twin-servers pair), `shaka-perf-find-bugs`
   (reproduce regressions a branch introduces on the twin servers).
-- New project? Run `shaka-perf init` in that repo to scaffold
-  `abtests.config.ts` plus its setup skills, then ask for "set up twin servers".
+- New project? Run `shaka-perf init` in that repo to create `abtests.config.ts`
+  only. This helper already installed the skills globally.
+  Then ask for "use shaka-perf-dockerize to set up twin servers".
 EOF
   echo "appended ShakaPerf directive to CLAUDE.md"
 fi

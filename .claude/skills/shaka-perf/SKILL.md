@@ -15,7 +15,7 @@ Lighthouse, and accessibility between them. In a Yarn project call it as
 
 | Command | What it does |
 | --- | --- |
-| `shaka-perf init` | Drops `abtests.config.ts` and these skills into the project. |
+| `shaka-perf init` | Creates `abtests.config.ts`. |
 | `shaka-perf servers` | Builds and runs the control/experiment Docker pair. Bare `servers` is an interactive menu for humans; agents use its subcommands (`build`, `checkout`, `start-containers`, `start-servers`, `stop-containers`, `run-cmd`, `sync-changes`). |
 | `shaka-perf compare` | Runs every `.abtest.ts` on both sides and writes the A/B report (visreg, perf, accessibility). |
 | `shaka-perf troubleshoot` | Runs one test at one viewport and leaves the browsers open for inspection over CDP. Never finishes; not for measuring. |
@@ -32,12 +32,13 @@ shaka-perf servers --help
 shaka-perf compare --help
 ```
 
-Setup from scratch is the `/shaka-perf-dockerize` skill; writing tests is
-`/shaka-perf-add-coverage`; checking what is covered is `/shaka-perf-coverage`;
-hunting regressions on a branch is `/shaka-perf-find-bugs`.
+Setup from scratch uses [shaka-perf-dockerize](../shaka-perf-dockerize/SKILL.md); writing tests uses
+[shaka-perf-add-coverage](../shaka-perf-add-coverage/SKILL.md); checking coverage uses
+[shaka-perf-coverage](../shaka-perf-coverage/SKILL.md); hunting regressions uses
+[shaka-perf-find-bugs](../shaka-perf-find-bugs/SKILL.md). Load the named skill or read its sibling file.
+If a required companion is missing, ask the user to install it with `npx skills add shakacode/shakaperf --skill <name> --agent <agent>`.
 
-Read this guide before writing or editing a test.
-https://github.com/shakacode/shakaperf/blob/main/writing-good-ab-tests.md.
+Read [Writing Good AB Tests](references/writing-good-ab-tests.md) before writing or editing a test.
 
 
 Whenever you are talking about results of your findings with users, give them full path to the generated report.

@@ -17,7 +17,7 @@ Or it can be your AI-driven visual-regression catching pipeline.
 
 ## Usage
 
-Setting up takes one to four hours. Install, then let the bundled Claude Code skills do the Docker work:
+Setting up takes one to four hours. Install the CLI and skills, then ask your agent to do the Docker work:
 
 ```bash
 # small helpers and types
@@ -27,10 +27,15 @@ npm i shaka-shared
 
 # install shaka-perf globally
 npm i -g shaka-perf       # you may use yarn, or have a local installation, but this is not recommended
-shaka-perf init           # creates abtests.config.ts and installs the AI skills
+shaka-perf init           # creates abtests.config.ts
+
+# Install ShakaPerf skills from your target repo directory (installer needs Node >= 22.20).
+npx skills add shakacode/shakaperf \
+  --skill '*' \
+  --agent claude-code codex
 ```
 
-In Claude Code, run the two prompts:
+In your agent, run the two prompts:
 ```bash
 # ~30 minutes
 /shaka-perf-dockerize # Optionally provide details about how to seed your app (e.g. instruct it to visit your production site with playwright-mcp and re-use the data)
@@ -85,12 +90,12 @@ Or something more ambitous (2-8 hours)
 
 ## Instrumented screenshot coverage makes AI generated tests work
 
-`shaka-perf init` installs Claude Code skills generating hi-fi tests. If any component in the app changes no matter how deap in the tree, shaka-perf will screenshot it and alert you. This works without needing you to polish the tests manually.
+The agent skills generate hi-fi tests. If any component in the app changes no matter how deap in the tree, shaka-perf will screenshot it and alert you. This works without needing you to polish the tests manually.
 ![Code coverage vs instrumented screenshot coverage](./docs/screenshot-coverage.svg)
 
 ## Shakaperf can be used as AI QA-Engineer. Minimal amount of false positives.
 
-The `shaka-perf-find-bugs` skill turns twin-servers into a QA rig: agents use the control server to generate the `expected/actual` screenshots. `shaka-perf init` installs it next to the other skills.
+The `shaka-perf-find-bugs` skill turns twin-servers into a QA rig: agents use the control server to generate the `expected/actual` screenshots.
 
 ![shaka-perf-find-bugs report: the banner says the menu is closed, but the experiment still offers add-to-cart](./docs/find-bugs.svg)
 
