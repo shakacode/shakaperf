@@ -10,7 +10,8 @@
  * only: at a moment on a shared navigation-relative clock, each side shows the
  * last frame captured by then. Two optional overlays paint pixels in red -
  * "updates" marks what changed since that side's previous frame, "diff" marks
- * where the two sides disagree, drawn in the middle column.
+ * where the two sides disagree, drawn in the middle column. A chip over the
+ * picture names each interaction (click, key press) as the clock passes it.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -18,12 +19,15 @@ import {
   SIDE_BY_SIDE_FRAMES_GLOBAL,
   type SideBySideFrame,
   type SideBySideFrames,
+  type SideBySideInteraction,
 } from '../../../bench/core/side-by-side-frames';
 import { Dialog, TestMeta, useStageArtifactTest } from '../../../pipeline/stage-report-components';
 
 const SPEEDS = [0.1, 0.25, 0.5, 1, 2, 3, 5, 10] as const;
 const CHANGED_PIXEL_THRESHOLD = 8;
 const HIGHLIGHT = { r: 220, g: 38, b: 38 } as const;
+/** A chip stays at least this long on the clock, so a fast click is still legible. */
+const CHIP_MIN_VISIBLE_MS = 600;
 
 type Side = 'control' | 'experiment';
 const SIDES: readonly Side[] = ['control', 'experiment'];
@@ -68,6 +72,23 @@ export function frameIndexAt(frames: readonly { timeMs: number }[], timeMs: numb
   let index = 0;
   for (let i = 1; i < frames.length && frames[i].timeMs <= timeMs; i++) index = i;
   return index;
+}
+
+/** Interactions whose chip is showing at `timeMs`: from the interaction's start
+ *  until its paint lands, or `CHIP_MIN_VISIBLE_MS` later, whichever is longer. */
+export function visibleInteractions(
+  interactions: readonly SideBySideInteraction[],
+  timeMs: number,
+): SideBySideInteraction[] {
+  return interactions.filter((i) => timeMs >= i.timeMs && timeMs < chipEndMs(i));
+}
+
+function chipEndMs(interaction: SideBySideInteraction): number {
+  return interaction.timeMs + Math.max(interaction.durationMs ?? 0, CHIP_MIN_VISIBLE_MS);
+}
+
+function chipLabel(interaction: SideBySideInteraction): string {
+  return interaction.durationMs != null ? `${interaction.type} ${interaction.durationMs}ms` : interaction.type;
 }
 
 const READ_BACK: CanvasRenderingContext2DSettings = { willReadFrequently: true };
@@ -202,8 +223,14 @@ export function FramePlayer({ href }: { href: string }) {
 }
 
 function LoadedFramePlayer({ frames, images }: Loaded) {
+  // The clock runs to the last frame or the last chip, whichever ends later:
+  // a click right after the final screenshot would otherwise never show.
   const durationMs = useMemo(
-    () => Math.max(0, ...SIDES.flatMap((side) => frames[side].map((f) => f.timeMs))),
+    () => Math.max(
+      0,
+      ...SIDES.flatMap((side) => frames[side].map((f) => f.timeMs)),
+      ...SIDES.flatMap((side) => frames.interactions[side].map(chipEndMs)),
+    ),
     [frames],
   );
   const [timeMs, setTimeMs] = useState(0);
@@ -278,6 +305,16 @@ function LoadedFramePlayer({ frames, images }: Loaded) {
     return `frame ${index + 1}/${frames[side].length} · ${formatSeconds(frames[side][index].timeMs)}`;
   };
 
+  const chips = (side: Side) => {
+    const visible = visibleInteractions(frames.interactions[side], timeMs);
+    if (visible.length === 0) return null;
+    return (
+      <div className="frame-player__chips">
+        {visible.map((i) => <span key={i.timeMs} className="frame-player__chip">{chipLabel(i)}</span>)}
+      </div>
+    );
+  };
+
   return (
     <div className="frame-player">
       <div className="frame-player__controls">
@@ -312,7 +349,10 @@ function LoadedFramePlayer({ frames, images }: Loaded) {
       </div>
       <div className={`frame-player__stage${highlightDiff ? ' frame-player__stage--with-diff' : ''}`}>
         <figure className="frame-player__side">
-          <canvas ref={(el) => { canvases.current.control = el; }} />
+          <div className="frame-player__picture">
+            <canvas ref={(el) => { canvases.current.control = el; }} />
+            {chips('control')}
+          </div>
           <figcaption><b>control</b> {frameCaption('control')}</figcaption>
         </figure>
         {highlightDiff ? (
@@ -322,7 +362,10 @@ function LoadedFramePlayer({ frames, images }: Loaded) {
           </figure>
         ) : null}
         <figure className="frame-player__side">
-          <canvas ref={(el) => { canvases.current.experiment = el; }} />
+          <div className="frame-player__picture">
+            <canvas ref={(el) => { canvases.current.experiment = el; }} />
+            {chips('experiment')}
+          </div>
           <figcaption><b>experiment</b> {frameCaption('experiment')}</figcaption>
         </figure>
       </div>
