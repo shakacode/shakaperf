@@ -10,8 +10,9 @@ import { createContext, useContext, useEffect, useRef, useState, type CSSPropert
 export const ImageSizeContext = createContext<'fit' | 'actual'>('fit');
 
 /** Size the coordinate plane, not just the image, so percentage annotations stay aligned. */
-export function ImageViewport({ children, width, height }: {
+export function ImageViewport({ children, width, height, actualSize = 'intrinsic' }: {
   children: ReactNode;
+  actualSize?: 'intrinsic' | 'fit-width';
   width?: number;
   height?: number;
 }) {
@@ -44,13 +45,16 @@ export function ImageViewport({ children, width, height }: {
     };
   }, [width, height]);
 
-  const scale = mode === 'fit' && natural.width && natural.height
-    ? Math.min(1, box.width / natural.width, box.height / natural.height)
+  const scale = natural.width && natural.height
+    ? mode === 'fit'
+      ? Math.min(1, box.width / natural.width, box.height / natural.height)
+      : actualSize === 'fit-width' ? Math.min(1, box.width / natural.width) : 1
     : 1;
   return (
     <div
       className="image-viewport"
       data-size={mode}
+      data-actual-size={actualSize}
       ref={ref}
       tabIndex={0}
       aria-label="Image viewport"

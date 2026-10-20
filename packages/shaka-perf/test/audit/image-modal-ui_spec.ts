@@ -96,9 +96,36 @@ describe('enlarged report image sizing', () => {
           const fit = page.getByRole('button', { name: 'Fit to window', exact: true });
           expect(await fit.getAttribute('aria-pressed')).toBe('true');
           await page.getByRole('button', { name: 'Actual size', exact: true }).click();
-          await page.waitForFunction(() => Array.from(document.querySelectorAll('.image-viewport')).some(el => el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth));
-          const actual = await page.locator('.image-viewport__plane').first().boundingBox();
-          expect(actual!.width).toBe(i === 1 ? 2560 : 390);
+          if (pipeline === 'compare' && i < 2) {
+            // Comparison inspection retains the legacy column width, including the scrubber.
+            const expectWidthConstrained = async () => {
+              await page.waitForFunction(() => Array.from(document.querySelectorAll('dialog[open] .image-viewport')).every(el =>
+                Math.abs(el.firstElementChild!.getBoundingClientRect().width - Math.min(el.querySelector('img')!.naturalWidth, el.clientWidth)) < 1));
+              const panes = await page.locator('dialog[open] .image-viewport').evaluateAll(es => es.map(el => ({
+                width: el.clientWidth, imageWidth: el.firstElementChild!.getBoundingClientRect().width,
+                overflowX: el.scrollWidth - el.clientWidth,
+              })));
+              for (const pane of panes) {
+                expect(pane.imageWidth).toBeCloseTo(Math.min(i === 1 ? 2560 : 390, pane.width), 0);
+                expect(pane.overflowX).toBeLessThanOrEqual(1);
+              }
+            };
+            await expectWidthConstrained();
+            if (i === 0) await page.waitForFunction(() => Array.from(document.querySelectorAll('.image-viewport')).some(el => el.scrollHeight > el.clientHeight));
+            await page.setViewportSize({ width: width === 390 ? 844 : 1000, height: 620 });
+            await expectWidthConstrained();
+            if (i === 0) {
+              const scrubber = page.locator('dialog[open] .scrubber');
+              const box = (await scrubber.boundingBox())!;
+              await page.mouse.click(box.x + box.width * 0.8, box.y + Math.min(box.height / 2, 40));
+              expect(await scrubber.evaluate(el => parseFloat((el as HTMLElement).style.getPropertyValue('--scrub-pos')))).toBeCloseTo(80, 0);
+            }
+            await page.setViewportSize({ width, height: 844 });
+          } else {
+            await page.waitForFunction(() => Array.from(document.querySelectorAll('.image-viewport')).some(el => el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth));
+            const actual = await page.locator('.image-viewport__plane').first().boundingBox();
+            expect(actual!.width).toBe(i === 1 ? 2560 : 390);
+          }
           await fit.click();
           await expectFitted(page);
           await page.setViewportSize({ width: width === 390 ? 560 : 1000, height: 620 });

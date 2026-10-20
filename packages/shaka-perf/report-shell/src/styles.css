@@ -3004,6 +3004,9 @@ input {
   flex: none;
   margin: auto;
 }
+.image-viewport[data-size="actual"][data-actual-size="fit-width"] .image-viewport__plane {
+  margin: 0 auto;
+}
 .image-viewport__plane > img {
   display: block;
   width: 100%;

@@ -160,7 +160,7 @@ function DialogScrubber({ row }: { row: VisregArtifact }) {
   return (
     <figure className="artifact-dialog__image artifact-dialog__image--scrubber">
       <figcaption>scrubber · control ↔ experiment</figcaption>
-      <ImageViewport width={b?.imgW} height={maxImgH}>
+      <ImageViewport actualSize="fit-width" width={b?.imgW} height={maxImgH}>
         <Scrubber
           beforeSrc={row.controlImage}
           afterSrc={row.experimentImage}
@@ -176,7 +176,7 @@ function DialogImage({ kind, src }: { kind: string; src: string }) {
   return (
     <figure className="artifact-dialog__image">
       <figcaption>{kind}</figcaption>
-      <ImageViewport><img src={src} alt={kind} /></ImageViewport>
+      <ImageViewport actualSize="fit-width"><img src={src} alt={kind} /></ImageViewport>
     </figure>
   );
 }
