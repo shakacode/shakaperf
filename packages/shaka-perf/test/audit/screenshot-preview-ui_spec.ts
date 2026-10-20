@@ -35,7 +35,7 @@ function fixture(): ReportData {
       errors: [], durationMs: 1000, reportOnly: true, reportMode: 'full',
     },
     tests: [
-      [ok('code_coverage', { files: 1, coveredStatements: 2, totalStatements: 3, screenshotHref: TALL_IMAGE }), error('audit')],
+      [ok('code_coverage', { files: 1, coveredStatements: 2, totalStatements: 3, screenshotHref: TALL_IMAGE, coverageHref: 'data:application/json,{}', visibilityMapHref: 'data:text/plain,map', sourceAttribution: { located: 1, elements: 2, plugin: 'react19', warnings: [] } }), error('audit')],
       [ok('audit', { metrics: [], lighthouseHref: 'data:text/html,Lighthouse', lighthouseThumbHref: TALL_IMAGE }), error('code_coverage')],
       [ok('code_coverage', { files: 1, coveredStatements: 2, totalStatements: 3, screenshotHref: BROKEN_IMAGE })],
     ].map((outcomes, index) => ({
@@ -83,6 +83,58 @@ describe('audit and coverage screenshot previews', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 
+  it.each([1440, 390])('places coverage metrics beside the screenshot or below it at %ipx', async (width) => {
+    page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
+    await page.goto(pathToFileURL(path.join(directory, 'report.html')).href);
+    await page.locator('.card').first().waitFor();
+    const row = page.locator('[data-stage="code_coverage"] .stage-stack__viewport').first();
+    expect(await row.locator('table').count()).toBe(1);
+    const image = await row.locator('img').boundingBox();
+    const table = await row.locator('table').boundingBox();
+    expect(image).not.toBeNull();
+    expect(table).not.toBeNull();
+    if (width === 1440) {
+      expect(table!.x).toBeGreaterThanOrEqual(image!.x + image!.width);
+      expect(image!.width).toBeLessThanOrEqual(222);
+    } else {
+      expect(table!.y).toBeGreaterThanOrEqual(image!.y + image!.height);
+    }
+    expect(await row.getByRole('progressbar').getAttribute('value')).toBe('67');
+    expect(await row.locator('img').evaluate((img) => getComputedStyle(img).objectPosition)).toBe('50% 50%');
+    const background = await row.locator('img').evaluate((img) => getComputedStyle(img.parentElement!).backgroundColor);
+    expect(background).not.toBe('rgb(255, 255, 255)');
+    expect(background).not.toBe('rgba(0, 0, 0, 0)');
+    const scope = row.locator('details');
+    expect(await scope.getAttribute('open')).toBeNull();
+    await scope.locator('summary').click();
+    expect(await scope.innerText()).toContain('content outside them');
+  });
+
+  it('explains the actual counts on hover, keyboard focus, and touch without clipping', async () => {
+    page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    await page.goto(pathToFileURL(path.join(directory, 'report.html')).href);
+    const statement = page.getByRole('button', { name: 'Statements executed: explanation' }).first();
+    await statement.hover();
+    const tooltip = page.getByRole('tooltip');
+    await tooltip.waitFor();
+    expect(await tooltip.innerText()).toBe('Of the 3 tracked statements in the source files loaded during this test, 2 ran at least once.');
+    const box = await tooltip.boundingBox();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+    await page.keyboard.press('Escape');
+    await tooltip.waitFor({ state: 'hidden' });
+    const files = page.getByRole('button', { name: 'Instrumented files loaded: explanation' }).first();
+    await files.focus();
+    await tooltip.waitFor();
+    expect(await tooltip.innerText()).toBe('During this test, 1 source file was loaded with counters that track which code instructions ran.');
+    await page.keyboard.press('Escape');
+    await tooltip.waitFor({ state: 'hidden' });
+    await statement.tap();
+    await tooltip.waitFor();
+    await page.getByRole('heading', { name: 'Screenshot previews' }).click();
+    await tooltip.waitFor({ state: 'hidden' });
+  });
+
   it('opens full-size coverage, Lighthouse, and failure artifacts in dialogs', async () => {
     page = await browser.newPage();
     await page.goto(pathToFileURL(path.join(directory, 'report.html')).href);
@@ -100,6 +152,38 @@ describe('audit and coverage screenshot previews', () => {
     expect(await page.locator('dialog[open] iframe').getAttribute('src')).toBe(TALL_IMAGE);
   });
 
+  it('keeps full-report coverage artifacts reachable', async () => {
+    page = await browser.newPage();
+    await page.goto(pathToFileURL(path.join(directory, 'report.html')).href);
+    await page.getByRole('button', { name: 'visibility-map.txt', exact: true }).click();
+    await page.locator('dialog[open]').waitFor();
+    expect(await page.locator('dialog[open] iframe').getAttribute('src')).toBe('data:text/plain,map');
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'coverage.json', exact: true }).click();
+    await page.locator('dialog[open]').waitFor();
+    expect(await page.locator('dialog[open] iframe').getAttribute('src')).toBe('data:application/json,{}');
+  });
+
+  it('renders zero counts without a screenshot and omits raw links in the self-contained report', async () => {
+    const data = fixture();
+    data.meta.reportMode = 'self-contained';
+    data.tests = [data.tests[0]];
+    data.tests[0].outcomes = [{
+      kind: 'ok', stage: 'code_coverage', viewport: DESKTOP_VIEWPORT,
+      measurement: { files: 0, totalStatements: 0, coveredStatements: 0, coverageHref: 'data:application/json,{}', visibilityMapHref: 'data:text/plain,map' },
+    } as ReportOutcome];
+    const file = path.join(directory, 'no-screenshot.html');
+    fs.writeFileSync(file, renderReportHtml(data));
+    page = await browser.newPage();
+    await page.goto(pathToFileURL(file).href);
+    await page.getByRole('table').waitFor();
+    expect(await page.getByRole('cell').first().innerText()).toContain('0/0');
+    expect(await page.getByRole('progressbar').getAttribute('value')).toBe('0');
+    expect(await page.locator('.coverage-preview__media').count()).toBe(0);
+    expect(await page.getByRole('button', { name: 'coverage.json', exact: true }).count()).toBe(0);
+    expect(await page.getByRole('button', { name: 'visibility-map.txt', exact: true }).count()).toBe(0);
+  });
+
   it('shows an explicit bounded fallback when the screenshot cannot load', async () => {
     page = await browser.newPage();
     await page.goto(pathToFileURL(path.join(directory, 'report.html')).href);
@@ -108,6 +192,6 @@ describe('audit and coverage screenshot previews', () => {
     const box = await fallback.boundingBox();
     expect(box?.height).toBeLessThanOrEqual(240);
     expect(box?.height).toBeGreaterThan(0);
-    expect(await page.locator('.card').last().innerText()).toContain('Statements executed: 2/3');
+    expect(await page.locator('.card').last().getByRole('cell').first().innerText()).toContain('2/3');
   });
 });
