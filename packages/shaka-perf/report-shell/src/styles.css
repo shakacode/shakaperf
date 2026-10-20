@@ -2289,17 +2289,14 @@ input {
 
 .slot-error__screenshot {
   display: block;
+  width: 100%;
+  padding: 0;
   margin: 8px 0;
   max-width: 480px;
   border: 1px solid rgba(217, 48, 37, 0.32);
   border-radius: 4px;
   overflow: hidden;
-}
-
-.slot-error__screenshot img {
-  display: block;
-  width: 100%;
-  height: auto;
+  cursor: zoom-in;
 }
 
 .slot-error__video {

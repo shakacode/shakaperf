@@ -7,6 +7,8 @@
 
 import type { ReactNode } from 'react';
 import { renderPersistedStageArtifacts } from '../../../src/pipeline/pipeline-artifacts';
+import { ScreenshotPreview } from '../../../src/pipeline/screenshot-preview';
+import { DetailedArtifactDialog } from '../../../src/pipeline/stage-report-components';
 import type { ReportMeta, ReportOutcome } from '../types';
 
 // V8 stack traces start with `<ErrorName>: <message>` — `Error`,
@@ -54,14 +56,13 @@ function OutcomeError({ outcome }: { outcome: ReportOutcome }) {
           />
         ) : null}
         {media && !isVideo ? (
-          <a
+          <DetailedArtifactDialog
             className="slot-error__screenshot"
             href={media}
-            target="_blank"
-            rel="noopener noreferrer"
+            label="failure screenshot"
           >
-            <img src={media} alt="failure screenshot" />
-          </a>
+            <ScreenshotPreview src={media} alt="failure screenshot" />
+          </DetailedArtifactDialog>
         ) : null}
         {stack ? (
           <details open>

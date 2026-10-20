@@ -13,6 +13,7 @@ import {
   StageArtifactTitle,
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
+import { ScreenshotPreview } from '../../../pipeline/screenshot-preview';
 import type { CodeCoverageResult } from './stage';
 
 // Compact technical view: one shot of the page the visibility map describes,
@@ -21,16 +22,6 @@ import type { CodeCoverageResult } from './stage';
 // data is the nyc HTML report the audit command generates from `.nyc_output/`,
 // and the `shaka-perf-coverage` skill's per-line view, which reads the two
 // artifacts side by side.
-// Capped so a long page renders as a legible strip in the card rather than
-// pushing the numbers off screen; the dialog shows it at full size.
-const SCREENSHOT_STYLE: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  maxHeight: 220,
-  objectFit: 'cover',
-  objectPosition: 'top',
-};
-
 const SCREENSHOT_CAPTION_STYLE: CSSProperties = {
   fontSize: 11,
   opacity: 0.7,
@@ -62,7 +53,7 @@ export function CodeCoverageArtifactView({
                     label="page the visibility map describes"
                     variant="preview"
                   >
-                    <img src={m.screenshotHref} alt="" style={SCREENSHOT_STYLE} />
+                    <ScreenshotPreview src={m.screenshotHref} alt="page the visibility map describes" />
                   </DetailedArtifactDialog>
                   {/* Without this the two artifacts read as contradicting each
                       other: the shot is the WHOLE page, while the map scores
