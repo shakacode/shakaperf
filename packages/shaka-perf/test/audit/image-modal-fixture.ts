@@ -16,7 +16,7 @@ export function imageModalFixture(pipeline: 'audit' | 'compare' = 'audit'): Repo
   const violation = {
     ruleId: 'button-name', impact: 'serious', help: 'Buttons need accessible names',
     helpUrl: 'https://dequeuniversity.com/rules/axe/4.10/button-name', tags: ['wcag2a'],
-    nodes: [{ target: ['button.checkout'], html: '<button class="checkout"></button>', failureSummary: 'Add an accessible name', bounds: { x: 20, y: 2000, width: 350, height: 120 } }],
+    nodes: [{ target: ['button.checkout'], html: '<button class="checkout"></button>', failureSummary: 'Add an accessible name. '.repeat(40), bounds: { x: 20, y: 2000, width: 350, height: 120 } }],
   };
   const config = { tags: ['wcag2a'], disableRules: [], includeRules: null };
   const ok = (stage: string, measurement: unknown) => ({ kind: 'ok', stage, viewport: DESKTOP_VIEWPORT, measurement }) as ReportOutcome;

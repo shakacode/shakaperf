@@ -27,7 +27,7 @@ async function expectFitted(page: Page) {
     const img = el.querySelector('img')!;
     const rect = plane.getBoundingClientRect();
     const viewport = el.getBoundingClientRect();
-    return { width: rect.width, height: rect.height, ratio: img.naturalWidth / img.naturalHeight, scrollX: el.scrollWidth - el.clientWidth, scrollY: el.scrollHeight - el.clientHeight, centered: Math.abs((rect.x + rect.width / 2) - (viewport.x + viewport.width / 2)) };
+    return { width: rect.width, height: rect.height, ratio: img.naturalWidth / img.naturalHeight, scrollX: (el.scrollLeft = 100, el.scrollLeft), scrollY: (el.scrollTop = 100, el.scrollTop), centered: Math.abs((rect.x + rect.width / 2) - (viewport.x + viewport.width / 2)) };
   }));
   expect(boxes.length).toBeGreaterThan(0);
   for (const box of boxes) {
@@ -79,6 +79,12 @@ describe('enlarged report image sizing', () => {
             expect(Math.abs(offsets.y)).toBeLessThan(1);
             await hotspot.click();
             expect(await hotspot.getAttribute('data-active')).toBe('true');
+            const tooltip = (await hotspot.locator('.a11y-tooltip').boundingBox())!;
+            const pane = (await hotspot.locator('xpath=ancestor::*[contains(concat(" ",@class," ")," image-viewport ")][1]').boundingBox())!;
+            expect(tooltip.x).toBeGreaterThanOrEqual(7);
+            expect(tooltip.x + tooltip.width).toBeLessThanOrEqual(width - 7);
+            expect(tooltip.y).toBeGreaterThanOrEqual(pane.y + 7);
+            expect(tooltip.y + tooltip.height).toBeLessThanOrEqual(pane.y + pane.height - 7);
             await expectFitted(page);
           }
           if (pipeline === 'compare' && i === 0) {
