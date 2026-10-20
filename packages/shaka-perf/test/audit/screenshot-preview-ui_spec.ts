@@ -141,7 +141,7 @@ describe('audit and coverage screenshot previews', () => {
     const coverage = page.locator('[data-stage="code_coverage"] button').first();
     await coverage.click();
     await page.locator('dialog[open]').waitFor();
-    expect(await page.locator('dialog[open] iframe').getAttribute('src')).toBe(TALL_IMAGE);
+    expect(await page.locator('dialog[open] img').getAttribute('src')).toBe(TALL_IMAGE);
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: /Lighthouse report/ }).click();
     await page.locator('dialog[open]').waitFor();
@@ -149,7 +149,7 @@ describe('audit and coverage screenshot previews', () => {
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'failure screenshot', exact: true }).first().click();
     await page.locator('dialog[open]').waitFor();
-    expect(await page.locator('dialog[open] iframe').getAttribute('src')).toBe(TALL_IMAGE);
+    expect(await page.locator('dialog[open] img').getAttribute('src')).toBe(TALL_IMAGE);
   });
 
   it('keeps full-report coverage artifacts reachable', async () => {

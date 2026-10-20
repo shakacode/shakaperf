@@ -6,6 +6,7 @@
  */
 
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { ImageSizeContext, ImageViewport } from './image-viewport';
 import { renderPipelineDialogMetaUrls } from './pipeline-artifacts';
 export interface StageArtifactTestMeta {
   readonly name: string;
@@ -26,6 +27,7 @@ interface DialogProps {
   meta?: ReactNode;
   children: ReactNode;
   variant?: 'default' | 'compact' | 'wide';
+  image?: boolean;
 }
 
 export function Dialog({
@@ -35,9 +37,11 @@ export function Dialog({
   meta,
   children,
   variant = 'default',
+  image = false,
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement | null>(null);
   const titleId = useId();
+  const [imageSize, setImageSize] = useState<'fit' | 'actual'>('fit');
 
   useEffect(() => {
     const el = ref.current;
@@ -76,7 +80,7 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
-      className={`ui-dialog${variant === 'default' ? '' : ` ui-dialog--${variant}`}`}
+      className={`ui-dialog${image ? ' ui-dialog--image' : ''}${variant === 'default' ? '' : ` ui-dialog--${variant}`}`}
       aria-labelledby={title ? titleId : undefined}
     >
       <div className="ui-dialog__surface">
@@ -92,7 +96,15 @@ export function Dialog({
           </button>
         </header>
         {meta ? <div className="ui-dialog__meta-wrap">{meta}</div> : null}
-        <div className="ui-dialog__body">{children}</div>
+        {image ? (
+          <div className="image-size" role="group" aria-label="Image size">
+            <button type="button" aria-pressed={imageSize === 'fit'} onClick={() => setImageSize('fit')}>Fit to window</button>
+            <button type="button" aria-pressed={imageSize === 'actual'} onClick={() => setImageSize('actual')}>Actual size</button>
+          </div>
+        ) : null}
+        <div className="ui-dialog__body">
+          <ImageSizeContext.Provider value={imageSize}>{children}</ImageSizeContext.Provider>
+        </div>
       </div>
     </dialog>
   );
@@ -175,6 +187,7 @@ export function DetailedArtifactDialog({
   href,
   label,
   variant,
+  image = false,
 }: {
   body?: ReactNode;
   children?: ReactNode;
@@ -189,6 +202,7 @@ export function DetailedArtifactDialog({
   href: string;
   label: string;
   variant?: 'preview';
+  image?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const test = useContext(StageArtifactContext);
@@ -205,12 +219,13 @@ export function DetailedArtifactDialog({
       )}
       {open ? (
         <Dialog
+          image={image}
           open={open}
           onClose={() => setOpen(false)}
           title={<span className="ui-dialog__title-text">{label}</span>}
           meta={test ? <TestMeta test={test} extra={extra} /> : null}
         >
-          {body ?? <iframe className="artifact-dialog__frame" src={href} title={label} />}
+          {body ?? (image ? <ImageViewport><img src={href} alt={label} /></ImageViewport> : <iframe className="artifact-dialog__frame" src={href} title={label} />)}
         </Dialog>
       ) : null}
     </>

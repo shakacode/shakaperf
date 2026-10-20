@@ -12,6 +12,7 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
+import { ImageViewport } from '../../../pipeline/image-viewport';
 import type {
   AccessibilityNodeTarget,
   AccessibilityScan,
@@ -144,28 +145,30 @@ export function AccessibilityDialog({
   return (
     <div className="a11y-dialog">
       <div className="a11y-dialog__shot">
-        <div className="a11y-shot">
-          <img
-            src={source}
-            width={scan.screenshot?.width}
-            height={scan.screenshot?.height}
-            alt={`${scan.viewportLabel} accessibility screenshot`}
-          />
-          {scan.screenshot ? hotspots.map(({ issueId, violation, node }, index) => (
-            <Hotspot
-              key={`${violation.ruleId}-${index}`}
-              active={activeIssueId === issueId}
-              configuredTags={activeFilterOptions.tags}
-              index={index + 1}
-              issueId={issueId}
-              violation={violation}
-              node={node}
-              onSelect={selectIssue}
-              register={registerHotspot}
-              screenshot={scan.screenshot!}
+        <ImageViewport width={scan.screenshot?.width} height={scan.screenshot?.height}>
+          <div className="a11y-shot">
+            <img
+              src={source}
+              width={scan.screenshot?.width}
+              height={scan.screenshot?.height}
+              alt={`${scan.viewportLabel} accessibility screenshot`}
             />
-          )) : null}
-        </div>
+            {scan.screenshot ? hotspots.map(({ issueId, violation, node }, index) => (
+              <Hotspot
+                key={`${violation.ruleId}-${index}`}
+                active={activeIssueId === issueId}
+                configuredTags={activeFilterOptions.tags}
+                index={index + 1}
+                issueId={issueId}
+                violation={violation}
+                node={node}
+                onSelect={selectIssue}
+                register={registerHotspot}
+                screenshot={scan.screenshot!}
+              />
+            )) : null}
+          </div>
+        </ImageViewport>
       </div>
       <div className="a11y-dialog__issues">
         <div className="a11y-dialog__summary">

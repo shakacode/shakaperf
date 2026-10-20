@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { ImageViewport } from '../../../pipeline/image-viewport';
 import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { FullReportOnly } from '../../../pipeline/report-mode';
 import type { StageRenderEntry } from '../../../stage/stage';
@@ -554,6 +555,7 @@ function AccessibilityCompareViewport({
           </div>
           {result.findings.length > 0 ? (
             <DetailedArtifactDialog
+              image
               className="a11y-compare-card__inspect"
               href={result.comparisonArtifactHref ?? '#'}
               label={`${viewportLabel} accessibility comparison`}
@@ -658,12 +660,12 @@ function CompareFindingsDialog({
   }, []);
 
   return (
-    <div style={COMPARE_DIALOG_STYLE}>
+    <div className="a11y-compare-dialog" style={COMPARE_DIALOG_STYLE}>
       <style>{ACCESSIBILITY_CSS}</style>
       <style>{COMPARE_A11Y_CSS}</style>
-      <div style={COMPARE_DIALOG_GRID_STYLE}>
+      <div className="a11y-compare-dialog__grid" style={COMPARE_DIALOG_GRID_STYLE}>
         <div className="a11y-dialog__shot">
-          <div style={COMPARE_SHOT_GRID_STYLE}>
+          <div className="a11y-compare-dialog__shots" style={COMPARE_SHOT_GRID_STYLE}>
             <CompareScreenshotPanel
               activeIssueId={activeIssueId}
               findings={findings}
@@ -986,22 +988,22 @@ function CompareScreenshotPanel({
     [findings, side],
   );
   return (
-    <div style={SIDE_CARD_STYLE}>
-      <div style={SUMMARY_STYLE}>
+    <div className="a11y-compare-dialog__panel" style={SIDE_CARD_STYLE}>
+      <div className="a11y-compare-dialog__summary" style={SUMMARY_STYLE}>
         <strong>{title}</strong>
-        <span style={{ color: 'var(--fg-muted)' }}>{subtitle}</span>
+        <span title={subtitle} style={{ color: 'var(--fg-muted)' }}>{subtitle}</span>
       </div>
-      <div style={{ color: 'var(--fg-muted)', overflowWrap: 'anywhere' }}>{sideScan.url}</div>
+      <div className="a11y-compare-dialog__url" title={sideScan.url} style={{ color: 'var(--fg-muted)' }}>{sideScan.url}</div>
       {sideScan.blocked ? (
         <StageNote label={title} body="Bot protection served a challenge page, so this side could not be measured." />
       ) : null}
       {source && sideScan.screenshot ? (
-        <div style={{ marginTop: 10, overflow: 'visible', border: '1px solid var(--border)' }}>
+        <ImageViewport width={sideScan.screenshot.width} height={sideScan.screenshot.height}>
           <div
             style={{
               position: 'relative',
-              width: 'max-content',
-              maxWidth: '100%',
+              width: '100%',
+              height: '100%',
               background: 'var(--bg-sunken)',
             }}
           >
@@ -1026,7 +1028,7 @@ function CompareScreenshotPanel({
               />
             ))}
           </div>
-        </div>
+        </ImageViewport>
       ) : (
         <StageNote body={sideCleanText(result, side)} />
       )}

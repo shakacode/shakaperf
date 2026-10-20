@@ -48,7 +48,8 @@ function CoveragePreview({ measurement: m }: { measurement: CodeCoverageResult }
       {m.screenshotHref ? (
         <div className="coverage-preview__media">
           <DetailedArtifactDialog
-            href={m.screenshotHref}
+            image
+                    href={m.screenshotHref}
             label="page the visibility map describes"
             className="coverage-preview__button"
           >
