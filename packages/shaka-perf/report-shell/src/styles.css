@@ -1931,12 +1931,37 @@ input {
   min-width: 0;
 }
 
+.frame-player__picture {
+  position: relative;
+}
+
 .frame-player__side canvas {
   display: block;
   width: 100%;
   height: auto;
   background: var(--bg-sunken);
   border: 1px solid var(--border);
+}
+
+/* Same blue pill the timeline comparison pins on a click's frame. */
+.frame-player__chips {
+  position: absolute;
+  top: 4%;
+  left: 4%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.frame-player__chip {
+  background: #2563eb;
+  color: #fff;
+  font: 700 11px ui-monospace, monospace;
+  padding: 2px 5px;
+  border-radius: 2px;
+  white-space: nowrap;
 }
 
 .frame-player__side figcaption {
