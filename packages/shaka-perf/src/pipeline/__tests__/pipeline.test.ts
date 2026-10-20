@@ -264,16 +264,26 @@ describe('runPipeline', () => {
     try {
       jest.mocked(loadTests).mockResolvedValue(tests);
       const full = await run();
-      const oldSibling = full.testResults.find((test) => test.name === sibling.name)!;
+      // A saved sibling failure belongs in the report, but must not fail a
+      // later measurement that selected only the successful homepage.
+      const store = new ArtifactStore(path.join(cwd, 'test-results'));
+      store.writeOutcome(sibling, 'desktop', {
+        kind: 'error', stage: 'visreg', runId: full.testResults[1]!.runId!,
+        error: { message: 'Older saved failure' },
+      });
+      const saved = await run({ reportOnly: true, skipReport: false });
+      const oldSibling = saved.testResults.find((test) => test.name === sibling.name)!;
       jest.mocked(loadTests).mockImplementation(async (options) => options?.filter ? [frozenTest] : tests);
       const filtered = await run({ filter: frozenTest.name });
       expect(filtered.testResults.map((test) => test.name)).toEqual(tests.map((test) => test.name));
+      expect(filtered.hasFailures).toBe(false);
       expect(filtered.testResults[1]!.outcomes).toEqual(oldSibling.outcomes);
       expect(filtered.testResults[1]!.measuredAt).toBe(oldSibling.measuredAt);
       expect(filtered.testResults[0]!.runId).not.toBe(oldSibling.runId);
       const snapshot = filtered.testResults.map(({ name, runId, measuredAt, outcomes }) => ({ name, runId, measuredAt, outcomes }));
       for (const filter of [undefined, frozenTest.name]) {
         const regenerated = await run({ reportOnly: true, skipReport: false, filter });
+        expect(regenerated.hasFailures).toBe(true);
         expect(regenerated.testResults.map(({ name, runId, measuredAt, outcomes }) => ({ name, runId, measuredAt, outcomes }))).toEqual(snapshot);
       }
     } finally {
@@ -282,6 +292,18 @@ describe('runPipeline', () => {
       tmpdir.mockRestore();
       fs.rmSync(cwd, { recursive: true, force: true });
     }
+  }, 30_000);
+
+  it.each([false, true])('keeps explicit file selections when local discovery is empty: %s', async (empty) => {
+    const local = { ...frozenTest, name: 'Local sibling' };
+    jest.mocked(loadTests).mockImplementation(async (options) => {
+      if (options?.filter) return [frozenTest];
+      if (empty && !options?.allowEmpty) throw new Error('No test files found');
+      return empty ? [] : [local];
+    });
+    const result = await runWithFrozenTest({ tests: undefined, filter: '/external/test.abtest.ts', skipReport: true });
+    expect(result.testResults.map((test) => test.name)).toEqual(empty ? [frozenTest.name] : [local.name, frozenTest.name]);
+    expect(result.testResults.find((test) => test.name === frozenTest.name)!.runId).not.toBeNull();
   }, 30_000);
 
   // eslint-disable-next-line no-control-regex

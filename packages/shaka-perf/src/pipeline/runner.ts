@@ -452,9 +452,13 @@ async function runConfiguredPipelineWithSelection(
       });
   let reportTests = frozenTests ?? (
     runtime.reportOnly || runtime.filter || runtime.testPathPattern
-      ? await loadTests({ log: (msg) => console.log(msg) })
+      ? await loadTests({ allowEmpty: !runtime.reportOnly, log: (msg) => console.log(msg) })
       : runTests
   );
+
+  // A file-path selection can live outside the discoverable suite. Keep its
+  // definitions (and identities) alongside saved local siblings.
+  reportTests = [...new Map([...reportTests, ...runTests].map((test) => [testIdForTest(test), test])).values()];
 
   if (runtime.burn != null) {
     runTests = expandTestsForBurn(runTests, runtime.burn);
@@ -808,6 +812,10 @@ async function runConfiguredPipelineWithSelection(
     tests: testResults,
   };
 
+  const failureData = runtime.reportOnly
+    ? data
+    : { ...data, tests: data.tests.filter((test) => measuredTestIds.has(test.id)) };
+
   // Under skipReport the shard produces no top-level artifacts — only the
   // per-test engine output already written by the stages. Its engine errors
   // are serialised to disk so the downstream reportOnly assembly can surface
@@ -820,7 +828,7 @@ async function runConfiguredPipelineWithSelection(
       shortReportPath: '',
       fullReportPath: '',
       resultsRoot,
-      ...summarizeFailures(data),
+      ...summarizeFailures(failureData),
     };
   }
 
@@ -860,7 +868,7 @@ async function runConfiguredPipelineWithSelection(
     shortReportPath: selfContainedPath,
     fullReportPath: fullPath,
     resultsRoot,
-    ...summarizeFailures(data),
+    ...summarizeFailures(failureData),
   };
 }
 

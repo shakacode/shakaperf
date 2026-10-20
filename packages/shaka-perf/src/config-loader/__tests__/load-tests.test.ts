@@ -37,6 +37,12 @@ describe('loadTests', () => {
     }
   });
 
+  it('permits empty suite discovery only when explicitly requested', async () => {
+    const testPathPattern = 'no-such-suite-for-report-assembly';
+    await expect(loadTests({ testPathPattern, allowEmpty: true })).resolves.toEqual([]);
+    await expect(loadTests({ testPathPattern })).rejects.toThrow('No .abtest.ts or .abtest.js files found');
+  });
+
   it('loads a specific test file when filter is a path to an abtest file', async () => {
     mkfile('my-test.abtest.js', `
       const { abTest } = require('${sharedModulePath}');

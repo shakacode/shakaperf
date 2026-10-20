@@ -15,6 +15,8 @@ import { findTestFiles } from './discover-test-files';
 
 export interface LoadTestsOptions {
   testPathPattern?: string;
+  /** Permit an empty discovered suite when assembling explicitly selected files. */
+  allowEmpty?: boolean;
   /**
    * Either a regex/substring against test names (comma-separated for multiple)
    * or a path to a single .abtest.ts / .abtest.js file. When the value resolves
@@ -104,6 +106,7 @@ async function loadTestsExclusive(options: LoadTestsOptions): Promise<AbTestDefi
   } else {
     const discovered = findTestFiles({ testPathPattern });
     if (discovered.length === 0) {
+      if (options.allowEmpty) return [];
       const hint = testPathPattern ? ` matching pattern "${testPathPattern}"` : '';
       throw new Error(
         `No .abtest.ts or .abtest.js files found${hint}. Pass a file path to --filter to target one directly.`,
