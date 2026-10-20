@@ -429,8 +429,8 @@ async function runConfiguredPipelineWithSelection(
   const experimentURL = runtime.experimentURL;
   const resultsRoot = resultsRootFor(cwd, pipeline);
   const startedAt = Date.now();
-  const runId = new Date(startedAt).toISOString();
-  const store = new ArtifactStore(resultsRoot, runtime.reportOnly ? undefined : runId);
+  const runId = runtime.reportOnly ? undefined : new Date(startedAt).toISOString();
+  const store = new ArtifactStore(resultsRoot, runId);
   const categories = categoriesForStages(executableStages);
   const restarting = stageSelection.restartFromStage !== null;
   // Keep the prior run's per-unit artifacts dir on restart: the retained
@@ -440,13 +440,9 @@ async function runConfiguredPipelineWithSelection(
   const preservedViewportSelection = runtime.preserveOtherViewports
     ? runtime.viewportsFilter : undefined;
 
-  // Execute the narrowed selection. A normal filtered run should report only
-  // the tests it just executed, otherwise stale sibling outcomes already on
-  // disk can reappear in a fresh local report. `--report-only` is the explicit
-  // full-suite assembly path: it runs no tests, deletes nothing, and rebuilds
-  // from whatever per-test artifacts already exist on disk.
+  // Measurement selection never narrows report assembly: saved sibling
+  // outcomes remain available, with their original run ids and freshness.
   const frozenTests = runtime.tests ? [...runtime.tests] : null;
-  // `let`: burn expansion below reassigns these in place.
   let runTests = runtime.reportOnly
     ? []
     : frozenTests ?? await loadTests({
@@ -454,19 +450,15 @@ async function runConfiguredPipelineWithSelection(
         filter: runtime.filter,
         log: (msg) => console.log(msg),
       });
-  let reportTests = runtime.reportOnly
-    ? frozenTests ?? await loadTests({ log: (msg) => console.log(msg) })
-    : runTests;
+  let reportTests = frozenTests ?? (
+    runtime.reportOnly || runtime.filter || runtime.testPathPattern
+      ? await loadTests({ log: (msg) => console.log(msg) })
+      : runTests
+  );
 
-  // Fan each test into its burn instances once, at the only place tests enter
-  // the runner; everything downstream keys off the test object, so this single
-  // expansion separates units, dirs, outcomes, chips and cards alike.
   if (runtime.burn != null) {
     runTests = expandTestsForBurn(runTests, runtime.burn);
-    // Outside --report-only the two are the same instances; keep it that way.
-    reportTests = runtime.reportOnly
-      ? expandTestsForBurn(reportTests, runtime.burn)
-      : runTests;
+    reportTests = expandTestsForBurn(reportTests, runtime.burn);
   }
 
   const units = expandWorkUnits(
@@ -703,7 +695,7 @@ async function runConfiguredPipelineWithSelection(
       store,
       preservedViewportSelection
         ? runTests.filter((test) => measuredTestIds.has(testIdForTest(test)))
-        : reportTests,
+        : runTests,
       stageSelection,
       reportedStages,
       runtime.config,
@@ -731,9 +723,7 @@ async function runConfiguredPipelineWithSelection(
         store,
         categories,
         reportedStages,
-        reportOnly: runtime.reportOnly === true || (
-          preservedViewportSelection !== undefined && !measuredTestIds.has(testIdForTest(test))
-        ),
+        reportOnly: runtime.reportOnly === true || !measuredTestIds.has(testIdForTest(test)),
         viewportsFilter: preservedViewportSelection,
         config: runtime.config,
       });

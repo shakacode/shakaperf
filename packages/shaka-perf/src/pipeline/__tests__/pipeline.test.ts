@@ -244,6 +244,46 @@ describe('runPipeline', () => {
     expect(loadTests).not.toHaveBeenCalled();
   });
 
+  it('assembles the full saved suite after a filtered rerun and preserves freshness on regeneration', async () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-suite-visibility-'));
+    const savedTmpdir = process.env.TMPDIR;
+    process.env.TMPDIR = cwd;
+    const tmpdir = jest.spyOn(os, 'tmpdir').mockReturnValue(cwd);
+    const sibling = { ...frozenTest, name: 'Saved sibling' };
+    const tests = [frozenTest, sibling];
+    const config = buildAbTestsConfig({ shared: {
+      controlURL: 'http://control.test', experimentURL: 'http://experiment.test',
+      parallelism: 1, retries: 0,
+      playwrightOptions: { browser: 'chromium', waitTimeout: 1_000 },
+      browserConsole: { failOn: [], allowList: [] },
+    } });
+    const run = (extra: Partial<RuntimeOptions> = {}) => runPipeline(pipeline(), {
+      cwd, config, controlURL: config.shared.controlURL,
+      experimentURL: config.shared.experimentURL, skipReport: true, ...extra,
+    });
+    try {
+      jest.mocked(loadTests).mockResolvedValue(tests);
+      const full = await run();
+      const oldSibling = full.testResults.find((test) => test.name === sibling.name)!;
+      jest.mocked(loadTests).mockImplementation(async (options) => options?.filter ? [frozenTest] : tests);
+      const filtered = await run({ filter: frozenTest.name });
+      expect(filtered.testResults.map((test) => test.name)).toEqual(tests.map((test) => test.name));
+      expect(filtered.testResults[1]!.outcomes).toEqual(oldSibling.outcomes);
+      expect(filtered.testResults[1]!.measuredAt).toBe(oldSibling.measuredAt);
+      expect(filtered.testResults[0]!.runId).not.toBe(oldSibling.runId);
+      const snapshot = filtered.testResults.map(({ name, runId, measuredAt, outcomes }) => ({ name, runId, measuredAt, outcomes }));
+      for (const filter of [undefined, frozenTest.name]) {
+        const regenerated = await run({ reportOnly: true, skipReport: false, filter });
+        expect(regenerated.testResults.map(({ name, runId, measuredAt, outcomes }) => ({ name, runId, measuredAt, outcomes }))).toEqual(snapshot);
+      }
+    } finally {
+      if (savedTmpdir === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = savedTmpdir;
+      tmpdir.mockRestore();
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   // eslint-disable-next-line no-control-regex
   const ANSI = /\u001b\[[0-9;]*m/g;
   const stripAnsi = (text: string) => text.replace(ANSI, '');

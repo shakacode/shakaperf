@@ -3130,3 +3130,14 @@ input {
     grid-template-rows: minmax(0, 1fr);
   }
 }
+
+.suite-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.suite-toggle input { accent-color: #2563eb; }
+.outcome-slot__runs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }

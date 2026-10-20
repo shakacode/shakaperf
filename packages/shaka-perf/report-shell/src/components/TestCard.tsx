@@ -123,6 +123,7 @@ export function TestCard({
   meta,
   animationDelayMs,
   runLabel,
+  latestRunId,
   dimmed,
   visibleStages,
 }: {
@@ -130,6 +131,7 @@ export function TestCard({
   meta: ReportMeta;
   animationDelayMs: number;
   runLabel?: 'latest' | 'old' | null;
+  latestRunId?: string | null;
   visibleStages: ReadonlySet<string>;
   /**
    * True when the test doesn't match the active chip filter. The card stays
@@ -144,6 +146,7 @@ export function TestCard({
   const logs = logsForTest(test, visibleStages);
   const groups = outcomeGroups(test, visibleStages);
   const chips = [...test.chips].sort(compareChips);
+  const mixedRuns = new Set(test.outcomes.map((outcome) => outcome.runId ?? null)).size > 1;
 
   return (
     <article
@@ -195,6 +198,7 @@ export function TestCard({
               key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
               meta={meta}
               outcomes={outcomes}
+              latestRunId={mixedRuns ? latestRunId : undefined}
             />
           ))}
         </StageArtifactProvider>

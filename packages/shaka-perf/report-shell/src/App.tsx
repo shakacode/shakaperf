@@ -337,6 +337,7 @@ export function App({
     useState<AccessibilityFilterSelection | null>(null);
   const [visibleStageOverride, setVisibleStageOverride] = useState<Set<string> | null>(null);
   // Active sort dimension + direction. null → default (chip/run-recency) order.
+  const [showFullSuite, setShowFullSuite] = useState(false);
   const [sort, setSort] = useState<{ tag: string; dir: SortDirection } | null>(null);
   const isBisectReport = data.bisect != null;
   const cardTests = useMemo(
@@ -441,7 +442,7 @@ export function App({
     }
     return out;
   }, [chipTestSets, visibleTestIds]);
-  const latestRunKey = useMemo(() => newestRunKey(cardTests), [cardTests]);
+  const latestRunKey = useMemo(() => newestRunKey(data.tests), [data.tests]);
   const showRunChips = latestRunKey != null && cardTests.some((test) => runKey(test) !== latestRunKey);
   const missingTests = useMemo(
     () => data.tests.filter((test) => (
@@ -450,13 +451,12 @@ export function App({
     [data.tests, isBisectReport, query],
   );
 
-  // Newer run ids sort first so a filtered run can update a subset without
-  // hiding older measurements. Tests outside the visible-id set stay in the
-  // list but render dimmed and fall to the back — the filter is a focus
-  // tool, not a hard hide.
+  // Run visibility intersects search and section selection. Status chips keep
+  // their existing focus/dimming behavior independently of the suite toggle.
   const visibleTests = useMemo<{ test: TestResult; dimmed: boolean }[]>(() => {
     const out: { test: TestResult; dimmed: boolean }[] = [];
     for (const t of cardTests) {
+      if (!isBisectReport && !showFullSuite && latestRunKey != null && runKey(t) !== latestRunKey) continue;
       if (!matchesQuery(t, query)) continue;
       const rendered = renderedStagesByTest.get(t.id) ?? new Set<string>();
       if (isEmptiedByStageFilter(rendered, effectiveVisibleStages, unfilteredStages)) continue;
@@ -482,6 +482,9 @@ export function App({
     bisectSelection.kind,
     bisectTestIds,
     cardTests,
+    isBisectReport,
+    latestRunKey,
+    showFullSuite,
     data.bisect,
     effectiveVisibleStages,
     renderedStagesByTest,
@@ -543,6 +546,12 @@ export function App({
           <div className="header__filter-stack">
             <ChipFilter active={activeChipKeys} filters={chipFilters} onSelect={selectChip} />
             <div className="header__secondary-filters">
+              {!isBisectReport ? (
+                <label className="suite-toggle">
+                  <input type="checkbox" checked={showFullSuite} onChange={(event) => setShowFullSuite(event.target.checked)} />
+                  Show full suite
+                </label>
+              ) : null}
               <AccessibilityGlobalFilter state={accessibilityFilterState} />
               <StageFilter
                 options={stageFilterOptions}
@@ -572,6 +581,7 @@ export function App({
                 key={test.id}
                 test={test}
                 meta={data.meta}
+                latestRunId={isBisectReport ? undefined : latestRunKey}
                 runLabel={showRunChips ? (runKey(test) === latestRunKey ? 'latest' : 'old') : null}
                 animationDelayMs={Math.min(idx, 8) * 40}
                 dimmed={dimmed}
