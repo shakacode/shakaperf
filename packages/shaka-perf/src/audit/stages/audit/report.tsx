@@ -13,6 +13,7 @@ import {
   StageArtifactTitle,
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
+import { ScreenshotPreview } from '../../../pipeline/screenshot-preview';
 import { METRIC_LEVEL_CSS_VAR } from './metrics';
 import type { AuditMetric, AuditMetricGroup, AuditResult } from './stage';
 
@@ -163,10 +164,9 @@ function LighthouseColumn({ audit }: { audit: AuditResult }) {
         <span style={LIGHTHOUSE_BUTTON_STYLE}>
           <span style={LIGHTHOUSE_BUTTON_LABEL_STYLE}>Lighthouse report</span>
           {audit.lighthouseThumbHref ? (
-            <img
+            <ScreenshotPreview
               src={audit.lighthouseThumbHref}
-              alt=""
-              style={LIGHTHOUSE_THUMB_STYLE}
+              alt="Lighthouse report preview"
             />
           ) : null}
         </span>
@@ -185,12 +185,6 @@ const LIGHTHOUSE_BUTTON_STYLE: CSSProperties = {
 const LIGHTHOUSE_BUTTON_LABEL_STYLE: CSSProperties = {
   fontWeight: 600,
   textAlign: 'center',
-};
-
-const LIGHTHOUSE_THUMB_STYLE: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  height: 'auto',
 };
 
 function hasArtifacts(audit: AuditResult): boolean {
