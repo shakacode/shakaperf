@@ -134,6 +134,7 @@ async function loadTestsExclusive(options: LoadTestsOptions): Promise<AbTestDefi
   // reading it directly sees the same set the caller got.
   restoreRegistry(tests);
   if (tests.length === 0) {
+    if (options.allowEmpty && !filterAsFile) return [];
     const source = filterAsFile ?? 'discovered files';
     throw new Error(`No tests registered in ${source}. Did you call abTest()?`);
   }

@@ -76,6 +76,7 @@ describe('compare accessibility pipeline integration', () => {
 
     // Point the machine-wide measurement lock at a private tmpdir so the test
     // doesn't queue behind a real shaka-perf run on this machine.
+    const tmpdir = jest.spyOn(os, 'tmpdir').mockReturnValue(cwd);
     const savedTmpdir = process.env.TMPDIR;
     process.env.TMPDIR = cwd;
     try {
@@ -92,6 +93,7 @@ describe('compare accessibility pipeline integration', () => {
     } finally {
       if (savedTmpdir === undefined) delete process.env.TMPDIR;
       else process.env.TMPDIR = savedTmpdir;
+      tmpdir.mockRestore();
       fs.rmSync(cwd, { recursive: true, force: true });
     }
   });

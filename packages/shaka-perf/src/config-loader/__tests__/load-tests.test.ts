@@ -43,6 +43,15 @@ describe('loadTests', () => {
     await expect(loadTests({ testPathPattern })).rejects.toThrow('No .abtest.ts or .abtest.js files found');
   });
 
+  it('permits discovered placeholder files only when empty suite assembly is requested', async () => {
+    mkfile('placeholder-for-suite.abtest.js', '// no registrations');
+    const testPathPattern = 'tmp-load-tests';
+    await expect(loadTests({ testPathPattern, allowEmpty: true })).resolves.toEqual([]);
+    await expect(loadTests({ testPathPattern })).rejects.toThrow('No tests registered');
+    await expect(loadTests({ filter: path.join(tmpDir, 'placeholder-for-suite.abtest.js'), allowEmpty: true }))
+      .rejects.toThrow('No tests registered');
+  });
+
   it('loads a specific test file when filter is a path to an abtest file', async () => {
     mkfile('my-test.abtest.js', `
       const { abTest } = require('${sharedModulePath}');
