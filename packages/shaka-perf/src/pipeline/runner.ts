@@ -745,7 +745,7 @@ async function runConfiguredPipelineWithSelection(
   );
   const assembleStart = Date.now();
   let assembledCount = 0;
-  const partials = await Promise.all(
+  const fullSuitePartials = await Promise.all(
     fullSuiteTestsForReport.map(async (test) => {
       const t0 = Date.now();
       const partial = await buildTestPartial({
@@ -773,16 +773,23 @@ async function runConfiguredPipelineWithSelection(
       return partial;
     }),
   );
-  const resultsForScope = (currentOnly: boolean): TestResult[] => {
-    const scopePartials = partials.map((p) => {
-      if (!currentOnly) return p;
-      const outcomes = p.partialResult.outcomes.filter((outcome) => !outcome.outsideCurrentConfig);
-      return { ...p, partialResult: { ...p.partialResult, outcomes, runId: newestRunId(outcomes),
-        measuredAt: freshestArtifactMtime(resultsRoot, p.test, outcomes) },
-        hasError: outcomes.some((outcome) => outcome.kind === 'error'),
-        chipResults: chipResultsForOutcomes(pipeline, outcomes) };
-    });
-    const perTest: ChipTestEntry<Record<string, unknown>>[] = scopePartials.map((p) => ({
+  const currentConfigurationPartials = fullSuitePartials.map((partial) => {
+    const outcomes = partial.partialResult.outcomes.filter((outcome) => !outcome.outsideCurrentConfig);
+    return {
+      ...partial,
+      partialResult: {
+        ...partial.partialResult,
+        outcomes,
+        runId: newestRunId(outcomes),
+        measuredAt: freshestArtifactMtime(resultsRoot, partial.test, outcomes),
+      },
+      hasError: outcomes.some((outcome) => outcome.kind === 'error'),
+      chipResults: chipResultsForOutcomes(pipeline, outcomes),
+    };
+  });
+
+  const buildTestResults = (testPartials: readonly TestPartial[]): TestResult[] => {
+    const perTest: ChipTestEntry<Record<string, unknown>>[] = testPartials.map((p) => ({
       test: p.test,
       results: p.chipResults,
     }));
@@ -794,7 +801,7 @@ async function runConfiguredPipelineWithSelection(
     // Mirror what each test ends up rendering — including the synthetic
     // `brokenChip()` for failed tests — so the machine report agrees with the
     // HTML report on what chips each test carries.
-    return scopePartials.map((p) => {
+    return testPartials.map((p) => {
       // Cross-cutting, runner-owned chip (not a pipeline concern): any stage task
       // that crashed/timed out and recovered on a retry makes the test flaky.
       const recovered = p.partialResult.outcomes.some((o) => o.recoveredAfterRetries);
@@ -811,13 +818,16 @@ async function runConfiguredPipelineWithSelection(
       return { ...p.partialResult, chips: copy, sorts: [...(sortsByTest.get(p.test) ?? [])] };
     });
   };
-  const currentResults = resultsForScope(true);
-  const testResults = resultsForScope(false).map((test, index) => {
+  const resultsForCurrentConfiguration = buildTestResults(currentConfigurationPartials);
+  const resultsForFullSuite = buildTestResults(fullSuitePartials);
+  const fullSuiteResultsForReport = resultsForFullSuite.map((test, index) => {
     if (!test.outcomes.some((outcome) => outcome.outsideCurrentConfig)) return test;
-    const { chips, sorts, runId, measuredAt } = currentResults[index]!;
+    const { chips, sorts, runId, measuredAt } = resultsForCurrentConfiguration[index]!;
     return { ...test, currentConfig: { chips, sorts, runId, measuredAt } };
   });
-  const finalChipsByTest = new Map(partials.map((p, index) => [p.test, currentResults[index]!.chips]));
+  const finalChipsByTest = new Map(fullSuitePartials.map((partial, index) => [
+    partial.test, resultsForCurrentConfiguration[index]!.chips,
+  ]));
   console.log(`    all tests assembled in ${((Date.now() - assembleStart) / 1000).toFixed(1)}s`);
 
   // Viewport passes own one error shard even when producing a report. Keep
@@ -838,7 +848,7 @@ async function runConfiguredPipelineWithSelection(
     }
   }
 
-  const data: ReportData = {
+  const fullSuiteReportData: ReportData = {
     meta: {
       title: path.basename(cwd) + ` · ${pipeline.name}`,
       pipelineName: pipeline.name,
@@ -854,11 +864,16 @@ async function runConfiguredPipelineWithSelection(
       // here so ReportData is well-typed before the two-file split.
       reportMode: 'full',
     },
-    tests: testResults,
+    tests: fullSuiteResultsForReport,
   };
 
-  const failureData = { ...data, tests: currentResults.filter((test) =>
-    runtime.reportOnly || measuredTestIds.has(test.id)) };
+  const currentConfigurationResultsForFailureSummary = runtime.reportOnly
+    ? resultsForCurrentConfiguration
+    : resultsForCurrentConfiguration.filter((test) => measuredTestIds.has(test.id));
+  const currentConfigurationDataForFailureSummary = {
+    ...fullSuiteReportData,
+    tests: currentConfigurationResultsForFailureSummary,
+  };
 
   // Under skipReport the shard produces no top-level artifacts — only the
   // per-test engine output already written by the stages. Its engine errors
@@ -867,19 +882,19 @@ async function runConfiguredPipelineWithSelection(
   // banner would silently disappear at merge time.
   if (runtime.skipReport) {
     return {
-      testResults: data.tests,
+      testResults: fullSuiteReportData.tests,
       reportPath: '',
       shortReportPath: '',
       fullReportPath: '',
       resultsRoot,
-      ...summarizeFailures(failureData),
+      ...summarizeFailures(currentConfigurationDataForFailureSummary),
     };
   }
 
   console.log(chalk.blue('\n>>> rendering report HTML files'));
   const renderStart = Date.now();
   const { fullPath, selfContainedPath } = await writeReport(
-    data,
+    fullSuiteReportData,
     resultsRoot,
     pipeline.stages,
   );
@@ -899,7 +914,7 @@ async function runConfiguredPipelineWithSelection(
     fullSuiteTestsForReport,
     (test) => viewportsForTestAcrossStages(test, reportedStages, runtime.config),
     pipeline,
-    data.meta,
+    fullSuiteReportData.meta,
     store,
     stageRuntime,
     finalChipsByTest,
@@ -907,12 +922,12 @@ async function runConfiguredPipelineWithSelection(
   );
 
   return {
-    testResults: data.tests,
+    testResults: fullSuiteReportData.tests,
     reportPath,
     shortReportPath: selfContainedPath,
     fullReportPath: fullPath,
     resultsRoot,
-    ...summarizeFailures(failureData),
+    ...summarizeFailures(currentConfigurationDataForFailureSummary),
   };
 }
 
@@ -1614,7 +1629,7 @@ function persistSkippedOutcomesForStages(
   }
 }
 
-/** Freshness comes from measured outcomes in the same scope as the rendered results.
+/** Freshness comes from the measurement outcomes included in this report view.
  * Report generation and skipped-stage markers must never make a card look newer.
  */
 function freshestArtifactMtime(
