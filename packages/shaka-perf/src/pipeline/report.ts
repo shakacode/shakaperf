@@ -14,7 +14,7 @@ import {
   mimeTypeForArtifactPath,
   type ArtifactStore,
 } from './artifact-store';
-import { persistedOutcomeInScope, viewportsForTestAcrossStages } from './viewport-plan';
+import { persistedOutcomeInScope } from './viewport-plan';
 import type { Outcome } from './outcome';
 import type { Pipeline } from './pipeline';
 import type {
@@ -117,7 +117,7 @@ export interface TestResult {
   runId: string | null;
   outcomes: ReportOutcome[];
   /** Status and freshness for the default view, excluding archived results. */
-  currentConfig?: Pick<TestResult, 'chips' | 'sorts' | 'runId'>;
+  currentConfig?: Pick<TestResult, 'chips' | 'sorts' | 'runId' | 'measuredAt'>;
   /**
    * Absolute on-disk artifact directory for each viewport this test could
    * produce work in. Useful for jumping straight to screenshots, traces,
@@ -597,7 +597,6 @@ export function writeMachineReport(
   runtime: StageRuntime,
   chipsByTest: ReadonlyMap<AbTestDefinition, readonly ChipDescriptor[]>,
   config: AbTestsConfig,
-  reportedStages: readonly Stage[] = pipeline.stages,
 ): void {
   const stagesByName = new Map<StageName, Stage>(
     pipeline.stages.map((stage) => [stage.name, stage]),
@@ -605,12 +604,10 @@ export function writeMachineReport(
   const rows = tests.flatMap((test) => viewportsByTest(test).map((viewport) => ({
     test,
     viewport,
-    outcomes: store.readOutcomesForViewport(test, viewport.label).map((outcome) => ({
-      ...outcome,
-      ...(!viewportsForTestAcrossStages(test, reportedStages, config).some((vp) => vp.label === viewport.label) ||
-        !persistedOutcomeInScope(test, config, stagesByName.get(outcome.stage), outcome, viewport.label)
-        ? { outsideCurrentConfig: true } : {}),
-    })),
+    // Same stale-outcome guard as the HTML report (see buildTestPartial).
+    outcomes: store.readOutcomesForViewport(test, viewport.label)
+      .filter((outcome) =>
+        persistedOutcomeInScope(test, config, stagesByName.get(outcome.stage), outcome, viewport.label)),
   })));
   const machineReportMeta = pipeline.machineReportMeta?.({
     rows,
@@ -652,7 +649,6 @@ export function writeMachineReport(
       outcomes: outcomes.map((outcome) => ({
         kind: outcome.kind,
         stage: outcome.stage,
-        ...(outcome.outsideCurrentConfig ? { outsideCurrentConfig: true } : {}),
         error: outcome.error,
         reason: outcome.reason,
         logs: outcome.logs,

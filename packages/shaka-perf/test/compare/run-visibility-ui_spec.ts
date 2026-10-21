@@ -63,6 +63,7 @@ describe('latest measurement run visibility', () => {
     }));
     const current = data.tests.find((test) => test.name === 'Current')!;
     current.outcomes = current.outcomes.map((outcome) => ({ ...outcome, outsideCurrentConfig: true }));
+    current.currentConfig = { chips: [], sorts: [], runId: null, measuredAt: null };
     const file = path.join(directory, `config-${pipeline}-${mode}.html`);
     fs.writeFileSync(file, renderReportHtml(data));
     const page = await browser.newPage();

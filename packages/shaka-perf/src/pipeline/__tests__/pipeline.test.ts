@@ -311,6 +311,11 @@ describe('runPipeline', () => {
     });
     try {
       const phone = await run('phone');
+      // Regeneration before measuring desktop must still retain a saved-only card.
+      const narrowed = await run('desktop', { reportOnly: true, skipReport: false });
+      expect(narrowed.testResults[0]!.measuredAt).toBe(phone.testResults[0]!.measuredAt);
+      expect(narrowed.testResults[0]!.currentConfig!.measuredAt).toBeNull();
+      expect(narrowed.testResults[0]!.outcomes.some((o) => o.viewport.label === 'phone' && o.kind === 'ok')).toBe(true);
       const store = new ArtifactStore(path.join(cwd, 'test-results'));
       const file = path.join(store.unitDirForViewport(frozenTest, 'phone'), 'visreg.json');
       store.writeOutcome(frozenTest, 'phone', { kind: 'error', stage: 'visreg',
@@ -330,7 +335,9 @@ describe('runPipeline', () => {
         const report = await run('desktop', { reportOnly: true, skipReport: false, filter });
         expect(report.testResults).toEqual(desktop.testResults);
         const machine = JSON.parse(fs.readFileSync(path.join(cwd, 'test-results/report.json'), 'utf8'));
-        expect(machine.tests.map((t: { viewport: { label: string } }) => t.viewport.label).sort()).toEqual(['desktop', 'phone']);
+        // Downstream client reports continue to consume current-config rows.
+        expect(machine.tests.map((t: { viewport: { label: string } }) => t.viewport.label)).toEqual(['desktop']);
+        expect(machine.tests[0].chips.map((chip: { tag: string }) => chip.tag)).not.toContain('broken');
         expect(fs.readFileSync(file, 'utf8')).toBe(contents);
         expect(fs.statSync(file).mtimeMs).toBe(mtime);
       }

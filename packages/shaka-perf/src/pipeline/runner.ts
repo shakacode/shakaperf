@@ -747,7 +747,8 @@ async function runConfiguredPipelineWithSelection(
     const scopePartials = partials.map((p) => {
       if (!currentOnly) return p;
       const outcomes = p.partialResult.outcomes.filter((outcome) => !outcome.outsideCurrentConfig);
-      return { ...p, partialResult: { ...p.partialResult, outcomes, runId: newestRunId(outcomes) },
+      return { ...p, partialResult: { ...p.partialResult, outcomes, runId: newestRunId(outcomes),
+        measuredAt: freshestArtifactMtime(resultsRoot, p.test, reportedStages, runtime.config) },
         hasError: outcomes.some((outcome) => outcome.kind === 'error'),
         chipResults: chipResultsForOutcomes(pipeline, outcomes) };
     });
@@ -783,10 +784,10 @@ async function runConfiguredPipelineWithSelection(
   const currentResults = resultsForScope(true);
   const testResults = resultsForScope(false).map((test, index) => {
     if (!test.outcomes.some((outcome) => outcome.outsideCurrentConfig)) return test;
-    const { chips, sorts, runId } = currentResults[index]!;
-    return { ...test, currentConfig: { chips, sorts, runId } };
+    const { chips, sorts, runId, measuredAt } = currentResults[index]!;
+    return { ...test, currentConfig: { chips, sorts, runId, measuredAt } };
   });
-  const finalChipsByTest = new Map(partials.map((p, index) => [p.test, testResults[index]!.chips]));
+  const finalChipsByTest = new Map(partials.map((p, index) => [p.test, currentResults[index]!.chips]));
   console.log(`    all tests assembled in ${((Date.now() - assembleStart) / 1000).toFixed(1)}s`);
 
   // Viewport passes own one error shard even when producing a report. Keep
@@ -866,14 +867,13 @@ async function runConfiguredPipelineWithSelection(
   writeMachineReport(
     path.join(resultsRoot, 'report.json'),
     reportTests,
-    (test) => viewportsForSavedReport(test, reportedStages, runtime.config, store),
+    (test) => viewportsForTestAcrossStages(test, reportedStages, runtime.config),
     pipeline,
     data.meta,
     store,
     stageRuntime,
     finalChipsByTest,
     runtime.config,
-    reportedStages,
   );
 
   return {
@@ -1500,7 +1500,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
       ),
       code: readTestSource(test.file, test.line),
       durationMs: 0,
-      measuredAt: freshestArtifactMtime(resultsRoot, test, reportedStages, config),
+      measuredAt: freshestArtifactMtime(resultsRoot, test, pipeline.stages, config, reportViewports),
       runId,
       outcomes,
       viewportArtifactPaths,
@@ -1596,6 +1596,7 @@ function freshestArtifactMtime(
   test: AbTestDefinition,
   stages: readonly Stage[],
   config: AbTestsConfig,
+  viewports = viewportsForTestAcrossStages(test, stages, config),
 ): number | null {
   let freshest = 0;
   const consider = (absPath: string): void => {
@@ -1613,7 +1614,7 @@ function freshestArtifactMtime(
     }
     consider(absPath);
   };
-  for (const vp of viewportsForTestAcrossStages(test, stages, config)) {
+  for (const vp of viewports) {
     const slug = unitIdForTest(test, vp.label);
     for (const stage of stages) {
       considerStageOutcome(path.join(resultsRoot, slug, `${stage.name}.json`));
