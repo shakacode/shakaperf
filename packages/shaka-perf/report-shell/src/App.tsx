@@ -464,8 +464,9 @@ export function App({
     [data.tests, isBisectReport, query],
   );
 
-  // Run visibility intersects search and section selection. Status chips keep
-  // their existing focus/dimming behavior independently of the suite toggle.
+  // "Show full suite", search, and report sections determine which cards appear.
+  // Status filters keep nonmatching cards visible but dimmed and listed last.
+  // Within each group, use the selected sort or show newer runs first.
   const visibleTests = useMemo<{ test: TestResult; dimmed: boolean }[]>(() => {
     const out: { test: TestResult; dimmed: boolean }[] = [];
     for (const t of displayTests) {
