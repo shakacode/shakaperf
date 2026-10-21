@@ -18,6 +18,7 @@ import {
 } from '../pipeline';
 import { runPipeline, type RuntimeOptions } from '../runner';
 import { ArtifactStore } from '../artifact-store';
+import { unitIdForTest } from '../unit-id';
 import { buildAbTestsConfig } from '../../config';
 import { withAbTestsConfigPath } from '../../effective-config';
 import { createVisregStage } from '../../compare/stages/visreg';
@@ -350,6 +351,48 @@ describe('runPipeline', () => {
         expect(fs.readFileSync(file, 'utf8')).toBe(contents);
         expect(fs.statSync(file).mtimeMs).toBe(mtime);
       }
+    } finally {
+      tmpdir.mockRestore();
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  }, 30_000);
+
+  it.each([false, true])('preserves burn identities for external selections and report-only regeneration (empty suite: %s)', async (emptySuite) => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-burn-selection-'));
+    const tmpdir = jest.spyOn(os, 'tmpdir').mockReturnValue(cwd);
+    const selected = { ...frozenTest, file: '/external/test.abtest.ts' };
+    const sibling = { ...frozenTest, name: 'Saved sibling', file: '/suite/sibling.abtest.ts' };
+    const suite = emptySuite ? [] : [sibling];
+    const config = buildAbTestsConfig({ shared: {
+      controlURL: 'http://control.test', experimentURL: 'http://experiment.test',
+      parallelism: 1, retries: 0, viewports: ['desktop'],
+      playwrightOptions: { browser: 'chromium', waitTimeout: 1_000 },
+      browserConsole: { failOn: [], allowList: [] },
+    } });
+    const runtime = { cwd, config, controlURL: config.shared.controlURL,
+      experimentURL: config.shared.experimentURL, burn: 2, filter: selected.file };
+    try {
+      jest.mocked(loadTests).mockImplementation(async (options) => options?.filter ? [selected] : suite);
+      const measured = await runPipeline(pipeline(), { ...runtime, skipReport: true });
+      expect(loadTests).toHaveBeenCalledTimes(2);
+      const measuredCards = measured.testResults.filter((test) => test.runId != null);
+      expect(measuredCards.map((test) => test.name)).toEqual([
+        `${selected.name}-burn-1`, `${selected.name}-burn-2`,
+      ]);
+      expect(new Set(measured.testResults.map((test) => test.id)).size).toBe((suite.length + 1) * 2);
+      for (const burnIndex of [1, 2]) {
+        expect(fs.existsSync(path.join(measured.resultsRoot,
+          `${unitIdForTest(selected, 'desktop')}-burn-${burnIndex}`, 'visreg.json'))).toBe(true);
+      }
+      expect(selected.burnIndex).toBeUndefined();
+      expect(sibling.burnIndex).toBeUndefined();
+
+      jest.mocked(loadTests).mockClear();
+      const regenerated = await runPipeline(pipeline(), {
+        ...runtime, tests: [...suite, selected], reportOnly: true,
+      });
+      expect(loadTests).not.toHaveBeenCalled();
+      expect(regenerated.testResults).toEqual(measured.testResults);
     } finally {
       tmpdir.mockRestore();
       fs.rmSync(cwd, { recursive: true, force: true });
