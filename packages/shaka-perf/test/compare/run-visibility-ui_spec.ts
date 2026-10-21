@@ -55,6 +55,46 @@ describe('latest measurement run visibility', () => {
   it.each([
     ['compare', 'full'], ['compare', 'self-contained'],
     ['audit', 'full'], ['audit', 'self-contained'],
+  ] as const)('%s %s retains current-configuration status and sort controls despite archived errors', async (pipeline, mode) => {
+    const data = fixture(pipeline, mode);
+    const mixed = data.tests.find((test) => test.name === 'Mixed')!;
+    mixed.chips = [{ tag: 'broken', text: 'broken', color: 'gray', sortingWeight: 0 }];
+    mixed.currentConfig = {
+      chips: [{ tag: 'regression', text: 'regression', color: 'red', sortingWeight: 1 }],
+      sorts: [{ tag: 'score', label: 'Score', color: 'red', value: 7, higherIsWorse: true }],
+      runId: LATEST, measuredAt: 0,
+    };
+    mixed.outcomes = mixed.outcomes.map((outcome) => ({
+      ...outcome, ...(outcome.viewport.label === 'phone' ? { outsideCurrentConfig: true } : {}),
+    }));
+    const file = path.join(directory, `controls-${pipeline}-${mode}.html`);
+    fs.writeFileSync(file, renderReportHtml(data));
+    const page = await browser.newPage();
+    try {
+      await page.goto(pathToFileURL(file).href);
+      await page.locator('.card').first().waitFor();
+      await page.getByRole('button', { name: 'regression · 1', exact: true }).click({ timeout: 2000 });
+      const card = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Mixed', exact: true }) });
+      expect(await card.getAttribute('data-dimmed')).not.toBe('true');
+      const sort = page.getByRole('button', { name: /Score/ });
+      await sort.click({ timeout: 2000 });
+      const filters = await page.locator('.filterbar').first().innerHTML();
+      expect(await sort.getAttribute('data-active')).toBe('true');
+      const toggle = page.getByRole('checkbox', { name: 'Show full suite', exact: true });
+      for (const checked of [true, false]) {
+        await toggle.setChecked(checked);
+        expect(await page.locator('.filterbar').first().innerHTML()).toBe(filters);
+        expect(await sort.getAttribute('data-active')).toBe('true');
+        expect(await card.getAttribute('data-dimmed')).not.toBe('true');
+      }
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
+  it.each([
+    ['compare', 'full'], ['compare', 'self-contained'],
+    ['audit', 'full'], ['audit', 'self-contained'],
   ] as const)('%s %s reveals config-excluded viewports only in full suite', async (pipeline, mode) => {
     const data = fixture(pipeline, mode);
     const mixed = data.tests.find((test) => test.name === 'Mixed')!;

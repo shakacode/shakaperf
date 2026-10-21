@@ -352,13 +352,19 @@ export function App({
     () => data.tests.filter((test) => hasReportableOutcomes(test, isBisectReport)),
     [data.tests, isBisectReport],
   );
-  // Filter catalogs remain based on the full saved dataset, so toggling scope
-  // never resets a search, status, or section selection.
   const displayTests = useMemo(() =>
     !isBisectReport && !showFullSuite ? cardTests.map(currentConfigurationTest) : cardTests,
   [cardTests, isBisectReport, showFullSuite]);
-  const chipFilters = useMemo(() => buildChipFilters(cardTests), [cardTests]);
-  const chipTestSets = useMemo(() => buildChipTestSets(cardTests), [cardTests]);
+  // Keep controls from both summaries available: archived errors can replace
+  // the full-suite chips and sorts even when the current configuration succeeds.
+  // These options stay stable when "Show full suite" changes.
+  const testsForFilterAndSortOptions = useMemo(() => cardTests.map((test) => ({
+    ...test,
+    chips: [...(test.currentConfig?.chips ?? []), ...test.chips],
+    sorts: [...(test.currentConfig?.sorts ?? []), ...(test.sorts ?? [])],
+  })), [cardTests]);
+  const chipFilters = useMemo(() => buildChipFilters(testsForFilterAndSortOptions), [testsForFilterAndSortOptions]);
+  const chipTestSets = useMemo(() => buildChipTestSets(testsForFilterAndSortOptions), [testsForFilterAndSortOptions]);
   const accessibilityResults = useMemo(() => accessibilityResultsForTests(cardTests), [cardTests]);
   const accessibilityFilterOptions = useMemo(
     () => collectConfiguredFilterOptions(accessibilityResults),
@@ -430,7 +436,7 @@ export function App({
       return normalizeStageSelection(next, stageFilterOptions);
     });
   }, [stageFilterOptions]);
-  const sortOptions = useMemo(() => buildSortOptions(cardTests), [cardTests]);
+  const sortOptions = useMemo(() => buildSortOptions(testsForFilterAndSortOptions), [testsForFilterAndSortOptions]);
   const sortValues = useMemo(() => buildSortValues(displayTests), [displayTests]);
   const allTestIds = useMemo(
     () => chipTestSets.get(ALL_FILTER_KEY) ?? new Set<string>(),
