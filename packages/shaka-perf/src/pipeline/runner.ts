@@ -411,6 +411,34 @@ export async function runPipeline(
   }
 }
 
+async function loadTestsSelectedForMeasurement(
+  runtime: RuntimeOptions,
+  explicitlySuppliedTestDefinitions: AbTestDefinition[] | undefined,
+): Promise<AbTestDefinition[]> {
+  if (runtime.reportOnly) return [];
+  if (explicitlySuppliedTestDefinitions) return explicitlySuppliedTestDefinitions;
+  return loadTests({
+    testPathPattern: runtime.testPathPattern,
+    filter: runtime.filter,
+    log: (message) => console.log(message),
+  });
+}
+
+async function loadReportSuiteDefinitions(
+  runtime: RuntimeOptions,
+  explicitlySuppliedTestDefinitions: AbTestDefinition[] | undefined,
+  testsSelectedForMeasurement: AbTestDefinition[],
+): Promise<AbTestDefinition[]> {
+  if (explicitlySuppliedTestDefinitions) return explicitlySuppliedTestDefinitions;
+  if (!runtime.reportOnly && !runtime.filter && !runtime.testPathPattern) {
+    return testsSelectedForMeasurement;
+  }
+  return loadTests({
+    allowEmpty: !runtime.reportOnly,
+    log: (message) => console.log(message),
+  });
+}
+
 async function runConfiguredPipelineWithSelection(
   pipeline: Pipeline,
   stageSelection: StageSelection,
@@ -441,33 +469,35 @@ async function runConfiguredPipelineWithSelection(
   const preservedViewportSelection = runtime.preserveOtherViewports
     ? runtime.viewportsFilter : undefined;
 
-  // Measurement selection never narrows report assembly: saved sibling
-  // outcomes remain available, with their original run ids and freshness.
-  const frozenTests = runtime.tests ? [...runtime.tests] : null;
-  let runTests = runtime.reportOnly
-    ? []
-    : frozenTests ?? await loadTests({
-        testPathPattern: runtime.testPathPattern,
-        filter: runtime.filter,
-        log: (msg) => console.log(msg),
-      });
-  let reportTests = frozenTests ?? (
-    runtime.reportOnly || runtime.filter || runtime.testPathPattern
-      ? await loadTests({ allowEmpty: !runtime.reportOnly, log: (msg) => console.log(msg) })
-      : runTests
+  // Execute only the selected tests, but include all saved suite outcomes in
+  // the report with their original run ids and freshness. By default, show
+  // results within the current configuration on cards updated by the latest
+  // measurement run. “Show full suite” reveals the other saved results.
+  // `--report-only` rebuilds reports without measuring or changing freshness.
+  const explicitlySuppliedTestDefinitions = runtime.tests ? [...runtime.tests] : undefined;
+  const selectedTestDefinitions = await loadTestsSelectedForMeasurement(runtime, explicitlySuppliedTestDefinitions);
+  const reportSuiteDefinitions = await loadReportSuiteDefinitions(
+    runtime, explicitlySuppliedTestDefinitions, selectedTestDefinitions,
   );
 
   // A file-path selection can live outside the discoverable suite. Keep its
   // definitions (and identities) alongside saved local siblings.
-  reportTests = [...new Map([...reportTests, ...runTests].map((test) => [testIdForTest(test), test])).values()];
+  const fullSuiteTestDefinitions = [...new Map(
+    [...reportSuiteDefinitions, ...selectedTestDefinitions].map((test) => [testIdForTest(test), test]),
+  ).values()];
 
-  if (runtime.burn != null) {
-    runTests = expandTestsForBurn(runTests, runtime.burn);
-    reportTests = expandTestsForBurn(reportTests, runtime.burn);
-  }
+  // Each burn instance needs a distinct identity so its work units, directories,
+  // outcomes, chips, and report cards do not collapse together. The burn-index
+  // suffix keeps matching identities stable across these separate expansions.
+  const testsSelectedForMeasurement = runtime.burn == null
+    ? selectedTestDefinitions
+    : expandTestsForBurn(selectedTestDefinitions, runtime.burn);
+  const fullSuiteTestsForReport = runtime.burn == null
+    ? fullSuiteTestDefinitions
+    : expandTestsForBurn(fullSuiteTestDefinitions, runtime.burn);
 
   const units = expandWorkUnits(
-    runTests,
+    testsSelectedForMeasurement,
     executableStages,
     runtime.config,
     {
@@ -568,7 +598,7 @@ async function runConfiguredPipelineWithSelection(
   // intact.
   if (!runtime.reportOnly) {
     if (!preserveOldResults) {
-      for (const test of runTests) {
+      for (const test of testsSelectedForMeasurement) {
         // A viewport pass sweeps its requested labels even if a test narrowed
         // its viewport list or replaced the definition registry. Other callers
         // retain the normal sweep over the effective definition registry.
@@ -699,8 +729,8 @@ async function runConfiguredPipelineWithSelection(
     persistCliSkippedStageOutcomes(
       store,
       preservedViewportSelection
-        ? runTests.filter((test) => measuredTestIds.has(testIdForTest(test)))
-        : runTests,
+        ? testsSelectedForMeasurement.filter((test) => measuredTestIds.has(testIdForTest(test)))
+        : testsSelectedForMeasurement,
       stageSelection,
       reportedStages,
       runtime.config,
@@ -710,13 +740,13 @@ async function runConfiguredPipelineWithSelection(
 
   console.log(
     chalk.blue(
-      `\n>>> assemble · per-test artifacts (${reportTests.length} test${reportTests.length === 1 ? '' : 's'})`,
+      `\n>>> assemble · per-test artifacts (${fullSuiteTestsForReport.length} test${fullSuiteTestsForReport.length === 1 ? '' : 's'})`,
     ),
   );
   const assembleStart = Date.now();
   let assembledCount = 0;
   const partials = await Promise.all(
-    reportTests.map(async (test) => {
+    fullSuiteTestsForReport.map(async (test) => {
       const t0 = Date.now();
       const partial = await buildTestPartial({
         test,
@@ -733,10 +763,10 @@ async function runConfiguredPipelineWithSelection(
         config: runtime.config,
       });
       assembledCount += 1;
-      const idx = String(assembledCount).padStart(String(reportTests.length).length, ' ');
+      const idx = String(assembledCount).padStart(String(fullSuiteTestsForReport.length).length, ' ');
       const sizeMb = (resultBytes(partial.partialResult) / 1024 / 1024).toFixed(1);
       console.log(
-        `    [${idx}/${reportTests.length}] ${burnDisplayName(test)} ` +
+        `    [${idx}/${fullSuiteTestsForReport.length}] ${burnDisplayName(test)} ` +
         `(${((Date.now() - t0) / 1000).toFixed(1)}s, ` +
         `${sizeMb} MB)`,
       );
@@ -866,7 +896,7 @@ async function runConfiguredPipelineWithSelection(
   );
   writeMachineReport(
     path.join(resultsRoot, 'report.json'),
-    reportTests,
+    fullSuiteTestsForReport,
     (test) => viewportsForTestAcrossStages(test, reportedStages, runtime.config),
     pipeline,
     data.meta,
