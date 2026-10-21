@@ -138,10 +138,6 @@ export async function runPerfEngineStage(
   }
   const artifact = readPerfArtifact({
     artifacts: ctx.artifacts,
-    // Per-test effective thresholds (config.perf.* in an abTest() applies to
-    // that test), same as lighthouseConfig above.
-    regressionThreshold: ctx.config.perf.regressionThreshold,
-    regressionThresholdStat: ctx.config.perf.regressionThresholdStat,
     saveArtifacts: config.saveArtifacts,
     statisticalAnalysis: config.statisticalAnalysis,
   });
