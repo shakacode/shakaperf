@@ -137,6 +137,7 @@ export async function runAuditStage(
     // Effective launch options (shared.playwrightOptions ← per-test config);
     // the fork maps args/headless onto chrome flags.
     headed: ctx.runtime.headed,
+    settleAfterTestMs: ctx.runtime.settleAfterTestMs,
     playwrightOptions: resolvePlaywrightOptions(ctx.config, 'audit'),
   });
   let sampleGroups;
