@@ -259,6 +259,51 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     } finally { failure.mockRestore(); error.mockRestore(); }
   });
 
+  if (command === 'audit') it.each([false, true])('clears abandoned selected coverage when a test narrows its viewports (registry replaced=%s)', async (replaceRegistry) => {
+    const built = buildAbTestsConfig(config as never);
+    const narrowed = definition('Narrowed', ['desktop']);
+    if (replaceRegistry) narrowed.config = { shared: {
+      viewports: ['desktop'], viewportDefinitions: [built.shared.viewportDefinitions[0]!],
+    } };
+    const active = definition('Active');
+    const actual = jest.requireActual<typeof import('../../audit/pipeline')>('../../audit/pipeline');
+    const pipeline = actual.createAuditPipeline({
+      parallelism: 1,
+      accessibility: { ...built.accessibility, playwrightOptions: built.shared.playwrightOptions },
+      agentReadiness: { ...built.agentReadiness, playwrightOptions: built.shared.playwrightOptions },
+    });
+    const coverage = path.join(cwd, 'coverage.json');
+    fs.writeFileSync(coverage, JSON.stringify({ '/old.js': { s: { 0: 1 } } }));
+    for (const test of [narrowed, active]) {
+      for (const label of ['desktop', 'phone']) {
+        mirrorCoverageToNycOutput(coverage, store().resultsRoot, unitIdForTest(test, label));
+        store().writeOutcome(test, label, { kind: 'ok', stage: 'code_coverage' });
+      }
+    }
+    const mirrors = path.join(store().resultsRoot, '.nyc_output');
+    const desktops = [narrowed, active].map((test) => {
+      const file = path.join(mirrors, `${unitIdForTest(test, 'desktop')}.json`);
+      return { file, bytes: fs.readFileSync(file, 'utf8'), mtime: fs.statSync(file).mtimeMs };
+    });
+    const stage = pipeline.stages.find((stage) => stage.name === 'code_coverage')!;
+    const failure = jest.spyOn(stage, 'run').mockRejectedValue(new Error('bundle is not instrumented'));
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await runPipeline(pipeline, {
+        config: built, tests: [narrowed, active], controlURL: built.shared.controlURL, experimentURL: built.shared.experimentURL,
+        categories: 'code_coverage', viewportsFilter: ['phone'], preserveOtherViewports: true, skipReport: true,
+      });
+      expect(fs.existsSync(store().unitDirForViewport(narrowed, 'phone'))).toBe(false);
+      for (const test of [narrowed, active]) {
+        expect(fs.existsSync(path.join(mirrors, `${unitIdForTest(test, 'phone')}.json`))).toBe(false);
+      }
+      for (const entry of desktops) {
+        expect(fs.readFileSync(entry.file, 'utf8')).toBe(entry.bytes);
+        expect(fs.statSync(entry.file).mtimeMs).toBe(entry.mtime);
+      }
+    } finally { failure.mockRestore(); error.mockRestore(); }
+  });
+
   it('keeps existing filter-only callers such as troubleshoot on their cleanup contract', async () => {
     await run();
     await runPipeline(mockPipeline(command), {

@@ -141,8 +141,8 @@ interface PipelineOptions {
    * authority clears them before a fresh measuring run (never on
    * `--report-only`, `--skip-report` shards, `--keep-old-results`, or
    * restart), so entries from renamed/deleted tests can't leak into later
-   * runs. Viewport-selected runs invalidate only the declared per-unit files,
-   * preserving sibling units. Stages must not wipe these themselves.
+   * runs. Viewport-selected runs invalidate declared per-unit files in the
+   * same sweep as outcome directories, preserving sibling viewports. Stages must not wipe these themselves.
    */
   readonly derivedResultsDirs?: readonly DerivedResultsDirectory[];
   readonly machineReportMeta?: (ctx: PipelineMachineReportMetaContext) => PipelineMachineReportMeta;

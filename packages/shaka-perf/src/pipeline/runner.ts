@@ -505,19 +505,9 @@ async function runConfiguredPipelineWithSelection(
     if (!runtime.skipReport && !preservedViewportSelection) {
       wipePersistedEngineErrors(resultsRoot);
     }
-    if (!preserveOldResults) {
+    if (!preserveOldResults && !preservedViewportSelection && !runtime.skipReport) {
       for (const dir of pipeline.derivedResultsDirs ?? []) {
-        if (preservedViewportSelection) {
-          // Invalidate only the units being replaced, including shards: a
-          // failed measurement must not leave its old derived data as live.
-          for (const unit of units) {
-            for (const file of dir.unitFiles(testAndViewportId(unit))) {
-              fs.rmSync(path.join(resultsRoot, dir.path, file), { force: true });
-            }
-          }
-        } else if (!runtime.skipReport) {
-          fs.rmSync(path.join(resultsRoot, dir.path), { recursive: true, force: true });
-        }
+        fs.rmSync(path.join(resultsRoot, dir.path), { recursive: true, force: true });
       }
     }
   }
@@ -582,18 +572,25 @@ async function runConfiguredPipelineWithSelection(
   if (!runtime.reportOnly) {
     if (!preserveOldResults) {
       for (const test of runTests) {
-        // Every viewport this test could have a unit dir for — the DEFINITION
-        // registry, not a category's run list, since a stale dir from a wider
-        // earlier run still has to be swept. Per-test effective config: an
-        // override may swap the definitions themselves.
-        const definitions = applyPerTestConfigOverrides(runtime.config, test)
-          .shared.viewportDefinitions;
-        for (const viewport of definitions) {
-          if (preservedViewportSelection && !preservedViewportSelection.includes(viewport.label)) continue;
+        // A viewport pass sweeps its requested labels even if a test narrowed
+        // its viewport list or replaced the definition registry. Other callers
+        // retain the normal sweep over the effective definition registry.
+        const labels = preservedViewportSelection ?? applyPerTestConfigOverrides(runtime.config, test)
+          .shared.viewportDefinitions.map((viewport) => viewport.label);
+        for (const label of labels) {
           for (const stage of executableStages) {
-            store.deleteOutcome(test, viewport.label, stage.name);
+            store.deleteOutcome(test, label, stage.name);
           }
-          store.removeUnitDir(test, viewport.label);
+          if (preservedViewportSelection) {
+            // Derived inputs share the exact outcome cleanup scope, including
+            // abandoned units outside the current measurement plan.
+            for (const dir of pipeline.derivedResultsDirs ?? []) {
+              for (const file of dir.unitFiles(unitIdForTest(test, label))) {
+                fs.rmSync(path.join(resultsRoot, dir.path, file), { force: true });
+              }
+            }
+          }
+          store.removeUnitDir(test, label);
         }
       }
     }
