@@ -58,6 +58,7 @@ function OutcomeError({ outcome }: { outcome: ReportOutcome }) {
         {media && !isVideo ? (
           <DetailedArtifactDialog
             className="slot-error__screenshot"
+            image
             href={media}
             label="failure screenshot"
           >

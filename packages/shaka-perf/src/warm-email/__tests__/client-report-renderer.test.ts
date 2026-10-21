@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { chromium } from 'playwright';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -3366,4 +3367,43 @@ describe('renderClientReportHtml', () => {
     expect(html).toContain('lives in how the whole page is built');
     expect(html).not.toContain('0 spot');
   });
+});
+
+
+describe('client report enlarged frame sizing', () => {
+  it('fits annotated frames, supports actual size and retains arrow/Escape controls on desktop and mobile', async () => {
+    const image = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="390" height="4096"><rect width="390" height="4096" fill="navy"/></svg>')}`;
+    const data = model();
+    data.perfCards[0].frames.forEach(frame => { frame.imgUri = image; });
+    const browser = await chromium.launch();
+    try {
+      for (const width of [1440, 390]) {
+        const page = await browser.newPage({ viewport: { width, height: 844 } });
+        page.setDefaultTimeout(5000);
+        await page.setContent(renderClientReportHtml(data), { waitUntil: 'domcontentloaded' });
+        await page.locator('.cr-shot').first().click();
+        const stage = page.locator('.cr-lb-stage');
+        const fit = async () => {
+          await page.waitForFunction(() => {
+            const el = document.querySelector('.cr-lb-stage')!;
+            const img = el.querySelector('img')!;
+            return img.clientHeight > 0 && el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1;
+          });
+        };
+        await fit();
+        await page.getByRole('button', { name: 'Actual size', exact: true }).click();
+        expect(await stage.locator('img').evaluate(el => el.clientHeight)).toBe(4096);
+        await page.getByRole('button', { name: 'Fit to window', exact: true }).click();
+        await fit();
+        await page.setViewportSize({ width, height: 620 });
+        await fit();
+        await page.keyboard.press('ArrowRight');
+        expect(await stage.locator('.cr-shot > span').count()).toBeGreaterThan(0);
+        await fit();
+        await page.keyboard.press('Escape');
+        expect(await page.locator('.cr-lb.open').count()).toBe(0);
+        await page.close();
+      }
+    } finally { await browser.close(); }
+  }, 30_000);
 });

@@ -55,6 +55,7 @@ export function ScreenshotPreview({
       <div className="a11y-preview-card">
         <DetailedArtifactDialog
           className="a11y-thumb-button"
+          image
           href={source}
           label={`${scan.viewportLabel} accessibility issues`}
           extra={<AccessibilityDialogMeta scan={scan} hotspotCount={hotspots.length} />}

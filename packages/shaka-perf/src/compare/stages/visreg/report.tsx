@@ -9,6 +9,7 @@ import type { CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { VisregArtifact, VisregResult } from '../visreg';
 import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, StageNote } from '../../../pipeline/stage-report-components';
+import { ImageViewport } from '../../../pipeline/image-viewport';
 import { Scrubber } from './scrubber';
 
 export function VisregArtifactView({
@@ -66,6 +67,7 @@ function VisregCard({ row }: { row: VisregRow }) {
     <div className="artifact-card artifact-card--compare">
       {head}
       <DetailedArtifactDialog
+        image
         className="artifact-card__media-button"
         href={artifact.diffImage}
         label={`${viewportLabel} ${artifact.selector}`}
@@ -79,6 +81,7 @@ function VisregCard({ row }: { row: VisregRow }) {
     <div className="artifact-card artifact-card--single">
       {head}
       <DetailedArtifactDialog
+        image
         className="artifact-card__media-button"
         href={artifact.controlImage}
         label={`${viewportLabel} ${artifact.selector}`}
@@ -157,12 +160,14 @@ function DialogScrubber({ row }: { row: VisregArtifact }) {
   return (
     <figure className="artifact-dialog__image artifact-dialog__image--scrubber">
       <figcaption>scrubber · control ↔ experiment</figcaption>
-      <Scrubber
-        beforeSrc={row.controlImage}
-        afterSrc={row.experimentImage}
-        imgW={b?.imgW}
-        maxImgH={maxImgH}
-      />
+      <ImageViewport actualSize="fit-width" width={b?.imgW} height={maxImgH}>
+        <Scrubber
+          beforeSrc={row.controlImage}
+          afterSrc={row.experimentImage}
+          imgW={b?.imgW}
+          maxImgH={maxImgH}
+        />
+      </ImageViewport>
     </figure>
   );
 }
@@ -171,7 +176,7 @@ function DialogImage({ kind, src }: { kind: string; src: string }) {
   return (
     <figure className="artifact-dialog__image">
       <figcaption>{kind}</figcaption>
-      <img src={src} alt={kind} />
+      <ImageViewport actualSize="fit-width"><img src={src} alt={kind} /></ImageViewport>
     </figure>
   );
 }

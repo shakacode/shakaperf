@@ -2944,3 +2944,189 @@ input {
     gap: 12px;
   }
 }
+
+/* Enlarged images share the remaining dialog space after metadata and controls. */
+.ui-dialog--image {
+  height: 95dvh;
+  max-height: 95dvh;
+  overflow: hidden;
+}
+.ui-dialog--image .ui-dialog__surface {
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.ui-dialog--image .ui-dialog__head {
+  flex-shrink: 0;
+}
+.ui-dialog--image .ui-dialog__meta-wrap {
+  flex-shrink: 0;
+  max-height: 24%;
+  overflow: auto;
+}
+.ui-dialog--image .ui-dialog__body {
+  overflow: hidden;
+}
+.image-size {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.image-size button {
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.image-size button[aria-pressed="true"] {
+  color: var(--fg);
+  border-color: var(--fg-muted);
+  background: var(--border);
+}
+.image-viewport {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: #272a30;
+}
+.image-viewport[data-size="fit"] {
+  overflow: clip;
+}
+.image-viewport__plane {
+  position: relative;
+  flex: none;
+  margin: auto;
+}
+.image-viewport[data-size="actual"][data-actual-size="fit-width"] .image-viewport__plane {
+  margin: 0 auto;
+}
+.image-viewport__plane > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+.image-viewport__plane > .a11y-shot {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.image-viewport__plane > .a11y-shot > img {
+  width: 100%;
+  height: 100%;
+}
+.ui-dialog--image .artifact-dialog__image-grid {
+  flex: 1;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+.ui-dialog--image .artifact-dialog__image {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.ui-dialog--image .artifact-dialog__image figcaption {
+  flex: none;
+}
+.ui-dialog--image .a11y-dialog {
+  flex: 1;
+  grid-template-rows: minmax(0, 1fr);
+}
+.ui-dialog--image .a11y-dialog__shot {
+  display: flex;
+  overflow: hidden;
+  max-height: none;
+}
+.ui-dialog--image .a11y-compare-dialog {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.ui-dialog--image .a11y-compare-dialog__shots {
+  width: 100%;
+  align-content: stretch !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-rows: minmax(0, 1fr);
+}
+.ui-dialog--image .a11y-compare-dialog__panel {
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden;
+}
+@media (max-width: 860px) {
+  .ui-dialog--image .a11y-dialog {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 3fr) minmax(0, 2fr);
+  }
+  .ui-dialog--image .a11y-compare-dialog__grid {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: minmax(0, 3fr) minmax(0, 2fr);
+  }
+  .ui-dialog--image .artifact-dialog__image-grid--quad {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (pointer: coarse) {
+  .image-size button {
+    min-height: 40px;
+  }
+}
+.ui-dialog--image .a11y-compare-dialog__panel > :not(.image-viewport) {
+  flex: none !important;
+}
+
+.ui-dialog--image .a11y-compare-dialog__summary {
+  display: block !important;
+}
+.ui-dialog--image .a11y-compare-dialog__summary > * {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui-dialog--image .a11y-compare-dialog__url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A fitted screenshot can be narrower than its annotation tooltip. Keep the
+   readable popup inside the image area without covering the size controls. */
+.ui-dialog--image .image-viewport[data-size="fit"] .a11y-tooltip {
+  position: fixed;
+  inset: auto;
+  top: var(--image-pane-center-y);
+  left: clamp(
+    calc(min(260px, 40vw) + 8px),
+    var(--image-pane-center-x),
+    calc(100vw - min(260px, 40vw) - 8px)
+  );
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  max-height: min(360px, max(0px, calc(var(--image-pane-height) - 16px)));
+}
+/* Scaling/filtering a hotspot establishes a containing block for fixed popups.
+   Fit mode keeps the flash on its colors and outline instead. */
+.ui-dialog--image .image-viewport[data-size="fit"] .a11y-hotspot.a11y-flash {
+  animation-name: image-hotspot-flash;
+}
+@keyframes image-hotspot-flash {
+  0%, 55% {
+    background: #fef08a;
+    border-color: #ca8a04;
+    box-shadow: 0 0 0 5px rgba(250, 204, 21, 0.6);
+  }
+}
+@media (max-height: 500px) and (min-width: 600px) {
+  .ui-dialog--image .a11y-dialog,
+  .ui-dialog--image .a11y-compare-dialog__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 320px) !important;
+    grid-template-rows: minmax(0, 1fr);
+  }
+}

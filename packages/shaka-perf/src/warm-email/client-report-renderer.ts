@@ -376,10 +376,15 @@ const HEAD_STYLE = `
   .cr-vidcap-tx{display:inline-block;max-width:92%;color:#fff;font-size:14px;line-height:1.35;font-weight:600;letter-spacing:.004em;text-shadow:0 1px 3px rgba(0,0,0,.7)}
   /* lightbox */
   .cr-lb{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(38,34,29,.86);padding:28px;cursor:zoom-out}
-  .cr-lb.open{display:flex}
-  .cr-lb-stage{display:flex;align-items:center;justify-content:center;max-width:92vw;max-height:82vh}
-  .cr-lb-stage .cr-shot{margin:0;max-width:92vw;max-height:82vh;cursor:default;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-  .cr-lb-stage .cr-shot img{width:auto!important;height:auto!important;max-width:92vw;max-height:82vh;object-fit:contain}
+  .cr-lb.open{display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch;justify-content:normal;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;height:100dvh;box-sizing:border-box;padding:16px 72px;cursor:default}
+  .cr-lb-size{display:flex;gap:4px;justify-content:center}
+  .cr-lb-size button{padding:8px 10px;border:1px solid #83858a;background:#33363b;color:#fff;cursor:pointer}
+  .cr-lb-size button[aria-pressed="true"]{background:#62656a}
+  .cr-lb-stage{display:flex;min-width:0;min-height:0;overflow:auto;background:#272a30;max-width:none!important;max-height:none!important}
+  .cr-lb-stage .cr-shot{flex:none;margin:auto!important;max-width:none!important;max-height:none!important}
+  .cr-lb-stage .cr-shot img{display:block;width:100%!important;height:auto!important;max-width:none!important;max-height:none!important}
+  .cr-lb-cap{position:static!important;padding:0!important;max-height:22dvh;overflow:auto}
+  @media(max-width:760px){.cr-lb.open{padding:64px 16px 70px}.cr-lb-arrow{top:auto!important;bottom:6px;transform:none!important}}
   .cr-lb-cap b{color:#fff}
   .cr-lb-close{position:absolute;top:16px;right:18px;width:44px;height:44px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#f3efe7;font-size:28px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3}
   .cr-lb-arrow{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#f3efe7;font-size:30px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3}
@@ -1509,7 +1514,18 @@ const SCRIPTS = `<script>
   if(lb){
     var lbStage = document.getElementById('cr-lb-stage'), lbCap = document.getElementById('cr-lb-cap');
     var btnPrev = document.getElementById('cr-lb-prev'), btnNext = document.getElementById('cr-lb-next'), btnClose = document.getElementById('cr-lb-close');
-    var strip = [], idx = -1;
+    var strip = [], idx = -1, actualSize = false;
+    var sizeButtons = lb.querySelectorAll('[data-image-size]');
+    var sizeFrame = function(){
+      var node = lbStage.querySelector('.cr-shot'), img = node && node.querySelector('img');
+      if(!img || !img.naturalWidth) return;
+      var scale = actualSize ? 1 : Math.min(1, lbStage.clientWidth / img.naturalWidth, lbStage.clientHeight / img.naturalHeight);
+      node.style.width = (img.naturalWidth * scale) + 'px';
+      node.style.height = (img.naturalHeight * scale) + 'px';
+      sizeButtons.forEach(function(button){ button.setAttribute('aria-pressed', String((button.getAttribute('data-image-size') === 'actual') === actualSize)); });
+    };
+    new ResizeObserver(sizeFrame).observe(lbStage);
+    sizeButtons.forEach(function(button){ button.addEventListener('click', function(){ actualSize = button.getAttribute('data-image-size') === 'actual'; sizeFrame(); lbStage.scrollTo(0,0); }); });
     var renderCap = function(el){
       lbCap.innerHTML = '';
       var detail = el.getAttribute('data-lb-detail');
@@ -1530,6 +1546,8 @@ const SCRIPTS = `<script>
       var nb = node.querySelectorAll('.cr-a11y-box');
       for (var bi = 0; bi < nb.length; bi++) nb[bi].style.display = '';
       lbStage.innerHTML = ''; lbStage.appendChild(node);
+      var img = node.querySelector('img'); if(img) img.addEventListener('load', sizeFrame);
+      sizeFrame();
       renderCap(el);
       if(btnPrev) btnPrev.disabled = idx <= 0;
       if(btnNext) btnNext.disabled = idx >= strip.length - 1;
@@ -1538,7 +1556,7 @@ const SCRIPTS = `<script>
       var box = el.closest('.cr-strip') || el.parentNode;
       strip = Array.prototype.slice.call(box.querySelectorAll('.cr-shot'));
       idx = strip.indexOf(el); if(idx < 0){ strip = [el]; idx = 0; }
-      render(); lb.classList.add('open');
+      actualSize = false; render(); lb.classList.add('open'); sizeFrame();
     };
     var go = function(d){ var n = idx + d; if(n < 0 || n >= strip.length) return; idx = n; render(); };
     var close = function(){ lb.classList.remove('open'); lbStage.innerHTML = ''; };
@@ -1728,7 +1746,8 @@ ${panels}
   <button class="cr-lb-close" id="cr-lb-close" type="button" aria-label="Close">&times;</button>
   <button class="cr-lb-arrow cr-lb-prev" id="cr-lb-prev" type="button" aria-label="Previous frame">&#8249;</button>
   <button class="cr-lb-arrow cr-lb-next" id="cr-lb-next" type="button" aria-label="Next frame">&#8250;</button>
-  <div class="cr-lb-stage" id="cr-lb-stage"></div>
+  <div class="cr-lb-size" role="group" aria-label="Image size"><button type="button" data-image-size="fit" aria-pressed="true">Fit to window</button><button type="button" data-image-size="actual" aria-pressed="false">Actual size</button></div>
+  <div class="cr-lb-stage" id="cr-lb-stage" tabindex="0" aria-label="Image viewport"></div>
   <div class="cr-lb-cap" id="cr-lb-cap" style="position:absolute; bottom:20px; left:0; right:0; text-align:center; color:#eef1f4; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:16.5px; line-height:1.5; padding:0 72px"></div>
 </div>
 ${SCRIPTS}
