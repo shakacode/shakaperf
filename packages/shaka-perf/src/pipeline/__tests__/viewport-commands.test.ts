@@ -16,6 +16,9 @@ import { createAuditCommand } from '../../audit/program';
 import { createPipeline } from '../pipeline';
 import { ArtifactStore } from '../artifact-store';
 import { runPipeline } from '../runner';
+import { WorkerPool } from '../worker-pool';
+import { mirrorCoverageToNycOutput } from '../../audit/stages/code_coverage/coverage-artifacts';
+import { unitIdForTest } from '../unit-id';
 import type { TestContext, StageCategory } from '../../stage/stage';
 
 // These stages do no browser measurement and must not contend with real runs.
@@ -42,7 +45,7 @@ function mockPipeline(name: 'compare' | 'audit') {
   const categories: StageCategory[] = name === 'compare' ? ['visreg', 'perf'] : ['audit', 'accessibility'];
   return createPipeline({
     name, description: name,
-    derivedResultsDirs: ['derived'],
+    derivedResultsDirs: [{ path: 'derived', unitFiles: (unitId) => [`${unitId}.json`] }],
     report: { reportLabel: name, renderHeaderUrls: () => null, renderTestCardUrls: () => null, renderDialogMetaUrls: () => null },
   }, (builder) => {
     const pool = builder.registerWorkerPool(1);
@@ -84,6 +87,7 @@ const config = {
 describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
   let cwd: string;
   let oldCwd: string;
+  let oldExitCode: typeof process.exitCode;
   let tests: AbTestDefinition[];
   let log: jest.SpyInstance;
   const stages = command === 'compare' ? ['visreg', 'perf'] : ['audit', 'accessibility'];
@@ -101,6 +105,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
   })));
 
   beforeEach(() => {
+    oldExitCode = process.exitCode;
     oldCwd = process.cwd(); cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'viewport-command-'));
     process.chdir(cwd); measured.length = 0;
     tests = [definition('Product Detail'), definition('Desktop only', ['desktop'])];
@@ -109,7 +114,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
       ? tests.filter((test) => new RegExp(options.filter!).test(test.name)) : tests);
     log = jest.spyOn(console, 'log').mockImplementation(() => {});
   });
-  afterEach(() => { process.chdir(oldCwd); fs.rmSync(cwd, { recursive: true, force: true }); log.mockRestore(); });
+  afterEach(() => { process.exitCode = oldExitCode; process.chdir(oldCwd); fs.rmSync(cwd, { recursive: true, force: true }); log.mockRestore(); });
 
   it('advertises the option and keeps the full matrix without it', async () => {
     expect((command === 'compare' ? createCompareCommand() : createAuditCommand()).helpInformation()).toContain('--viewport <label>');
@@ -199,6 +204,59 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     await run('--viewport', 'phone', '--categories', stages[0]!);
     for (const entry of before) expect(fs.readFileSync(entry.file, 'utf8')).toBe(entry.bytes);
     expect(fs.existsSync(store().unitDirForViewport(tests[1]!, 'phone'))).toBe(false);
+  });
+
+  it.each([true, false])('keeps viewport errors separate and clears only the rerun scope (shard=%s)', async (skipReport) => {
+    const dispose = WorkerPool.prototype.dispose;
+    const failCleanup = jest.spyOn(WorkerPool.prototype, 'dispose').mockImplementationOnce(async function (this: WorkerPool) {
+      await dispose.call(this);
+      throw new Error('desktop cleanup failed');
+    });
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await run('--skip-report', '--viewport', 'desktop');
+      failCleanup.mockRestore();
+      await run(...(skipReport ? ['--skip-report'] : []), '--viewport', 'phone');
+      await run('--report-only');
+      expect(report().meta.errors).toEqual([expect.stringContaining('desktop cleanup failed')]);
+      expect(fs.readdirSync(store().resultsRoot).filter((file) => file.startsWith('.shaka-engine-errors-'))).toHaveLength(2);
+      await run(...(skipReport ? ['--skip-report'] : []), '--viewport', 'desktop');
+      await run('--report-only');
+      expect(report().meta.errors).toEqual([]);
+    } finally { failCleanup.mockRestore(); error.mockRestore(); }
+  });
+
+  if (command === 'audit') it.each([false, true])('invalidates replaced coverage mirrors before a failed rerun (shard=%s)', async (skipReport) => {
+    const built = buildAbTestsConfig(config as never);
+    const actual = jest.requireActual<typeof import('../../audit/pipeline')>('../../audit/pipeline');
+    const pipeline = actual.createAuditPipeline({
+      parallelism: 1,
+      accessibility: { ...built.accessibility, playwrightOptions: built.shared.playwrightOptions },
+      agentReadiness: { ...built.agentReadiness, playwrightOptions: built.shared.playwrightOptions },
+    });
+    const test = tests[0]!;
+    const rawCoverage = path.join(cwd, 'coverage.json');
+    fs.writeFileSync(rawCoverage, JSON.stringify({ '/app.js': { s: { 0: 1 } } }));
+    for (const label of ['desktop', 'phone']) {
+      mirrorCoverageToNycOutput(rawCoverage, store().resultsRoot, unitIdForTest(test, label));
+    }
+    const mirror = (label: string) => path.join(store().resultsRoot, '.nyc_output', `${unitIdForTest(test, label)}.json`);
+    const desktop = fs.readFileSync(mirror('desktop'), 'utf8');
+    const desktopMtime = fs.statSync(mirror('desktop')).mtimeMs;
+    const stage = pipeline.stages.find((stage) => stage.name === 'code_coverage')!;
+    const failure = jest.spyOn(stage, 'run').mockRejectedValue(new Error('bundle is not instrumented'));
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const result = await runPipeline(pipeline, {
+        config: built, tests: [test], controlURL: built.shared.controlURL, experimentURL: built.shared.experimentURL,
+        categories: 'code_coverage', viewportsFilter: ['phone'], preserveOtherViewports: true, skipReport,
+      });
+      expect(result.hasFailures).toBe(true);
+      expect(store().readOutcome(test, 'phone', 'code_coverage')?.kind).toBe('error');
+      expect(fs.existsSync(mirror('phone'))).toBe(false);
+      expect(fs.readFileSync(mirror('desktop'), 'utf8')).toBe(desktop);
+      expect(fs.statSync(mirror('desktop')).mtimeMs).toBe(desktopMtime);
+    } finally { failure.mockRestore(); error.mockRestore(); }
   });
 
   it('keeps existing filter-only callers such as troubleshoot on their cleanup contract', async () => {

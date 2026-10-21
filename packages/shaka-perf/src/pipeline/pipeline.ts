@@ -122,6 +122,12 @@ export interface PipelineMachineReportMetaContext {
   readonly reportOnly: boolean;
 }
 
+export interface DerivedResultsDirectory {
+  readonly path: string;
+  /** Files relative to this directory owned by one test/viewport unit. */
+  unitFiles(unitId: string): readonly string[];
+}
+
 interface PipelineOptions {
   readonly name: string;
   readonly description: string;
@@ -135,9 +141,10 @@ interface PipelineOptions {
    * authority clears them before a fresh measuring run (never on
    * `--report-only`, `--skip-report` shards, `--keep-old-results`, or
    * restart), so entries from renamed/deleted tests can't leak into later
-   * runs. Stages must not wipe these themselves.
+   * runs. Viewport-selected runs invalidate only the declared per-unit files,
+   * preserving sibling units. Stages must not wipe these themselves.
    */
-  readonly derivedResultsDirs?: readonly string[];
+  readonly derivedResultsDirs?: readonly DerivedResultsDirectory[];
   readonly machineReportMeta?: (ctx: PipelineMachineReportMetaContext) => PipelineMachineReportMeta;
 }
 

@@ -76,7 +76,9 @@ A viewport rerun replaces the selected viewport’s results and preserves other
 viewports’ outcomes and artifacts. One report card can therefore contain results
 from multiple runs; preserved outcomes keep their original run identity.
 `--keep-old-results` still controls whether artifacts at the selected viewport
-are cleared before measurement.
+are cleared before measurement. Viewport passes retain engine-error records from
+other selections; rerunning the same selection replaces its error record. Audit
+coverage also replaces the selected units’ aggregate inputs, preserving siblings.
 
 `--report-only --viewport phone` validates the label but regenerates the complete
 saved report, just like `--report-only`: it does not filter saved viewports,

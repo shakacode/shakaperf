@@ -51,6 +51,10 @@ export function summarizeCoverage(raw: unknown): CoverageSummary {
   return { files, coveredStatements, totalStatements };
 }
 
+export function nycCoverageFileName(key: string): string {
+  return `${key.replace(/[^a-zA-Z0-9._-]+/g, '_')}.json`;
+}
+
 /**
  * Copy one unit's coverage under a unique name in `<results>/.nyc_output/`.
  * nyc keys FileCoverage entries by absolute path and SUMS hit counts per
@@ -64,6 +68,5 @@ export function mirrorCoverageToNycOutput(
 ): void {
   const nycDir = path.join(resultsRoot, '.nyc_output');
   fs.mkdirSync(nycDir, { recursive: true });
-  const slug = key.replace(/[^a-zA-Z0-9._-]+/g, '_');
-  fs.copyFileSync(coveragePath, path.join(nycDir, `${slug}.json`));
+  fs.copyFileSync(coveragePath, path.join(nycDir, nycCoverageFileName(key)));
 }

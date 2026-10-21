@@ -94,7 +94,8 @@ interface PersistedEngineErrors {
 /**
  * Stable hash of what makes this run's measurement scope distinct from
  * another shard's: filters/patterns narrow the test set, stages pick
- * which work runs. Two shards that hash to the same key are measuring the
+ * which work runs; viewport passes add their label selection. Two shards
+ * that hash to the same key are measuring the
  * same thing — re-running them must overwrite the same persisted file
  * rather than accumulate stale errors.
  */
@@ -102,9 +103,11 @@ function shardKey(
   testPathPattern: string | undefined,
   filter: string | undefined,
   stages: StageName[],
+  viewports?: readonly string[],
 ): string {
   const sortedStages = [...stages].sort().join(',');
-  const input = `${testPathPattern ?? ''}\0${filter ?? ''}\0${sortedStages}`;
+  const scope = `${testPathPattern ?? ''}\0${filter ?? ''}\0${sortedStages}`;
+  const input = viewports ? `${scope}\0${[...viewports].sort().join(',')}` : scope;
   return crypto.createHash('sha256').update(input).digest('hex').slice(0, 12);
 }
 
@@ -499,16 +502,21 @@ async function runConfiguredPipelineWithSelection(
     // returning to local-iteration mode — wipe any leftover shard files so
     // a subsequent `--report-only` can't pick up stale errors from a prior
     // shard pass against the same dir.
-    if (!runtime.skipReport) {
+    if (!runtime.skipReport && !preservedViewportSelection) {
       wipePersistedEngineErrors(resultsRoot);
-      // Pipeline-declared run-level derived dirs (e.g. audit's `.nyc_output/`,
-      // accumulated into by every unit) follow the same rules as the unit-dir
-      // wipe below: cleared only on a fresh local measuring run. Shards
-      // (`--skip-report`) share these dirs, so they are excluded above, and
-      // --keep-old-results / restart layer onto prior artifacts on purpose.
-      if (!preserveOldResults && !preservedViewportSelection) {
-        for (const dir of pipeline.derivedResultsDirs ?? []) {
-          fs.rmSync(path.join(resultsRoot, dir), { recursive: true, force: true });
+    }
+    if (!preserveOldResults) {
+      for (const dir of pipeline.derivedResultsDirs ?? []) {
+        if (preservedViewportSelection) {
+          // Invalidate only the units being replaced, including shards: a
+          // failed measurement must not leave its old derived data as live.
+          for (const unit of units) {
+            for (const file of dir.unitFiles(testAndViewportId(unit))) {
+              fs.rmSync(path.join(resultsRoot, dir.path, file), { force: true });
+            }
+          }
+        } else if (!runtime.skipReport) {
+          fs.rmSync(path.join(resultsRoot, dir.path), { recursive: true, force: true });
         }
       }
     }
@@ -776,6 +784,24 @@ async function runConfiguredPipelineWithSelection(
   });
   console.log(`    all tests assembled in ${((Date.now() - assembleStart) / 1000).toFixed(1)}s`);
 
+  // Viewport passes own one error shard even when producing a report. Keep
+  // sibling viewport errors until their own scope is rerun; a clean phone
+  // measurement must not erase a desktop cleanup failure.
+  if (!runtime.reportOnly && (runtime.skipReport || preservedViewportSelection)) {
+    const key = shardKey(
+      runtime.testPathPattern,
+      runtime.filter,
+      stageSelection.stageNames,
+      preservedViewportSelection,
+    );
+    writePersistedEngineErrors(resultsRoot, key, { engineErrors });
+    if (!runtime.skipReport) {
+      const { persisted, readError } = readPersistedEngineErrors(resultsRoot);
+      engineErrors.splice(0, engineErrors.length, ...(persisted?.engineErrors ?? []));
+      if (readError) engineErrors.push(readError);
+    }
+  }
+
   const data: ReportData = {
     meta: {
       title: path.basename(cwd) + ` · ${pipeline.name}`,
@@ -801,14 +827,6 @@ async function runConfiguredPipelineWithSelection(
   // them in meta.errors; without this, a shard's "visreg engine: timeout"
   // banner would silently disappear at merge time.
   if (runtime.skipReport) {
-    const key = shardKey(
-      runtime.testPathPattern,
-      runtime.filter,
-      stageSelection.stageNames,
-    );
-    writePersistedEngineErrors(resultsRoot, key, {
-      engineErrors,
-    });
     return {
       testResults: data.tests,
       reportPath: '',
