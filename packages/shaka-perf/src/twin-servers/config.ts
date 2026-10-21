@@ -59,7 +59,7 @@ export async function loadConfig(configPath: string): Promise<TwinServersConfig>
   return parseTwinServersConfig(slice);
 }
 
-function expandTilde(filePath: string): string {
+export function expandTilde(filePath: string): string {
   if (filePath.startsWith('~/')) {
     return path.join(os.homedir(), filePath.slice(2));
   }

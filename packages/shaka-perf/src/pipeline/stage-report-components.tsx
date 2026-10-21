@@ -8,6 +8,7 @@
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { ImageSizeContext, ImageViewport } from './image-viewport';
 import { renderPipelineDialogMetaUrls } from './pipeline-artifacts';
+import type { SideRevisions } from './side-revisions';
 export interface StageArtifactTestMeta {
   readonly name: string;
   readonly filePath: string;
@@ -16,6 +17,7 @@ export interface StageArtifactTestMeta {
   readonly experimentUrl: string;
   readonly pipelineName?: string;
   readonly pipelineConfig?: unknown;
+  readonly revisions?: SideRevisions;
 }
 
 const StageArtifactContext = createContext<StageArtifactTestMeta | null>(null);

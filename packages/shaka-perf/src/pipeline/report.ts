@@ -16,6 +16,7 @@ import {
 } from './artifact-store';
 import { persistedOutcomeInScope } from './viewport-plan';
 import type { Outcome } from './outcome';
+import type { SideRevisions } from './side-revisions';
 import type { Pipeline } from './pipeline';
 import type {
   SelfContainedReportStrip,
@@ -130,6 +131,8 @@ export interface ReportMeta {
   experimentUrl: string;
   durationMs: number;
   cwd: string;
+  /** Branch and commit of each twin-servers checkout; absent without twin servers. */
+  revisions?: SideRevisions;
   /**
    * Engine-level (cross-cutting) errors to show as a banner at the top
    * of the report. Per-test / per-stage errors go on the framework Outcome.

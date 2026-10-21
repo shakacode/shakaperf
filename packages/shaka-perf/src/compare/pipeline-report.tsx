@@ -7,6 +7,7 @@
 
 import type { PipelineReport } from '../pipeline/pipeline';
 import type { ReportMeta, TestResult } from '../pipeline/report';
+import type { SideRevision } from '../pipeline/side-revisions';
 import type { StageArtifactTestMeta } from '../pipeline/stage-report-components';
 import { troubleshootCommandFor } from '../troubleshoot/command';
 
@@ -48,6 +49,15 @@ function renderTestCardUrls(test: TestResult) {
   );
 }
 
+function renderRevision(revision: SideRevision | undefined) {
+  if (!revision) return null;
+  return (
+    <span className="ui-dialog__meta-revision" title="branch @ commit">
+      {revision.branch} @ {revision.commit}
+    </span>
+  );
+}
+
 function renderDialogMetaUrls(test: StageArtifactTestMeta) {
   return (
     <>
@@ -57,6 +67,7 @@ function renderDialogMetaUrls(test: StageArtifactTestMeta) {
           <a href={test.controlUrl} target="_blank" rel="noreferrer">
             {test.controlUrl}
           </a>
+          {renderRevision(test.revisions?.control)}
         </dd>
       </div>
       <div>
@@ -65,6 +76,7 @@ function renderDialogMetaUrls(test: StageArtifactTestMeta) {
           <a href={test.experimentUrl} target="_blank" rel="noreferrer">
             {test.experimentUrl}
           </a>
+          {renderRevision(test.revisions?.experiment)}
         </dd>
       </div>
     </>

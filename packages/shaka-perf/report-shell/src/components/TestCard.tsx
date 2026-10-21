@@ -226,7 +226,7 @@ export function TestCard({
           </dl>
 
           <div className="card__body">
-            <StageArtifactProvider test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}>
+            <StageArtifactProvider test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig, revisions: meta.revisions }}>
               {groups.map((outcomes, index) => (
                 <OutcomeSlot
                   key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
@@ -279,7 +279,7 @@ export function TestCard({
         open={logsOpen}
         onClose={() => setLogsOpen(false)}
         title={<span className="ui-dialog__title-text">measurement logs</span>}
-        meta={<TestMeta test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }} />}
+        meta={<TestMeta test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig, revisions: meta.revisions }} />}
       >
         <div className="card-logs">
           {logs.map((log, index) => (
