@@ -58,7 +58,7 @@ Pass `--filter=<testNameRegex>` to run only tests matching your regex.
 <!-- -->
 
 > [!WARNING]
-> `compare` wipes `shared.resultsFolder` (default: `compare-results/`) at the start of every run, so the output always reflects only the current run. Tests that were renamed or removed since the previous run won't linger. Do not point it at a directory containing files you care about.
+> `compare` wipes the selected tests’ viewport directories in `compare-results/` at the start of every measuring run. With `--viewport <label>`, only that viewport is remeasured; other saved viewport results are preserved. `--report-only` does not wipe saved results. Do not point it at a directory containing files you care about.
 
 ### CLI Options
 

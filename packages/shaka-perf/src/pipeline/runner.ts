@@ -94,7 +94,8 @@ interface PersistedEngineErrors {
 /**
  * Stable hash of what makes this run's measurement scope distinct from
  * another shard's: filters/patterns narrow the test set, stages pick
- * which work runs. Two shards that hash to the same key are measuring the
+ * which work runs; viewport passes add their label selection. Two shards
+ * that hash to the same key are measuring the
  * same thing — re-running them must overwrite the same persisted file
  * rather than accumulate stale errors.
  */
@@ -102,9 +103,11 @@ function shardKey(
   testPathPattern: string | undefined,
   filter: string | undefined,
   stages: StageName[],
+  viewports?: readonly string[],
 ): string {
   const sortedStages = [...stages].sort().join(',');
-  const input = `${testPathPattern ?? ''}\0${filter ?? ''}\0${sortedStages}`;
+  const scope = `${testPathPattern ?? ''}\0${filter ?? ''}\0${sortedStages}`;
+  const input = viewports ? `${scope}\0${[...viewports].sort().join(',')}` : scope;
   return crypto.createHash('sha256').update(input).digest('hex').slice(0, 12);
 }
 
@@ -359,6 +362,9 @@ export interface RuntimeOptions {
    * test pinned itself. Matching nothing is an error, not an empty run.
    */
   readonly viewportsFilter?: readonly string[] | undefined;
+  /** Scope cleanup and generated skip markers to viewportsFilter. Compare/audit
+   * opt in; troubleshoot retains its existing clean-slate behavior. */
+  readonly preserveOtherViewports?: boolean | undefined;
   /**
    * `shaka-perf troubleshoot`: suppress every measurement-browser teardown, so
    * the browsers survive the run — including a failing one. The caller must
@@ -431,6 +437,8 @@ async function runConfiguredPipelineWithSelection(
   // earlier stages' outputs (e.g. the Lighthouse profile the restarted stage
   // reads) live there alongside the restarted stages' soon-to-be-redone files.
   const preserveOldResults = runtime.keepOldResults === true || restarting;
+  const preservedViewportSelection = runtime.preserveOtherViewports
+    ? runtime.viewportsFilter : undefined;
 
   // Execute the narrowed selection. A normal filtered run should report only
   // the tests it just executed, otherwise stale sibling outcomes already on
@@ -461,6 +469,25 @@ async function runConfiguredPipelineWithSelection(
       : runTests;
   }
 
+  const units = expandWorkUnits(
+    runTests,
+    executableStages,
+    runtime.config,
+    {
+      store,
+      hydratePriorStages: stageSelection.skippedStages
+        .filter((entry) => !entry.persistOutcome)
+        .map((entry) => entry.stage),
+      ...(runtime.viewportsFilter ? { viewportsFilter: runtime.viewportsFilter } : {}),
+    },
+  );
+
+  if (!runtime.reportOnly && preservedViewportSelection && units.length === 0) {
+    throw new Error(`--viewport ${preservedViewportSelection.join(', ')} matched no work in the selected tests and categories.`);
+  }
+
+  const measuredTestIds = new Set(units.map((unit) => testIdForTest(unit.test)));
+
   // Ensure the results root exists without wiping prior artifacts. CI shards
   // (`skipReport`) and the final assembly run (`reportOnly`) both rely on
   // earlier per-test dirs being present; local iterative runs rely on the
@@ -475,17 +502,12 @@ async function runConfiguredPipelineWithSelection(
     // returning to local-iteration mode — wipe any leftover shard files so
     // a subsequent `--report-only` can't pick up stale errors from a prior
     // shard pass against the same dir.
-    if (!runtime.skipReport) {
+    if (!runtime.skipReport && !preservedViewportSelection) {
       wipePersistedEngineErrors(resultsRoot);
-      // Pipeline-declared run-level derived dirs (e.g. audit's `.nyc_output/`,
-      // accumulated into by every unit) follow the same rules as the unit-dir
-      // wipe below: cleared only on a fresh local measuring run. Shards
-      // (`--skip-report`) share these dirs, so they are excluded above, and
-      // --keep-old-results / restart layer onto prior artifacts on purpose.
-      if (!preserveOldResults) {
-        for (const dir of pipeline.derivedResultsDirs ?? []) {
-          fs.rmSync(path.join(resultsRoot, dir), { recursive: true, force: true });
-        }
+    }
+    if (!preserveOldResults && !preservedViewportSelection && !runtime.skipReport) {
+      for (const dir of pipeline.derivedResultsDirs ?? []) {
+        fs.rmSync(path.join(resultsRoot, dir.path), { recursive: true, force: true });
       }
     }
   }
@@ -514,18 +536,6 @@ async function runConfiguredPipelineWithSelection(
     ...(runtime.cdpPorts ? { cdpPorts: runtime.cdpPorts } : {}),
     burn: runtime.burn ?? null,
   };
-  const units = expandWorkUnits(
-    runTests,
-    executableStages,
-    runtime.config,
-    {
-      store,
-      hydratePriorStages: stageSelection.skippedStages
-        .filter((entry) => !entry.persistOutcome)
-        .map((entry) => entry.stage),
-      ...(runtime.viewportsFilter ? { viewportsFilter: runtime.viewportsFilter } : {}),
-    },
-  );
 
   // Single wipe authority: one cleanup per pipeline run, before any stage
   // runs. Engines no longer wipe internally — that was the source of the
@@ -533,7 +543,8 @@ async function runConfiguredPipelineWithSelection(
   // mid-flight).
   //
   // Run-scope sweep: for this run's tests, at EVERY viewport the effective
-  // config defines — not just this run's planned units — delete the selected
+  // config defines (limited to the requested label when preserving other
+  // viewports) — not just this run's planned units — delete the selected
   // stages' outcomes and then remove the unit dir wholesale. A per-test
   // viewport override (or a config edit) shrinks the plan, so abandoned
   // viewports' stale outcomes would otherwise survive every subsequent run and
@@ -561,17 +572,25 @@ async function runConfiguredPipelineWithSelection(
   if (!runtime.reportOnly) {
     if (!preserveOldResults) {
       for (const test of runTests) {
-        // Every viewport this test could have a unit dir for — the DEFINITION
-        // registry, not a category's run list, since a stale dir from a wider
-        // earlier run still has to be swept. Per-test effective config: an
-        // override may swap the definitions themselves.
-        const definitions = applyPerTestConfigOverrides(runtime.config, test)
-          .shared.viewportDefinitions;
-        for (const viewport of definitions) {
+        // A viewport pass sweeps its requested labels even if a test narrowed
+        // its viewport list or replaced the definition registry. Other callers
+        // retain the normal sweep over the effective definition registry.
+        const labels = preservedViewportSelection ?? applyPerTestConfigOverrides(runtime.config, test)
+          .shared.viewportDefinitions.map((viewport) => viewport.label);
+        for (const label of labels) {
           for (const stage of executableStages) {
-            store.deleteOutcome(test, viewport.label, stage.name);
+            store.deleteOutcome(test, label, stage.name);
           }
-          store.removeUnitDir(test, viewport.label);
+          if (preservedViewportSelection) {
+            // Derived inputs share the exact outcome cleanup scope, including
+            // abandoned units outside the current measurement plan.
+            for (const dir of pipeline.derivedResultsDirs ?? []) {
+              for (const file of dir.unitFiles(unitIdForTest(test, label))) {
+                fs.rmSync(path.join(resultsRoot, dir.path, file), { force: true });
+              }
+            }
+          }
+          store.removeUnitDir(test, label);
         }
       }
     }
@@ -680,7 +699,16 @@ async function runConfiguredPipelineWithSelection(
     }
   }
   if (!runtime.reportOnly) {
-    persistCliSkippedStageOutcomes(store, reportTests, stageSelection, reportedStages, runtime.config);
+    persistCliSkippedStageOutcomes(
+      store,
+      preservedViewportSelection
+        ? runTests.filter((test) => measuredTestIds.has(testIdForTest(test)))
+        : reportTests,
+      stageSelection,
+      reportedStages,
+      runtime.config,
+      preservedViewportSelection,
+    );
   }
 
   console.log(
@@ -703,7 +731,10 @@ async function runConfiguredPipelineWithSelection(
         store,
         categories,
         reportedStages,
-        reportOnly: runtime.reportOnly === true,
+        reportOnly: runtime.reportOnly === true || (
+          preservedViewportSelection !== undefined && !measuredTestIds.has(testIdForTest(test))
+        ),
+        viewportsFilter: preservedViewportSelection,
         config: runtime.config,
       });
       assembledCount += 1;
@@ -750,6 +781,24 @@ async function runConfiguredPipelineWithSelection(
   });
   console.log(`    all tests assembled in ${((Date.now() - assembleStart) / 1000).toFixed(1)}s`);
 
+  // Viewport passes own one error shard even when producing a report. Keep
+  // sibling viewport errors until their own scope is rerun; a clean phone
+  // measurement must not erase a desktop cleanup failure.
+  if (!runtime.reportOnly && (runtime.skipReport || preservedViewportSelection)) {
+    const key = shardKey(
+      runtime.testPathPattern,
+      runtime.filter,
+      stageSelection.stageNames,
+      preservedViewportSelection,
+    );
+    writePersistedEngineErrors(resultsRoot, key, { engineErrors });
+    if (!runtime.skipReport) {
+      const { persisted, readError } = readPersistedEngineErrors(resultsRoot);
+      engineErrors.splice(0, engineErrors.length, ...(persisted?.engineErrors ?? []));
+      if (readError) engineErrors.push(readError);
+    }
+  }
+
   const data: ReportData = {
     meta: {
       title: path.basename(cwd) + ` · ${pipeline.name}`,
@@ -775,14 +824,6 @@ async function runConfiguredPipelineWithSelection(
   // them in meta.errors; without this, a shard's "visreg engine: timeout"
   // banner would silently disappear at merge time.
   if (runtime.skipReport) {
-    const key = shardKey(
-      runtime.testPathPattern,
-      runtime.filter,
-      stageSelection.stageNames,
-    );
-    writePersistedEngineErrors(resultsRoot, key, {
-      engineErrors,
-    });
     return {
       testResults: data.tests,
       reportPath: '',
@@ -1142,6 +1183,7 @@ function persistCliSkippedStageOutcomes(
   stageSelection: StageSelection,
   reportedStages: readonly Stage[],
   config: AbTestsConfig,
+  viewportsFilter?: readonly string[],
 ): void {
   const skippedStages = stageSelection.skippedStages.filter((entry) => entry.persistOutcome);
   if (skippedStages.length === 0) return;
@@ -1151,6 +1193,7 @@ function persistCliSkippedStageOutcomes(
     const viewports = viewportsForTestAcrossStages(test, reportedStages, config);
     for (const { stage, reason } of skippedStages) {
       for (const viewport of viewports) {
+        if (viewportsFilter && !viewportsFilter.includes(viewport.label)) continue;
         store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason));
       }
     }
@@ -1351,6 +1394,7 @@ interface BuildTestResultOpts {
   /** See `reportedStagesFor`: the row set is derived from these, not every registered stage. */
   reportedStages: readonly Stage[];
   reportOnly: boolean;
+  viewportsFilter?: readonly string[] | undefined;
   config: AbTestsConfig;
 }
 
@@ -1388,6 +1432,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
           categoryStages,
           `skipped: test opted out of ${testType} via testTypes`,
           config,
+          opts.viewportsFilter,
         );
       }
     }
@@ -1513,9 +1558,11 @@ function persistSkippedOutcomesForStages(
   stages: readonly Stage[],
   reason: string,
   config: AbTestsConfig,
+  viewportsFilter?: readonly string[],
 ): void {
   for (const stage of stages) {
     for (const viewport of viewportsForCategory(config, stage.category)) {
+      if (viewportsFilter && !viewportsFilter.includes(viewport.label)) continue;
       if (store.readOutcome(test, viewport.label, stage.name)) continue;
       store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason));
     }

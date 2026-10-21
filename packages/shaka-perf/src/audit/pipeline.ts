@@ -20,6 +20,7 @@ import { AuditStage, type AuditMetric, type AuditResult } from './stages/audit';
 import { AccessibilityStage, type AccessibilityResult, type AccessibilityStageConfig } from './stages/accessibility';
 import { AgentReadinessStage, type AgentReadinessStageConfig } from './stages/agent_readiness';
 import { CodeCoverageStage } from './stages/code_coverage';
+import { nycCoverageFileName } from './stages/code_coverage/coverage-artifacts';
 import {
   METRIC_LEVEL_CHIP_COLOR,
   classifyMetric,
@@ -56,7 +57,8 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     // The code_coverage stage mirrors each unit's coverage.json here (see
     // mirrorCoverageToNycOutput); the runner wipes it before a fresh run so
     // orphan slugs from renamed/deleted tests can't pollute the nyc report.
-    derivedResultsDirs: ['.nyc_output'],
+    // A viewport rerun replaces only its own mirrors, even if measurement fails.
+    derivedResultsDirs: [{ path: '.nyc_output', unitFiles: (unitId) => [nycCoverageFileName(unitId)] }],
     machineReportMeta: ({ rows }) => auditMachineReportMeta(input, rows),
   }, (pipeline) => {
     const workerPool = pipeline.registerWorkerPool(input.parallelism);

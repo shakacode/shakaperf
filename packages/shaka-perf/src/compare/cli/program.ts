@@ -10,6 +10,7 @@ import { withAbTestsConfigPath } from '../../effective-config';
 import { findAbTestsConfig, loadAbTestsConfig } from '../../config-loader';
 import { buildAbTestsConfig } from '../../config';
 import { runPipeline } from '../../pipeline/runner';
+import { selectedViewportFilter, VIEWPORT_OPTION_DESCRIPTION } from '../../pipeline/viewport-selection';
 import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../../pipeline/burn';
 import { printReportSummary, reportPipelineFailure } from '../../pipeline/report-summary';
 import {
@@ -37,6 +38,7 @@ export function createCompareCommand(
       '--restart-from-stage <stage>',
       `Restart from this stage: discard its results and all later stages' results, then re-run them; earlier stages' results are preserved (${validStages.join(', ')})`,
     )
+    .option('--viewport <label>', VIEWPORT_OPTION_DESCRIPTION)
     .option('--report-only', 'Re-render the HTML report from existing compare-results/ stage outcomes without re-running engines. Complements --skip-report for sharded CI assembly.', false)
     .option('--skip-report', 'Run the engines but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
     .option('--keep-old-results', 'Do not wipe compare-results/ before running. Engines still overwrite the files they produce, but unrelated artifacts from a prior run survive instead of being cleared.', false)
@@ -52,6 +54,7 @@ export function createCompareCommand(
       }
       await withAbTestsConfigPath(configPath, async () => {
         const config = buildAbTestsConfig(await loadAbTestsConfig(configPath));
+        const viewportsFilter = selectedViewportFilter(opts.viewport, config);
         const burn = parseBurnOption(opts.burn);
         // Burn replaces retries, visreg's best-of-N included — the visreg
         // stage zeroes compareRetries off `runtime.burn`.
@@ -63,6 +66,8 @@ export function createCompareCommand(
         const restartFromStage = opts.restartFromStage;
         const result = await runPipeline(pipeline, {
           config,
+          viewportsFilter: opts.reportOnly ? undefined : viewportsFilter,
+          preserveOtherViewports: viewportsFilter !== undefined,
           controlURL: opts.controlURL ?? config.shared.controlURL,
           experimentURL: opts.experimentURL ?? config.shared.experimentURL,
           testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
