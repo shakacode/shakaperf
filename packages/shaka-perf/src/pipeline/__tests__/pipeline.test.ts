@@ -294,6 +294,52 @@ describe('runPipeline', () => {
     }
   }, 30_000);
 
+  it('retains saved phone outcomes after narrowing config to desktop without changing their freshness', async () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-saved-viewport-'));
+    const tmpdir = jest.spyOn(os, 'tmpdir').mockReturnValue(cwd);
+    const configFor = (label: string) => buildAbTestsConfig({
+      shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test',
+        parallelism: 1, retries: 0,
+        playwrightOptions: { browser: 'chromium', waitTimeout: 1_000 },
+        browserConsole: { failOn: [], allowList: [] }, viewports: [label] },
+      visreg: { viewports: [label] }, perf: { viewports: [label] },
+    });
+    const run = (label: string, extra: Partial<RuntimeOptions> = {}) => runPipeline(pipeline(), {
+      cwd, tests: [frozenTest], config: configFor(label),
+      controlURL: 'http://control.test', experimentURL: 'http://experiment.test',
+      skipReport: true, ...extra,
+    });
+    try {
+      const phone = await run('phone');
+      const store = new ArtifactStore(path.join(cwd, 'test-results'));
+      const file = path.join(store.unitDirForViewport(frozenTest, 'phone'), 'visreg.json');
+      store.writeOutcome(frozenTest, 'phone', { kind: 'error', stage: 'visreg',
+        runId: phone.testResults[0]!.runId!, error: { message: 'Archived phone error' } });
+      const contents = fs.readFileSync(file, 'utf8');
+      const mtime = fs.statSync(file).mtimeMs;
+      const desktop = await run('desktop', { keepOldResults: true });
+      const result = desktop.testResults[0]!;
+      expect(result.outcomes.filter((o) => o.viewport.label === 'phone' && o.kind === 'ok')).toHaveLength(3);
+      expect(result.outcomes.filter((o) => o.viewport.label === 'phone').every((o) => o.outsideCurrentConfig)).toBe(true);
+      expect(result.outcomes.find((o) => o.viewport.label === 'phone')!.runId).toBe(phone.testResults[0]!.runId);
+      expect(result.runId).not.toBe(phone.testResults[0]!.runId);
+      expect(desktop.hasFailures).toBe(false);
+      expect(result.chips.map((chip) => chip.tag)).toContain('broken');
+      expect(result.currentConfig!.chips.map((chip) => chip.tag)).not.toContain('broken');
+      for (const filter of [undefined, frozenTest.name]) {
+        const report = await run('desktop', { reportOnly: true, skipReport: false, filter });
+        expect(report.testResults).toEqual(desktop.testResults);
+        const machine = JSON.parse(fs.readFileSync(path.join(cwd, 'test-results/report.json'), 'utf8'));
+        expect(machine.tests.map((t: { viewport: { label: string } }) => t.viewport.label).sort()).toEqual(['desktop', 'phone']);
+        expect(fs.readFileSync(file, 'utf8')).toBe(contents);
+        expect(fs.statSync(file).mtimeMs).toBe(mtime);
+      }
+    } finally {
+      tmpdir.mockRestore();
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   it.each([false, true])('keeps explicit file selections when local discovery is empty: %s', async (empty) => {
     const local = { ...frozenTest, name: 'Local sibling' };
     jest.mocked(loadTests).mockImplementation(async (options) => {

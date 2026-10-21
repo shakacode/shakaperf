@@ -9,6 +9,7 @@ import { testRunsForType, type AbTestDefinition, type TestType } from 'shaka-sha
 import { viewportsForCategory, type AbTestsConfig, type Viewport } from '../config';
 import { applyPerTestConfigOverrides } from '../effective-config';
 import type { Outcome } from './outcome';
+import type { ArtifactStore } from './artifact-store';
 import type { Stage } from '../stage/stage';
 
 /**
@@ -86,4 +87,24 @@ export function persistedOutcomeInScope(
   if (!testRunsForType(test, stage.category)) return false;
   return resolveViewportsForTest(test, fileConfig, stage.category)
     .some((vp) => vp.label === viewportLabel);
+}
+
+/** Include measured saved viewports even when the current config no longer selects them.
+ * Skip-only units are explanations, not saved measurements to resurrect.
+ */
+export function viewportsForSavedReport(
+  test: AbTestDefinition,
+  stages: readonly Stage[],
+  fileConfig: AbTestsConfig,
+  store: ArtifactStore,
+): Viewport[] {
+  const current = viewportsForTestAcrossStages(test, stages, fileConfig);
+  const viewports = new Map(current.map((viewport) => [viewport.label, viewport]));
+  for (const viewport of applyPerTestConfigOverrides(fileConfig, test).shared.viewportDefinitions) {
+    if (viewports.has(viewport.label)) continue;
+    if (store.readOutcomesForViewport(test, viewport.label).some((outcome) => outcome.kind !== 'skipped')) {
+      viewports.set(viewport.label, viewport);
+    }
+  }
+  return [...viewports.values()];
 }

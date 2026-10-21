@@ -55,6 +55,55 @@ describe('latest measurement run visibility', () => {
   it.each([
     ['compare', 'full'], ['compare', 'self-contained'],
     ['audit', 'full'], ['audit', 'self-contained'],
+  ] as const)('%s %s reveals config-excluded viewports only in full suite', async (pipeline, mode) => {
+    const data = fixture(pipeline, mode);
+    const mixed = data.tests.find((test) => test.name === 'Mixed')!;
+    mixed.outcomes = mixed.outcomes.map((outcome) => ({
+      ...outcome, ...(outcome.viewport.label === 'phone' ? { outsideCurrentConfig: true } : {}),
+    }));
+    const current = data.tests.find((test) => test.name === 'Current')!;
+    current.outcomes = current.outcomes.map((outcome) => ({ ...outcome, outsideCurrentConfig: true }));
+    const file = path.join(directory, `config-${pipeline}-${mode}.html`);
+    fs.writeFileSync(file, renderReportHtml(data));
+    const page = await browser.newPage();
+    try {
+      await page.goto(pathToFileURL(file).href);
+      await page.locator('.card').first().waitFor();
+      const card = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Mixed', exact: true }) });
+      const names = () => page.locator('.card__title').allTextContents();
+      const toggle = page.getByRole('checkbox', { name: 'Show full suite', exact: true });
+      expect(await names()).toEqual(['Mixed']);
+      expect(await card.textContent()).not.toContain('Older phone result');
+      await toggle.check();
+      expect((await names()).sort()).toEqual(['Current', 'Mixed', 'Older']);
+      expect(await card.textContent()).toContain('Older phone result');
+      expect(await card.textContent()).toContain('phone · old run');
+      await toggle.uncheck();
+      expect(await names()).toEqual(['Mixed']);
+      expect(await card.textContent()).not.toContain('Older phone result');
+
+      await page.locator('input[type=search]').fill('Mixed');
+      await page.getByRole('button', { name: 'passed · 2', exact: true }).click();
+      const filters = await page.locator('.filterbar').first().innerHTML();
+      const summary = page.locator('.stage-filter summary');
+      await summary.click();
+      await page.locator('.stage-filter').getByRole('button', { name: 'none', exact: true }).click();
+      const sections = await summary.textContent();
+      for (const checked of [true, false]) {
+        await toggle.setChecked(checked);
+        expect(await names()).toEqual([]);
+        expect(await page.locator('input[type=search]').inputValue()).toBe('Mixed');
+        expect(await page.locator('.filterbar').first().innerHTML()).toBe(filters);
+        expect(await summary.textContent()).toBe(sections);
+      }
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
+  it.each([
+    ['compare', 'full'], ['compare', 'self-contained'],
+    ['audit', 'full'], ['audit', 'self-contained'],
   ] as const)('%s %s intersects suite visibility with existing controls', async (pipeline, mode) => {
     const file = path.join(directory, `${pipeline}-${mode}.html`);
     fs.writeFileSync(file, renderReportHtml(fixture(pipeline, mode)));

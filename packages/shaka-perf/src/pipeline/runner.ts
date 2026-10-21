@@ -46,6 +46,7 @@ import {
   persistedOutcomeInScope,
   resolveViewportsForTest,
   viewportsForTestAcrossStages,
+  viewportsForSavedReport,
 } from './viewport-plan';
 import { applyPerTestConfigOverrides } from '../effective-config';
 import { viewportsForCategory } from '../config';
@@ -742,37 +743,50 @@ async function runConfiguredPipelineWithSelection(
       return partial;
     }),
   );
-  const perTest: ChipTestEntry<Record<string, unknown>>[] = partials.map((p) => ({
-    test: p.test,
-    results: p.chipResults,
-  }));
-  const chipsByTest = pipeline.chipsForAllTests(perTest, {
-    readJsonArtifact: <T>(artifactPath: string) =>
-      store.readJsonArtifact<T>(artifactPath),
+  const resultsForScope = (currentOnly: boolean): TestResult[] => {
+    const scopePartials = partials.map((p) => {
+      if (!currentOnly) return p;
+      const outcomes = p.partialResult.outcomes.filter((outcome) => !outcome.outsideCurrentConfig);
+      return { ...p, partialResult: { ...p.partialResult, outcomes, runId: newestRunId(outcomes) },
+        hasError: outcomes.some((outcome) => outcome.kind === 'error'),
+        chipResults: chipResultsForOutcomes(pipeline, outcomes) };
+    });
+    const perTest: ChipTestEntry<Record<string, unknown>>[] = scopePartials.map((p) => ({
+      test: p.test,
+      results: p.chipResults,
+    }));
+    const chipsByTest = pipeline.chipsForAllTests(perTest, {
+      readJsonArtifact: <T>(artifactPath: string) =>
+        store.readJsonArtifact<T>(artifactPath),
+    });
+    const sortsByTest = pipeline.sortsForAllTests(perTest);
+    // Mirror what each test ends up rendering — including the synthetic
+    // `brokenChip()` for failed tests — so the machine report agrees with the
+    // HTML report on what chips each test carries.
+    return scopePartials.map((p) => {
+      // Cross-cutting, runner-owned chip (not a pipeline concern): any stage task
+      // that crashed/timed out and recovered on a retry makes the test flaky.
+      const recovered = p.partialResult.outcomes.some((o) => o.recoveredAfterRetries);
+      const flaky = recovered ? [flakyChip()] : [];
+      if (p.hasError) {
+        const chips = [brokenChip(), ...flaky];
+        // Failed tests have no measured values to sort by.
+        return { ...p.partialResult, chips, sorts: [] };
+      }
+      const chips = chipsByTest.get(p.test);
+      if (!chips) throw new Error(`chipsForAllTests omitted test ${p.test.name}`);
+      const copy = [...chips, ...flaky];
+      // A sort builder may legitimately omit a test (nothing sortable) → [].
+      return { ...p.partialResult, chips: copy, sorts: [...(sortsByTest.get(p.test) ?? [])] };
+    });
+  };
+  const currentResults = resultsForScope(true);
+  const testResults = resultsForScope(false).map((test, index) => {
+    if (!test.outcomes.some((outcome) => outcome.outsideCurrentConfig)) return test;
+    const { chips, sorts, runId } = currentResults[index]!;
+    return { ...test, currentConfig: { chips, sorts, runId } };
   });
-  const sortsByTest = pipeline.sortsForAllTests(perTest);
-  // Mirror what each test ends up rendering — including the synthetic
-  // `brokenChip()` for failed tests — so the machine report agrees with the
-  // HTML report on what chips each test carries.
-  const finalChipsByTest = new Map<AbTestDefinition, readonly ChipDescriptor[]>();
-  const testResults: TestResult[] = partials.map((p) => {
-    // Cross-cutting, runner-owned chip (not a pipeline concern): any stage task
-    // that crashed/timed out and recovered on a retry makes the test flaky.
-    const recovered = p.partialResult.outcomes.some((o) => o.recoveredAfterRetries);
-    const flaky = recovered ? [flakyChip()] : [];
-    if (p.hasError) {
-      const chips = [brokenChip(), ...flaky];
-      finalChipsByTest.set(p.test, chips);
-      // Failed tests have no measured values to sort by.
-      return { ...p.partialResult, chips, sorts: [] };
-    }
-    const chips = chipsByTest.get(p.test);
-    if (!chips) throw new Error(`chipsForAllTests omitted test ${p.test.name}`);
-    const copy = [...chips, ...flaky];
-    finalChipsByTest.set(p.test, copy);
-    // A sort builder may legitimately omit a test (nothing sortable) → [].
-    return { ...p.partialResult, chips: copy, sorts: [...(sortsByTest.get(p.test) ?? [])] };
-  });
+  const finalChipsByTest = new Map(partials.map((p, index) => [p.test, testResults[index]!.chips]));
   console.log(`    all tests assembled in ${((Date.now() - assembleStart) / 1000).toFixed(1)}s`);
 
   // Viewport passes own one error shard even when producing a report. Keep
@@ -812,9 +826,8 @@ async function runConfiguredPipelineWithSelection(
     tests: testResults,
   };
 
-  const failureData = runtime.reportOnly
-    ? data
-    : { ...data, tests: data.tests.filter((test) => measuredTestIds.has(test.id)) };
+  const failureData = { ...data, tests: currentResults.filter((test) =>
+    runtime.reportOnly || measuredTestIds.has(test.id)) };
 
   // Under skipReport the shard produces no top-level artifacts — only the
   // per-test engine output already written by the stages. Its engine errors
@@ -853,13 +866,14 @@ async function runConfiguredPipelineWithSelection(
   writeMachineReport(
     path.join(resultsRoot, 'report.json'),
     reportTests,
-    (test) => viewportsForTestAcrossStages(test, reportedStages, runtime.config),
+    (test) => viewportsForSavedReport(test, reportedStages, runtime.config, store),
     pipeline,
     data.meta,
     store,
     stageRuntime,
     finalChipsByTest,
     runtime.config,
+    reportedStages,
   );
 
   return {
@@ -1438,13 +1452,14 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
 
   const relFilePath = test.file ? path.relative(cwd, test.file) : '(unknown source)';
   const stagesByName = new Map(pipeline.stages.map((stage, index) => [stage.name, { stage, index }]));
-  const viewportOutcomes = viewportsForTestAcrossStages(test, reportedStages, config).flatMap((viewport) =>
+  const currentViewports = new Set(viewportsForTestAcrossStages(test, reportedStages, config).map((vp) => vp.label));
+  const reportViewports = viewportsForSavedReport(test, reportedStages, config, store);
+  const viewportOutcomes = reportViewports.flatMap((viewport) =>
     store.readOutcomesForViewport(test, viewport.label)
-      // Drop stale on-disk outcomes from earlier runs at viewports this test's
-      // effective config no longer runs the stage's category at.
-      .filter((outcome) =>
-        persistedOutcomeInScope(test, config, stagesByName.get(outcome.stage)?.stage, outcome, viewport.label))
-      .map((outcome) => ({ outcome, viewport })),
+      .map((outcome) => ({ outcome, viewport,
+        outsideCurrentConfig: !currentViewports.has(viewport.label) ||
+          !persistedOutcomeInScope(test, config, stagesByName.get(outcome.stage)?.stage, outcome, viewport.label),
+      })),
   ).sort((a, b) => {
     // Render order = DESCENDING renderingPriority (higher shows first), ties
     // broken by registration order. Decoupled from execution order so a stage
@@ -1456,11 +1471,13 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
     if (pa !== pb) return pb - pa;
     return (sa?.index ?? Number.MAX_SAFE_INTEGER) - (sb?.index ?? Number.MAX_SAFE_INTEGER);
   });
-  const outcomes = viewportOutcomes.map(({ outcome, viewport }) => ({ ...outcome, viewport }));
+  const outcomes = viewportOutcomes.map(({ outcome, viewport, outsideCurrentConfig }) => ({
+    ...outcome, viewport, ...(outsideCurrentConfig ? { outsideCurrentConfig: true } : {}),
+  }));
   const hasError = outcomes.some((outcome) => outcome.kind === 'error');
   const chipResults = chipResultsForOutcomes(pipeline, outcomes);
   const runId = newestRunId(outcomes);
-  const viewportArtifactPaths = viewportsForTestAcrossStages(test, reportedStages, config).map((vp) => ({
+  const viewportArtifactPaths = reportViewports.map((vp) => ({
     viewport: vp.label,
     path: store.unitDirForViewport(test, vp.label),
   }));

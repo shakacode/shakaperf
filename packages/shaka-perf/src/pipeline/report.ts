@@ -14,7 +14,7 @@ import {
   mimeTypeForArtifactPath,
   type ArtifactStore,
 } from './artifact-store';
-import { persistedOutcomeInScope } from './viewport-plan';
+import { persistedOutcomeInScope, viewportsForTestAcrossStages } from './viewport-plan';
 import type { Outcome } from './outcome';
 import type { Pipeline } from './pipeline';
 import type {
@@ -85,6 +85,8 @@ export type Status =
 
 export type ReportOutcome = Outcome & {
   viewport: Viewport;
+  /** Saved result outside the current measurement configuration; revealed by Show full suite. */
+  outsideCurrentConfig?: boolean;
 };
 
 export interface TestResult {
@@ -114,6 +116,8 @@ export interface TestResult {
   measuredAt: number | null;
   runId: string | null;
   outcomes: ReportOutcome[];
+  /** Status and freshness for the default view, excluding archived results. */
+  currentConfig?: Pick<TestResult, 'chips' | 'sorts' | 'runId'>;
   /**
    * Absolute on-disk artifact directory for each viewport this test could
    * produce work in. Useful for jumping straight to screenshots, traces,
@@ -593,6 +597,7 @@ export function writeMachineReport(
   runtime: StageRuntime,
   chipsByTest: ReadonlyMap<AbTestDefinition, readonly ChipDescriptor[]>,
   config: AbTestsConfig,
+  reportedStages: readonly Stage[] = pipeline.stages,
 ): void {
   const stagesByName = new Map<StageName, Stage>(
     pipeline.stages.map((stage) => [stage.name, stage]),
@@ -600,10 +605,12 @@ export function writeMachineReport(
   const rows = tests.flatMap((test) => viewportsByTest(test).map((viewport) => ({
     test,
     viewport,
-    // Same stale-outcome guard as the HTML report (see buildTestPartial).
-    outcomes: store.readOutcomesForViewport(test, viewport.label)
-      .filter((outcome) =>
-        persistedOutcomeInScope(test, config, stagesByName.get(outcome.stage), outcome, viewport.label)),
+    outcomes: store.readOutcomesForViewport(test, viewport.label).map((outcome) => ({
+      ...outcome,
+      ...(!viewportsForTestAcrossStages(test, reportedStages, config).some((vp) => vp.label === viewport.label) ||
+        !persistedOutcomeInScope(test, config, stagesByName.get(outcome.stage), outcome, viewport.label)
+        ? { outsideCurrentConfig: true } : {}),
+    })),
   })));
   const machineReportMeta = pipeline.machineReportMeta?.({
     rows,
@@ -645,6 +652,7 @@ export function writeMachineReport(
       outcomes: outcomes.map((outcome) => ({
         kind: outcome.kind,
         stage: outcome.stage,
+        ...(outcome.outsideCurrentConfig ? { outsideCurrentConfig: true } : {}),
         error: outcome.error,
         reason: outcome.reason,
         logs: outcome.logs,

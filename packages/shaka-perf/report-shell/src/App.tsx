@@ -186,6 +186,14 @@ function runKey(test: TestResult): string | null {
   return test.runId ?? null;
 }
 
+function currentConfigurationTest(test: TestResult): TestResult {
+  const outcomes = test.outcomes.filter((outcome) => !outcome.outsideCurrentConfig);
+  if (outcomes.length === test.outcomes.length) return test;
+  const runId = outcomes.reduce<string | null>((latest, outcome) =>
+    outcome.runId && (!latest || outcome.runId > latest) ? outcome.runId : latest, null);
+  return { ...test, ...test.currentConfig, outcomes, runId };
+}
+
 function newestRunKey(tests: readonly TestResult[]): string | null {
   let latest: string | null = null;
   for (const test of tests) {
@@ -344,6 +352,11 @@ export function App({
     () => data.tests.filter((test) => hasReportableOutcomes(test, isBisectReport)),
     [data.tests, isBisectReport],
   );
+  // Filter catalogs remain based on the full saved dataset, so toggling scope
+  // never resets a search, status, or section selection.
+  const displayTests = useMemo(() =>
+    !isBisectReport && !showFullSuite ? cardTests.map(currentConfigurationTest) : cardTests,
+  [cardTests, isBisectReport, showFullSuite]);
   const chipFilters = useMemo(() => buildChipFilters(cardTests), [cardTests]);
   const chipTestSets = useMemo(() => buildChipTestSets(cardTests), [cardTests]);
   const accessibilityResults = useMemo(() => accessibilityResultsForTests(cardTests), [cardTests]);
@@ -379,8 +392,8 @@ export function App({
     [cardTests, data.meta],
   );
   const renderedStagesByTest = useMemo(
-    () => new Map(cardTests.map((test) => [test.id, stagesThatRender(data.meta, test)])),
-    [cardTests, data.meta],
+    () => new Map(displayTests.map((test) => [test.id, stagesThatRender(data.meta, test)])),
+    [displayTests, data.meta],
   );
   const visibleStages = useMemo(
     () => normalizeStageSelection(visibleStageOverride, stageFilterOptions),
@@ -418,7 +431,7 @@ export function App({
     });
   }, [stageFilterOptions]);
   const sortOptions = useMemo(() => buildSortOptions(cardTests), [cardTests]);
-  const sortValues = useMemo(() => buildSortValues(cardTests), [cardTests]);
+  const sortValues = useMemo(() => buildSortValues(displayTests), [displayTests]);
   const allTestIds = useMemo(
     () => chipTestSets.get(ALL_FILTER_KEY) ?? new Set<string>(),
     [chipTestSets],
@@ -455,7 +468,8 @@ export function App({
   // their existing focus/dimming behavior independently of the suite toggle.
   const visibleTests = useMemo<{ test: TestResult; dimmed: boolean }[]>(() => {
     const out: { test: TestResult; dimmed: boolean }[] = [];
-    for (const t of cardTests) {
+    for (const t of displayTests) {
+      if (!hasReportableOutcomes(t, isBisectReport)) continue;
       if (!isBisectReport && !showFullSuite && latestRunKey != null && runKey(t) !== latestRunKey) continue;
       if (!matchesQuery(t, query)) continue;
       const rendered = renderedStagesByTest.get(t.id) ?? new Set<string>();
@@ -481,7 +495,7 @@ export function App({
   }, [
     bisectSelection.kind,
     bisectTestIds,
-    cardTests,
+    displayTests,
     isBisectReport,
     latestRunKey,
     showFullSuite,
