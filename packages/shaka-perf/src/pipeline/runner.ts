@@ -748,7 +748,7 @@ async function runConfiguredPipelineWithSelection(
       if (!currentOnly) return p;
       const outcomes = p.partialResult.outcomes.filter((outcome) => !outcome.outsideCurrentConfig);
       return { ...p, partialResult: { ...p.partialResult, outcomes, runId: newestRunId(outcomes),
-        measuredAt: freshestArtifactMtime(resultsRoot, p.test, reportedStages, runtime.config) },
+        measuredAt: freshestArtifactMtime(resultsRoot, p.test, outcomes) },
         hasError: outcomes.some((outcome) => outcome.kind === 'error'),
         chipResults: chipResultsForOutcomes(pipeline, outcomes) };
     });
@@ -1500,7 +1500,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
       ),
       code: readTestSource(test.file, test.line),
       durationMs: 0,
-      measuredAt: freshestArtifactMtime(resultsRoot, test, pipeline.stages, config, reportViewports),
+      measuredAt: freshestArtifactMtime(resultsRoot, test, outcomes),
       runId,
       outcomes,
       viewportArtifactPaths,
@@ -1584,42 +1584,22 @@ function persistSkippedOutcomesForStages(
   }
 }
 
-/**
- * Walks the on-disk report.json files for this test across all perf/visreg
- * viewports and returns the freshest mtime (epoch ms), or null if no
- * report.json exists anywhere. Used to render "updated N d H h ago" on each
- * card so that, in a merged --report-only assembly, shards run at different
- * times read clearly as different freshness.
+/** Freshness comes from measured outcomes in the same scope as the rendered results.
+ * Report generation and skipped-stage markers must never make a card look newer.
  */
 function freshestArtifactMtime(
   resultsRoot: string,
   test: AbTestDefinition,
-  stages: readonly Stage[],
-  config: AbTestsConfig,
-  viewports = viewportsForTestAcrossStages(test, stages, config),
+  outcomes: readonly ReportOutcome[],
 ): number | null {
   let freshest = 0;
-  const consider = (absPath: string): void => {
+  for (const outcome of outcomes) {
+    if (outcome.kind === 'skipped') continue;
+    const unit = unitIdForTest(test, outcome.viewport.label);
     try {
-      const m = fs.statSync(absPath).mtimeMs;
-      if (m > freshest) freshest = m;
-    } catch { /* missing: test wasn't measured at this viewport */ }
-  };
-  const considerStageOutcome = (absPath: string): void => {
-    try {
-      const outcome = JSON.parse(fs.readFileSync(absPath, 'utf8')) as Outcome;
-      if (outcome.kind === 'skipped') return;
-    } catch {
-      return;
-    }
-    consider(absPath);
-  };
-  for (const vp of viewports) {
-    const slug = unitIdForTest(test, vp.label);
-    for (const stage of stages) {
-      considerStageOutcome(path.join(resultsRoot, slug, `${stage.name}.json`));
-    }
-    consider(path.join(resultsRoot, slug, 'artifacts', 'report.json'));
+      const mtime = fs.statSync(path.join(resultsRoot, unit, `${outcome.stage}.json`)).mtimeMs;
+      if (mtime > freshest) freshest = mtime;
+    } catch { /* missing: no saved measurement for this outcome */ }
   }
   return freshest > 0 ? freshest : null;
 }

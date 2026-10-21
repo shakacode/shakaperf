@@ -297,12 +297,12 @@ describe('runPipeline', () => {
   it('retains saved phone outcomes after narrowing config to desktop without changing their freshness', async () => {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-saved-viewport-'));
     const tmpdir = jest.spyOn(os, 'tmpdir').mockReturnValue(cwd);
-    const configFor = (label: string) => buildAbTestsConfig({
+    const configFor = (label: string, perfLabel = label) => buildAbTestsConfig({
       shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test',
         parallelism: 1, retries: 0,
         playwrightOptions: { browser: 'chromium', waitTimeout: 1_000 },
         browserConsole: { failOn: [], allowList: [] }, viewports: [label] },
-      visreg: { viewports: [label] }, perf: { viewports: [label] },
+      visreg: { viewports: [label] }, perf: { viewports: [perfLabel] },
     });
     const run = (label: string, extra: Partial<RuntimeOptions> = {}) => runPipeline(pipeline(), {
       cwd, tests: [frozenTest], config: configFor(label),
@@ -318,6 +318,15 @@ describe('runPipeline', () => {
       expect(narrowed.testResults[0]!.outcomes.some((o) => o.viewport.label === 'phone' && o.kind === 'ok')).toBe(true);
       const store = new ArtifactStore(path.join(cwd, 'test-results'));
       const file = path.join(store.unitDirForViewport(frozenTest, 'phone'), 'visreg.json');
+      // Phone remains in scope for perf, but its archived visreg result must
+      // not supply freshness for the default card.
+      const mixedConfig = configFor('desktop', 'phone');
+      const scoped = await run('desktop', { config: mixedConfig, reportOnly: true, skipReport: false });
+      const future = new Date(Date.now() + 60_000);
+      fs.utimesSync(file, future, future);
+      const newerArchive = await run('desktop', { config: mixedConfig, reportOnly: true, skipReport: false });
+      expect(newerArchive.testResults[0]!.currentConfig!.measuredAt).toBe(scoped.testResults[0]!.currentConfig!.measuredAt);
+      expect(newerArchive.testResults[0]!.measuredAt).toBe(fs.statSync(file).mtimeMs);
       store.writeOutcome(frozenTest, 'phone', { kind: 'error', stage: 'visreg',
         runId: phone.testResults[0]!.runId!, error: { message: 'Archived phone error' } });
       const contents = fs.readFileSync(file, 'utf8');
