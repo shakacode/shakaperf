@@ -55,6 +55,34 @@ yarn shaka-perf servers start-containers
 yarn shaka-perf servers start-servers
 ```
 
+## Select a measurement viewport
+
+`compare` and `audit` accept `--viewport <label>`. Use a label from
+`shared.viewportDefinitions`, such as `desktop` or `phone`:
+
+```bash
+shaka-perf compare --viewport desktop
+shaka-perf compare --filter '^Product Detail$' --viewport phone
+shaka-perf audit --viewport desktop
+shaka-perf audit --filter '^Product Detail$' --viewport phone
+```
+
+The selection intersects each test’s effective category viewports; it never adds
+an undeclared viewport. Unknown labels fail with the valid labels. A selection
+with no work fails before changing saved results. Without the option, the usual
+viewport matrix runs.
+
+A viewport rerun replaces the selected viewport’s results and preserves other
+viewports’ outcomes and artifacts. One report card can therefore contain results
+from multiple runs; preserved outcomes keep their original run identity.
+`--keep-old-results` still controls whether artifacts at the selected viewport
+are cleared before measurement.
+
+`--report-only --viewport phone` validates the label but regenerates the complete
+saved report, just like `--report-only`: it does not filter saved viewports,
+remeasure tests, or change their freshness or run identities. Use `--report-only`
+after filtered measurement runs to assemble the full suite’s saved results.
+
 ## License
 
 ShakaPerf is source-available under

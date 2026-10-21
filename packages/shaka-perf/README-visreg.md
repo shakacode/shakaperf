@@ -57,8 +57,12 @@ Pass `--filter=<testNameRegex>` to run only tests matching your regex.
 
 <!-- -->
 
-> [!WARNING]
-> `compare` wipes `shared.resultsFolder` (default: `compare-results/`) at the start of every run, so the output always reflects only the current run. Tests that were renamed or removed since the previous run won't linger. Do not point it at a directory containing files you care about.
+By default, a measuring run clears the selected tests’ viewport directories before
+running. `--viewport <label>` limits that cleanup and measurement to the selected
+viewport, preserving saved results at other viewports. The test’s effective
+category configuration still determines whether that viewport applies. See
+[viewport selection](./README.md#select-a-measurement-viewport) for audit examples,
+run identity, and report-only behavior.
 
 ### CLI Options
 
@@ -66,6 +70,7 @@ Pass `--filter=<testNameRegex>` to run only tests matching your regex.
 -c, --config <path>    Path to abtests.config.ts (default: auto-discovered)
 --categories <list>    Comma-separated subset: visreg,perf (default: both)
 --filter <regex>       Filter tests by name
+--viewport <label>     Measure one declared viewport; preserve other viewport results
 -h, --help             Display usage
 ```
 

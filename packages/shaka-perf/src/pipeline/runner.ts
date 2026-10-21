@@ -359,6 +359,9 @@ export interface RuntimeOptions {
    * test pinned itself. Matching nothing is an error, not an empty run.
    */
   readonly viewportsFilter?: readonly string[] | undefined;
+  /** Scope cleanup and generated skip markers to viewportsFilter. Compare/audit
+   * opt in; troubleshoot retains its existing clean-slate behavior. */
+  readonly preserveOtherViewports?: boolean | undefined;
   /**
    * `shaka-perf troubleshoot`: suppress every measurement-browser teardown, so
    * the browsers survive the run — including a failing one. The caller must
@@ -431,6 +434,8 @@ async function runConfiguredPipelineWithSelection(
   // earlier stages' outputs (e.g. the Lighthouse profile the restarted stage
   // reads) live there alongside the restarted stages' soon-to-be-redone files.
   const preserveOldResults = runtime.keepOldResults === true || restarting;
+  const preservedViewportSelection = runtime.preserveOtherViewports
+    ? runtime.viewportsFilter : undefined;
 
   // Execute the narrowed selection. A normal filtered run should report only
   // the tests it just executed, otherwise stale sibling outcomes already on
@@ -461,6 +466,25 @@ async function runConfiguredPipelineWithSelection(
       : runTests;
   }
 
+  const units = expandWorkUnits(
+    runTests,
+    executableStages,
+    runtime.config,
+    {
+      store,
+      hydratePriorStages: stageSelection.skippedStages
+        .filter((entry) => !entry.persistOutcome)
+        .map((entry) => entry.stage),
+      ...(runtime.viewportsFilter ? { viewportsFilter: runtime.viewportsFilter } : {}),
+    },
+  );
+
+  if (!runtime.reportOnly && preservedViewportSelection && units.length === 0) {
+    throw new Error(`--viewport ${preservedViewportSelection.join(', ')} matched no work in the selected tests and categories.`);
+  }
+
+  const measuredTestIds = new Set(units.map((unit) => testIdForTest(unit.test)));
+
   // Ensure the results root exists without wiping prior artifacts. CI shards
   // (`skipReport`) and the final assembly run (`reportOnly`) both rely on
   // earlier per-test dirs being present; local iterative runs rely on the
@@ -482,7 +506,7 @@ async function runConfiguredPipelineWithSelection(
       // wipe below: cleared only on a fresh local measuring run. Shards
       // (`--skip-report`) share these dirs, so they are excluded above, and
       // --keep-old-results / restart layer onto prior artifacts on purpose.
-      if (!preserveOldResults) {
+      if (!preserveOldResults && !preservedViewportSelection) {
         for (const dir of pipeline.derivedResultsDirs ?? []) {
           fs.rmSync(path.join(resultsRoot, dir), { recursive: true, force: true });
         }
@@ -514,18 +538,6 @@ async function runConfiguredPipelineWithSelection(
     ...(runtime.cdpPorts ? { cdpPorts: runtime.cdpPorts } : {}),
     burn: runtime.burn ?? null,
   };
-  const units = expandWorkUnits(
-    runTests,
-    executableStages,
-    runtime.config,
-    {
-      store,
-      hydratePriorStages: stageSelection.skippedStages
-        .filter((entry) => !entry.persistOutcome)
-        .map((entry) => entry.stage),
-      ...(runtime.viewportsFilter ? { viewportsFilter: runtime.viewportsFilter } : {}),
-    },
-  );
 
   // Single wipe authority: one cleanup per pipeline run, before any stage
   // runs. Engines no longer wipe internally — that was the source of the
@@ -533,7 +545,8 @@ async function runConfiguredPipelineWithSelection(
   // mid-flight).
   //
   // Run-scope sweep: for this run's tests, at EVERY viewport the effective
-  // config defines — not just this run's planned units — delete the selected
+  // config defines (limited to the requested label when preserving other
+  // viewports) — not just this run's planned units — delete the selected
   // stages' outcomes and then remove the unit dir wholesale. A per-test
   // viewport override (or a config edit) shrinks the plan, so abandoned
   // viewports' stale outcomes would otherwise survive every subsequent run and
@@ -568,6 +581,7 @@ async function runConfiguredPipelineWithSelection(
         const definitions = applyPerTestConfigOverrides(runtime.config, test)
           .shared.viewportDefinitions;
         for (const viewport of definitions) {
+          if (preservedViewportSelection && !preservedViewportSelection.includes(viewport.label)) continue;
           for (const stage of executableStages) {
             store.deleteOutcome(test, viewport.label, stage.name);
           }
@@ -680,7 +694,16 @@ async function runConfiguredPipelineWithSelection(
     }
   }
   if (!runtime.reportOnly) {
-    persistCliSkippedStageOutcomes(store, reportTests, stageSelection, reportedStages, runtime.config);
+    persistCliSkippedStageOutcomes(
+      store,
+      preservedViewportSelection
+        ? runTests.filter((test) => measuredTestIds.has(testIdForTest(test)))
+        : reportTests,
+      stageSelection,
+      reportedStages,
+      runtime.config,
+      preservedViewportSelection,
+    );
   }
 
   console.log(
@@ -703,7 +726,10 @@ async function runConfiguredPipelineWithSelection(
         store,
         categories,
         reportedStages,
-        reportOnly: runtime.reportOnly === true,
+        reportOnly: runtime.reportOnly === true || (
+          preservedViewportSelection !== undefined && !measuredTestIds.has(testIdForTest(test))
+        ),
+        viewportsFilter: preservedViewportSelection,
         config: runtime.config,
       });
       assembledCount += 1;
@@ -1142,6 +1168,7 @@ function persistCliSkippedStageOutcomes(
   stageSelection: StageSelection,
   reportedStages: readonly Stage[],
   config: AbTestsConfig,
+  viewportsFilter?: readonly string[],
 ): void {
   const skippedStages = stageSelection.skippedStages.filter((entry) => entry.persistOutcome);
   if (skippedStages.length === 0) return;
@@ -1151,6 +1178,7 @@ function persistCliSkippedStageOutcomes(
     const viewports = viewportsForTestAcrossStages(test, reportedStages, config);
     for (const { stage, reason } of skippedStages) {
       for (const viewport of viewports) {
+        if (viewportsFilter && !viewportsFilter.includes(viewport.label)) continue;
         store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason));
       }
     }
@@ -1351,6 +1379,7 @@ interface BuildTestResultOpts {
   /** See `reportedStagesFor`: the row set is derived from these, not every registered stage. */
   reportedStages: readonly Stage[];
   reportOnly: boolean;
+  viewportsFilter?: readonly string[] | undefined;
   config: AbTestsConfig;
 }
 
@@ -1388,6 +1417,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
           categoryStages,
           `skipped: test opted out of ${testType} via testTypes`,
           config,
+          opts.viewportsFilter,
         );
       }
     }
@@ -1513,9 +1543,11 @@ function persistSkippedOutcomesForStages(
   stages: readonly Stage[],
   reason: string,
   config: AbTestsConfig,
+  viewportsFilter?: readonly string[],
 ): void {
   for (const stage of stages) {
     for (const viewport of viewportsForCategory(config, stage.category)) {
+      if (viewportsFilter && !viewportsFilter.includes(viewport.label)) continue;
       if (store.readOutcome(test, viewport.label, stage.name)) continue;
       store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason));
     }
