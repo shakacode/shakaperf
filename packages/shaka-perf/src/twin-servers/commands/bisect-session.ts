@@ -9,6 +9,7 @@ import type { ResolvedConfig } from '../types';
 import { build } from './build';
 import { runCmd } from './run-cmd';
 import { recreateExperimentContainer } from '../helpers/docker';
+import { recordReloadedExperimentCommit, logServerCommit } from '../helpers/server-commit';
 import {
   restartExperimentProcesses,
   waitForExperimentReady,
@@ -32,6 +33,8 @@ export interface BisectSessionDependencies {
   restartExperimentProcesses(config: ResolvedConfig): Promise<void>;
   waitForExperimentReady(config: ResolvedConfig): Promise<void>;
   ownerProcessAlive(ownerPid: number): boolean;
+  recordExperimentCommit(config: ResolvedConfig, invalidating: boolean): Promise<void>;
+  logExperimentCommit(config: ResolvedConfig): Promise<void>;
 }
 
 interface ActiveSession {
@@ -45,7 +48,9 @@ const defaultDependencies: BisectSessionDependencies = {
   runExperimentCommand: (config, command) => runCmd(config, 'experiment', command),
   restartExperimentProcesses,
   waitForExperimentReady,
+  logExperimentCommit: (config) => logServerCommit(config, 'experiment'),
   ownerProcessAlive,
+  recordExperimentCommit: recordReloadedExperimentCommit,
 };
 
 export class BisectSessionController {
@@ -83,10 +88,13 @@ export class BisectSessionController {
     }
 
     try {
+      await this.dependencies.recordExperimentCommit(this.config, true);
       for (const command of options.rebuildCommands) {
         await this.dependencies.runExperimentCommand(this.config, command);
       }
       await this.restartAndWait();
+      await this.dependencies.recordExperimentCommit(this.config, false);
+      await this.dependencies.logExperimentCommit(this.config);
       return { mode: 'commands', usedFallback: false };
     } catch {
       await this.rebuildAndReloadExperimentContainer(options.noCache);
@@ -131,6 +139,7 @@ export class BisectSessionController {
       await this.dependencies.runExperimentCommand(this.config, setupCommand.command);
     }
     await this.restartAndWait();
+    await this.dependencies.logExperimentCommit(this.config);
   }
 
   private async restartAndWait(): Promise<void> {

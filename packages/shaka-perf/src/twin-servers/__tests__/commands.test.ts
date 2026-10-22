@@ -11,6 +11,8 @@ import type { ResolvedConfig } from '../types';
 
 // Mock child_process for all command tests
 jest.mock('child_process', () => ({
+  execFile: jest.fn(),
+  execFileSync: jest.fn(() => { throw new Error('No Git identity in command fixture'); }),
   spawn: jest.fn(() => {
     const EventEmitter = require('events');
     const proc = new EventEmitter();
@@ -583,6 +585,48 @@ describe('build command', () => {
       (call: any[]) => call[0] === 'bash' && call[1]?.[1]?.includes('myapp:experiment'),
     );
     expect(buildCall[1][1]).toContain("'--no-cache'");
+  });
+
+  it.each([false, true])('reconciles pending source for only the built side (build fails: %s)', async (fails) => {
+    const { mockExec } = setupBuildMocks();
+    const { build } = require('../commands/build');
+    const config = createMockConfig(tmpDir);
+    const candidate = { sha: 'b'.repeat(40), message: 'Copied source', source: 'Git in twin-server source checkout' };
+    const files = (['control', 'experiment'] as const).map((side) => {
+      fs.mkdirSync(config.volumes[side], { recursive: true });
+      const filename = path.join(config.volumes[side], '.shaka-perf-pending-commit.json');
+      fs.writeFileSync(filename, JSON.stringify(candidate));
+      return filename;
+    });
+    if (fails) mockExec.mockImplementation(async (file: string) => ({ code: file === 'bash' ? 1 : 0, stdout: '', stderr: '' }));
+    try {
+      const result = build(config, { target: 'experiment' });
+      if (fails) {
+        await expect(result).rejects.toThrow('Docker build failed');
+        expect(JSON.parse(fs.readFileSync(files[1]!, 'utf8'))).toEqual({ commit: candidate, requiresRebuild: true });
+      } else {
+        await result;
+        expect(fs.existsSync(files[1]!)).toBe(false);
+      }
+      expect(JSON.parse(fs.readFileSync(files[0]!, 'utf8'))).toEqual(candidate);
+    } finally {
+      files.forEach((filename) => fs.rmSync(filename, { force: true }));
+    }
+  });
+
+  it('labels the image with Git identity from the actual side build checkout', async () => {
+    const { mockExec } = setupBuildMocks();
+    const { execFileSync } = require('child_process');
+    const { build } = require('../commands/build');
+    const config = createMockConfig(tmpDir);
+    const message = 'Control commit\n\nFull message body\n\n';
+    (execFileSync as jest.Mock).mockReturnValue(`${'a'.repeat(40)}\0${message}`);
+    await build(config, { target: 'control' });
+    expect(execFileSync).toHaveBeenCalledWith('git', ['show', '-s', '--format=format:%H%x00%B', 'HEAD'], expect.objectContaining({ cwd: path.join(tmpDir, 'control-repo') }));
+    const script = mockExec.mock.calls.find((call: any[]) => call[0] === 'bash')[1][1] as string;
+    const encoded = script.match(/dev\.shakaperf\.commit=([A-Za-z0-9+/=]+)/)![1]!;
+    expect(JSON.parse(Buffer.from(encoded, 'base64').toString())).toEqual({ sha: 'a'.repeat(40), message, source: 'Git in twin-server source checkout' });
+    (execFileSync as jest.Mock).mockImplementation(() => { throw new Error('No Git identity in command fixture'); });
   });
 });
 

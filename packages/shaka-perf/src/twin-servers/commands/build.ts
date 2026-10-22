@@ -20,6 +20,7 @@ import { getGitRemoteUrl, getDefaultBranch } from '../helpers/git';
 import { printBanner, printSuccess, printError, printInfo } from '../helpers/ui';
 import { invalidateImageCreated, recordBuildAttempt, recordBuildManifest } from '../helpers/rebuild-check';
 import { warnIfShakaResultsNotIgnored } from '../helpers/dockerignore';
+import { readCheckoutCommit, SERVER_COMMIT_LABEL, requireSyncedServerRebuild, clearSyncedServerCommit } from '../helpers/server-commit';
 import {
   dockerBuildDirForSide,
   dockerfileAbsForSide,
@@ -63,6 +64,8 @@ function buildDockerCmd(
     '-f', dockerfilePath,
   ];
   if (noCache) args.push('--no-cache');
+  const commit = readCheckoutCommit(buildDir);
+  if (commit) args.push('--label', `${SERVER_COMMIT_LABEL}=${Buffer.from(JSON.stringify(commit)).toString('base64')}`);
   const buildArgs: Record<string, string> = {
     ...config.dockerBuildArgs,
     UID: getUserId(),
@@ -180,6 +183,9 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
   }
   console.log('');
 
+  if (buildingControl) requireSyncedServerRebuild(config, 'control');
+  if (buildingExperiment) requireSyncedServerRebuild(config, 'experiment');
+
   const builderName = await ensureProjectBuildxBuilder(config);
   console.log(`Using project Buildx builder: ${builderName}`);
   console.log('');
@@ -188,6 +194,7 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
     console.log(`Building ${target} Docker image...`);
     console.log('');
     await buildServer(target, config, builderName, { verbose, noCache });
+    clearSyncedServerCommit(config, target);
     invalidateImageCreated(config.images[target]);
     recordBuildAttempt(config.volumes[target]);
     recordBuildManifest(config, target);
@@ -195,6 +202,8 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
     console.log('Building both Docker images in parallel...');
     console.log('');
     await buildInParallel(config, builderName, noCache);
+    clearSyncedServerCommit(config, 'control');
+    clearSyncedServerCommit(config, 'experiment');
     invalidateImageCreated(config.images.experiment);
     invalidateImageCreated(config.images.control);
     recordBuildAttempt(config.volumes.experiment);

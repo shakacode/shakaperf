@@ -12,6 +12,7 @@ import type { ResolvedConfig } from '../types';
 import { requireCommand } from '../helpers/shell';
 import { dockerComposeExec } from '../helpers/docker';
 import { printBanner, printError } from '../helpers/ui';
+import { logServerCommits, prepareSyncedServerCommits } from '../helpers/server-commit';
 
 export interface StartServersOptions {
   verbose?: boolean;
@@ -165,6 +166,8 @@ export async function startServers(
 
   // Sweep stale PIDs from any session that died without running stop().
   await cleanupContainerPids(config);
+  await prepareSyncedServerCommits(config);
+  await logServerCommits(config);
 
   const handle = spawnOvermind(config, { stdio: 'inherit' });
 

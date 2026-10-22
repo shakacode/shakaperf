@@ -71,6 +71,8 @@ function fakeDependencies(
     restartExperimentProcesses: jest.fn().mockResolvedValue(undefined),
     waitForExperimentReady: jest.fn().mockResolvedValue(undefined),
     ownerProcessAlive: jest.fn().mockReturnValue(true),
+    logExperimentCommit: jest.fn().mockResolvedValue(undefined),
+    recordExperimentCommit: jest.fn().mockResolvedValue(undefined),
     ...overrides,
   } as MockDependencies;
 }
@@ -189,6 +191,7 @@ describe('BisectSessionController experiment reload strategy', () => {
       [config, 'yarn build'],
       [config, 'bin/rails db:migrate'],
     ]);
+    expect(deps.recordExperimentCommit.mock.calls).toEqual([[config, true], [config, false]]);
     expect(deps.restartExperimentProcesses).toHaveBeenCalledWith(config);
     expect(deps.waitForExperimentReady).toHaveBeenCalledWith(config);
     expect(deps.buildExperiment).not.toHaveBeenCalled();
@@ -271,6 +274,7 @@ describe('BisectSessionController experiment reload strategy', () => {
       noCache: false,
     })).resolves.toEqual({ mode: 'container', usedFallback: true });
 
+    expect(deps.recordExperimentCommit.mock.calls).toEqual([[config, true]]);
     expect(deps.buildExperiment).toHaveBeenCalledTimes(1);
     expect(deps.recreateExperimentContainer).toHaveBeenCalledTimes(1);
     expect(deps.restartExperimentProcesses).toHaveBeenCalledTimes(2);
@@ -342,4 +346,15 @@ describe('BisectSessionController lease', () => {
 
     expect(controller.activeSessionId).toBeNull();
   });
+});
+
+
+it('does not publish a command-reload identity if stopping old processes and the fallback both fail', async () => {
+  const config = fakeConfig();
+  const deps = fakeDependencies({ restartExperimentProcesses: jest.fn().mockRejectedValue(new Error('stop failed')), buildExperiment: jest.fn().mockRejectedValue(new Error('fallback failed')) });
+  const controller = new BisectSessionController(config, deps);
+  controller.beginSession('failure', process.pid);
+  await expect(controller.reloadExperiment('failure', { mode: 'commands', rebuildCommands: ['build'], noCache: false })).rejects.toThrow('fallback failed');
+  expect(deps.recordExperimentCommit.mock.calls).toEqual([[config, true]]);
+  expect(deps.logExperimentCommit).not.toHaveBeenCalled();
 });

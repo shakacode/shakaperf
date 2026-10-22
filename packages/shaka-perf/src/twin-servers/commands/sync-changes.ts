@@ -12,6 +12,7 @@ import { getChangedFiles, getGitRootDirectory } from '../helpers/git';
 import { printBanner, printSuccess, printError, printWarning, printInfo } from '../helpers/ui';
 import { dockerBuildDirForSide } from '../helpers/project-paths';
 import { readBuildManifest } from '../helpers/rebuild-check';
+import { stageSyncedServerCommit } from '../helpers/server-commit';
 
 export interface SyncChangesOptions {
   verbose?: boolean;
@@ -136,6 +137,12 @@ export async function syncChanges(
   }
 
   console.log('');
+  if (copiedCount > 0 || deletedCount > 0 || errorCount > 0) {
+    // Dirty-file sync can omit committed checkout changes; it cannot establish
+    // which complete source commit is present in the volume.
+    stageSyncedServerCommit(config, target, true);
+  }
+
   console.log(`Summary:`);
   console.log(`  Copied: ${copiedCount} files`);
   if (deletedCount > 0) {
