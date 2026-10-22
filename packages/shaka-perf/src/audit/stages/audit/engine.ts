@@ -139,11 +139,13 @@ export async function runAuditStage(
     headed: ctx.runtime.headed,
     playwrightOptions: resolvePlaywrightOptions(ctx.config, 'audit'),
   });
+  const numberOfMeasurements = 1;
+  ctx.recordMeasurementOptions?.({ numberOfMeasurements });
   let sampleGroups;
   try {
     sampleGroups = await measureTest(
       [benchmark],
-      1,
+      numberOfMeasurements,
       pool,
       { testKey: `${ctx.testAndViewportId}:audit` },
     );
