@@ -45,6 +45,7 @@ export interface AuditResult {
 }
 
 export class AuditStage implements Stage<AuditResult> {
+  readonly measuresApplication = true;
   readonly category = 'audit';
   readonly name: StageName = 'audit';
   readonly label = 'Audit';

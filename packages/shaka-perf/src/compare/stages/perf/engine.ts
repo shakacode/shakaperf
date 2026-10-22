@@ -159,6 +159,11 @@ async function runPerfPhase(
     pool,
     { testKey: perfSamplerKey(ctx.testAndViewportId, config) },
   );
+  for (const { group, samples } of sampleGroups) {
+    for (const sample of samples) {
+      if (sample.measurementThrottling) ctx.recordMeasurementThrottling?.({ ...sample.measurementThrottling, side: group });
+    }
+  }
   const results = sampleGroups.map(({ group, samples }) => ({
     group,
     set: group,

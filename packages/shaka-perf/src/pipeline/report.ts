@@ -412,7 +412,7 @@ function inlineArtifactPaths(
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
         key,
-        inlineArtifactPaths(item, resultsRoot, artifactDictionary),
+        key === 'runMetadata' ? item : inlineArtifactPaths(item, resultsRoot, artifactDictionary),
       ]),
     );
   }
@@ -652,6 +652,7 @@ export function writeMachineReport(
         error: outcome.error,
         reason: outcome.reason,
         logs: outcome.logs,
+        runMetadata: outcome.runMetadata,
         summary: machineSummaryForOutcome(stagesByName, outcome, {
           test,
           viewport,

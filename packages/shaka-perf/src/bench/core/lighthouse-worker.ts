@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { lighthouseThrottling } from '../../pipeline/run-metadata';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -294,7 +295,7 @@ class LighthouseWorkerSampler {
     lhSettings = { ...lhSettings, ...msg.options.lhConfig, port: this.chrome!.port };
 
     const markers = testDef.markers ?? msg.options.markers;
-    const { phases, accessibilityScore } = await this.runLighthouseWithPlaywright(
+    const { phases, accessibilityScore, measurementThrottling } = await this.runLighthouseWithPlaywright(
       testDef,
       msg.options,
       msg.targetUrl,
@@ -303,7 +304,7 @@ class LighthouseWorkerSampler {
       `sample-${sampleIndex}`,
       saveArtifacts,
     );
-    return makeNavigationSample(phases, accessibilityScore);
+    return { ...makeNavigationSample(phases, accessibilityScore), measurementThrottling };
   }
 
   private async runLighthouseWithPlaywright(
@@ -314,7 +315,7 @@ class LighthouseWorkerSampler {
     markers: LighthouseBenchmarkOptions['markers'],
     sampleLabel: string,
     saveArtifacts: boolean,
-  ): Promise<{ phases: PhaseSample[]; accessibilityScore: number | null }> {
+  ): Promise<{ phases: PhaseSample[]; accessibilityScore: number | null; measurementThrottling: import('../../pipeline/run-metadata').MeasurementThrottling | undefined }> {
     const browser = await chromium.connectOverCDP(`http://localhost:${this.chrome!.port}`);
     let livePage: Page | null = null;
     const resultsFolder = options.resultsFolder ?? './tracerbench-results';
@@ -515,7 +516,7 @@ class LighthouseWorkerSampler {
       // Off `phases` so perf metrics stay byte-identical (null on compare).
       const accessibilityScore = accessibilityScoreFromLhr(runnerResult.lhr);
 
-      return { phases, accessibilityScore };
+      return { phases, accessibilityScore, measurementThrottling: lighthouseThrottling(runnerResult.lhr.configSettings) };
     } catch (err) {
       if (err instanceof Error && err.message.startsWith('[shaka-perf screencast]')) throw err;
       // STOP cuts the recording at the throw (on failure LH's measuring boundary

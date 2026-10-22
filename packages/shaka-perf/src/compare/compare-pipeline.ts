@@ -99,6 +99,7 @@ export function comparePipelineConfigFromAbTests(
 
 export function createComparePipeline(input: ComparePipelineConfig) {
   return createPipeline({
+    measurementSides: ['control', 'experiment'],
     name: 'compare',
     description: comparePipelineMetadata.description,
     artifactRoot: input.artifactRoot,

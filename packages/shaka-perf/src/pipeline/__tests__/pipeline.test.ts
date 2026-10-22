@@ -19,6 +19,11 @@ import {
 import { runPipeline, type RuntimeOptions } from '../runner';
 import { ArtifactStore } from '../artifact-store';
 import { unitIdForTest } from '../unit-id';
+
+// These fixtures do not take real measurements; leave the machine queue to real runs.
+jest.mock('../measurement-lock', () => ({
+  acquireMeasurementLock: async () => ({ release() {} }),
+}));
 import { buildAbTestsConfig } from '../../config';
 import { withAbTestsConfigPath } from '../../effective-config';
 import { createVisregStage } from '../../compare/stages/visreg';
@@ -27,6 +32,12 @@ import type { WorkerPool } from '../worker-pool';
 import type { Outcome } from '../outcome';
 import type { Browser } from '../../visreg/core/types';
 import { SELF_CONTAINED_REPORT_FILENAME } from '../report';
+import { measuredCommit } from '../run-metadata';
+
+jest.mock('../run-metadata', () => ({
+  ...jest.requireActual('../run-metadata'),
+  measuredCommit: jest.fn(async () => null),
+}));
 
 jest.mock('../../config-loader', () => ({
   ...jest.requireActual('../../config-loader'),
@@ -46,6 +57,7 @@ function stage(
   observedUrls?: ObservedStageUrls[],
 ): Stage<Record<string, never>> {
   return {
+    measuresApplication: true,
     name,
     label: name,
     category,
@@ -76,6 +88,7 @@ function stage(
 
 function pipeline(): Pipeline {
   return createPipeline({
+    measurementSides: ['control', 'experiment'],
     name: 'test',
     description: 'test pipeline',
     report: {
@@ -125,6 +138,7 @@ const ALL_PIPELINE_STAGE_CATEGORIES: readonly [StageName, StageCategory][] = [
 
 function allPipelineStages(observedUrls: ObservedStageUrls[]): Pipeline {
   return createPipeline({
+    measurementSides: ['control', 'experiment'],
     name: 'all-pipeline-stages',
     description: 'all pipeline stages URL contract',
     report: {
@@ -238,6 +252,139 @@ describe('runPipeline', () => {
       fs.rmSync(cwd, { recursive: true, force: true });
     }
   }
+
+  it('captures metadata before a measuring stage runs without an engine hook', async () => {
+    const selected = pipeline();
+    const measuring = selected.stages[0]!;
+    jest.mocked(measuredCommit).mockClear();
+    const run = jest.fn(async (ctx: TestContext) => {
+      expect(measuredCommit).toHaveBeenCalledWith(ctx.controlURL);
+      expect(measuredCommit).toHaveBeenCalledWith(ctx.experimentURL);
+      return {};
+    });
+    measuring.run = run;
+    const result = await runWithFrozenTest({ categories: 'visreg', skipReport: true }, selected);
+    expect(run).toHaveBeenCalled();
+    const measured = result.testResults[0]!.outcomes.filter((outcome) => outcome.kind === 'ok');
+    expect(measured.length).toBeGreaterThan(0);
+    for (const outcome of measured) {
+      expect(outcome.runMetadata?.targets).toHaveLength(2);
+      expect(outcome.runMetadata?.viewport).toEqual(outcome.viewport);
+      expect(outcome.runMetadata).not.toHaveProperty('throttling');
+    }
+  });
+
+  it.each(['derived', 'not-applicable'] as const)('excludes %s stages from automatic metadata capture', async (mode) => {
+    const selected = pipeline();
+    const candidate = selected.stages[0]!;
+    const run = jest.fn(async () => ({}));
+    Object.assign(candidate, { measuresApplication: mode !== 'derived', applies: () => mode !== 'not-applicable', run });
+    jest.mocked(measuredCommit).mockClear();
+    const result = await runWithFrozenTest({ categories: 'visreg', skipReport: true }, selected);
+    expect(measuredCommit).not.toHaveBeenCalled();
+    expect(result.testResults[0]!.outcomes.every((outcome) => !outcome.runMetadata)).toBe(true);
+    if (mode === 'derived') expect(run).toHaveBeenCalled();
+    else expect(run).not.toHaveBeenCalled();
+  });
+
+  it('persists per-result metadata and reuses it unchanged across mixed runs and report-only', async () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-run-details-'));
+    const originalArgv = process.argv;
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-20T10:00:00Z'));
+    const commit = { sha: 'a'.repeat(40), message: 'Measured deployment\n\nFull commit body', source: 'deployment' };
+    jest.mocked(measuredCommit).mockResolvedValue(commit);
+    try {
+      process.argv = ['node', 'shaka-perf', 'compare', '--categories', 'visreg'];
+      const first = await runWithFrozenTest({ cwd, categories: 'visreg', skipReport: true });
+      const before = first.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.kind === 'ok')!;
+      expect(before.runMetadata).toEqual(expect.objectContaining({
+        command: 'shaka-perf compare --categories visreg',
+        runId: before.runId,
+        stages: ['visreg'], categories: ['visreg'],
+        viewport: before.viewport,
+        targets: [
+          { side: 'control', url: 'http://control.test/', commit },
+          { side: 'experiment', url: 'http://experiment.test/', commit },
+        ],
+      }));
+      expect(Date.parse(before.runMetadata!.measuredAt)).not.toBeNaN();
+      clock.mockReturnValue(Date.parse('2026-10-20T11:00:00Z'));
+      process.argv = ['node', 'shaka-perf', 'compare', '--categories', 'perf', '--restart-from-stage', 'perf'];
+      const second = await runWithFrozenTest({ cwd, categories: 'perf', restartFromStage: 'perf', skipReport: true });
+      expect(second.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.viewport.label === before.viewport.label)?.runMetadata).toEqual(before.runMetadata);
+      const perf = second.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.kind === 'ok')!;
+      expect(perf.runMetadata?.command).toContain('--restart-from-stage perf');
+      expect(perf.runMetadata?.runId).not.toBe(before.runMetadata!.runId);
+      jest.mocked(measuredCommit).mockClear();
+      process.argv = ['node', 'shaka-perf', 'compare', '--report-only'];
+      const reusedPipeline = pipeline();
+      const engines = reusedPipeline.stages.map((entry) => jest.spyOn(entry, 'run'));
+      const report = await runWithFrozenTest({ cwd, reportOnly: true, controlURL: 'http://changed.test', experimentURL: 'http://changed-again.test' }, reusedPipeline);
+      for (const engine of engines) expect(engine).not.toHaveBeenCalled();
+      expect(measuredCommit).not.toHaveBeenCalled();
+      expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.viewport.label === before.viewport.label)?.runMetadata).toEqual(before.runMetadata);
+      expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.viewport.label === perf.viewport.label)?.runMetadata).toEqual(perf.runMetadata);
+      clock.mockReturnValue(Date.parse('2026-10-20T12:00:00Z'));
+      const replaced = await runWithFrozenTest({ cwd, categories: 'visreg', keepOldResults: true, skipReport: true });
+      const latest = replaced.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.kind === 'ok')!;
+      expect(latest.runMetadata?.runId).not.toBe(before.runMetadata!.runId);
+      expect(replaced.testResults[0]!.outcomes.filter((o) => o.kind === 'ok').every((o) => o.stage === 'visreg')).toBe(true);
+    } finally {
+      clock.mockRestore();
+      process.argv = originalArgv;
+      jest.mocked(measuredCommit).mockResolvedValue(null);
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('saves effective viewport, URL overrides and settings returned by the engine for audit', async () => {
+    const selected = pipeline();
+    const captureStage = selected.stages[0]!;
+    const originalRun = captureStage.run;
+    captureStage.run = async (ctx, pool) => {
+      ctx.recordMeasurementThrottling?.({ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } });
+      return originalRun(ctx, pool);
+    };
+    const result = await runWithFrozenTest({ skipReport: true, categories: 'visreg', tests: [{
+      ...frozenTest,
+      startingPath: '/cart?token=secret',
+      config: { shared: { experimentURL: 'https://user:password@deployment.test' } },
+    }] }, { ...selected, measurementSides: ['experiment'] });
+    const outcome = result.testResults[0]!.outcomes.find((o) => o.kind === 'ok')!;
+    expect(outcome.runMetadata?.targets).toEqual([{ side: 'experiment', url: 'https://user:password@deployment.test/cart?token=secret', commit: null }]);
+    expect(outcome.runMetadata?.throttling).toEqual([{ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } }]);
+    expect(outcome.runMetadata?.viewport).toEqual(outcome.viewport);
+  });
+
+  it.each([
+    ['CPU', { method: 'simulate', cpuSlowdownMultiplier: 6, network: { rttMs: 80, throughputKbps: 800 } }],
+    ['network', { method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 90, throughputKbps: 800 } }],
+    ['method', { method: 'devtools', cpuSlowdownMultiplier: 4, network: { rttMs: 80, throughputKbps: 800 } }],
+  ])('errors when resolved Lighthouse %s throttling differs between sides', async (_field, experiment) => {
+    const selected = pipeline();
+    selected.stages[0]!.run = async (ctx) => {
+      ctx.recordMeasurementThrottling?.({ engine: 'Lighthouse', side: 'control', method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 80, throughputKbps: 800 } });
+      ctx.recordMeasurementThrottling?.({ engine: 'Lighthouse', side: 'experiment', ...experiment });
+      return {};
+    };
+    const result = await runWithFrozenTest({ skipReport: true, categories: 'visreg' }, selected);
+    const outcome = result.testResults[0]!.outcomes.find((outcome) => outcome.stage === selected.stages[0]!.name)!;
+    expect(outcome.kind).toBe('error');
+    expect(outcome.error?.message).toContain('Lighthouse throttling must match between control and experiment');
+  });
+
+  it('accepts equal resolved Lighthouse throttling regardless of network property order', async () => {
+    const selected = pipeline();
+    selected.stages[0]!.run = async (ctx) => {
+      ctx.recordMeasurementThrottling?.({ engine: 'Lighthouse', side: 'control', method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 80, throughputKbps: 800 } });
+      ctx.recordMeasurementThrottling?.({ engine: 'Lighthouse', side: 'experiment', method: 'simulate', cpuSlowdownMultiplier: 4, network: { throughputKbps: 800, rttMs: 80 } });
+      return {};
+    };
+    const result = await runWithFrozenTest({ skipReport: true, categories: 'visreg' }, selected);
+    const outcome = result.testResults[0]!.outcomes.find((outcome) => outcome.stage === selected.stages[0]!.name)!;
+    expect(outcome.kind).toBe('ok');
+    expect(outcome.runMetadata?.throttling?.map(({ side }) => side)).toEqual(['control', 'experiment']);
+  });
 
   it('uses frozen report tests without loading test definitions', async () => {
     await runWithFrozenTest({ reportOnly: true });
@@ -698,6 +845,7 @@ describe('per-side visreg failures', () => {
 
   function visregPipeline(): Pipeline {
     return createPipeline({
+    measurementSides: ['control', 'experiment'],
       name: 'test',
       description: 'test pipeline',
       report: {
@@ -907,6 +1055,7 @@ describe('per-test task limits reach the pool', () => {
 
   function poolWorkPipeline(): Pipeline {
     return createPipeline({
+    measurementSides: ['control', 'experiment'],
       name: 'test',
       description: 'test pipeline',
       report: {

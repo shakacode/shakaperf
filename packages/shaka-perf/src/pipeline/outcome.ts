@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import type { RunMetadata } from './run-metadata';
 import type { StageName } from '../stage/stage';
 import type { StageFailureArtifacts } from '../stage/stage-failure';
 
@@ -36,6 +37,7 @@ export interface Outcome {
   reason?: string;
   logs?: string;
   runId?: string;
+  runMetadata?: RunMetadata;
   /**
    * True when the worker pool ran this stage task more than once — it crashed
    * or timed out on an earlier attempt but a retry succeeded. Set by the runner

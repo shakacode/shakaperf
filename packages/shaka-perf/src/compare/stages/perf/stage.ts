@@ -44,6 +44,7 @@ export interface PerfEngineStageOptions<M> {
 }
 
 export class PerfEngineStage<M> implements Stage<M> {
+  readonly measuresApplication = true;
   readonly category = 'perf';
   readonly name: StageName;
   readonly label: string;

@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 import type { Viewport } from '../config';
 import type { ChipDescriptor, ReportMeta, SortDescriptor, TestResult } from './report';
 import type { Outcome } from './outcome';
+import type { MeasurementSide } from './run-metadata';
 import type { StageArtifactTestMeta } from './stage-report-components';
 import type { Stage, StageCategory, StageName, StageRenderEntry } from '../stage/stage';
 import type { TaskLimits } from './worker-pool';
@@ -129,6 +130,7 @@ export interface DerivedResultsDirectory {
 }
 
 interface PipelineOptions {
+  readonly measurementSides: readonly MeasurementSide[];
   readonly name: string;
   readonly description: string;
   readonly artifactRoot?: string;

@@ -120,6 +120,7 @@ export interface BuildAnnotatedTimelineResult {
 }
 
 export class BuildAnnotatedTimelineStage implements Stage<BuildAnnotatedTimelineResult> {
+  readonly measuresApplication = false;
   readonly category = 'audit';
   readonly name: StageName = 'build_annotated_timeline';
   readonly label = 'Annotated Timeline';

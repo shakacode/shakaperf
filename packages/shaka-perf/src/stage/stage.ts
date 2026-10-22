@@ -10,6 +10,7 @@ import type { RaceCancellation } from 'race-cancellation';
 import type { AbTestDefinition, TestType } from 'shaka-shared';
 import type { AbTestsConfig, Viewport } from '../config';
 import type { ArtifactScope } from '../pipeline/artifact-store';
+import type { MeasurementThrottling, RunMetadata } from '../pipeline/run-metadata';
 import type { Outcome } from '../pipeline/outcome';
 import type { WorkerPool } from '../pipeline/worker-pool';
 import type { CdpPorts } from '../troubleshoot/debug-session';
@@ -28,6 +29,9 @@ export type JsonValue =
   | { [key: string]: JsonValue };
 
 export interface StageRuntime {
+  readonly measurementRun?: Pick<RunMetadata, 'command' | 'runId' | 'stages' | 'categories'> & {
+    readonly sides: readonly ('control' | 'experiment')[];
+  };
   readonly resultsRoot: string;
   /** The parsed project config (file-level, run-wide). Per-test effective
    *  config is on `TestContext.config`; this is its source. */
@@ -94,6 +98,8 @@ export interface StageRenderContext {
 }
 
 export interface TestContext extends StageRenderContext {
+  /** Actual engine settings returned by the measuring worker, never current report config. */
+  recordMeasurementThrottling?(settings: MeasurementThrottling): void;
   readonly testAndViewportId: string;
   /**
    * The effective config for THIS test: the project config with the test's
@@ -130,6 +136,10 @@ export interface StageRenderEntry<M = unknown> {
 }
 
 export interface Stage<M = unknown> {
+  /** Explicitly declare whether run() measures the application or derives data
+   * from saved results. The runner captures metadata before measuring stages;
+   * derived stages never create new measurement metadata. */
+  readonly measuresApplication: boolean;
   readonly name: StageName;
   /**
    * Human-readable display name for this stage, used by the report's

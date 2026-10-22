@@ -5,6 +5,9 @@
  * License in LICENSE.md.
  */
 
+import { isDeepStrictEqual } from 'node:util';
+import { measuredCommit, measurementCommand } from './run-metadata';
+import type { MeasurementThrottling } from './run-metadata';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
@@ -564,6 +567,10 @@ async function runConfiguredPipelineWithSelection(
   }
 
   const stageRuntime: StageRuntime = {
+    ...(runId !== undefined ? { measurementRun: {
+      command: measurementCommand(), runId,
+      stages: stageSelection.stageNames, categories, sides: pipeline.measurementSides,
+    } } : {}),
     resultsRoot,
     config: runtime.config,
     debugShowAllFrames: runtime.debugShowAllFrames ?? false,
@@ -1112,7 +1119,21 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   // is what actually fires on timeout — but the field is part of the
   // contract so stages don't need to special-case its absence.
   const [raceCancellation] = cancellableRace();
+  const throttling: MeasurementThrottling[] = [];
+  let metadata: Outcome['runMetadata'];
   const ctx: TestContext = {
+    recordMeasurementThrottling: (settings) => {
+      if (settings.engine === 'Lighthouse' && settings.side) {
+        const { side, ...effective } = settings;
+        for (const { side: recordedSide, ...recorded } of throttling) {
+          if (recorded.engine === 'Lighthouse' && recordedSide && recordedSide !== side && !isDeepStrictEqual(recorded, effective)) {
+            throw new Error('Lighthouse throttling must match between control and experiment. The performance comparison is invalid.');
+          }
+        }
+      }
+      if (!throttling.some((entry) => JSON.stringify(entry) === JSON.stringify(settings))) throttling.push(settings);
+      if (metadata) metadata.throttling = throttling;
+    },
     test: unit.test,
     viewport: unit.viewport,
     artifacts: store.scopeFor(unit.test, unit.viewport.label),
@@ -1161,6 +1182,17 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     },
   };
   try {
+    const run = runtime.measurementRun;
+    if (stage.measuresApplication && run) {
+      metadata = {
+        command: run.command, runId: run.runId, measuredAt: new Date().toISOString(),
+        stages: run.stages, categories: run.categories, viewport: unit.viewport,
+        targets: await Promise.all(run.sides.map(async (side) => {
+          const url = side === 'control' ? ctx.controlURL : ctx.experimentURL;
+          return { side, url, commit: await measuredCommit(url) };
+        })),
+      };
+    }
     // `ctx.config` is this unit's EFFECTIVE config, so a test that overrode a
     // budget gets its own and one that overrode nothing gets the file's — no
     // "did this test declare it?" branch, because whatever outranks a test is
@@ -1201,6 +1233,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     };
   }
 
+  if (metadata) outcome.runMetadata = metadata;
   durations.push(Date.now() - start);
   progress.running -= 1;
   if (outcome.kind === 'error') progress.error += 1;

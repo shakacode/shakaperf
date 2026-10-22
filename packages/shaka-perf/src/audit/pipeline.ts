@@ -50,6 +50,7 @@ export interface AuditPipelineConfig {
 
 export function createAuditPipeline(input: AuditPipelineConfig) {
   return createPipeline({
+    measurementSides: ['experiment'],
     name: 'audit',
     description: auditPipelineMetadata.description,
     pipelineConfig: input,

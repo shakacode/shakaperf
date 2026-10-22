@@ -243,6 +243,7 @@ export interface PhaseSample {
 }
 
 export interface NavigationSample {
+  measurementThrottling?: import('../../pipeline/run-metadata').MeasurementThrottling;
   duration: number;
   phases: PhaseSample[];
   metadata: Record<string, unknown>;
