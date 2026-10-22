@@ -57,6 +57,7 @@ export interface VisregStageConfig extends Omit<VisregConfig, 'viewports'> {
 
 export function createVisregStage(config: VisregStageConfig): Stage<VisregResult> {
   return {
+    measuresApplication: true,
     name: 'visreg',
     label: 'Visual Diff',
     category: 'visreg',

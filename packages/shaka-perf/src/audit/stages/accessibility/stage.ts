@@ -25,6 +25,7 @@ import {
 import type { AccessibilityResult } from './types';
 
 export class AccessibilityStage implements Stage<AccessibilityResult> {
+  readonly measuresApplication = true;
   readonly category = 'accessibility';
   readonly name: StageName = 'accessibility';
   readonly label = 'Accessibility';

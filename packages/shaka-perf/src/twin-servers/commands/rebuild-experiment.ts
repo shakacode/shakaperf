@@ -11,6 +11,7 @@ import {
   waitForExperimentReady,
 } from '../helpers/overmind-processes';
 import { runCmd } from './run-cmd';
+import { recordReloadedExperimentCommit, logServerCommit } from '../helpers/server-commit';
 
 export interface ExperimentRebuildDependencies {
   runCommand(
@@ -20,12 +21,16 @@ export interface ExperimentRebuildDependencies {
   ): Promise<void>;
   restartExperimentProcesses(config: ResolvedConfig): Promise<void>;
   waitForExperimentReady(config: ResolvedConfig): Promise<void>;
+  recordExperimentCommit(config: ResolvedConfig, invalidating: boolean): Promise<void>;
+  logExperimentCommit(config: ResolvedConfig): Promise<void>;
 }
 
 const defaultDependencies: ExperimentRebuildDependencies = {
   runCommand: (config, target, command) => runCmd(config, target, command),
   restartExperimentProcesses,
   waitForExperimentReady,
+  logExperimentCommit: (config) => logServerCommit(config, 'experiment'),
+  recordExperimentCommit: recordReloadedExperimentCommit,
 };
 
 export function experimentRebuildCommandsAvailable(config: ResolvedConfig): boolean {
@@ -53,9 +58,12 @@ export async function rebuildExperimentInContainer(
   config: ResolvedConfig,
   dependencies: ExperimentRebuildDependencies = defaultDependencies,
 ): Promise<void> {
+  await dependencies.recordExperimentCommit(config, true);
   for (const command of config.rebuildCommands) {
     await dependencies.runCommand(config, 'experiment', command.command);
   }
   await dependencies.restartExperimentProcesses(config);
   await dependencies.waitForExperimentReady(config);
+  await dependencies.recordExperimentCommit(config, false);
+  await dependencies.logExperimentCommit(config);
 }

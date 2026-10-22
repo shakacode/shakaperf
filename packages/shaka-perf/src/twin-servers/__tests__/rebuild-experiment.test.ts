@@ -24,6 +24,10 @@ function fakeConfig(commands: string[]): ResolvedConfig {
 
 function recordingDependencies(events: string[]): ExperimentRebuildDependencies {
   return {
+    logExperimentCommit: async () => { events.push('log-commit'); },
+    recordExperimentCommit: async (_config, invalidating) => {
+      events.push(invalidating ? 'invalidate-commit' : 'refresh-commit');
+    },
     runCommand: async (_config, target, command) => {
       events.push(`run:${target}:${command}`);
     },
@@ -58,10 +62,13 @@ describe('experiment in-container rebuild', () => {
     await rebuildExperimentInContainer(config, recordingDependencies(events));
 
     expect(events).toEqual([
+      'invalidate-commit',
       'run:experiment:yarn build',
       'run:experiment:bin/rails assets:precompile',
       'restart-experiment',
       'wait-experiment',
+      'refresh-commit',
+      'log-commit',
     ]);
   });
 
@@ -75,6 +82,17 @@ describe('experiment in-container rebuild', () => {
     };
 
     await expect(rebuildExperimentInContainer(config, dependencies)).rejects.toThrow('rebuild failed');
-    expect(events).toEqual(['run:experiment:failing command']);
+    expect(events).toEqual(['invalidate-commit', 'run:experiment:failing command']);
   });
+});
+
+
+it.each(['restartExperimentProcesses', 'waitForExperimentReady'] as const)('keeps identity invalid when %s fails', async (step) => {
+  const events: string[] = [];
+  const deps = recordingDependencies(events);
+  deps[step] = async () => { throw new Error('restart failed'); };
+  await expect(rebuildExperimentInContainer(fakeConfig(['build']), deps)).rejects.toThrow('restart failed');
+  expect(events).toContain('invalidate-commit');
+  expect(events).not.toContain('refresh-commit');
+  expect(events).not.toContain('log-commit');
 });

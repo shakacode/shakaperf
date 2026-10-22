@@ -164,6 +164,8 @@ export async function runAuditStage(
     throw new Error(`audit did not collect a Lighthouse sample for ${ctx.viewport.label}`);
   }
 
+  if (sample.measurementThrottling) ctx.recordMeasurementThrottling?.({ ...sample.measurementThrottling, side: 'experiment' });
+
   // Persist the a11y score to <id>/accessibility-client.json (report reads phone).
   // The standalone score runner cannot share the interactive challenge state
   // from the real-Chrome audit browsers. Omitting the score is safer than

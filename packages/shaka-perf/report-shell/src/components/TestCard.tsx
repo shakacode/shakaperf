@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
+import { RunDetails } from './RunDetails';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
 import { AnsiLog, firstElapsedSeconds } from './AnsiLog';
@@ -174,6 +175,7 @@ export function TestCard({
           {chips.map((chip) => (
             <Pill key={`${chip.tag}:${chip.text}`} chip={chip} />
           ))}
+          <RunDetails outcomes={test.outcomes} />
           {logs.length > 0 ? (
             <button
               type="button"

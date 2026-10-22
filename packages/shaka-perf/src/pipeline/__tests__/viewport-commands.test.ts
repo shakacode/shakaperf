@@ -45,6 +45,7 @@ function mockPipeline(name: 'compare' | 'audit') {
   const categories: StageCategory[] = name === 'compare' ? ['visreg', 'perf'] : ['audit', 'accessibility'];
   return createPipeline({
     name, description: name,
+    measurementSides: name === 'compare' ? ['control', 'experiment'] : ['experiment'],
     derivedResultsDirs: [{ path: 'derived', unitFiles: (unitId) => [`${unitId}.json`] }],
     report: { reportLabel: name, renderHeaderUrls: () => null, renderTestCardUrls: () => null, renderDialogMetaUrls: () => null },
   }, (builder) => {
@@ -52,6 +53,7 @@ function mockPipeline(name: 'compare' | 'audit') {
     for (const category of categories) {
       builder.runStage(pool, {
         name: category, category, label: category, description: category,
+        measuresApplication: false,
         selfContainedReportStrip: {}, applies: () => true,
         run: async (ctx: TestContext) => {
           measured.push(`${ctx.test.name}:${ctx.viewport.label}:${category}`);

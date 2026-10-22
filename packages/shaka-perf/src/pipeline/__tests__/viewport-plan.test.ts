@@ -24,7 +24,7 @@ function makeTest(overrides: Partial<AbTestDefinition> = {}): AbTestDefinition {
 }
 
 function makeStage(name: string, category: Stage['category']): Stage {
-  return { name, category } as Stage;
+  return { name, category, measuresApplication: true } as Stage;
 }
 
 const okOutcome = (stage: string): Outcome => ({ kind: 'ok', stage });

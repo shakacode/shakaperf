@@ -47,6 +47,7 @@ const FROZEN_TRACK_LIMITS = { timeoutMs: 0, retries: 0 } as const;
 
 export function createTroubleshootPipeline(config: AbTestsConfig) {
   return createPipeline({
+    measurementSides: ['control', 'experiment'],
     name: 'troubleshoot',
     description: troubleshootPipelineMetadata.description,
     report: NO_REPORT,

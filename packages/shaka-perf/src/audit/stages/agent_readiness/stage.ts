@@ -27,6 +27,7 @@ import type { AgentReadinessResult } from './types';
 // runs, the client report turns its data into the "Agent Ready" tab; with no
 // test enabled, the tab is simply absent.
 export class AgentReadinessStage implements Stage<AgentReadinessResult> {
+  readonly measuresApplication = true;
   readonly category = 'audit';
   readonly name: StageName = 'agent-readiness';
   readonly label = 'Agent Readiness';

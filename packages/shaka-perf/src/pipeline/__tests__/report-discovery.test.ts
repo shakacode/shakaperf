@@ -53,6 +53,7 @@ describe.each(['compare', 'audit'] as const)('%s report discovery', (name) => {
       const measuredTests: string[] = [];
       const stageName = name === 'compare' ? 'visreg' : 'audit';
       const pipeline = createPipeline({
+        measurementSides: name === 'compare' ? ['control', 'experiment'] : ['experiment'],
         name,
         description: name,
         report: {
@@ -64,6 +65,7 @@ describe.each(['compare', 'audit'] as const)('%s report discovery', (name) => {
       }, (builder) => {
         const pool = builder.registerWorkerPool(1);
         builder.runStage(pool, {
+          measuresApplication: false,
           name: stageName,
           category: stageName,
           label: stageName,

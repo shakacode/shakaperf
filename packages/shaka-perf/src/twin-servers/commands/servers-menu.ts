@@ -11,6 +11,8 @@ import * as path from 'path';
 import type * as Ink from 'ink';
 import type { ResolvedConfig } from '../types';
 import { spawnOvermind, startServers, cleanupContainerPids, type OvermindHandle } from './start-servers';
+import { syncPendingPaths } from '../helpers/auto-sync';
+import { logServerCommits, prepareSyncedServerCommits, stageSyncedServerCommit } from '../helpers/server-commit';
 import { build, type BuildTarget } from './build';
 import { startContainers } from './start-containers';
 import { stopContainers } from './stop-containers';
@@ -281,13 +283,18 @@ export async function runServersMenu(
   // the first spawn. Intra-menu restarts go through stopOvermind()/container
   // recreation, which already clean up, so only this cold start needs it.
   await cleanupContainerPids(config);
+  const logCommits = () => logServerCommits(config, (message) => appendLog(`${message}\n`));
+  await prepareSyncedServerCommits(config);
+  await logCommits();
   let overmind: OvermindHandle = spawnOvermindWithLog(config, appendLog);
   const stopOvermind = async (): Promise<void> => { await overmind.stop(); };
-  const startOvermindFresh = (activity: ActivityStatus = STARTING_ACTIVITY): void => {
+  const startOvermindFresh = async (activity: ActivityStatus = STARTING_ACTIVITY): Promise<void> => {
     state.serversReady = false;
     state.serverStatus = initialServerStatus(config);
     statusStabilizer.reset();
     state.activity = activity;
+    await prepareSyncedServerCommits(config);
+    await logCommits();
     overmind = spawnOvermindWithLog(config, appendLog);
     repaint();
   };
@@ -431,7 +438,7 @@ export async function runServersMenu(
       runError = err;
       throw err;
     } finally {
-      startOvermindFresh();
+      await startOvermindFresh();
       try {
         await waitForCurrentOvermindStartup();
       } catch (startErr) {
@@ -453,12 +460,13 @@ export async function runServersMenu(
     await startContainers(config, options);
     state.autoSyncCount = 0;
     await refreshDecision();
-    startOvermindFresh();
+    await startOvermindFresh();
     await waitForCurrentOvermindStartup();
     state.lastMessage = 'Containers + servers restarted.';
   };
 
   const runRestartServers = async (): Promise<void> => {
+    await settleExperimentAutoSync();
     state.serversReady = false;
     state.activity = { verb: 'stopping servers', color: 'yellow' };
     repaint();
@@ -469,7 +477,7 @@ export async function runServersMenu(
         '[restart] old URLs still responded after cleanup; starting fresh Overmind and verifying it stays up',
       );
     }
-    startOvermindFresh({ verb: 'restarting servers', color: 'yellow' });
+    await startOvermindFresh({ verb: 'restarting servers', color: 'yellow' });
     await waitForCurrentOvermindStartup({ readySettleMs: stopped ? 1000 : 5000 });
     state.lastMessage = 'Servers restarted.';
   };
@@ -530,6 +538,7 @@ export async function runServersMenu(
         ...experimentRebuildDefinition,
         activity: { verb: 'rebuilding experiment in container', color: 'yellow' },
         run: async () => {
+          await settleExperimentAutoSync();
           await rebuildExperimentInContainer(config);
           state.lastMessage = 'Experiment rebuilt in container.';
         },
@@ -951,6 +960,7 @@ export async function runServersMenu(
   const pendingSync = new Set<string>();
   let syncTimer: NodeJS.Timeout | null = null;
   let syncGeneration = 0;
+  let syncIdentityError: Error | null = null;
   const performAutoSync = (options: { allowBusy?: boolean; strict?: boolean } = {}): void => {
     if ((!options.allowBusy && state.busy) || stopping || pendingSync.size === 0) return;
     // Re-read per batch so a fresh rebuild's manifest is picked up immediately.
@@ -963,56 +973,60 @@ export async function runServersMenu(
     const copyIgnore = createCopyIgnoreMatcher(config.copyIgnore);
     const manifestSet = manifest ? new Set(manifest.files) : null;
 
-    const batch = Array.from(pendingSync);
-    pendingSync.clear();
     let copied = 0;
     let deleted = 0;
-    const errors: Error[] = [];
-    for (const rel of batch) {
+    const errors = syncPendingPaths(pendingSync, (rel) => {
       const copyIgnorePath = repositoryRelativeCopyPath(
         experimentGitRoot,
         experimentBuildDir,
         rel,
       );
-      if (isCopyIgnored(copyIgnore, copyIgnorePath)) continue;
+      if (isCopyIgnored(copyIgnore, copyIgnorePath)) return;
       const src = path.join(experimentBuildDir, rel);
       const dst = path.join(config.volumes.experiment, rel);
       let srcStat: fs.Stats | null = null;
-      try { srcStat = fs.statSync(src); } catch { /* missing — treat as delete below */ }
+      try { srcStat = fs.statSync(src); } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
 
       if (!srcStat) {
         // Only delete files the image actually had — without a manifest, or
         // for paths Docker never copied (node_modules, build artifacts), the
         // dst in the volume came from somewhere else and isn't ours to touch.
         const relPosix = rel.split(path.sep).join('/');
-        if (!manifestSet || !manifestSet.has(relPosix)) continue;
+        if (!manifestSet || !manifestSet.has(relPosix)) return;
         try {
           fs.unlinkSync(dst);
           deleted++;
         } catch (err) {
           if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
             state.logLines = state.logLines.concat(`[auto-sync] ${rel} (delete): ${(err as Error).message}`);
-            errors.push(err as Error);
+            throw err;
           }
         }
-        continue;
+        return;
       }
 
       const checkPath = srcStat.isDirectory() ? `${rel}/` : rel;
-      if (ig.ignores(checkPath) || !srcStat.isFile()) continue;
+      if (ig.ignores(checkPath) || !srcStat.isFile()) return;
       try {
-        let dstStat: fs.Stats | null = null;
-        try { dstStat = fs.statSync(dst); } catch { /* dest may not exist */ }
-        if (dstStat && dstStat.mtimeMs >= srcStat.mtimeMs && dstStat.size === srcStat.size) continue;
         fs.mkdirSync(path.dirname(dst), { recursive: true });
         fs.copyFileSync(src, dst);
         copied++;
       } catch (err) {
         state.logLines = state.logLines.concat(`[auto-sync] ${rel}: ${(err as Error).message}`);
-        errors.push(err as Error);
+        throw err;
       }
-    }
-    if (copied > 0 || deleted > 0) {
+    });
+    if (copied > 0 || deleted > 0 || errors.length > 0) {
+      try {
+        stageSyncedServerCommit(config, 'experiment', errors.length > 0);
+        syncIdentityError = null;
+      } catch (error) {
+        syncIdentityError = error as Error;
+        errors.push(error as Error);
+        state.logLines = state.logLines.concat(`[auto-sync] Git identity: ${(error as Error).message}`);
+      }
       state.autoSyncCount += copied + deleted;
       const n = state.autoSyncCount;
       state.lastMessage = `Auto-sync: ${n} file${n === 1 ? '' : 's'} updated since last build`;
@@ -1029,6 +1043,7 @@ export async function runServersMenu(
       await new Promise<void>((resolve) => setTimeout(resolve, 500));
       performAutoSync({ allowBusy: true, strict: true });
     } while (observedGeneration !== syncGeneration || pendingSync.size > 0);
+    if (syncIdentityError) throw syncIdentityError;
   };
   // Guard against stacked refreshes: `refreshDecision` walks the build
   // context, which on big monorepos can take longer than the debounce window.

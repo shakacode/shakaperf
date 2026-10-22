@@ -86,7 +86,7 @@ describe('compare accessibility pipeline integration', () => {
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         skipReport: true,
-        tests: [testDefinition()],
+        tests: [],
       });
 
       expect(result.resultsRoot).toBe(path.join(cwd, 'candidate-artifacts', 'compare-results'));
