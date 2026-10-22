@@ -71,6 +71,44 @@ describe('loadTests', () => {
     ).rejects.toThrow(/No tests registered/);
   });
 
+  it('keeps discovery strict unless per-file error handling is requested', async () => {
+    mkfile('broken.abtest.js', `
+      const { abTest } = require('${sharedModulePath}');
+      abTest('Incomplete test', { startingPath: '/' }, async () => {});
+      throw new Error('broken sibling');
+    `);
+    mkfile('valid.abtest.js', `
+      const { abTest } = require('${sharedModulePath}');
+      abTest('Valid test', { startingPath: '/' }, async () => {});
+    `);
+    const options = { testPathPattern: 'tmp-load-tests' };
+    await expect(loadTests(options)).rejects.toThrow('broken sibling');
+
+    const onFileLoadError = jest.fn();
+    const tests = await loadTests({ ...options, onFileLoadError });
+    expect(tests.map((test) => test.name)).toEqual(['Valid test']);
+    expect(getRegisteredTests().map((test) => test.name)).toEqual(['Valid test']);
+    expect(onFileLoadError).toHaveBeenCalledWith(
+      path.join(tmpDir, 'broken.abtest.js'),
+      expect.objectContaining({ message: 'broken sibling' }),
+    );
+
+    onFileLoadError.mockClear();
+    await expect(loadTests({
+      filter: path.join(tmpDir, 'broken.abtest.js'),
+      onFileLoadError,
+    })).rejects.toThrow('broken sibling');
+    expect(onFileLoadError).not.toHaveBeenCalled();
+  });
+
+  it('does not treat failed discovery as an empty suite unless allowed', async () => {
+    mkfile('unloadable.abtest.js', `throw new Error('cannot load');`);
+    const options = { testPathPattern: 'tmp-load-tests', onFileLoadError: jest.fn() };
+    await expect(loadTests(options)).rejects.toThrow('No tests registered');
+    await expect(loadTests({ ...options, allowEmpty: true })).resolves.toEqual([]);
+    expect(getRegisteredTests()).toEqual([]);
+  });
+
   it('keeps concurrent calls isolated (no cross-caller registration bleed)', async () => {
     // The compare pipeline runs per-unit engine invocations on a parallel
     // pool; each calls loadTests. Unserialized, the clear → import → read

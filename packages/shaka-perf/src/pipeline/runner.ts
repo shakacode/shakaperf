@@ -436,6 +436,10 @@ async function loadReportSuiteDefinitions(
   return loadTests({
     allowEmpty: !runtime.reportOnly,
     log: (message) => console.log(message),
+    onFileLoadError: (filePath, error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`Report discovery could not load ${filePath}: ${message}`);
+    },
   });
 }
 

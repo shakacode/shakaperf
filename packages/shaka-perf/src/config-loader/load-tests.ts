@@ -25,6 +25,10 @@ export interface LoadTestsOptions {
   filter?: string;
   testType?: TestType;
   log?: (message: string) => void;
+  /** Continue discovery after a file fails to load, reporting each failure.
+   * Direct file selections always throw. Omit this for measurement selection.
+   */
+  onFileLoadError?: (filePath: string, error: unknown) => void;
 }
 
 const ABTEST_FILE_REGEX = /\.abtest\.(ts|js)$/;
@@ -127,7 +131,12 @@ async function loadTestsExclusive(options: LoadTestsOptions): Promise<AbTestDefi
   // run the wrong tests.
   let tests: AbTestDefinition[] = [];
   for (const testFile of loadedFiles) {
-    tests.push(...await registrationsFor(path.resolve(testFile)));
+    try {
+      tests.push(...await registrationsFor(path.resolve(testFile)));
+    } catch (error) {
+      if (filterAsFile || !options.onFileLoadError) throw error;
+      options.onFileLoadError(testFile, error);
+    }
   }
 
   // Leave the registry holding exactly what this call selected, so anything
