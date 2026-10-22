@@ -186,6 +186,14 @@ function runKey(test: TestResult): string | null {
   return test.runId ?? null;
 }
 
+function currentConfigurationTest(test: TestResult): TestResult {
+  const outcomes = test.outcomes.filter((outcome) => !outcome.outsideCurrentConfig);
+  if (outcomes.length === test.outcomes.length) return test;
+  const runId = outcomes.reduce<string | null>((latest, outcome) =>
+    outcome.runId && (!latest || outcome.runId > latest) ? outcome.runId : latest, null);
+  return { ...test, ...test.currentConfig, outcomes, runId };
+}
+
 function newestRunKey(tests: readonly TestResult[]): string | null {
   let latest: string | null = null;
   for (const test of tests) {
@@ -337,14 +345,26 @@ export function App({
     useState<AccessibilityFilterSelection | null>(null);
   const [visibleStageOverride, setVisibleStageOverride] = useState<Set<string> | null>(null);
   // Active sort dimension + direction. null → default (chip/run-recency) order.
+  const [showFullSuite, setShowFullSuite] = useState(false);
   const [sort, setSort] = useState<{ tag: string; dir: SortDirection } | null>(null);
   const isBisectReport = data.bisect != null;
   const cardTests = useMemo(
     () => data.tests.filter((test) => hasReportableOutcomes(test, isBisectReport)),
     [data.tests, isBisectReport],
   );
-  const chipFilters = useMemo(() => buildChipFilters(cardTests), [cardTests]);
-  const chipTestSets = useMemo(() => buildChipTestSets(cardTests), [cardTests]);
+  const displayTests = useMemo(() =>
+    !isBisectReport && !showFullSuite ? cardTests.map(currentConfigurationTest) : cardTests,
+  [cardTests, isBisectReport, showFullSuite]);
+  // Keep controls from both summaries available: archived errors can replace
+  // the full-suite chips and sorts even when the current configuration succeeds.
+  // These options stay stable when "Show full suite" changes.
+  const testsForFilterAndSortOptions = useMemo(() => cardTests.map((test) => ({
+    ...test,
+    chips: [...(test.currentConfig?.chips ?? []), ...test.chips],
+    sorts: [...(test.currentConfig?.sorts ?? []), ...(test.sorts ?? [])],
+  })), [cardTests]);
+  const chipFilters = useMemo(() => buildChipFilters(testsForFilterAndSortOptions), [testsForFilterAndSortOptions]);
+  const chipTestSets = useMemo(() => buildChipTestSets(testsForFilterAndSortOptions), [testsForFilterAndSortOptions]);
   const accessibilityResults = useMemo(() => accessibilityResultsForTests(cardTests), [cardTests]);
   const accessibilityFilterOptions = useMemo(
     () => collectConfiguredFilterOptions(accessibilityResults),
@@ -378,8 +398,8 @@ export function App({
     [cardTests, data.meta],
   );
   const renderedStagesByTest = useMemo(
-    () => new Map(cardTests.map((test) => [test.id, stagesThatRender(data.meta, test)])),
-    [cardTests, data.meta],
+    () => new Map(displayTests.map((test) => [test.id, stagesThatRender(data.meta, test)])),
+    [displayTests, data.meta],
   );
   const visibleStages = useMemo(
     () => normalizeStageSelection(visibleStageOverride, stageFilterOptions),
@@ -416,8 +436,8 @@ export function App({
       return normalizeStageSelection(next, stageFilterOptions);
     });
   }, [stageFilterOptions]);
-  const sortOptions = useMemo(() => buildSortOptions(cardTests), [cardTests]);
-  const sortValues = useMemo(() => buildSortValues(cardTests), [cardTests]);
+  const sortOptions = useMemo(() => buildSortOptions(testsForFilterAndSortOptions), [testsForFilterAndSortOptions]);
+  const sortValues = useMemo(() => buildSortValues(displayTests), [displayTests]);
   const allTestIds = useMemo(
     () => chipTestSets.get(ALL_FILTER_KEY) ?? new Set<string>(),
     [chipTestSets],
@@ -441,7 +461,7 @@ export function App({
     }
     return out;
   }, [chipTestSets, visibleTestIds]);
-  const latestRunKey = useMemo(() => newestRunKey(cardTests), [cardTests]);
+  const latestRunKey = useMemo(() => newestRunKey(data.tests), [data.tests]);
   const showRunChips = latestRunKey != null && cardTests.some((test) => runKey(test) !== latestRunKey);
   const missingTests = useMemo(
     () => data.tests.filter((test) => (
@@ -450,13 +470,14 @@ export function App({
     [data.tests, isBisectReport, query],
   );
 
-  // Newer run ids sort first so a filtered run can update a subset without
-  // hiding older measurements. Tests outside the visible-id set stay in the
-  // list but render dimmed and fall to the back — the filter is a focus
-  // tool, not a hard hide.
+  // "Show full suite", search, and report sections determine which cards appear.
+  // Status filters keep nonmatching cards visible but dimmed and listed last.
+  // Within each group, use the selected sort or show newer runs first.
   const visibleTests = useMemo<{ test: TestResult; dimmed: boolean }[]>(() => {
     const out: { test: TestResult; dimmed: boolean }[] = [];
-    for (const t of cardTests) {
+    for (const t of displayTests) {
+      if (!hasReportableOutcomes(t, isBisectReport)) continue;
+      if (!isBisectReport && !showFullSuite && latestRunKey != null && runKey(t) !== latestRunKey) continue;
       if (!matchesQuery(t, query)) continue;
       const rendered = renderedStagesByTest.get(t.id) ?? new Set<string>();
       if (isEmptiedByStageFilter(rendered, effectiveVisibleStages, unfilteredStages)) continue;
@@ -481,7 +502,10 @@ export function App({
   }, [
     bisectSelection.kind,
     bisectTestIds,
-    cardTests,
+    displayTests,
+    isBisectReport,
+    latestRunKey,
+    showFullSuite,
     data.bisect,
     effectiveVisibleStages,
     renderedStagesByTest,
@@ -543,6 +567,12 @@ export function App({
           <div className="header__filter-stack">
             <ChipFilter active={activeChipKeys} filters={chipFilters} onSelect={selectChip} />
             <div className="header__secondary-filters">
+              {!isBisectReport ? (
+                <label className="suite-toggle">
+                  <input type="checkbox" checked={showFullSuite} onChange={(event) => setShowFullSuite(event.target.checked)} />
+                  Show full suite
+                </label>
+              ) : null}
               <AccessibilityGlobalFilter state={accessibilityFilterState} />
               <StageFilter
                 options={stageFilterOptions}
@@ -572,6 +602,7 @@ export function App({
                 key={test.id}
                 test={test}
                 meta={data.meta}
+                latestRunId={isBisectReport ? undefined : latestRunKey}
                 runLabel={showRunChips ? (runKey(test) === latestRunKey ? 'latest' : 'old') : null}
                 animationDelayMs={Math.min(idx, 8) * 40}
                 dimmed={dimmed}

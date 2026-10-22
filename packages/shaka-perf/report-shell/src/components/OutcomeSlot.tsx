@@ -107,9 +107,11 @@ export function stageSection(
 export function OutcomeSlot({
   meta,
   outcomes,
+  latestRunId,
 }: {
   meta: ReportMeta;
   outcomes: readonly ReportOutcome[];
+  latestRunId?: string | null;
 }) {
   const first = outcomes[0];
   const section = stageSection(meta, outcomes);
@@ -118,6 +120,15 @@ export function OutcomeSlot({
 
   return (
     <section className="outcome-slot" data-stage={first.stage} tabIndex={-1}>
+      {latestRunId ? (
+        <div className="outcome-slot__runs">
+          {outcomes.map((outcome, index) => (
+            <span className={`pill pill--${outcome.runId === latestRunId ? 'blue' : 'gray'}`} key={`${outcome.viewport.label}-${index}`}>
+              {outcome.viewport.label} · {outcome.runId === latestRunId ? 'latest' : 'old'} run
+            </span>
+          ))}
+        </div>
+      ) : null}
       {errorOutcomes.map((outcome, index) => (
         <OutcomeError key={`error-${outcome.viewport.label}-${index}`} outcome={outcome} />
       ))}

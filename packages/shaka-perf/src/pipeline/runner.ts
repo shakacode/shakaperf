@@ -46,6 +46,7 @@ import {
   persistedOutcomeInScope,
   resolveViewportsForTest,
   viewportsForTestAcrossStages,
+  viewportsForSavedReport,
 } from './viewport-plan';
 import { applyPerTestConfigOverrides } from '../effective-config';
 import { viewportsForCategory } from '../config';
@@ -410,6 +411,43 @@ export async function runPipeline(
   }
 }
 
+async function loadTestsSelectedForMeasurement(
+  runtime: RuntimeOptions,
+  explicitlySuppliedTestDefinitions: AbTestDefinition[] | undefined,
+): Promise<AbTestDefinition[]> {
+  if (runtime.reportOnly) return [];
+  if (explicitlySuppliedTestDefinitions) return explicitlySuppliedTestDefinitions;
+  return loadTests({
+    testPathPattern: runtime.testPathPattern,
+    filter: runtime.filter,
+    log: (message) => console.log(message),
+  });
+}
+
+async function loadReportSuiteDefinitions(
+  runtime: RuntimeOptions,
+  explicitlySuppliedTestDefinitions: AbTestDefinition[] | undefined,
+  testsSelectedForMeasurement: AbTestDefinition[],
+): Promise<AbTestDefinition[]> {
+  if (explicitlySuppliedTestDefinitions) return explicitlySuppliedTestDefinitions;
+  // Regeneration must fail if discovery is incomplete, rather than replace a
+  // saved report with one that silently omits a failed test file.
+  if (runtime.reportOnly) {
+    return loadTests({ log: (message) => console.log(message) });
+  }
+  if (!runtime.filter && !runtime.testPathPattern) {
+    return testsSelectedForMeasurement;
+  }
+  return loadTests({
+    allowEmpty: true,
+    log: (message) => console.log(message),
+    onFileLoadError: (filePath, error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`Report discovery could not load ${filePath}: ${message}`);
+    },
+  });
+}
+
 async function runConfiguredPipelineWithSelection(
   pipeline: Pipeline,
   stageSelection: StageSelection,
@@ -429,8 +467,8 @@ async function runConfiguredPipelineWithSelection(
   const experimentURL = runtime.experimentURL;
   const resultsRoot = resultsRootFor(cwd, pipeline);
   const startedAt = Date.now();
-  const runId = new Date(startedAt).toISOString();
-  const store = new ArtifactStore(resultsRoot, runtime.reportOnly ? undefined : runId);
+  const runId = runtime.reportOnly ? undefined : new Date(startedAt).toISOString();
+  const store = new ArtifactStore(resultsRoot, runId);
   const categories = categoriesForStages(executableStages);
   const restarting = stageSelection.restartFromStage !== null;
   // Keep the prior run's per-unit artifacts dir on restart: the retained
@@ -440,37 +478,35 @@ async function runConfiguredPipelineWithSelection(
   const preservedViewportSelection = runtime.preserveOtherViewports
     ? runtime.viewportsFilter : undefined;
 
-  // Execute the narrowed selection. A normal filtered run should report only
-  // the tests it just executed, otherwise stale sibling outcomes already on
-  // disk can reappear in a fresh local report. `--report-only` is the explicit
-  // full-suite assembly path: it runs no tests, deletes nothing, and rebuilds
-  // from whatever per-test artifacts already exist on disk.
-  const frozenTests = runtime.tests ? [...runtime.tests] : null;
-  // `let`: burn expansion below reassigns these in place.
-  let runTests = runtime.reportOnly
-    ? []
-    : frozenTests ?? await loadTests({
-        testPathPattern: runtime.testPathPattern,
-        filter: runtime.filter,
-        log: (msg) => console.log(msg),
-      });
-  let reportTests = runtime.reportOnly
-    ? frozenTests ?? await loadTests({ log: (msg) => console.log(msg) })
-    : runTests;
+  // Execute only the selected tests, but include all saved suite outcomes in
+  // the report with their original run ids and freshness. By default, show
+  // results within the current configuration on cards updated by the latest
+  // measurement run. “Show full suite” reveals the other saved results.
+  // `--report-only` rebuilds reports without measuring or changing freshness.
+  const explicitlySuppliedTestDefinitions = runtime.tests ? [...runtime.tests] : undefined;
+  const selectedTestDefinitions = await loadTestsSelectedForMeasurement(runtime, explicitlySuppliedTestDefinitions);
+  const reportSuiteDefinitions = await loadReportSuiteDefinitions(
+    runtime, explicitlySuppliedTestDefinitions, selectedTestDefinitions,
+  );
 
-  // Fan each test into its burn instances once, at the only place tests enter
-  // the runner; everything downstream keys off the test object, so this single
-  // expansion separates units, dirs, outcomes, chips and cards alike.
-  if (runtime.burn != null) {
-    runTests = expandTestsForBurn(runTests, runtime.burn);
-    // Outside --report-only the two are the same instances; keep it that way.
-    reportTests = runtime.reportOnly
-      ? expandTestsForBurn(reportTests, runtime.burn)
-      : runTests;
-  }
+  // A file-path selection can live outside the discoverable suite. Keep its
+  // definitions (and identities) alongside saved local siblings.
+  const fullSuiteTestDefinitions = [...new Map(
+    [...reportSuiteDefinitions, ...selectedTestDefinitions].map((test) => [testIdForTest(test), test]),
+  ).values()];
+
+  // Each burn instance needs a distinct identity so its work units, directories,
+  // outcomes, chips, and report cards do not collapse together. The burn-index
+  // suffix keeps matching identities stable across these separate expansions.
+  const testsSelectedForMeasurement = runtime.burn == null
+    ? selectedTestDefinitions
+    : expandTestsForBurn(selectedTestDefinitions, runtime.burn);
+  const fullSuiteTestsForReport = runtime.burn == null
+    ? fullSuiteTestDefinitions
+    : expandTestsForBurn(fullSuiteTestDefinitions, runtime.burn);
 
   const units = expandWorkUnits(
-    runTests,
+    testsSelectedForMeasurement,
     executableStages,
     runtime.config,
     {
@@ -571,7 +607,7 @@ async function runConfiguredPipelineWithSelection(
   // intact.
   if (!runtime.reportOnly) {
     if (!preserveOldResults) {
-      for (const test of runTests) {
+      for (const test of testsSelectedForMeasurement) {
         // A viewport pass sweeps its requested labels even if a test narrowed
         // its viewport list or replaced the definition registry. Other callers
         // retain the normal sweep over the effective definition registry.
@@ -702,8 +738,8 @@ async function runConfiguredPipelineWithSelection(
     persistCliSkippedStageOutcomes(
       store,
       preservedViewportSelection
-        ? runTests.filter((test) => measuredTestIds.has(testIdForTest(test)))
-        : reportTests,
+        ? testsSelectedForMeasurement.filter((test) => measuredTestIds.has(testIdForTest(test)))
+        : testsSelectedForMeasurement,
       stageSelection,
       reportedStages,
       runtime.config,
@@ -713,13 +749,13 @@ async function runConfiguredPipelineWithSelection(
 
   console.log(
     chalk.blue(
-      `\n>>> assemble · per-test artifacts (${reportTests.length} test${reportTests.length === 1 ? '' : 's'})`,
+      `\n>>> assemble · per-test artifacts (${fullSuiteTestsForReport.length} test${fullSuiteTestsForReport.length === 1 ? '' : 's'})`,
     ),
   );
   const assembleStart = Date.now();
   let assembledCount = 0;
-  const partials = await Promise.all(
-    reportTests.map(async (test) => {
+  const fullSuitePartials = await Promise.all(
+    fullSuiteTestsForReport.map(async (test) => {
       const t0 = Date.now();
       const partial = await buildTestPartial({
         test,
@@ -731,54 +767,76 @@ async function runConfiguredPipelineWithSelection(
         store,
         categories,
         reportedStages,
-        reportOnly: runtime.reportOnly === true || (
-          preservedViewportSelection !== undefined && !measuredTestIds.has(testIdForTest(test))
-        ),
+        reportOnly: runtime.reportOnly === true || !measuredTestIds.has(testIdForTest(test)),
         viewportsFilter: preservedViewportSelection,
         config: runtime.config,
       });
       assembledCount += 1;
-      const idx = String(assembledCount).padStart(String(reportTests.length).length, ' ');
+      const idx = String(assembledCount).padStart(String(fullSuiteTestsForReport.length).length, ' ');
       const sizeMb = (resultBytes(partial.partialResult) / 1024 / 1024).toFixed(1);
       console.log(
-        `    [${idx}/${reportTests.length}] ${burnDisplayName(test)} ` +
+        `    [${idx}/${fullSuiteTestsForReport.length}] ${burnDisplayName(test)} ` +
         `(${((Date.now() - t0) / 1000).toFixed(1)}s, ` +
         `${sizeMb} MB)`,
       );
       return partial;
     }),
   );
-  const perTest: ChipTestEntry<Record<string, unknown>>[] = partials.map((p) => ({
-    test: p.test,
-    results: p.chipResults,
-  }));
-  const chipsByTest = pipeline.chipsForAllTests(perTest, {
-    readJsonArtifact: <T>(artifactPath: string) =>
-      store.readJsonArtifact<T>(artifactPath),
+  const currentConfigurationPartials = fullSuitePartials.map((partial) => {
+    const outcomes = partial.partialResult.outcomes.filter((outcome) => !outcome.outsideCurrentConfig);
+    return {
+      ...partial,
+      partialResult: {
+        ...partial.partialResult,
+        outcomes,
+        runId: newestRunId(outcomes),
+        measuredAt: freshestArtifactMtime(resultsRoot, partial.test, outcomes),
+      },
+      hasError: outcomes.some((outcome) => outcome.kind === 'error'),
+      chipResults: chipResultsForOutcomes(pipeline, outcomes),
+    };
   });
-  const sortsByTest = pipeline.sortsForAllTests(perTest);
-  // Mirror what each test ends up rendering — including the synthetic
-  // `brokenChip()` for failed tests — so the machine report agrees with the
-  // HTML report on what chips each test carries.
-  const finalChipsByTest = new Map<AbTestDefinition, readonly ChipDescriptor[]>();
-  const testResults: TestResult[] = partials.map((p) => {
-    // Cross-cutting, runner-owned chip (not a pipeline concern): any stage task
-    // that crashed/timed out and recovered on a retry makes the test flaky.
-    const recovered = p.partialResult.outcomes.some((o) => o.recoveredAfterRetries);
-    const flaky = recovered ? [flakyChip()] : [];
-    if (p.hasError) {
-      const chips = [brokenChip(), ...flaky];
-      finalChipsByTest.set(p.test, chips);
-      // Failed tests have no measured values to sort by.
-      return { ...p.partialResult, chips, sorts: [] };
-    }
-    const chips = chipsByTest.get(p.test);
-    if (!chips) throw new Error(`chipsForAllTests omitted test ${p.test.name}`);
-    const copy = [...chips, ...flaky];
-    finalChipsByTest.set(p.test, copy);
-    // A sort builder may legitimately omit a test (nothing sortable) → [].
-    return { ...p.partialResult, chips: copy, sorts: [...(sortsByTest.get(p.test) ?? [])] };
+
+  const buildTestResults = (testPartials: readonly TestPartial[]): TestResult[] => {
+    const perTest: ChipTestEntry<Record<string, unknown>>[] = testPartials.map((p) => ({
+      test: p.test,
+      results: p.chipResults,
+    }));
+    const chipsByTest = pipeline.chipsForAllTests(perTest, {
+      readJsonArtifact: <T>(artifactPath: string) =>
+        store.readJsonArtifact<T>(artifactPath),
+    });
+    const sortsByTest = pipeline.sortsForAllTests(perTest);
+    // Mirror what each test ends up rendering — including the synthetic
+    // `brokenChip()` for failed tests — so the machine report agrees with the
+    // HTML report on what chips each test carries.
+    return testPartials.map((p) => {
+      // Cross-cutting, runner-owned chip (not a pipeline concern): any stage task
+      // that crashed/timed out and recovered on a retry makes the test flaky.
+      const recovered = p.partialResult.outcomes.some((o) => o.recoveredAfterRetries);
+      const flaky = recovered ? [flakyChip()] : [];
+      if (p.hasError) {
+        const chips = [brokenChip(), ...flaky];
+        // Failed tests have no measured values to sort by.
+        return { ...p.partialResult, chips, sorts: [] };
+      }
+      const chips = chipsByTest.get(p.test);
+      if (!chips) throw new Error(`chipsForAllTests omitted test ${p.test.name}`);
+      const copy = [...chips, ...flaky];
+      // A sort builder may legitimately omit a test (nothing sortable) → [].
+      return { ...p.partialResult, chips: copy, sorts: [...(sortsByTest.get(p.test) ?? [])] };
+    });
+  };
+  const resultsForCurrentConfiguration = buildTestResults(currentConfigurationPartials);
+  const resultsForFullSuite = buildTestResults(fullSuitePartials);
+  const fullSuiteResultsForReport = resultsForFullSuite.map((test, index) => {
+    if (!test.outcomes.some((outcome) => outcome.outsideCurrentConfig)) return test;
+    const { chips, sorts, runId, measuredAt } = resultsForCurrentConfiguration[index]!;
+    return { ...test, currentConfig: { chips, sorts, runId, measuredAt } };
   });
+  const finalChipsByTest = new Map(fullSuitePartials.map((partial, index) => [
+    partial.test, resultsForCurrentConfiguration[index]!.chips,
+  ]));
   console.log(`    all tests assembled in ${((Date.now() - assembleStart) / 1000).toFixed(1)}s`);
 
   // Viewport passes own one error shard even when producing a report. Keep
@@ -799,7 +857,7 @@ async function runConfiguredPipelineWithSelection(
     }
   }
 
-  const data: ReportData = {
+  const fullSuiteReportData: ReportData = {
     meta: {
       title: path.basename(cwd) + ` · ${pipeline.name}`,
       pipelineName: pipeline.name,
@@ -815,7 +873,15 @@ async function runConfiguredPipelineWithSelection(
       // here so ReportData is well-typed before the two-file split.
       reportMode: 'full',
     },
-    tests: testResults,
+    tests: fullSuiteResultsForReport,
+  };
+
+  const currentConfigurationResultsForFailureSummary = runtime.reportOnly
+    ? resultsForCurrentConfiguration
+    : resultsForCurrentConfiguration.filter((test) => measuredTestIds.has(test.id));
+  const currentConfigurationDataForFailureSummary = {
+    ...fullSuiteReportData,
+    tests: currentConfigurationResultsForFailureSummary,
   };
 
   // Under skipReport the shard produces no top-level artifacts — only the
@@ -825,19 +891,19 @@ async function runConfiguredPipelineWithSelection(
   // banner would silently disappear at merge time.
   if (runtime.skipReport) {
     return {
-      testResults: data.tests,
+      testResults: fullSuiteReportData.tests,
       reportPath: '',
       shortReportPath: '',
       fullReportPath: '',
       resultsRoot,
-      ...summarizeFailures(data),
+      ...summarizeFailures(currentConfigurationDataForFailureSummary),
     };
   }
 
   console.log(chalk.blue('\n>>> rendering report HTML files'));
   const renderStart = Date.now();
   const { fullPath, selfContainedPath } = await writeReport(
-    data,
+    fullSuiteReportData,
     resultsRoot,
     pipeline.stages,
   );
@@ -854,10 +920,10 @@ async function runConfiguredPipelineWithSelection(
   );
   writeMachineReport(
     path.join(resultsRoot, 'report.json'),
-    reportTests,
+    fullSuiteTestsForReport,
     (test) => viewportsForTestAcrossStages(test, reportedStages, runtime.config),
     pipeline,
-    data.meta,
+    fullSuiteReportData.meta,
     store,
     stageRuntime,
     finalChipsByTest,
@@ -865,12 +931,12 @@ async function runConfiguredPipelineWithSelection(
   );
 
   return {
-    testResults: data.tests,
+    testResults: fullSuiteReportData.tests,
     reportPath,
     shortReportPath: selfContainedPath,
     fullReportPath: fullPath,
     resultsRoot,
-    ...summarizeFailures(data),
+    ...summarizeFailures(currentConfigurationDataForFailureSummary),
   };
 }
 
@@ -1440,13 +1506,14 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
 
   const relFilePath = test.file ? path.relative(cwd, test.file) : '(unknown source)';
   const stagesByName = new Map(pipeline.stages.map((stage, index) => [stage.name, { stage, index }]));
-  const viewportOutcomes = viewportsForTestAcrossStages(test, reportedStages, config).flatMap((viewport) =>
+  const currentViewports = new Set(viewportsForTestAcrossStages(test, reportedStages, config).map((vp) => vp.label));
+  const reportViewports = viewportsForSavedReport(test, reportedStages, config, store);
+  const viewportOutcomes = reportViewports.flatMap((viewport) =>
     store.readOutcomesForViewport(test, viewport.label)
-      // Drop stale on-disk outcomes from earlier runs at viewports this test's
-      // effective config no longer runs the stage's category at.
-      .filter((outcome) =>
-        persistedOutcomeInScope(test, config, stagesByName.get(outcome.stage)?.stage, outcome, viewport.label))
-      .map((outcome) => ({ outcome, viewport })),
+      .map((outcome) => ({ outcome, viewport,
+        outsideCurrentConfig: !currentViewports.has(viewport.label) ||
+          !persistedOutcomeInScope(test, config, stagesByName.get(outcome.stage)?.stage, outcome, viewport.label),
+      })),
   ).sort((a, b) => {
     // Render order = DESCENDING renderingPriority (higher shows first), ties
     // broken by registration order. Decoupled from execution order so a stage
@@ -1458,11 +1525,13 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
     if (pa !== pb) return pb - pa;
     return (sa?.index ?? Number.MAX_SAFE_INTEGER) - (sb?.index ?? Number.MAX_SAFE_INTEGER);
   });
-  const outcomes = viewportOutcomes.map(({ outcome, viewport }) => ({ ...outcome, viewport }));
+  const outcomes = viewportOutcomes.map(({ outcome, viewport, outsideCurrentConfig }) => ({
+    ...outcome, viewport, ...(outsideCurrentConfig ? { outsideCurrentConfig: true } : {}),
+  }));
   const hasError = outcomes.some((outcome) => outcome.kind === 'error');
   const chipResults = chipResultsForOutcomes(pipeline, outcomes);
   const runId = newestRunId(outcomes);
-  const viewportArtifactPaths = viewportsForTestAcrossStages(test, reportedStages, config).map((vp) => ({
+  const viewportArtifactPaths = reportViewports.map((vp) => ({
     viewport: vp.label,
     path: store.unitDirForViewport(test, vp.label),
   }));
@@ -1485,7 +1554,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
       ),
       code: readTestSource(test.file, test.line),
       durationMs: 0,
-      measuredAt: freshestArtifactMtime(resultsRoot, test, reportedStages, config),
+      measuredAt: freshestArtifactMtime(resultsRoot, test, outcomes),
       runId,
       outcomes,
       viewportArtifactPaths,
@@ -1569,41 +1638,22 @@ function persistSkippedOutcomesForStages(
   }
 }
 
-/**
- * Walks the on-disk report.json files for this test across all perf/visreg
- * viewports and returns the freshest mtime (epoch ms), or null if no
- * report.json exists anywhere. Used to render "updated N d H h ago" on each
- * card so that, in a merged --report-only assembly, shards run at different
- * times read clearly as different freshness.
+/** Freshness comes from the measurement outcomes included in this report view.
+ * Report generation and skipped-stage markers must never make a card look newer.
  */
 function freshestArtifactMtime(
   resultsRoot: string,
   test: AbTestDefinition,
-  stages: readonly Stage[],
-  config: AbTestsConfig,
+  outcomes: readonly ReportOutcome[],
 ): number | null {
   let freshest = 0;
-  const consider = (absPath: string): void => {
+  for (const outcome of outcomes) {
+    if (outcome.kind === 'skipped') continue;
+    const unit = unitIdForTest(test, outcome.viewport.label);
     try {
-      const m = fs.statSync(absPath).mtimeMs;
-      if (m > freshest) freshest = m;
-    } catch { /* missing: test wasn't measured at this viewport */ }
-  };
-  const considerStageOutcome = (absPath: string): void => {
-    try {
-      const outcome = JSON.parse(fs.readFileSync(absPath, 'utf8')) as Outcome;
-      if (outcome.kind === 'skipped') return;
-    } catch {
-      return;
-    }
-    consider(absPath);
-  };
-  for (const vp of viewportsForTestAcrossStages(test, stages, config)) {
-    const slug = unitIdForTest(test, vp.label);
-    for (const stage of stages) {
-      considerStageOutcome(path.join(resultsRoot, slug, `${stage.name}.json`));
-    }
-    consider(path.join(resultsRoot, slug, 'artifacts', 'report.json'));
+      const mtime = fs.statSync(path.join(resultsRoot, unit, `${outcome.stage}.json`)).mtimeMs;
+      if (mtime > freshest) freshest = mtime;
+    } catch { /* missing: no saved measurement for this outcome */ }
   }
   return freshest > 0 ? freshest : null;
 }

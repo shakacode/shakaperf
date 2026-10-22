@@ -85,6 +85,8 @@ export type Status =
 
 export type ReportOutcome = Outcome & {
   viewport: Viewport;
+  /** Saved result outside the current measurement configuration; revealed by Show full suite. */
+  outsideCurrentConfig?: boolean;
 };
 
 export interface TestResult {
@@ -114,6 +116,8 @@ export interface TestResult {
   measuredAt: number | null;
   runId: string | null;
   outcomes: ReportOutcome[];
+  /** Status and freshness for the default view, excluding archived results. */
+  currentConfig?: Pick<TestResult, 'chips' | 'sorts' | 'runId' | 'measuredAt'>;
   /**
    * Absolute on-disk artifact directory for each viewport this test could
    * produce work in. Useful for jumping straight to screenshots, traces,

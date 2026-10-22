@@ -15,6 +15,8 @@ import { findTestFiles } from './discover-test-files';
 
 export interface LoadTestsOptions {
   testPathPattern?: string;
+  /** Permit an empty discovered suite when assembling explicitly selected files. */
+  allowEmpty?: boolean;
   /**
    * Either a regex/substring against test names (comma-separated for multiple)
    * or a path to a single .abtest.ts / .abtest.js file. When the value resolves
@@ -23,6 +25,11 @@ export interface LoadTestsOptions {
   filter?: string;
   testType?: TestType;
   log?: (message: string) => void;
+  /**
+   * Continue discovery after a file fails to load, reporting each failure.
+   * Direct file selections always throw. Omit this for measurement selection.
+   */
+  onFileLoadError?: (filePath: string, error: unknown) => void;
 }
 
 const ABTEST_FILE_REGEX = /\.abtest\.(ts|js)$/;
@@ -104,6 +111,7 @@ async function loadTestsExclusive(options: LoadTestsOptions): Promise<AbTestDefi
   } else {
     const discovered = findTestFiles({ testPathPattern });
     if (discovered.length === 0) {
+      if (options.allowEmpty) return [];
       const hint = testPathPattern ? ` matching pattern "${testPathPattern}"` : '';
       throw new Error(
         `No .abtest.ts or .abtest.js files found${hint}. Pass a file path to --filter to target one directly.`,
@@ -124,13 +132,19 @@ async function loadTestsExclusive(options: LoadTestsOptions): Promise<AbTestDefi
   // run the wrong tests.
   let tests: AbTestDefinition[] = [];
   for (const testFile of loadedFiles) {
-    tests.push(...await registrationsFor(path.resolve(testFile)));
+    try {
+      tests.push(...await registrationsFor(path.resolve(testFile)));
+    } catch (error) {
+      if (filterAsFile || !options.onFileLoadError) throw error;
+      options.onFileLoadError(testFile, error);
+    }
   }
 
   // Leave the registry holding exactly what this call selected, so anything
   // reading it directly sees the same set the caller got.
   restoreRegistry(tests);
   if (tests.length === 0) {
+    if (options.allowEmpty && !filterAsFile) return [];
     const source = filterAsFile ?? 'discovered files';
     throw new Error(`No tests registered in ${source}. Did you call abTest()?`);
   }
