@@ -97,6 +97,14 @@ describe.each(['compare', 'audit'] as const)('%s report discovery', (name) => {
       const oldRunId = '2026-10-01T00:00:00.000Z';
       const store = new ArtifactStore(path.join(cwd, `${name}-results`), oldRunId);
       store.writeOutcome(catalog!, 'desktop', { kind: 'ok', stage: stageName, measurement: {} });
+      store.writeOutcome({
+        ...catalog!,
+        name: 'Broken sibling',
+        file: path.join(cwd, 'broken.abtest.js'),
+        line: 1,
+      }, 'desktop', {
+        kind: 'error', stage: stageName, error: { message: 'Saved failure in the unloadable file' },
+      });
       const savedFile = path.join(store.unitDirForViewport(catalog!, 'desktop'), `${stageName}.json`);
       const savedBytes = fs.readFileSync(savedFile);
       const savedMtime = fs.statSync(savedFile).mtimeMs;
@@ -118,6 +126,22 @@ describe.each(['compare', 'audit'] as const)('%s report discovery', (name) => {
       expect(result.testResults.find((test) => test.name === 'Catalog')?.runId).toBe(oldRunId);
       expect(warn).toHaveBeenCalledWith(expect.stringMatching(/report.*broken\.abtest\.js.*Unrelated module import failed/i));
 
+      const savedReport = fs.readFileSync(result.fullReportPath);
+      for (const filter of [undefined, '^Checkout$']) {
+        await expect(runPipeline(pipeline, {
+          ...runtime,
+          reportOnly: true,
+          filter,
+        })).rejects.toThrow('Unrelated module import failed');
+        expect(fs.readFileSync(result.fullReportPath)).toEqual(savedReport);
+      }
+      await expect(runPipeline(pipeline, {
+        ...runtime,
+        filter: path.join(cwd, 'broken.abtest.js'),
+      })).rejects.toThrow('Unrelated module import failed');
+      expect(measuredTests).toEqual(['Checkout']);
+
+      fs.unlinkSync(path.join(cwd, 'broken.abtest.js'));
       const savedResults = result.testResults;
       for (const filter of [undefined, '^Checkout$']) {
         const regenerated = await runPipeline(pipeline, {
@@ -130,12 +154,6 @@ describe.each(['compare', 'audit'] as const)('%s report discovery', (name) => {
         expect(fs.readFileSync(savedFile)).toEqual(savedBytes);
         expect(fs.statSync(savedFile).mtimeMs).toBe(savedMtime);
       }
-
-      await expect(runPipeline(pipeline, {
-        ...runtime,
-        filter: path.join(cwd, 'broken.abtest.js'),
-      })).rejects.toThrow('Unrelated module import failed');
-      expect(measuredTests).toEqual(['Checkout']);
     },
   );
 });

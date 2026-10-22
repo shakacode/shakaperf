@@ -25,7 +25,8 @@ export interface LoadTestsOptions {
   filter?: string;
   testType?: TestType;
   log?: (message: string) => void;
-  /** Continue discovery after a file fails to load, reporting each failure.
+  /**
+   * Continue discovery after a file fails to load, reporting each failure.
    * Direct file selections always throw. Omit this for measurement selection.
    */
   onFileLoadError?: (filePath: string, error: unknown) => void;

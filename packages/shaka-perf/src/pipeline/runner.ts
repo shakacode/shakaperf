@@ -430,11 +430,16 @@ async function loadReportSuiteDefinitions(
   testsSelectedForMeasurement: AbTestDefinition[],
 ): Promise<AbTestDefinition[]> {
   if (explicitlySuppliedTestDefinitions) return explicitlySuppliedTestDefinitions;
-  if (!runtime.reportOnly && !runtime.filter && !runtime.testPathPattern) {
+  // Regeneration must fail if discovery is incomplete, rather than replace a
+  // saved report with one that silently omits a failed test file.
+  if (runtime.reportOnly) {
+    return loadTests({ log: (message) => console.log(message) });
+  }
+  if (!runtime.filter && !runtime.testPathPattern) {
     return testsSelectedForMeasurement;
   }
   return loadTests({
-    allowEmpty: !runtime.reportOnly,
+    allowEmpty: true,
     log: (message) => console.log(message),
     onFileLoadError: (filePath, error) => {
       const message = error instanceof Error ? error.message : String(error);
