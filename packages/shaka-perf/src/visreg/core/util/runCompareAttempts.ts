@@ -35,6 +35,7 @@ export type CaptureScreenshotFn = (
 /** Injected collaborators — defaulted to the real implementations; overridden in tests. */
 export interface CompareAttemptsDeps {
   captureScreenshot: CaptureScreenshotFn;
+  onAttempt?(attempt: number): void;
   createSide?: CreateSideFn;
   preparePage?: PreparePageFn;
   sleep?: (ms: number) => Promise<void>;
@@ -198,6 +199,8 @@ export async function runCompareAttempts(
       logger.log(`Retry ${attempt}/${maxRetries} for "${scenario.label}" - chilling for ${delay}ms`);
       await sleep(delay);
     }
+
+    deps.onAttempt?.(attempt + 1);
 
     // The selector set is declarative on the scenario. Build the pools before
     // launching the concurrent side lifecycles so both sides capture the same

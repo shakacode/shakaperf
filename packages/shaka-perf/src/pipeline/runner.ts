@@ -1122,6 +1122,9 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   const throttling: MeasurementThrottling[] = [];
   let metadata: Outcome['runMetadata'];
   const ctx: TestContext = {
+    recordMeasurementOptions: (options) => {
+      if (metadata) Object.assign(metadata, options);
+    },
     recordMeasurementThrottling: (settings) => {
       if (settings.engine === 'Lighthouse' && settings.side) {
         const { side, ...effective } = settings;
