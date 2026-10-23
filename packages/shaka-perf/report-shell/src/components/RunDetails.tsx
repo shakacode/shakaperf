@@ -97,6 +97,10 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
   const commands = groupValues(entries, ({ metadata }) => metadata.command);
   const categories = groupValues(entries, ({ metadata }) => [...metadata.categories].sort());
   const viewports = groupValues(entries, ({ metadata }) => metadata.viewport);
+  const sampling = groupValues(entries.filter(({ stage, metadata }) => stage === 'perf' && metadata.numberOfMeasurements !== undefined), ({ metadata }) => ({
+    count: metadata.numberOfMeasurements!, perSide: metadata.targets.length > 1,
+  }));
+  const retries = groupValues(entries.filter(({ metadata }) => (metadata.compareAttempts ?? 0) > 1), ({ metadata }) => metadata.compareAttempts!);
   const settings = groupValues(entries.flatMap((entry) => (entry.metadata.throttling ?? []).filter((setting) => setting.engine === 'Lighthouse').map((setting) => ({ entry, setting }))), ({ setting }) => ({
     engine: setting.engine, method: setting.method, cpu: setting.method === 'provided' ? undefined : setting.cpuSlowdownMultiplier,
     network: Object.entries(setting.network).sort(([a], [b]) => a.localeCompare(b)),
@@ -130,6 +134,19 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
         <strong>{value.label}</strong><span>{value.width} × {value.height} · {value.deviceScaleFactor}× · {value.formFactor}</span>{viewports.filter((group) => group.value.label === value.label).length > 1 ? scope(items) : null}
       </div>)}</div></div>
     </section>
+    {sampling.length || retries.length ? <section className="run-details__section">
+      <h3>Sampling</h3>
+      <div className="run-details__settings">
+        {sampling.map(({ value, items }) => <div className="run-details__setting" key={`samples-${value.count}-${value.perSide}`}>
+          <strong>{value.count} LH {value.count === 1 ? 'sample' : 'samples'}{value.perSide ? ' per side' : ''}</strong>
+          {scope(items)}
+        </div>)}
+        {retries.map(({ value, items }) => <div className="run-details__setting" key={`retries-${value}`}>
+          <strong>{value} visual tries</strong>
+          {scope(items)}
+        </div>)}
+      </div>
+    </section> : null}
     {settings.length ? <section className="run-details__section">
       <h3>Throttling</h3>
       <div className="run-details__settings">{settings.map(({ value, items }, index) => <div className="run-details__setting" key={index}>
@@ -145,10 +162,12 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
         const rows = groupValues(items, ({ stage, metadata }) => ({
           stage, measured: timestamp(metadata.measuredAt), command: metadata.command, categories: [...metadata.categories].sort(),
           targets: metadata.targets, throttling: metadata.throttling,
+          numberOfMeasurements: metadata.numberOfMeasurements, compareRetries: metadata.compareRetries,
+          compareAttempts: metadata.compareAttempts,
         }));
         const showTime = rows.some(({ value }) => value.measured !== timestamp(runId));
         return <details className="run-details__run" key={runId}>
-          <summary><span>{runs.length > 1 ? `Run ${index + 1}` : `${items.length} measurements`}</span><time title={runId}>{timestamp(runId)}</time></summary>
+          <summary><span>{runs.length > 1 ? `Run ${index + 1}` : `${items.length} ${items.length === 1 ? 'Result' : 'Results'}`}</span><time title={runId}>{timestamp(runId)}</time></summary>
           <div className="run-details__table-wrap"><table><thead><tr><th>Result</th><th>Viewport</th>{showTime ? <th>Measured</th> : null}</tr></thead><tbody>
             {rows.map(({ value, items }, rowIndex) => <tr key={rowIndex}><td>{value.stage}</td><td>{items.map(({ metadata }) => <span key={metadata.viewport.label} title={metadata.measuredAt}>{metadata.viewport.label} </span>)}</td>{showTime ? <td title={items.map(({ metadata }) => metadata.measuredAt).join(' / ')}>{value.measured === timestamp(runId) ? '—' : value.measured}</td> : null}</tr>)}
           </tbody></table></div>

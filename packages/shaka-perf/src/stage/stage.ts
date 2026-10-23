@@ -100,6 +100,7 @@ export interface StageRenderContext {
 export interface TestContext extends StageRenderContext {
   /** Actual engine settings returned by the measuring worker, never current report config. */
   recordMeasurementThrottling?(settings: MeasurementThrottling): void;
+  recordMeasurementOptions?(options: Pick<RunMetadata, 'numberOfMeasurements' | 'compareRetries' | 'compareAttempts'>): void;
   readonly testAndViewportId: string;
   /**
    * The effective config for THIS test: the project config with the test's

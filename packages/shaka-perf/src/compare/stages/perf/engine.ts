@@ -153,6 +153,7 @@ async function runPerfPhase(
   const numberOfMeasurements = config.statisticalAnalysis
     ? ctx.config.perf.numberOfMeasurements
     : config.numberOfMeasurements;
+  ctx.recordMeasurementOptions?.({ numberOfMeasurements });
   const sampleGroups = await measureTest(
     benchmarks,
     numberOfMeasurements,

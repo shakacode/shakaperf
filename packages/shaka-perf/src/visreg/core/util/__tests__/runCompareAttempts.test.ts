@@ -112,9 +112,11 @@ function makeDeps(produce: Produce, consoleBySide: ConsoleBySide = {}) {
     const idx = captureCalls++;
     return produce(Math.floor(idx / 2), idx % 2 === 0 ? 'ref' : 'test');
   });
+  const onAttempt = jest.fn();
 
   const deps: CompareAttemptsDeps = {
     captureScreenshot,
+    onAttempt,
     createSide,
     preparePage,
     sleep: async (ms: number) => { sleeps.push(ms); },
@@ -143,6 +145,8 @@ it('attempt 0 clean match: passes without retrying, not flagged saved-by-retries
   // One attempt only: two fresh sides built and torn down, no backoff sleeps.
   expect(counts()).toEqual({ created: 2, disposed: 2, captureCalls: 2 });
   expect(sleeps).toEqual([]);
+  expect(deps.onAttempt).toHaveBeenCalledTimes(1);
+  expect(deps.onAttempt).toHaveBeenLastCalledWith(1);
 });
 
 it('mismatch then match on retry: passes and is flagged saved-by-retries', async () => {
@@ -155,6 +159,8 @@ it('mismatch then match on retry: passes and is flagged saved-by-retries', async
   // Two attempts, each with its OWN fresh pair (created === disposed === 4).
   expect(counts()).toMatchObject({ created: 4, disposed: 4 });
   expect(sleeps).toEqual([10]); // one backoff before the single retry
+  expect(deps.onAttempt).toHaveBeenCalledTimes(2);
+  expect(deps.onAttempt).toHaveBeenLastCalledWith(2);
 });
 
 it('persistent mismatch: spends the retry budget, returns the closest pair with a diff', async () => {
@@ -181,6 +187,7 @@ it('stops early once no new frames are captured (pixel-stable mismatch)', async 
   expect(outcomes[0].result.pass).toBe(false);
   // attempt 0 + one retry that added nothing new, then stop — not all 5 retries.
   expect(counts().created).toBe(4);
+  expect(deps.onAttempt).toHaveBeenLastCalledWith(2);
 });
 
 // Crash-resume: the loop derives its pool from the config's screenshot dirs and
