@@ -289,16 +289,16 @@ await page.fill('input[type="date"]', '2026-06-15');
 // Click the input/button to open the calendar, then click a specific date
 annotate('clicking Check In to open calendar');
 await page.locator('.check-in-input').click();
-await page.waitForTimeout(300);
+await waitUntilPageSettled(page);
 annotate('selecting a date');
 await page.locator('td[aria-label="June 15, 2026"]').click(); // or similar
-await page.waitForTimeout(300);
+await waitUntilPageSettled(page);
 
 // Pattern 3: Calendar already visible on page (inline calendar)
 // Just click dates directly
 annotate('selecting start date on calendar');
 await page.locator('.CalendarDay:has-text("15")').first().click();
-await page.waitForTimeout(200);
+await waitUntilPageSettled(page);
 annotate('selecting end date on calendar');
 await page.locator('.CalendarDay:has-text("20")').first().click();
 ```
@@ -314,10 +314,10 @@ annotate('incrementing adult count');
 // Click the "+" button next to Adults — find it by proximity to the label
 await page.locator('.adult-counter .increment-btn').click(); // or:
 await page.locator('button:has-text("+")').first().click();
-await page.waitForTimeout(200);
+await waitUntilPageSettled(page);
 // Repeat for desired count
 await page.locator('button:has-text("+")').first().click();
-await page.waitForTimeout(200);
+await waitUntilPageSettled(page);
 ```
 
 When probing +/- inputs, note: what selector targets the + button? Does clicking it update a visible number? Is there a max limit? Record all of this so the test can be written without guessing.
@@ -336,18 +336,18 @@ abTest('Fill Booking on [Page]', {
   // Fill all inputs first
   annotate('selecting check-in date');
   await page.locator('.check-in-input').click();
-  await page.waitForTimeout(300);
+  await waitUntilPageSettled(page);
   await page.locator('td[aria-label="June 15, 2026"]').click();
-  await page.waitForTimeout(300);
+  await waitUntilPageSettled(page);
   annotate('selecting check-out date');
   await page.locator('td[aria-label="June 20, 2026"]').click();
-  await page.waitForTimeout(300);
+  await waitUntilPageSettled(page);
   annotate('opening guests dropdown');
   await page.locator('.guest-input-btn').click();
-  await page.waitForTimeout(300);
+  await waitUntilPageSettled(page);
   annotate('incrementing adult count');
   await page.locator('.increment-btn').first().click();
-  await page.waitForTimeout(200);
+  await waitUntilPageSettled(page);
 });
 ```
 
@@ -366,10 +366,10 @@ abTest('Apply Filters on [Page]', {
   await waitUntilPageSettled(page);
   annotate('checking first filter option');
   await page.getByLabel('Option A').check();
-  await page.waitForTimeout(200);
+  await waitUntilPageSettled(page);
   annotate('checking second filter option');
   await page.getByLabel('Option B', { exact: true }).check();
-  await page.waitForTimeout(300);
+  await waitUntilPageSettled(page);
 });
 ```
 
@@ -385,13 +385,13 @@ abTest('Open Filters and Apply on [Page]', {
   await waitUntilPageSettled(page);
   annotate('clicking to open filter panel');
   await page.locator('[aria-expanded]').first().click();
-  await page.waitForTimeout(300);
+  await waitUntilPageSettled(page);
   annotate('checking filter option');
   await page.getByLabel('Category A').check();
-  await page.waitForTimeout(200);
+  await waitUntilPageSettled(page);
   annotate('clicking apply button');
   await page.locator('button:has-text("Apply")').click();
-  await page.waitForTimeout(500);
+  await waitUntilPageSettled(page);
 });
 ```
 

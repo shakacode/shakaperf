@@ -95,7 +95,7 @@ equivalents:
 | `clickSelector(s)` / `hoverSelector(s)` | `await page.click(sel)` / `await page.hover(sel)` |
 | `scrollToSelector` | `await page.locator(sel).scrollIntoViewIfNeeded()` |
 | `readySelector` / `readyTimeout` | `await page.waitForSelector(sel, { timeout })` |
-| `delay` / `postInteractionWait` | `await waitUntilPageSettled(page)` (preferred) or `await page.waitForTimeout(ms)` |
+| `delay` / `postInteractionWait` | `await waitUntilPageSettled(page)` or wait for the expected element/state |
 
 ## Helpers (`shaka-perf/visreg/helpers`)
 
