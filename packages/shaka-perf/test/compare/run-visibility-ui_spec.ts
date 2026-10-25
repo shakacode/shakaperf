@@ -26,6 +26,9 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained'): R
     outcomes: [
       { kind: 'error', stage: 'accessibility', viewport: DESKTOP_VIEWPORT, runId,
         error: { message: 'Saved result' } },
+      ...(id === 'Older' ? [{ kind: 'error' as const, stage: 'accessibility' as const,
+        viewport: PHONE_VIEWPORT, runId: '2026-09-30T00:00:00.000Z',
+        error: { message: 'Another old run' } }] : []),
       ...(mixed ? [{ kind: 'error' as const, stage: 'accessibility' as const, viewport: PHONE_VIEWPORT,
         runId: OLD, error: { message: 'Older phone result' } },
         { kind: 'error' as const, stage: pipelineName === 'audit' ? 'audit' as const : 'visreg' as const,
@@ -154,13 +157,18 @@ describe('latest measurement run visibility', () => {
       await page.locator('.card').first().waitFor();
       const names = () => page.locator('.card__title').allTextContents();
       expect((await names()).sort()).toEqual(['Current', 'Mixed']);
+      const current = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Current', exact: true }) });
+      expect(await current.locator('.outcome-slot__runs').count()).toBe(0);
+      expect(await current.locator('.card__pills').textContent()).toContain('latest run');
       const mixed = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Mixed', exact: true }) });
       expect((await mixed.locator('.outcome-slot__runs').allTextContents()).join(' ')).toContain('phone · old run');
       expect((await mixed.locator('.outcome-slot__runs').allTextContents()).join(' ')).toContain('desktop · latest run');
       const toggle = page.getByRole('checkbox', { name: 'Show full suite', exact: true });
       await toggle.check();
       expect((await names()).sort()).toEqual(['Current', 'Mixed', 'Older']);
-      expect(await page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Older', exact: true }) }).textContent()).toContain('old run');
+      const older = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Older', exact: true }) });
+      expect(await older.locator('.card__pills').textContent()).toContain('old run');
+      expect(await older.locator('.outcome-slot__runs').count()).toBe(0);
       await toggle.uncheck();
       expect((await names()).sort()).toEqual(['Current', 'Mixed']);
 
