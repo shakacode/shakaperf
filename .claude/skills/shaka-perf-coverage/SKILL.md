@@ -28,13 +28,13 @@ The `code_coverage` audit category writes, per test and viewport, `coverage.json
 shaka-perf audit --categories code_coverage --url <dev build> --filter <relevant-tests>
 ```
 
-Two things must hold, and both are the user's to fix, not yours to work around:
+Coverage estimation requires both instrumentation and source information. If either is missing, follow the confirmation and repair steps below:
 
-- **The bundle is instrumented.** The stage fails a unit whose page has no `window.__coverage__`. If it did, STOP and say so: the fix is `babel-plugin-istanbul`, `nyc instrument`, or `swc-plugin-coverage-instrument` (see the [demo instrumentation example](https://github.com/shakacode/shakaperf/blob/main/demo-ecommerce/config/rspack/clientWebpackConfig.js)). Never estimate around it — a visibility map alone says what is on screen, not which test's code put it there.
+- **The bundle is instrumented.** The stage fails a unit whose page has no `window.__coverage__`. Choose instrumentation appropriate for the project's build tooling, such as `babel-plugin-istanbul`, `nyc instrument`, or `swc-plugin-coverage-instrument` (see the [demo instrumentation example](https://github.com/shakacode/shakaperf/blob/main/demo-ecommerce/config/rspack/clientWebpackConfig.js)). Never estimate around it — a visibility map alone says what is on screen, not which test's code put it there.
 - **The build carries sources.** `audit.screenshotCoveragePlugin` is set in `abtests.config.ts`, and the audited URL serves a DEVELOPMENT React build — `'react18'` needs the JSX source transform (`@babel/preset-react` `development: true`), `'react19'` a fetchable source map. Point `--url` at twin servers running the opt-in instrumented development mode from [shaka-perf-dockerize](../shaka-perf-dockerize/SKILL.md#instrumentation), or at a dev server of the same code. Default production twin-server builds do not provide this source information.
-  For other frameworks, introduce a custom screenshot coverage plugin; if the framework makes that impossible, manually tag the tested components and assess screenshot coverage by those unique identifiers.
+  For other frameworks, introduce a custom screenshot coverage plugin.
 
-If either fails (the stage reports no `window.__coverage__`, or `save` says `impossible to estimate`), HALT and ask the user to choose a fix: instrument the bundle (`babel-plugin-istanbul` / `nyc instrument` / `swc-plugin-coverage-instrument`); set `audit.screenshotCoveragePlugin` and audit a dev server; write a custom plugin; or manually tag the components. Wait for the answer.
+If either prerequisite is missing (the stage reports no `window.__coverage__`, or `save` says `impossible to estimate`), inspect the project's framework and build configuration to determine the required changes. Explain the specific fix you propose, including any instrumentation, screenshot coverage plugin, or development-server/Docker changes, and ask the user to confirm before making those changes. Recommend one approach rather than asking the user to choose from a list of options. Once confirmed, implement the fix, re-run the audit, and verify that both prerequisites are satisfied before estimating coverage.
 
 ## Saving and diffing baselines
 
