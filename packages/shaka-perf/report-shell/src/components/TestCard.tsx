@@ -181,7 +181,7 @@ export function TestCard({
   const logs = logsForTest(test, visibleStages);
   const groups = outcomeGroups(test, visibleStages);
   const chips = [...test.chips].sort(compareChips);
-  const mixedRuns = new Set(test.outcomes.map((outcome) => outcome.runId ?? null)).size > 1;
+  const mixedRuns = new Set(test.outcomes.map((outcome) => outcome.runId === latestRunId)).size > 1;
 
   return (
     <article
