@@ -34,7 +34,7 @@ abTest(name: string, {
   config?: {
     shared?: {
       beforeNavigate?: (ctx) => Promise<void>,  // Pre-navigation hook — see below
-      playwrightOptions?: { ... },       // Partial launch-options override (browser, args, headless)
+      playwrightOptions?: { ... },       // Partial launch-options override (browser, args)
     },
     visreg?: {
       mismatchThreshold?: number,  // 0.0–1.0. Default 0.1. Use 0.01 for static pages
@@ -67,6 +67,8 @@ abTest(name: string, {
   // annotate: label the next step — failures report "Failed while <label>"
 })
 ```
+
+Set browser visibility with the CLI flags `--headed` / `--headed=false`.
 
 **Per-test `config` merge rule:** every defined per-test key REPLACES the file
 value wholesale — arrays included. A per-test
