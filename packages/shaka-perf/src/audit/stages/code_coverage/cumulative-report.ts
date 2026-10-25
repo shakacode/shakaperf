@@ -18,6 +18,10 @@ import { nycCoverageFileName } from './coverage-artifacts';
 import { coverageScope, digest, originalSource, sourceHash, type CoverageScope } from './source-scope';
 import type { CodeCoverageResult } from './stage';
 
+const ORIGINAL_PATH = Symbol('originalCoveragePath');
+type CoverageWithOrigin = FileCoverageData & { [ORIGINAL_PATH]?: string };
+const originalPath = (data: FileCoverageData) => (data as CoverageWithOrigin)[ORIGINAL_PATH] ?? data.path;
+
 interface Contributor { test: string; viewport: string; run: string; artifact: string; build?: string }
 export interface CumulativeCoverageReport {
   href: string;
@@ -75,7 +79,8 @@ export async function generateCumulativeCoverageReport(options: CumulativeCovera
     const signature = coverageShape(data);
     const previous = signatures.get(data.path);
     const identity = instrumentationIdentity(data);
-    const previousIdentity = identities.get(data.path);
+    const identityKey = data.path + '\0' + originalPath(data);
+    const previousIdentity = identities.get(identityKey);
     if ((previous && previous !== signature) || (identity && previousIdentity && identity !== previousIdentity)) {
       diagnostics.push(`${scope.relative(data.path)}: incompatible instrumentation locations; excluded from aggregate.`);
       blocked.add(data.path);
@@ -83,7 +88,7 @@ export async function generateCumulativeCoverageReport(options: CumulativeCovera
       return;
     }
     signatures.set(data.path, signature);
-    if (identity) identities.set(data.path, identity);
+    if (identity) identities.set(identityKey, identity);
     map.addFileCoverage(data);
   };
 
@@ -157,7 +162,8 @@ export async function generateCumulativeCoverageReport(options: CumulativeCovera
             const template = await instrumentFile(filename, scope);
             const measured = map.fileCoverageFor(filename).data;
             if (coverageShape(template) !== coverageShape(measured)
-              || (instrumentationIdentity(template) && instrumentationIdentity(measured)
+              || (originalPath(template) === originalPath(measured)
+                && instrumentationIdentity(template) && instrumentationIdentity(measured)
                 && instrumentationIdentity(template) !== instrumentationIdentity(measured))) {
               throw new Error('served build instrumentation differs from the project instrumenter');
             }
@@ -230,6 +236,9 @@ async function normalizeCoverage(raw: Record<string, FileCoverageData>, scope: C
   const normalized = createCoverageMap({});
   for (const [key, value] of Object.entries(raw)) {
     const data = JSON.parse(JSON.stringify(value));
+    // Instrumentation hashes can include the build path. Preserve that origin
+    // privately so Docker/host mappings compare locations without false conflicts.
+    data[ORIGINAL_PATH] = data.path ?? key;
     data.path = scope.resolve(data.path ?? key);
     if (data.inputSourceMap) {
       const sm = data.inputSourceMap;
@@ -262,16 +271,29 @@ function validateLocations(data: FileCoverageData): void {
     [data.fnMap, (value) => value.loc],
     [data.branchMap, (value) => value.locations[0]],
   ];
+  const validate = (loc: { start?: { line?: number }; end?: { line?: number } } | undefined) => {
+    if (!loc?.start?.line || loc.start.line < 1 || !loc.end?.line || loc.end.line < 1) {
+      throw new Error(`${data.path}: instrumentation contains unmapped/generated code locations; instrument before code-generating transforms or supply input source maps`);
+    }
+  };
   for (const [locations, location] of maps) {
     const seen = new Set<string>();
     for (const value of Object.values(locations)) {
       const loc = location(value) as { start?: { line?: number }; end?: { line?: number } };
-      if (!loc?.start?.line || loc.start.line < 1 || !loc.end?.line || loc.end.line < 1) {
-        throw new Error(`${data.path}: instrumentation contains unmapped/generated code locations; instrument before code-generating transforms or supply input source maps`);
-      }
+      validate(loc);
       const key = JSON.stringify(loc);
       if (seen.has(key)) throw new Error(`${data.path}: ambiguous duplicate code locations; instrument before code-generating transforms`);
       seen.add(key);
+    }
+  }
+  for (const fn of Object.values(data.fnMap)) validate(fn.decl);
+  for (const branch of Object.values(data.branchMap)) {
+    if (branch.loc) validate(branch.loc);
+    for (const loc of branch.locations) {
+      // Istanbul represents an implicit else with empty endpoint objects;
+      // explicit line-zero alternatives are generated code, not that sentinel.
+      const implicitElse = branch.type === 'if' && loc.start?.line == null && loc.end?.line == null;
+      if (!implicitElse) validate(loc);
     }
   }
 }

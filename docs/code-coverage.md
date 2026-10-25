@@ -90,7 +90,7 @@ options and original-source mapping as the served build. It must map back to the
 requested source file. ShakaPerf resets every returned hit counter to zero. It
 reuses measured templates and checks a supplied adapter against measured code
 locations before accepting their hits, including in loaded-only reports. A differing shape
-or instrumentation hash (when available) is diagnosed and excluded. Adapter source
+or instrumentation hash (when available for the same original build path) is diagnosed and excluded. Adapter source
 paths are preserved and must resolve to the requested original file.
 
 A Babel project can use its existing transformation options and Istanbul plugin,
@@ -141,7 +141,8 @@ without HTML; a later `--report-only` assembles available compatible results.
 Hits are merged by source file and code location. Percentages are calculated from
 the combined counters, never averaged. Files from conflicting instrumentation are
 excluded and diagnosed. Source/test fingerprints bind measurements to local source
-bytes and scope settings. Changed source files, tests, scope or adapter functions,
+bytes and scope settings, including the resolved project root. Changed source files,
+tests, project roots, scope or adapter functions,
 modified mirrors, conflicting recorded Docker build commits, and legacy records without provenance require remeasurement.
 Source fingerprints describe the local checkout: operators must still serve its
 matching build. Adapter location checks and embedded source content detect many

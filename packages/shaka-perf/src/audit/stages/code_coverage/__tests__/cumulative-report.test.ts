@@ -322,3 +322,39 @@ it('rejects differing served instrumentation hashes even when locations are unch
   save('stale-served-code', { [filename]: data });
   expect((await generate()).diagnostics.join(' ')).toContain('served build instrumentation differs');
 });
+
+it('invalidates saved coverage when projectRoot changes to an identical source tree', async () => {
+  const filename = write('src/a.js');
+  save('first-project', { [filename]: instrument(filename) });
+  write('other/src/a.js');
+  config = { ...config, projectRoot: 'other' };
+  const report = await generate();
+  expect(report.incomplete).toBe(true);
+  expect(report.contributors).toEqual([]);
+  expect(report.diagnostics.join(' ')).toContain('source scope/instrumenter changed');
+});
+
+it('rejects generated locations in later branch alternatives in loaded-only mode', async () => {
+  config = {};
+  const filename = write('src/a.js', 'export const choose = flag => flag ? 1 : 2;');
+  const data = instrument(filename);
+  const branch = Object.values(data.branchMap)[0]!;
+  branch.locations[1]!.start.line = 0;
+  branch.locations[1]!.end.line = 0;
+  save('generated-branch', { [filename]: data });
+  const report = await generate();
+  expect(report.incomplete).toBe(true);
+  expect(report.diagnostics.join(' ')).toContain('unmapped/generated code locations');
+  expect(final()[filename]).toBeUndefined();
+});
+
+it('does not compare path-dependent instrumentation hashes across mapped Docker and host paths', async () => {
+  const filename = write('src/a.js');
+  config.pathMappings = { '/app': '.' };
+  const measured = { ...instrument(filename), path: '/app/src/a.js', hash: 'docker-path-hash', _coverageSchema: 'same-instrumenter' };
+  config.instrument = (_source, name) => ({ ...instrument(name), hash: 'host-path-hash', _coverageSchema: 'same-instrumenter' });
+  save('docker-build-adapter', { [measured.path]: measured });
+  const report = await generate();
+  expect(report.incomplete).toBe(false);
+  expect(final()[filename]).toBeDefined();
+});
