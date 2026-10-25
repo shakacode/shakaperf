@@ -1,6 +1,6 @@
 ---
 name: shaka-perf-coverage
-description: Use to check if there are A/B tests for some scenario. Load this skill when asked about performance and visual regression testing.
+description: Use to estimate screenshot coverage of UI components or scenarios from ShakaPerf A/B tests.
 ---
 
 # shaka-perf-coverage
