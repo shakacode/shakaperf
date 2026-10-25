@@ -34,7 +34,7 @@ abTest(name: string, {
   config?: {
     shared?: {
       beforeNavigate?: (ctx) => Promise<void>,  // Pre-navigation hook — see below
-      playwrightOptions?: { ... },       // Partial launch-options override (browser, args, headless)
+      playwrightOptions?: { ... },       // Partial launch-options override (browser, args)
     },
     visreg?: {
       mismatchThreshold?: number,  // 0.0–1.0. Default 0.1. Use 0.01 for static pages
@@ -68,18 +68,20 @@ abTest(name: string, {
 })
 ```
 
-**Per-test `config` merge rule:** every defined per-test key REPLACES the file
-value wholesale — arrays included. A per-test
+Set browser visibility with the CLI flags `--headed` / `--headed=false`.
+
+**Per-test `config` merge rule:** objects merge recursively; defined scalars,
+functions, and arrays replace the corresponding file values. A per-test
 `accessibility: { disableRules: ['color-contrast'] }` does NOT union with the
 file's `disableRules`; re-list everything the test needs. Per-test
 `playwrightOptions` (`shared`/`visreg`/`perf`) and
 `perf.lighthouseConfig`/`audit.lighthouseConfig` ARE honoured on the engines
 that launch per unit (visreg, perf, audit); accessibility and agent-readiness
 reuse one browser per worker slot and resolve launch options once per run.
-Other whole-suite settings (`resembleOutputOptions`,
-`compareRetries`/`compareRetryDelay`, perf/audit measurement tuning) also
-resolve once per run — overriding them per-test has no effect; set them once
-in `abtests.config.ts`.
+Use `config.perf` for per-test `numberOfMeasurements`, `regressionThreshold`,
+`regressionThresholdStat`, and `pValueThreshold`. Use `config.visreg` for per-test
+`resembleOutputOptions`, `compareRetries`, and `compareRetryDelay`; burn and
+troubleshoot runs set comparison retries to zero.
 
 ## Removed capture-time options — write the test body instead
 
@@ -93,7 +95,7 @@ equivalents:
 | `clickSelector(s)` / `hoverSelector(s)` | `await page.click(sel)` / `await page.hover(sel)` |
 | `scrollToSelector` | `await page.locator(sel).scrollIntoViewIfNeeded()` |
 | `readySelector` / `readyTimeout` | `await page.waitForSelector(sel, { timeout })` |
-| `delay` / `postInteractionWait` | `await waitUntilPageSettled(page)` (preferred) or `await page.waitForTimeout(ms)` |
+| `delay` / `postInteractionWait` | `await waitUntilPageSettled(page)` or wait for the expected element/state |
 
 ## Helpers (`shaka-perf/visreg/helpers`)
 

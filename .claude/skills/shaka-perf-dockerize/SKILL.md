@@ -119,7 +119,7 @@ As part of dockerization, implement an opt-in mode that runs a **development bui
 - Add an explicit project option (for example, `SHAKA_PERF_INSTRUMENT_COVERAGE=1`) and wire it through `twinServers.dockerBuildArgs`, the Dockerfile, the frontend build configuration, and the Procfile where needed. This is a project-defined switch, not a built-in CLI flag. It must select the development bundle and instrumentation at build time; changing only the running container's environment cannot instrument an already-built bundle.
 - Instrument application JavaScript with the stack's Istanbul-compatible tooling so the page exposes `window.__coverage__`. Set `audit.screenshotCoveragePlugin` in `abtests.config.ts`: React 18 needs the development JSX source transform; React 19 needs fetchable source maps. Use a custom plugin for other frameworks.
 - Apply the same mode to both sides. Document the exact commands to enable it, rebuild both images, recreate containers, and start the servers, plus how to switch back to production mode.
-- Verify a representative test against the instrumented container URL with `shaka-perf audit --categories code_coverage --url <container-url> --filter <test>`. Confirm nonempty `coverage.json` and a `visibility-map.txt` with application source locations; a successful server boot alone does not verify instrumentation.
+- Verify a representative test against the instrumented experiment container URL with `shaka-perf audit --categories code_coverage --url <container-url> --filter <test>`. Confirm nonempty `coverage.json` and a `visibility-map.txt` with application source locations; a successful server boot alone does not verify instrumentation.
 ---
 
 ## Phase 3 — Write the dockerignore
@@ -131,10 +131,14 @@ the rules work whether the build context is the project root or a monorepo
 root containing the project:
 
 ```
+audit-results*/
+**/audit-results*/
 compare-bisect-results*/
 **/compare-bisect-results*/
 compare-results*/
 **/compare-results*/
+troubleshoot-results*/
+**/troubleshoot-results*/
 ```
 
 Two reasons it matters:
@@ -201,5 +205,9 @@ A setup that looks right but doesn't boot is worth nothing — drive it until bo
 ## Phase 8 — A/B diligence review (final gate)
 
 Before declaring success, walk the diligence checklist in `references/troubleshooting.md` and confirm every box — it's the guard against phantom regressions (shared state, env drift, non-deterministic seeds, a leftover `CMD`, project files touched outside scope).
+
+Working instrumentation and screenshot coverage are required for acceptance. Do not declare dockerization complete while either is missing or unverified.
+
+After coverage verification, restore both sides to uninstrumented production mode using the documented commands and repeat the HTTP checks before recommending performance comparisons.
 
 Then summarize for the user: the files you created, services embedded vs. composed, the build/verify result (with the HTTP codes you saw), any app guards you added, and any manual steps still required. Point them at `shaka-perf compare` as the next step now that both servers are up.

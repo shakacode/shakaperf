@@ -4,7 +4,7 @@ Each pattern below corresponds to a scenario you confirmed during probing. Only 
 
 The `abTest()` config is **flat** (no `options` nesting): `startingPath`, `experimentPathOverride`, `testTypes`, `visregSelectors`, `markers`, plus a per-test `config` that overrides `abtests.config.ts` sections for this test alone (`config.visreg.mismatchThreshold`, `config.visreg.viewports`, `config.accessibility.disableRules`, …). Everything else (waits, clicks, hiding elements) is test-body Playwright code. See `api.md` for the full surface.
 
-Per-test `config` values REPLACE the file value wholesale — arrays included (a per-test `disableRules` does not union with the global list; re-list what you need).
+Per-test `config` objects merge recursively; defined scalars, functions, and arrays replace the corresponding file values. Re-list all required `disableRules` in a per-test array.
 
 ## Test code rules (non-negotiable)
 
@@ -82,8 +82,7 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Page Name', {
   startingPath: '/path',
-}, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
+}, async ({ page }) => {
   await waitUntilPageSettled(page);
 });
 ```
@@ -99,8 +98,7 @@ abTest('Page Name', {
   config: {
     visreg: { mismatchThreshold: 0.01 },  // static content — tighten
   },
-}, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
+}, async ({ page }) => {
   await waitUntilPageSettled(page);
 });
 ```
@@ -116,13 +114,10 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 abTest('Click [Button] on [Page]', {
   startingPath: '/start',
 }, async ({ page, annotate }) => {
-  annotate('waiting for element to appear');
   await page.waitForSelector('[data-cy="element"]');
   annotate('clicking button');
   await page.click('text=Button Text');
-  annotate('waiting for navigation to expected path');
   await page.waitForURL('**/expected-path');
-  annotate('waiting for page to settle after navigation');
   await waitUntilPageSettled(page);
 });
 ```
@@ -136,14 +131,10 @@ Only use if `shaka-perf discover-abtests probe-lazy-load` (or manual scroll prob
 ```typescript
 abTest('Page Name', {
   startingPath: '/path',
-}, async ({ page, annotate }) => {
-  annotate('scrolling to bottom to trigger lazy load');
+}, async ({ page }) => {
   await page.locator('footer').scrollIntoViewIfNeeded();
-  annotate('waiting for lazy-loaded content to finish loading');
   await page.waitForLoadState('networkidle');
-  annotate('scrolling back to top');
   await page.evaluate(() => window.scrollTo(0, 0));
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
 ```
@@ -169,8 +160,7 @@ abTest('Homepage Map Section', {
   config: {
     visreg: { viewports: ['tablet', 'desktop'] },
   },
-}, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
+}, async ({ page }) => {
   await waitUntilPageSettled(page);
 });
 
@@ -181,8 +171,7 @@ abTest('Homepage Mobile Featured', {
   config: {
     visreg: { viewports: ['phone'] },
   },
-}, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
+}, async ({ page }) => {
   await waitUntilPageSettled(page);
 });
 ```
@@ -196,10 +185,8 @@ When the viewport difference is test logic (different waits, clicks, or scroll b
 abTest('Search Results (phone)', {
   startingPath: '/search',
   config: { visreg: { viewports: ['phone'] } },
-}, async ({ page, annotate }) => {
-  annotate('waiting for mobile results list');
+}, async ({ page }) => {
   await page.waitForSelector('.mobile-results', { state: 'visible' });
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
 
@@ -207,10 +194,8 @@ abTest('Search Results (phone)', {
 abTest('Search Results (desktop)', {
   startingPath: '/search',
   config: { visreg: { viewports: ['desktop'] } },
-}, async ({ page, annotate }) => {
-  annotate('waiting for split-panel search layout');
+}, async ({ page }) => {
   await page.waitForSelector('.search-split-panel', { state: 'visible' });
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
 ```
@@ -229,13 +214,10 @@ const PAUSE_CSS = `
 
 abTest('Carousel on [Page]', {
   startingPath: '/path',
-}, async ({ page, annotate }) => {
-  annotate('waiting for carousel to appear');
+}, async ({ page }) => {
   await page.waitForSelector('[data-cy="carousel-track"]', { state: 'visible' });
-  annotate('overriding CSS to freeze carousel animation');
   await overrideCSS(page);
   await page.addStyleTag({ content: PAUSE_CSS });
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
 ```
@@ -249,7 +231,6 @@ abTest('Below-fold Section on [Page]', {
   startingPath: '/path',
   visregSelectors: ['viewport'],
 }, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   annotate('scrolling target section into view');
   await page.locator('.target-section').first().scrollIntoViewIfNeeded();
@@ -266,11 +247,9 @@ abTest('Open [Modal Name] on [Page]', {
   visregSelectors: ['viewport'],
   config: { visreg: { viewports: ['desktop'] } },
 }, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   annotate('clicking button to open modal');
   await page.locator('[data-cy="open-modal"]').click();
-  annotate('waiting for modal to appear');
   await page.waitForSelector('[data-cy="modal"]', { state: 'visible' });
 });
 ```
@@ -284,7 +263,6 @@ abTest('Fill [Form Name] on [Page]', {
   startingPath: '/path',
   visregSelectors: ['.form-container'],
 }, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   annotate('filling name field');
   await page.fill('input[name="name"]', 'Jane Smith');
@@ -311,16 +289,16 @@ await page.fill('input[type="date"]', '2026-06-15');
 // Click the input/button to open the calendar, then click a specific date
 annotate('clicking Check In to open calendar');
 await page.locator('.check-in-input').click();
-await page.waitForTimeout(300);
+await waitUntilPageSettled(page);
 annotate('selecting a date');
 await page.locator('td[aria-label="June 15, 2026"]').click(); // or similar
-await page.waitForTimeout(300);
+await waitUntilPageSettled(page);
 
 // Pattern 3: Calendar already visible on page (inline calendar)
 // Just click dates directly
 annotate('selecting start date on calendar');
 await page.locator('.CalendarDay:has-text("15")').first().click();
-await page.waitForTimeout(200);
+await waitUntilPageSettled(page);
 annotate('selecting end date on calendar');
 await page.locator('.CalendarDay:has-text("20")').first().click();
 ```
@@ -336,45 +314,40 @@ annotate('incrementing adult count');
 // Click the "+" button next to Adults — find it by proximity to the label
 await page.locator('.adult-counter .increment-btn').click(); // or:
 await page.locator('button:has-text("+")').first().click();
-await page.waitForTimeout(200);
+await waitUntilPageSettled(page);
 // Repeat for desired count
 await page.locator('button:has-text("+")').first().click();
-await page.waitForTimeout(200);
+await waitUntilPageSettled(page);
 ```
 
 When probing +/- inputs, note: what selector targets the + button? Does clicking it update a visible number? Is there a max limit? Record all of this so the test can be written without guessing.
 
-## Populating a full form before submit (chained interaction)
+## Populating a full booking form
 
-When a form has multiple inputs AND a submit button, the test should fill everything first, then submit. This captures both the filled-form state and any validation/error UI that appears after submission.
+Capture the filled form at the end of this test. Cover the submitted state in a separate test with deterministic write stubs installed in `config.shared.beforeNavigate`, composing existing global setup as shown in the [write-stubbing pattern](../../shaka-perf/references/writing-good-ab-tests.md#never-alter-the-database-intercept-writes).
 
 ```typescript
-abTest('Fill and Submit Booking on [Page]', {
+abTest('Fill Booking on [Page]', {
   startingPath: '/path',
   visregSelectors: ['viewport'],
   config: { visreg: { viewports: ['desktop'] } },
 }, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   // Fill all inputs first
   annotate('selecting check-in date');
   await page.locator('.check-in-input').click();
-  await page.waitForTimeout(300);
+  await waitUntilPageSettled(page);
   await page.locator('td[aria-label="June 15, 2026"]').click();
-  await page.waitForTimeout(300);
+  await waitUntilPageSettled(page);
   annotate('selecting check-out date');
   await page.locator('td[aria-label="June 20, 2026"]').click();
-  await page.waitForTimeout(300);
+  await waitUntilPageSettled(page);
   annotate('opening guests dropdown');
   await page.locator('.guest-input-btn').click();
-  await page.waitForTimeout(300);
+  await waitUntilPageSettled(page);
   annotate('incrementing adult count');
   await page.locator('.increment-btn').first().click();
-  await page.waitForTimeout(200);
-  // Now click the submit button with all fields populated
-  annotate('clicking Book Now');
-  await page.locator('button:has-text("Book Now")').click();
-  await page.waitForTimeout(500);
+  await waitUntilPageSettled(page);
 });
 ```
 
@@ -390,14 +363,13 @@ abTest('Apply Filters on [Page]', {
     visreg: { mismatchThreshold: 0.1 },  // dynamic listing content
   },
 }, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   annotate('checking first filter option');
   await page.getByLabel('Option A').check();
-  await page.waitForTimeout(200);
+  await waitUntilPageSettled(page);
   annotate('checking second filter option');
   await page.getByLabel('Option B', { exact: true }).check();
-  await page.waitForTimeout(300);
+  await waitUntilPageSettled(page);
 });
 ```
 
@@ -410,17 +382,16 @@ abTest('Open Filters and Apply on [Page]', {
   startingPath: '/path',
   visregSelectors: ['.results-container'],
 }, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   annotate('clicking to open filter panel');
   await page.locator('[aria-expanded]').first().click();
-  await page.waitForTimeout(300);
+  await waitUntilPageSettled(page);
   annotate('checking filter option');
   await page.getByLabel('Category A').check();
-  await page.waitForTimeout(200);
+  await waitUntilPageSettled(page);
   annotate('clicking apply button');
   await page.locator('button:has-text("Apply")').click();
-  await page.waitForTimeout(500);
+  await waitUntilPageSettled(page);
 });
 ```
 
@@ -437,14 +408,11 @@ abTest('Click [CTA] on [Page]', {
   visregSelectors: ['viewport'],
   config: { visreg: { viewports: ['desktop'] } },
 }, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   annotate('clicking CTA link');
   await page.locator('a[href="/destination"]').click();
-  annotate('waiting for navigation');
   await page.waitForURL('**/destination');
   // For slow pages: await page.waitForURL('**/destination', { waitUntil: 'commit' });
-  annotate('waiting for destination page to settle');
   await waitUntilPageSettled(page);
 });
 ```

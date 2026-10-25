@@ -632,27 +632,15 @@ Before adding a test, inventory the final component and state already captured b
 
 The inventory is across tests. Within one test, the viewport list is a separate decision and this rule has nothing to say about it.
 
-## No test name may contain another test name
+## Select a single test with an anchored filter
 
-`troubleshoot --filter` must resolve to exactly ONE test. A name that is a prefix of a sibling's cannot be addressed at all, so the test becomes undebuggable — and `compare --filter` silently runs more tests than you asked for.
+Use descriptive test names. When targeting one test with `compare` or `troubleshoot`, match its full name with `--filter '^Exact test name$'` and escape regex metacharacters in the name. `troubleshoot` requires exactly one match.
 
-### BAD — the first name is a prefix of the other two
-
-```typescript
-abTest('Consumer App Menu - Material Menu Tabs Layout', /* … */);
-abTest('Consumer App Menu - Material Menu Tabs Layout Single Menu', /* … */);
-abTest('Consumer App Menu - Material Menu Tabs Layout Tab Switch', /* … */);
+```bash
+shaka-perf troubleshoot --filter '^Consumer App Menu - Material Menu Tabs Layout$' --viewport phone
 ```
 
-### GOOD — qualify the base case too
-
-```typescript
-abTest('Consumer App Menu - Material Menu Tabs Layout Multi Menu', /* … */);
-abTest('Consumer App Menu - Material Menu Tabs Layout Single Menu', /* … */);
-abTest('Consumer App Menu - Material Menu Tabs Layout Tab Switch', /* … */);
-```
-
-When you add a variant of an existing test, rename the original rather than extending its name.
+This selects the base test even when sibling names extend it with `Single Menu` or `Tab Switch`.
 
 
 ## Declare the viewport you need; never resize mid-test

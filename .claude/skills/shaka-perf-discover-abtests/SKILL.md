@@ -84,7 +84,7 @@ Process pages from `pageList` **one at a time, sequentially**. For each page, co
 
 Maintain across pages:
 
-- `claimedSections`: map of `selector → path` — when a section appears on multiple pages, only the first page to claim it gets a test for it
+- `claimedSections`: inventory of captured components and rendered states, with their selectors and representative paths
 - `knownLoadingSelectors`: set of CSS selectors for spinners/skeletons/loading indicators discovered on any page so far. Grows as new ones are found.
 
 ### Step A — Probe the page
@@ -119,6 +119,8 @@ Check for spinners, skeleton screens, loading indicators. Use `javascript_tool` 
 
 **A5. Catalog interactive elements**: use `javascript_tool` to find all clickable/interactive elements on the page. Query for `button`, `a[href]` (non-navigation), `input`, `select`, `textarea`, `[role="tab"]`, `[aria-expanded]`, `[data-toggle]`, `.btn`, etc. Record each with its selector, visible text, and location on the page.
 
+Before probing or testing an interaction that writes persistent data, intercept its write request and return a deterministic response using the [write-stubbing pattern](../shaka-perf/references/writing-good-ab-tests.md#never-alter-the-database-intercept-writes).
+
 **A6. Test interactions**: click each interactive element in Chrome and document what happens:
 - Button opens a modal or drawer? → record the modal's content and selectors
 - Checkbox changes visible state? → record
@@ -137,7 +139,7 @@ Check for spinners, skeleton screens, loading indicators. Use `javascript_tool` 
   
   **Try filling them during probing** — actually type values into inputs, select dates on calendars, increment number fields, check checkboxes. This confirms what works and what doesn't before you write test code.
   
-  **Fill before clicking action buttons.** When a form has both inputs and a submit/action button (like "Book Now", "Search", "Apply"), the right test sequence is: fill all inputs first → capture the filled state → then click the button. A test that clicks "Book Now" without filling in dates and guests misses the most interesting UI state (the populated form) and may also miss validation behavior.
+  **Capture filled and submitted states in separate tests.** End the fill test with populated inputs. In the submit test, fill the inputs, submit with write requests stubbed, and wait for the resulting UI before capture.
 
 **A7. Probe inside modals/expanded UI**: when clicking reveals new UI (modal, drawer, expanded panel), probe THAT UI for its own interactive elements — buttons, forms, links within the modal. Keep going as long as new testable UI appears. For each form inside a modal, record all fields so you can write a form-fill test in Step B.
 
@@ -178,10 +180,10 @@ After completing desktop probing (A1-A7), resize the browser to mobile width and
 - What new UI appeared from interactions (modals, drawers, expanded sections) and what's inside them
 - Whether lazy load was confirmed (from A1), loading indicators found (from A2), any animations
 - **A8 mobile findings** (required): list of desktop-only selectors, mobile-only selectors, mobile replacement elements, and a one-line summary of what the mobile layout looks like. If A8 found no differences, state that explicitly.
-- **Shared section deduplication**: for each selector, check `claimedSections`:
-  - Not claimed → add to this page's plan, register it
-  - Already claimed → exclude, record `{ selector, skippedOn, alreadyCoveredBy }`
-- **Product/detail pages**: only claim the unique top section (configurator, carousel). Don't claim shared lower sections (reviews, FAQ, footer).
+- **Shared section deduplication**: compare each component's content and rendered state with `claimedSections`:
+  - New component or state → add to this page's plan and register it
+  - Same component and state already covered → record `{ selector, state, skippedOn, alreadyCoveredBy }`
+- **Product/detail pages**: cover distinct configurators, carousels, reviews, FAQs, and other content; reuse a prior capture when the component and rendered state match.
 
 ### Step B — Write TODO comments with all probing findings
 
@@ -234,7 +236,7 @@ Never raise a threshold to hide a real failure — fix the root cause.
 
 Always call `annotate('description')` immediately before each action. When a test fails, the report shows **"Failed while \<description\>"** — without annotations the error is a raw stack trace.
 
-Annotate waits, clicks, scrolls, fills, and state changes. Don't annotate every trivial `await`.
+Annotate user actions such as clicks, scrolls, fills, and selections. Keep setup and readiness checks in the test code.
 
 ### Step C — Implement and validate tests one at a time
 
@@ -292,7 +294,7 @@ After all TODO stubs are implemented:
 
 ### Step E — Coverage comparison (loop until covered)
 
-1. Open the unified report (`compare-results/report.html`) in Chrome
+1. Open the unified report (`compare-results/full-report.html`) in Chrome
 2. Open the live page in another Chrome tab
 3. Go through the report images and compare with the live page to find:
    - Missing page sections (important content not captured by any test)
@@ -368,12 +370,12 @@ Output: ./ab-tests/
 
 ## Coverage decisions
 
-### Shared sections (tested once)
+### Shared component states (tested once)
 
 | Section                    | Tested on            | Skipped on                |
 | -------------------------- | -------------------- | ------------------------- |
 | `[data-cy="testimonials"]` | `homepage.abtest.ts` | product pages, about page |
-| `footer`                   | `homepage.abtest.ts` | all other pages           |
+| `footer` (same content/state) | `homepage.abtest.ts` | pages with the same footer |
 
 ### Pages scoped to unique content only
 
