@@ -1641,7 +1641,7 @@ function flakyChip(): ChipDescriptor {
     color: 'yellow',
     sortingWeight: 16,
     affectsCardOrder: false,
-    tooltip: 'A stage crashed or timed out on an earlier attempt but a retry succeeded — the test is flaky but recovered.',
+    tooltip: 'A stage task failed on an earlier attempt but a retry succeeded — the test is flaky but recovered.',
   };
 }
 

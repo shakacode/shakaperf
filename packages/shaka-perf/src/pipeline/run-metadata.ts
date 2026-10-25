@@ -44,7 +44,7 @@ export interface RunMetadata {
   compareRetries?: number;
   /** Actual visual comparison attempts started across worker retries. */
   compareAttempts?: number;
-  /** Worker retries actually started after errors/timeouts, across this stage's tasks. */
+  /** Worker retries actually started after errors, across this stage's tasks. */
   taskRetries?: number;
   /** Effective error retry budget for each worker task, after runtime overrides. */
   taskRetryLimit?: number;

@@ -148,7 +148,7 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
       <h3>Retries and attempts</h3>
       {errorRetries.length ? <div>
         <h4>Error recovery</h4>
-        <p>Reruns failed worker tasks after errors or timeouts.</p>
+        <p>Reruns failed worker tasks after errors. Hard task timeouts are not retried.</p>
         <div className="run-details__settings">{errorRetries.map(({ value, items }, index) => <div className="run-details__setting" key={index}>
           <div className="run-details__setting-head">
             <strong>{value.count === undefined ? 'Retry count unavailable' : `${value.count} task ${value.count === 1 ? 'retry' : 'retries'}`}</strong>
