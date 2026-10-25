@@ -126,7 +126,7 @@ it('shows grouped Lighthouse samples and visual retries separately from result t
   expect(html).toContain('3 Results');
   expect(html).not.toContain('3 measurements');
   expect(html.match(/7 LH samples per side/g)).toHaveLength(1);
-  expect(html).toContain('2 visual tries');
+  expect(html).toContain('2 visual attempts');
   expect(html).not.toContain('Up to');
 });
 
@@ -164,4 +164,24 @@ it.each([undefined, 1])('does not show a configured retry budget when actual tri
   outcomes[0]!.stage = 'visreg';
   Object.assign(outcomes[0]!.runMetadata!, { compareRetries: 5, compareAttempts });
   expect(details(outcomes)).not.toContain('<h3>Sampling</h3>');
+});
+
+it('distinguishes error recovery from visual comparisons and scopes both to their viewport', () => {
+  const outcomes = runDetailsFixture('compare').tests[0]!.outcomes;
+  outcomes[0]!.stage = 'visreg';
+  Object.assign(outcomes[0]!.runMetadata!, { taskRetries: 1, taskRetryLimit: 2, compareAttempts: 4, compareRetries: 2 });
+  const html = details(outcomes);
+  expect(html).toContain('Error recovery');
+  expect(html).toContain('1 task retry');
+  expect(html).toContain('Visual comparison');
+  expect(html).toContain('4 visual attempts');
+  expect(html).toContain('visreg · desktop');
+});
+
+it('does not invent error retry counts for older recovered results', () => {
+  const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(0, 1);
+  outcomes[0]!.recoveredAfterRetries = true;
+  expect(details(outcomes)).toContain('Retry count unavailable');
+  Object.assign(outcomes[0]!.runMetadata!, { taskRetries: 0 });
+  expect(details(outcomes)).not.toContain('Error recovery');
 });

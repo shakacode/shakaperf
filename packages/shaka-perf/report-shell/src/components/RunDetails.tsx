@@ -11,12 +11,12 @@ import { Dialog } from '../../../src/pipeline/stage-report-components';
 import type { RunMetadata } from '../../../src/pipeline/run-metadata';
 
 export function savedRunDetails(outcomes: readonly ReportOutcome[]) {
-  const groups = new Map<string, { stage: string; metadata: RunMetadata }[]>();
+  const groups = new Map<string, Entry[]>();
   for (const outcome of outcomes) {
     if (!outcome.runMetadata) continue;
     const label = outcome.viewport.label;
     const entries = groups.get(label) ?? [];
-    entries.push({ stage: outcome.stage, metadata: outcome.runMetadata });
+    entries.push({ stage: outcome.stage, metadata: outcome.runMetadata, recoveredAfterRetries: outcome.recoveredAfterRetries });
     groups.set(label, entries);
   }
   return [...groups];
@@ -43,7 +43,7 @@ function MeasurementCommand({ command }: { command: string }) {
   );
 }
 
-type Entry = { stage: string; metadata: RunMetadata };
+type Entry = { stage: string; metadata: RunMetadata; recoveredAfterRetries?: boolean };
 
 function groupValues<T, V>(items: readonly T[], select: (item: T) => V) {
   const groups = new Map<string, { value: V; items: T[] }>();
@@ -64,8 +64,8 @@ function timestamp(value: string) {
 
 function unique(values: string[]) { return [...new Set(values)]; }
 
-function Scope({ items, entries, runs }: { items: Entry[]; entries: Entry[]; runs: string[] }) {
-  if (new Set(items).size === entries.length) return null;
+function Scope({ items, entries, runs, always = false }: { items: Entry[]; entries: Entry[]; runs: string[]; always?: boolean }) {
+  if (!always && new Set(items).size === entries.length) return null;
   const scopes = groupValues(items, ({ stage, metadata }) => [metadata.runId, stage]);
   return <span className="run-details__scope">{scopes.map(({ value: [runId, stage], items }) =>
     `${runs.length > 1 ? `Run ${runs.indexOf(runId!) + 1} / ` : ''}${stage} · ${unique(items.map((item) => item.metadata.viewport.label)).join(', ')}`,
@@ -100,7 +100,8 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
   const sampling = groupValues(entries.filter(({ stage, metadata }) => stage === 'perf' && metadata.numberOfMeasurements !== undefined), ({ metadata }) => ({
     count: metadata.numberOfMeasurements!, perSide: metadata.targets.length > 1,
   }));
-  const retries = groupValues(entries.filter(({ metadata }) => (metadata.compareAttempts ?? 0) > 1), ({ metadata }) => metadata.compareAttempts!);
+  const comparisons = groupValues(entries.filter(({ metadata }) => (metadata.compareAttempts ?? 0) > 1), ({ metadata }) => ({ count: metadata.compareAttempts!, limit: metadata.compareRetries }));
+  const errorRetries = groupValues(entries.filter(({ metadata, recoveredAfterRetries }) => (metadata.taskRetries ?? 0) > 0 || (metadata.taskRetries === undefined && recoveredAfterRetries)), ({ metadata }) => ({ count: metadata.taskRetries, limit: metadata.taskRetryLimit }));
   const settings = groupValues(entries.flatMap((entry) => (entry.metadata.throttling ?? []).filter((setting) => setting.engine === 'Lighthouse').map((setting) => ({ entry, setting }))), ({ setting }) => ({
     engine: setting.engine, method: setting.method, cpu: setting.method === 'provided' ? undefined : setting.cpuSlowdownMultiplier,
     network: Object.entries(setting.network).sort(([a], [b]) => a.localeCompare(b)),
@@ -134,18 +135,39 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
         <strong>{value.label}</strong><span>{value.width} × {value.height} · {value.deviceScaleFactor}× · {value.formFactor}</span>{viewports.filter((group) => group.value.label === value.label).length > 1 ? scope(items) : null}
       </div>)}</div></div>
     </section>
-    {sampling.length || retries.length ? <section className="run-details__section">
+    {sampling.length ? <section className="run-details__section">
       <h3>Sampling</h3>
       <div className="run-details__settings">
         {sampling.map(({ value, items }) => <div className="run-details__setting" key={`samples-${value.count}-${value.perSide}`}>
           <strong>{value.count} LH {value.count === 1 ? 'sample' : 'samples'}{value.perSide ? ' per side' : ''}</strong>
           {scope(items)}
         </div>)}
-        {retries.map(({ value, items }) => <div className="run-details__setting" key={`retries-${value}`}>
-          <strong>{value} visual tries</strong>
-          {scope(items)}
-        </div>)}
       </div>
+    </section> : null}
+    {errorRetries.length || comparisons.length ? <section className="run-details__section">
+      <h3>Retries and attempts</h3>
+      {errorRetries.length ? <div>
+        <h4>Error recovery</h4>
+        <p>Reruns failed worker tasks after errors or timeouts.</p>
+        <div className="run-details__settings">{errorRetries.map(({ value, items }, index) => <div className="run-details__setting" key={index}>
+          <div className="run-details__setting-head">
+            <strong>{value.count === undefined ? 'Retry count unavailable' : `${value.count} task ${value.count === 1 ? 'retry' : 'retries'}`}</strong>
+            {value.limit !== undefined ? <span>Limit: {value.limit} {value.limit === 1 ? 'retry' : 'retries'} per task</span> : null}
+          </div>
+          <Scope items={items} entries={entries} runs={runs} always />
+        </div>)}</div>
+      </div> : null}
+      {comparisons.length ? <div>
+        <h4>Visual comparison</h4>
+        <p>Capture-and-compare attempts, including those started before an error. Mismatches trigger another capture.</p>
+        <div className="run-details__settings">{comparisons.map(({ value, items }, index) => <div className="run-details__setting" key={index}>
+          <div className="run-details__setting-head">
+            <strong>{value.count} visual attempts</strong>
+            {value.limit !== undefined ? <span>Limit: {value.limit + 1} attempts per task</span> : null}
+          </div>
+          <Scope items={items} entries={entries} runs={runs} always />
+        </div>)}</div>
+      </div> : null}
     </section> : null}
     {settings.length ? <section className="run-details__section">
       <h3>Throttling</h3>
@@ -164,6 +186,7 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
           targets: metadata.targets, throttling: metadata.throttling,
           numberOfMeasurements: metadata.numberOfMeasurements, compareRetries: metadata.compareRetries,
           compareAttempts: metadata.compareAttempts,
+          taskRetries: metadata.taskRetries, taskRetryLimit: metadata.taskRetryLimit,
         }));
         const showTime = rows.some(({ value }) => value.measured !== timestamp(runId));
         return <details className="run-details__run" key={runId}>

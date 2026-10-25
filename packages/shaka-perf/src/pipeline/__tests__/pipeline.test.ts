@@ -287,6 +287,25 @@ describe('runPipeline', () => {
     else expect(run).not.toHaveBeenCalled();
   });
 
+  it.each([false, true])('saves actual worker retries, including exhausted tasks: %p', async (exhausted) => {
+    const selected = pipeline();
+    selected.stages[0]!.run = async (_ctx, pool) => {
+      let attempts = 0;
+      return pool.submit(async () => {
+        if (++attempts === 1 || exhausted) throw new Error('temporary failure');
+        return {};
+      });
+    };
+    const test = { ...frozenTest, config: { shared: { retries: 1, retryDelay: 0 } } };
+    const result = await runWithFrozenTest({ tests: [test], categories: 'visreg', skipReport: true }, selected);
+    const measured = result.testResults[0]!.outcomes.filter((o) => o.stage === 'visreg');
+    expect(measured.length).toBeGreaterThan(0);
+    for (const outcome of measured) {
+      expect(outcome.kind).toBe(exhausted ? 'error' : 'ok');
+      expect(outcome.runMetadata).toMatchObject({ taskRetries: 1, taskRetryLimit: 1 });
+    }
+  });
+
   it('persists per-result metadata and reuses it unchanged across mixed runs and report-only', async () => {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-run-details-'));
     const originalArgv = process.argv;
@@ -307,7 +326,7 @@ describe('runPipeline', () => {
       const before = first.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.kind === 'ok')!;
       expect(before.runMetadata).toEqual(expect.objectContaining({
         command: 'shaka-perf compare --categories visreg',
-        runId: before.runId, compareRetries: 2, compareAttempts: 2,
+        runId: before.runId, compareRetries: 2, compareAttempts: 2, taskRetries: 0, taskRetryLimit: 0,
         stages: ['visreg'], categories: ['visreg'],
         viewport: before.viewport,
         targets: [

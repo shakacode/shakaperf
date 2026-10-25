@@ -62,6 +62,7 @@ export interface WorkerTaskProgressSink {
   onTaskStarted(): void;
   onTaskSettled(): void;
   onTaskFailed(): void;
+  onTaskRetry?(): void;
 }
 
 /**
@@ -443,6 +444,7 @@ export class WorkerPool {
       orchestrator.started = true;
       orchestrator.progress?.onTaskStarted();
     }
+    let attempt = 0;
     while (true) {
       if (this.disposed || orchestrator.cancelled) {
         worker.consecutiveFailures = 0;
@@ -452,6 +454,7 @@ export class WorkerPool {
         return;
       }
       try {
+        if (attempt++ > 0) orchestrator.progress?.onTaskRetry?.();
         // `job.run` was AsyncResource-bound at submit time; calling it now
         // replays the caller's full async context (logger, prefix scopes).
         const value = await this.runWithStageOwner(job, worker);

@@ -42,8 +42,12 @@ export interface RunMetadata {
   numberOfMeasurements?: number;
   /** Effective visual comparison retry budget, after runtime overrides. */
   compareRetries?: number;
-  /** Actual visual comparison tries started, including the initial try. */
+  /** Actual visual comparison attempts started across worker retries. */
   compareAttempts?: number;
+  /** Worker retries actually started after errors/timeouts, across this stage's tasks. */
+  taskRetries?: number;
+  /** Effective error retry budget for each worker task, after runtime overrides. */
+  taskRetryLimit?: number;
 }
 
 /** Reconstruct the measurement invocation without changing any argument values. */
