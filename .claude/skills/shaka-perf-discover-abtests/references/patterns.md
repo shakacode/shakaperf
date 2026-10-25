@@ -322,12 +322,12 @@ await page.waitForTimeout(200);
 
 When probing +/- inputs, note: what selector targets the + button? Does clicking it update a visible number? Is there a max limit? Record all of this so the test can be written without guessing.
 
-## Populating a full form before submit (chained interaction)
+## Populating a full booking form
 
-When a form has multiple inputs AND a submit button, the test should fill everything first, then submit. This captures both the filled-form state and any validation/error UI that appears after submission.
+Capture the filled form at the end of this test. Cover the submitted state in a separate test with deterministic write stubs installed in `config.shared.beforeNavigate`, composing existing global setup as shown in the [write-stubbing pattern](../../shaka-perf/references/writing-good-ab-tests.md#never-alter-the-database-intercept-writes).
 
 ```typescript
-abTest('Fill and Submit Booking on [Page]', {
+abTest('Fill Booking on [Page]', {
   startingPath: '/path',
   visregSelectors: ['viewport'],
   config: { visreg: { viewports: ['desktop'] } },
@@ -348,10 +348,6 @@ abTest('Fill and Submit Booking on [Page]', {
   annotate('incrementing adult count');
   await page.locator('.increment-btn').first().click();
   await page.waitForTimeout(200);
-  // Now click the submit button with all fields populated
-  annotate('clicking Book Now');
-  await page.locator('button:has-text("Book Now")').click();
-  await page.waitForTimeout(500);
 });
 ```
 

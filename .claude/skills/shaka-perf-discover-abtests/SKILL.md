@@ -119,6 +119,8 @@ Check for spinners, skeleton screens, loading indicators. Use `javascript_tool` 
 
 **A5. Catalog interactive elements**: use `javascript_tool` to find all clickable/interactive elements on the page. Query for `button`, `a[href]` (non-navigation), `input`, `select`, `textarea`, `[role="tab"]`, `[aria-expanded]`, `[data-toggle]`, `.btn`, etc. Record each with its selector, visible text, and location on the page.
 
+Before probing or testing an interaction that writes persistent data, intercept its write request and return a deterministic response using the [write-stubbing pattern](../shaka-perf/references/writing-good-ab-tests.md#never-alter-the-database-intercept-writes).
+
 **A6. Test interactions**: click each interactive element in Chrome and document what happens:
 - Button opens a modal or drawer? → record the modal's content and selectors
 - Checkbox changes visible state? → record
@@ -137,7 +139,7 @@ Check for spinners, skeleton screens, loading indicators. Use `javascript_tool` 
   
   **Try filling them during probing** — actually type values into inputs, select dates on calendars, increment number fields, check checkboxes. This confirms what works and what doesn't before you write test code.
   
-  **Fill before clicking action buttons.** When a form has both inputs and a submit/action button (like "Book Now", "Search", "Apply"), the right test sequence is: fill all inputs first → capture the filled state → then click the button. A test that clicks "Book Now" without filling in dates and guests misses the most interesting UI state (the populated form) and may also miss validation behavior.
+  **Capture filled and submitted states in separate tests.** End the fill test with populated inputs. In the submit test, fill the inputs, submit with write requests stubbed, and wait for the resulting UI before capture.
 
 **A7. Probe inside modals/expanded UI**: when clicking reveals new UI (modal, drawer, expanded panel), probe THAT UI for its own interactive elements — buttons, forms, links within the modal. Keep going as long as new testable UI appears. For each form inside a modal, record all fields so you can write a form-fill test in Step B.
 
