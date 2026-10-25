@@ -82,8 +82,7 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Page Name', {
   startingPath: '/path',
-}, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
+}, async ({ page }) => {
   await waitUntilPageSettled(page);
 });
 ```
@@ -99,8 +98,7 @@ abTest('Page Name', {
   config: {
     visreg: { mismatchThreshold: 0.01 },  // static content — tighten
   },
-}, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
+}, async ({ page }) => {
   await waitUntilPageSettled(page);
 });
 ```
@@ -116,13 +114,10 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 abTest('Click [Button] on [Page]', {
   startingPath: '/start',
 }, async ({ page, annotate }) => {
-  annotate('waiting for element to appear');
   await page.waitForSelector('[data-cy="element"]');
   annotate('clicking button');
   await page.click('text=Button Text');
-  annotate('waiting for navigation to expected path');
   await page.waitForURL('**/expected-path');
-  annotate('waiting for page to settle after navigation');
   await waitUntilPageSettled(page);
 });
 ```
@@ -136,14 +131,10 @@ Only use if `shaka-perf discover-abtests probe-lazy-load` (or manual scroll prob
 ```typescript
 abTest('Page Name', {
   startingPath: '/path',
-}, async ({ page, annotate }) => {
-  annotate('scrolling to bottom to trigger lazy load');
+}, async ({ page }) => {
   await page.locator('footer').scrollIntoViewIfNeeded();
-  annotate('waiting for lazy-loaded content to finish loading');
   await page.waitForLoadState('networkidle');
-  annotate('scrolling back to top');
   await page.evaluate(() => window.scrollTo(0, 0));
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
 ```
@@ -169,8 +160,7 @@ abTest('Homepage Map Section', {
   config: {
     visreg: { viewports: ['tablet', 'desktop'] },
   },
-}, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
+}, async ({ page }) => {
   await waitUntilPageSettled(page);
 });
 
@@ -181,8 +171,7 @@ abTest('Homepage Mobile Featured', {
   config: {
     visreg: { viewports: ['phone'] },
   },
-}, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
+}, async ({ page }) => {
   await waitUntilPageSettled(page);
 });
 ```
@@ -196,10 +185,8 @@ When the viewport difference is test logic (different waits, clicks, or scroll b
 abTest('Search Results (phone)', {
   startingPath: '/search',
   config: { visreg: { viewports: ['phone'] } },
-}, async ({ page, annotate }) => {
-  annotate('waiting for mobile results list');
+}, async ({ page }) => {
   await page.waitForSelector('.mobile-results', { state: 'visible' });
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
 
@@ -207,10 +194,8 @@ abTest('Search Results (phone)', {
 abTest('Search Results (desktop)', {
   startingPath: '/search',
   config: { visreg: { viewports: ['desktop'] } },
-}, async ({ page, annotate }) => {
-  annotate('waiting for split-panel search layout');
+}, async ({ page }) => {
   await page.waitForSelector('.search-split-panel', { state: 'visible' });
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
 ```
@@ -229,13 +214,10 @@ const PAUSE_CSS = `
 
 abTest('Carousel on [Page]', {
   startingPath: '/path',
-}, async ({ page, annotate }) => {
-  annotate('waiting for carousel to appear');
+}, async ({ page }) => {
   await page.waitForSelector('[data-cy="carousel-track"]', { state: 'visible' });
-  annotate('overriding CSS to freeze carousel animation');
   await overrideCSS(page);
   await page.addStyleTag({ content: PAUSE_CSS });
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
 ```
@@ -249,7 +231,6 @@ abTest('Below-fold Section on [Page]', {
   startingPath: '/path',
   visregSelectors: ['viewport'],
 }, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   annotate('scrolling target section into view');
   await page.locator('.target-section').first().scrollIntoViewIfNeeded();
@@ -266,11 +247,9 @@ abTest('Open [Modal Name] on [Page]', {
   visregSelectors: ['viewport'],
   config: { visreg: { viewports: ['desktop'] } },
 }, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   annotate('clicking button to open modal');
   await page.locator('[data-cy="open-modal"]').click();
-  annotate('waiting for modal to appear');
   await page.waitForSelector('[data-cy="modal"]', { state: 'visible' });
 });
 ```
@@ -284,7 +263,6 @@ abTest('Fill [Form Name] on [Page]', {
   startingPath: '/path',
   visregSelectors: ['.form-container'],
 }, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   annotate('filling name field');
   await page.fill('input[name="name"]', 'Jane Smith');
@@ -354,7 +332,6 @@ abTest('Fill and Submit Booking on [Page]', {
   visregSelectors: ['viewport'],
   config: { visreg: { viewports: ['desktop'] } },
 }, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   // Fill all inputs first
   annotate('selecting check-in date');
@@ -390,7 +367,6 @@ abTest('Apply Filters on [Page]', {
     visreg: { mismatchThreshold: 0.1 },  // dynamic listing content
   },
 }, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   annotate('checking first filter option');
   await page.getByLabel('Option A').check();
@@ -410,7 +386,6 @@ abTest('Open Filters and Apply on [Page]', {
   startingPath: '/path',
   visregSelectors: ['.results-container'],
 }, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   annotate('clicking to open filter panel');
   await page.locator('[aria-expanded]').first().click();
@@ -437,14 +412,11 @@ abTest('Click [CTA] on [Page]', {
   visregSelectors: ['viewport'],
   config: { visreg: { viewports: ['desktop'] } },
 }, async ({ page, annotate }) => {
-  annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   annotate('clicking CTA link');
   await page.locator('a[href="/destination"]').click();
-  annotate('waiting for navigation');
   await page.waitForURL('**/destination');
   // For slow pages: await page.waitForURL('**/destination', { waitUntil: 'commit' });
-  annotate('waiting for destination page to settle');
   await waitUntilPageSettled(page);
 });
 ```

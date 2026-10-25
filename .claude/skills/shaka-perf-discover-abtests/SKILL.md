@@ -234,7 +234,7 @@ Never raise a threshold to hide a real failure — fix the root cause.
 
 Always call `annotate('description')` immediately before each action. When a test fails, the report shows **"Failed while \<description\>"** — without annotations the error is a raw stack trace.
 
-Annotate waits, clicks, scrolls, fills, and state changes. Don't annotate every trivial `await`.
+Annotate user actions such as clicks, scrolls, fills, and selections. Keep setup and readiness checks in the test code.
 
 ### Step C — Implement and validate tests one at a time
 
