@@ -70,18 +70,18 @@ abTest(name: string, {
 
 Set browser visibility with the CLI flags `--headed` / `--headed=false`.
 
-**Per-test `config` merge rule:** every defined per-test key REPLACES the file
-value wholesale — arrays included. A per-test
+**Per-test `config` merge rule:** objects merge recursively; defined scalars,
+functions, and arrays replace the corresponding file values. A per-test
 `accessibility: { disableRules: ['color-contrast'] }` does NOT union with the
 file's `disableRules`; re-list everything the test needs. Per-test
 `playwrightOptions` (`shared`/`visreg`/`perf`) and
 `perf.lighthouseConfig`/`audit.lighthouseConfig` ARE honoured on the engines
 that launch per unit (visreg, perf, audit); accessibility and agent-readiness
 reuse one browser per worker slot and resolve launch options once per run.
-Other whole-suite settings (`resembleOutputOptions`,
-`compareRetries`/`compareRetryDelay`, perf/audit measurement tuning) also
-resolve once per run — overriding them per-test has no effect; set them once
-in `abtests.config.ts`.
+Use `config.perf` for per-test `numberOfMeasurements`, `regressionThreshold`,
+`regressionThresholdStat`, and `pValueThreshold`. Use `config.visreg` for per-test
+`resembleOutputOptions`, `compareRetries`, and `compareRetryDelay`; burn and
+troubleshoot runs set comparison retries to zero.
 
 ## Removed capture-time options — write the test body instead
 
