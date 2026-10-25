@@ -14,7 +14,7 @@ import type { CodeCoverageConfigInput } from 'shaka-shared';
 import { ABTESTS_CONFIG_PATH_ENV } from '../../../effective-config';
 
 export type CoverageScope = ReturnType<typeof coverageScope>;
-export const DEFAULT_EXCLUDES = ['**/node_modules/**', '**/*.d.ts', '**/*.abtest.*'];
+export const DEFAULT_EXCLUDES = ['**/node_modules/**', '**/.git/**', '**/.yarn/**', '**/audit-results/**', '**/*.d.ts', '**/*.abtest.*'];
 export const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 export const sourceHash = (filename: string) => digest(fs.readFileSync(filename, 'utf8'));
 
@@ -46,7 +46,7 @@ export function coverageScope(input: CodeCoverageConfigInput = {}, configPath = 
         if (exclude.some((pattern) => minimatch(relative(filename), pattern, { dot: true })
           || minimatch(relative(filename) + '/', pattern, { dot: true }))) continue;
         if (entry.isDirectory()) {
-          if (!['.git', '.yarn', 'audit-results'].includes(entry.name)) walk(filename);
+          walk(filename);
         } else if (includes(filename)) found.push(filename);
       }
     };
