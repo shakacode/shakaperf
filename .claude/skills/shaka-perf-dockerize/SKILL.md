@@ -208,4 +208,6 @@ Before declaring success, walk the diligence checklist in `references/troublesho
 
 Working instrumentation and screenshot coverage are required for acceptance. Do not declare dockerization complete while either is missing or unverified.
 
+After coverage verification, restore both sides to uninstrumented production mode using the documented commands and repeat the HTTP checks before recommending performance comparisons.
+
 Then summarize for the user: the files you created, services embedded vs. composed, the build/verify result (with the HTTP codes you saw), any app guards you added, and any manual steps still required. Point them at `shaka-perf compare` as the next step now that both servers are up.
