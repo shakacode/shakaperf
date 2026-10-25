@@ -287,19 +287,46 @@ describe('runPipeline', () => {
     else expect(run).not.toHaveBeenCalled();
   });
 
+  it.each([false, true])('saves actual worker retries, including exhausted tasks: %p', async (exhausted) => {
+    const selected = pipeline();
+    selected.stages[0]!.run = async (_ctx, pool) => {
+      let attempts = 0;
+      return pool.submit(async () => {
+        if (++attempts === 1 || exhausted) throw new Error('temporary failure');
+        return {};
+      });
+    };
+    const test = { ...frozenTest, config: { shared: { retries: 1, retryDelay: 0 } } };
+    const result = await runWithFrozenTest({ tests: [test], categories: 'visreg', skipReport: true }, selected);
+    const measured = result.testResults[0]!.outcomes.filter((o) => o.stage === 'visreg');
+    expect(measured.length).toBeGreaterThan(0);
+    for (const outcome of measured) {
+      expect(outcome.kind).toBe(exhausted ? 'error' : 'ok');
+      expect(outcome.runMetadata).toMatchObject({ taskRetries: 1, taskRetryLimit: 1 });
+    }
+  });
+
   it('persists per-result metadata and reuses it unchanged across mixed runs and report-only', async () => {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-run-details-'));
     const originalArgv = process.argv;
+    const configuredTest = { ...frozenTest, config: { perf: { numberOfMeasurements: 7 }, visreg: { compareRetries: 2 } } };
     const clock = jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-20T10:00:00Z'));
     const commit = { sha: 'a'.repeat(40), message: 'Measured deployment\n\nFull commit body', source: 'deployment' };
     jest.mocked(measuredCommit).mockResolvedValue(commit);
     try {
       process.argv = ['node', 'shaka-perf', 'compare', '--categories', 'visreg'];
-      const first = await runWithFrozenTest({ cwd, categories: 'visreg', skipReport: true });
+      const initialPipeline = pipeline();
+      const visreg = initialPipeline.stages[0]!;
+      const initialRun = visreg.run;
+      visreg.run = async (ctx, pool) => {
+        ctx.recordMeasurementOptions?.({ compareRetries: ctx.config.visreg.compareRetries, compareAttempts: 2 });
+        return initialRun(ctx, pool);
+      };
+      const first = await runWithFrozenTest({ cwd, tests: [configuredTest], categories: 'visreg', skipReport: true }, initialPipeline);
       const before = first.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.kind === 'ok')!;
       expect(before.runMetadata).toEqual(expect.objectContaining({
         command: 'shaka-perf compare --categories visreg',
-        runId: before.runId,
+        runId: before.runId, compareRetries: 2, compareAttempts: 2, taskRetries: 0, taskRetryLimit: 0,
         stages: ['visreg'], categories: ['visreg'],
         viewport: before.viewport,
         targets: [
@@ -310,10 +337,19 @@ describe('runPipeline', () => {
       expect(Date.parse(before.runMetadata!.measuredAt)).not.toBeNaN();
       clock.mockReturnValue(Date.parse('2026-10-20T11:00:00Z'));
       process.argv = ['node', 'shaka-perf', 'compare', '--categories', 'perf', '--restart-from-stage', 'perf'];
-      const second = await runWithFrozenTest({ cwd, categories: 'perf', restartFromStage: 'perf', skipReport: true });
+      const nextPipeline = pipeline();
+      const perfStage = nextPipeline.stages.find((entry) => entry.name === 'perf')!;
+      const nextRun = perfStage.run;
+      perfStage.run = async (ctx, pool) => {
+        ctx.recordMeasurementOptions?.({ numberOfMeasurements: ctx.config.perf.numberOfMeasurements });
+        return nextRun(ctx, pool);
+      };
+      const second = await runWithFrozenTest({ cwd, tests: [configuredTest], categories: 'perf', restartFromStage: 'perf', skipReport: true }, nextPipeline);
       expect(second.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.viewport.label === before.viewport.label)?.runMetadata).toEqual(before.runMetadata);
       const perf = second.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.kind === 'ok')!;
       expect(perf.runMetadata?.command).toContain('--restart-from-stage perf');
+      expect(perf.runMetadata?.numberOfMeasurements).toBe(7);
+      expect(perf.runMetadata).not.toHaveProperty('compareRetries');
       expect(perf.runMetadata?.runId).not.toBe(before.runMetadata!.runId);
       jest.mocked(measuredCommit).mockClear();
       process.argv = ['node', 'shaka-perf', 'compare', '--report-only'];

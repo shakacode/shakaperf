@@ -223,14 +223,19 @@ describe('WorkerPool per-task limits', () => {
     }
   });
 
-  it('names the cap that actually fired when it poisons the task', async () => {
+  it('names the cap that fired and does not retry a hard timeout', async () => {
     // The inner cancellation always quoted the right number; the outer poison
     // error — the one that reaches the report as the failure reason — used to
     // quote the pool default instead, so a 20ms task read "exceeded its
     // 60000ms budget".
+    const retry = jest.fn();
+    const noop = () => {};
     const pool = new WorkerPool(1, {
       limits: limits({ timeoutMs: 60_000 }),
-      currentTaskLimits: () => limits({ timeoutMs: 20 }),
+      currentTaskLimits: () => limits({ timeoutMs: 20, retries: 2 }),
+      currentTaskProgress: () => ({
+        onTaskSubmitted: noop, onTaskStarted: noop, onTaskSettled: noop, onTaskFailed: noop, onTaskRetry: retry,
+      }),
     });
     try {
       // Surfaces its OWN rejection once cancelled, which is what a real stage
@@ -240,6 +245,7 @@ describe('WorkerPool per-task limits', () => {
         await cancellableWork(raceCancellation);
         throw new Error('stage aborted');
       })).rejects.toThrow('task exceeded its 20ms budget');
+      expect(retry).not.toHaveBeenCalled();
     } finally {
       await pool.dispose();
     }

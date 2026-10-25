@@ -1122,6 +1122,9 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   const throttling: MeasurementThrottling[] = [];
   let metadata: Outcome['runMetadata'];
   const ctx: TestContext = {
+    recordMeasurementOptions: (options) => {
+      if (metadata) Object.assign(metadata, options);
+    },
     recordMeasurementThrottling: (settings) => {
       if (settings.engine === 'Lighthouse' && settings.side) {
         const { side, ...effective } = settings;
@@ -1180,13 +1183,18 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       taskProgress.errors += 1;
       failedAttempts += 1;
     },
+    onTaskRetry() {
+      if (metadata) metadata.taskRetries = (metadata.taskRetries ?? 0) + 1;
+    },
   };
+  const taskLimits = runtimePool.taskLimits(ctx.config);
   try {
     const run = runtime.measurementRun;
     if (stage.measuresApplication && run) {
       metadata = {
         command: run.command, runId: run.runId, measuredAt: new Date().toISOString(),
         stages: run.stages, categories: run.categories, viewport: unit.viewport,
+        taskRetries: 0, taskRetryLimit: taskLimits.retries,
         targets: await Promise.all(run.sides.map(async (side) => {
           const url = side === 'control' ? ctx.controlURL : ctx.experimentURL;
           return { side, url, commit: await measuredCommit(url) };
@@ -1203,7 +1211,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       () => stageTaskProgressStorage.run(
         taskProgressSink,
         () => stageTaskLimitsStorage.run(
-          runtimePool.taskLimits(ctx.config),
+          taskLimits,
           () => runWithTestAnnotationContext(() => {
             // First line of every unit's log, so a failure carries the way back
             // to itself: one test, one viewport, browsers left open.
@@ -1633,7 +1641,7 @@ function flakyChip(): ChipDescriptor {
     color: 'yellow',
     sortingWeight: 16,
     affectsCardOrder: false,
-    tooltip: 'A stage crashed or timed out on an earlier attempt but a retry succeeded — the test is flaky but recovered.',
+    tooltip: 'A stage task failed on an earlier attempt but a retry succeeded — the test is flaky but recovered.',
   };
 }
 

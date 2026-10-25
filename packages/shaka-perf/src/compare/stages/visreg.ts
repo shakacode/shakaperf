@@ -69,8 +69,13 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
     async run(ctx, pool) {
       const runImpl = './visreg/run';
       const { runVisregUnit } = await import(/* @vite-ignore */ runImpl) as typeof import('./visreg/run');
+      // Keep the count outside the retried task so a recovered invocation
+      // does not overwrite attempts started before the error.
+      let compareAttempts = 0;
       return pool.submit(
-        async () => runVisregUnit(ctx, config),
+        async () => runVisregUnit(ctx, config, () => {
+          ctx.recordMeasurementOptions?.({ compareAttempts: ++compareAttempts });
+        }),
         { key: ctx.testAndViewportId },
       );
     },

@@ -32,6 +32,8 @@ it.each(['full', 'self-contained'] as const)('retains metadata verbatim in the %
   const data = runDetailsFixture('compare');
   const metadata = data.tests[0]!.outcomes[0]!.runMetadata!;
   metadata.command = 'some-artifact.json';
+  metadata.numberOfMeasurements = 7;
+  metadata.compareRetries = 2;
   const report = reportDataForMode(data, mode, [], '/unused', { 'some-artifact.json': 'data:application/json;base64,e30=' });
   expect(report.tests[0]!.outcomes[0]!.runMetadata).toEqual(metadata);
 });
@@ -111,4 +113,76 @@ it.each(['Subject', 'Subject\n\n', ''])('does not expand a commit without body c
   const html = details(outcomes);
   expect(html.match(/<summary>/g)).toHaveLength(1);
   expect(html).toContain('>1e04e038<');
+});
+
+it('shows grouped Lighthouse samples and visual retries separately from result totals', () => {
+  const outcomes = runDetailsFixture('compare').tests[0]!.outcomes;
+  const metadata = outcomes[0]!.runMetadata!;
+  Object.assign(metadata, { numberOfMeasurements: 7 });
+  outcomes[1]!.stage = 'visreg';
+  Object.assign(outcomes[1]!.runMetadata!, { runId: metadata.runId, compareRetries: 5, compareAttempts: 2 });
+  outcomes[2]!.runMetadata = { ...metadata, viewport: outcomes[2]!.viewport };
+  const html = details(outcomes);
+  expect(html).toContain('3 Results');
+  expect(html).not.toContain('3 measurements');
+  expect(html.match(/7 LH samples per side/g)).toHaveLength(1);
+  expect(html).toContain('2 visual attempts');
+  expect(html).not.toContain('Up to');
+});
+
+it('keeps differing saved sampling counts scoped to their measurement runs', () => {
+  const outcomes = runDetailsFixture('compare').tests[0]!.outcomes.slice(0, 2);
+  Object.assign(outcomes[0]!.runMetadata!, { numberOfMeasurements: 7 });
+  Object.assign(outcomes[1]!.runMetadata!, { numberOfMeasurements: 1 });
+  outcomes[1]!.stage = 'perf';
+  const html = details(outcomes);
+  expect(html).toContain('7 LH samples per side');
+  expect(html).toContain('1 LH sample per side');
+  expect(html).toContain('Run 1 / perf');
+  expect(html).toContain('Run 2 / perf');
+});
+
+it.each([undefined, 0])('omits absent sampling fields and unused visual retries: %p', (compareRetries) => {
+  const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(0, 1);
+  Object.assign(outcomes[0]!.runMetadata!, { compareRetries });
+  const html = details(outcomes);
+  expect(html).toContain('1 Result');
+  expect(html).not.toContain('<h3>Sampling</h3>');
+});
+
+// Counts saved by other Lighthouse stages remain available as metadata, but
+// only statistical perf sampling belongs in this modal.
+it.each(['perf-low-noise', 'perf-warmup', 'audit'])('omits sample counts for %s', (stage) => {
+  const outcomes = runDetailsFixture('compare').tests[0]!.outcomes.slice(0, 1);
+  outcomes[0]!.stage = stage;
+  outcomes[0]!.runMetadata!.numberOfMeasurements = 1;
+  expect(details(outcomes)).not.toContain('<h3>Sampling</h3>');
+});
+
+it.each([undefined, 1])('does not show a configured retry budget when actual tries are %p', (compareAttempts) => {
+  const outcomes = runDetailsFixture('compare').tests[0]!.outcomes.slice(0, 1);
+  outcomes[0]!.stage = 'visreg';
+  Object.assign(outcomes[0]!.runMetadata!, { compareRetries: 5, compareAttempts });
+  expect(details(outcomes)).not.toContain('<h3>Sampling</h3>');
+});
+
+it('distinguishes error recovery from visual comparisons and scopes both to their viewport', () => {
+  const outcomes = runDetailsFixture('compare').tests[0]!.outcomes;
+  outcomes[0]!.stage = 'visreg';
+  Object.assign(outcomes[0]!.runMetadata!, { taskRetries: 1, taskRetryLimit: 2, compareAttempts: 4, compareRetries: 2 });
+  const html = details(outcomes);
+  expect(html).toContain('Error recovery: explanation');
+  expect(html).not.toContain('Reruns failed worker tasks');
+  expect(html).toContain('1 task retry');
+  expect(html).toContain('Visual comparison');
+  expect(html).toContain('4 visual attempts');
+  expect(html).toContain('visreg · desktop');
+});
+
+it('does not invent error retry counts for older recovered results', () => {
+  const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(0, 1);
+  outcomes[0]!.recoveredAfterRetries = true;
+  expect(details(outcomes)).toContain('Retry count unavailable');
+  Object.assign(outcomes[0]!.runMetadata!, { taskRetries: 0 });
+  expect(details(outcomes)).not.toContain('Error recovery');
 });

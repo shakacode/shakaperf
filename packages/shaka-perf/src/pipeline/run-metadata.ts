@@ -38,6 +38,16 @@ export interface RunMetadata {
   viewport: Viewport;
   targets: MeasurementTarget[];
   throttling?: MeasurementThrottling[];
+  /** Effective Lighthouse samples requested per measured side. */
+  numberOfMeasurements?: number;
+  /** Effective visual comparison retry budget, after runtime overrides. */
+  compareRetries?: number;
+  /** Actual visual comparison attempts started across worker retries. */
+  compareAttempts?: number;
+  /** Worker retries actually started after errors, across this stage's tasks. */
+  taskRetries?: number;
+  /** Effective error retry budget for each worker task, after runtime overrides. */
+  taskRetryLimit?: number;
 }
 
 /** Reconstruct the measurement invocation without changing any argument values. */

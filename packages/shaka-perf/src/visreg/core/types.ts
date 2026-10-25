@@ -11,11 +11,12 @@ import type { Viewport as SharedViewport } from 'shaka-shared';
 export type { PlaywrightPage, BrowserContext, Browser };
 
 /**
- * Runtime-only failure handling supplied by the pipeline stage. It deliberately
+ * Runtime-only observation and failure handling supplied by the pipeline stage. It deliberately
  * stays outside the JSON bridge config so artifact ownership remains with the
  * framework that created the stage's ArtifactScope.
  */
 export interface VisregRunRuntime {
+  onAttempt?(attempt: number): void;
   captureFailure?: (
     err: unknown,
     page: PlaywrightPage,
