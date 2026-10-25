@@ -84,7 +84,7 @@ Process pages from `pageList` **one at a time, sequentially**. For each page, co
 
 Maintain across pages:
 
-- `claimedSections`: map of `selector → path` — when a section appears on multiple pages, only the first page to claim it gets a test for it
+- `claimedSections`: inventory of captured components and rendered states, with their selectors and representative paths
 - `knownLoadingSelectors`: set of CSS selectors for spinners/skeletons/loading indicators discovered on any page so far. Grows as new ones are found.
 
 ### Step A — Probe the page
@@ -178,10 +178,10 @@ After completing desktop probing (A1-A7), resize the browser to mobile width and
 - What new UI appeared from interactions (modals, drawers, expanded sections) and what's inside them
 - Whether lazy load was confirmed (from A1), loading indicators found (from A2), any animations
 - **A8 mobile findings** (required): list of desktop-only selectors, mobile-only selectors, mobile replacement elements, and a one-line summary of what the mobile layout looks like. If A8 found no differences, state that explicitly.
-- **Shared section deduplication**: for each selector, check `claimedSections`:
-  - Not claimed → add to this page's plan, register it
-  - Already claimed → exclude, record `{ selector, skippedOn, alreadyCoveredBy }`
-- **Product/detail pages**: only claim the unique top section (configurator, carousel). Don't claim shared lower sections (reviews, FAQ, footer).
+- **Shared section deduplication**: compare each component's content and rendered state with `claimedSections`:
+  - New component or state → add to this page's plan and register it
+  - Same component and state already covered → record `{ selector, state, skippedOn, alreadyCoveredBy }`
+- **Product/detail pages**: cover distinct configurators, carousels, reviews, FAQs, and other content; reuse a prior capture when the component and rendered state match.
 
 ### Step B — Write TODO comments with all probing findings
 
@@ -368,12 +368,12 @@ Output: ./ab-tests/
 
 ## Coverage decisions
 
-### Shared sections (tested once)
+### Shared component states (tested once)
 
 | Section                    | Tested on            | Skipped on                |
 | -------------------------- | -------------------- | ------------------------- |
 | `[data-cy="testimonials"]` | `homepage.abtest.ts` | product pages, about page |
-| `footer`                   | `homepage.abtest.ts` | all other pages           |
+| `footer` (same content/state) | `homepage.abtest.ts` | pages with the same footer |
 
 ### Pages scoped to unique content only
 
