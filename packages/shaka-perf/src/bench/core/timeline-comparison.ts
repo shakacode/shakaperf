@@ -11,6 +11,7 @@ import * as path from 'node:path';
 import { PNG } from 'pngjs';
 import sharp from 'sharp';
 import { pipeAndFilterStderr } from './ffmpeg-stderr';
+import { getFfmpegSyncOption } from './ffmpeg-sync-option';
 import type { RecordedInteraction } from './interaction-recorder';
 import { SCREENCAST_FILENAME, SCREENCAST_START_FILENAME } from './lighthouse-config';
 
@@ -2349,12 +2350,12 @@ export async function loadScreenshotsFromVideo(
   }
   const tmpDir = await fsp.mkdtemp(pathMod.join(os.tmpdir(), 'shaka-screencast-extract-'));
   try {
-    // Extract all decoded frames as JPEGs. `-vsync passthrough` preserves
+    // Extract all decoded frames as JPEGs. The passthrough mode preserves
     // input PTS so we can compute per-frame timestamps from sequence number.
     const ff = childProcess.spawn('ffmpeg', [
       '-y',
       '-i', videoPath,
-      '-vsync', 'passthrough',
+      await getFfmpegSyncOption(), 'passthrough',
       '-qscale:v', '2',
       '-loglevel', 'error',
       pathMod.join(tmpDir, 'frame_%06d.jpg'),
