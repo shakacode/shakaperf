@@ -54,7 +54,7 @@ export function coverageScope(input: CodeCoverageConfigInput = {}, configPath = 
     if (input.include) walk(root);
     return found.sort();
   };
-  const identity = digest(JSON.stringify({ include: input.include, exclude, mappings: input.pathMappings,
+  const identity = digest(JSON.stringify({ projectRoot: root, include: input.include, exclude, mappings: input.pathMappings,
     instrument: input.instrument?.toString() }));
   return { root, include: input.include, exclude, resolve, relative, includes, excludes, files, identity, instrument: input.instrument };
 }

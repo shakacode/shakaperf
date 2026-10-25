@@ -12,6 +12,7 @@ import { createInstrumenter } from 'istanbul-lib-instrument';
 import type { FileCoverageData } from 'istanbul-lib-coverage';
 import type { CodeCoverageConfigInput } from 'shaka-shared';
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
+import { executionFixture } from '../../../../pipeline/__tests__/fixtures/execution';
 import type { TestResult } from '../../../../pipeline/report';
 import { generateCumulativeCoverageReport } from '../cumulative-report';
 import { coverageProvenance, coverageScope } from '../source-scope';
@@ -44,7 +45,7 @@ function save(name: string, raw: Record<string, FileCoverageData>, phone = false
   const testFile = write(name + '.abtest.ts', '// test');
   const test = {
     id: name, name, filePath: testFile, outcomes: [{
-      kind: 'ok', stage: 'code_coverage', viewport, runId: name + '-run',
+      kind: 'ok', stage: 'code_coverage', ...executionFixture({ viewport, runId: name + '-run' }),
       measurement: { coverageHref: path.relative(resultsRoot, filename),
         provenance: coverageProvenance(raw, coverageScope(config, configPath), testFile) },
     }],
@@ -181,7 +182,7 @@ it('regenerates from saved results after a failed test and keeps failure diagnos
   const filename = write('src/a.js');
   save('pass', { [filename]: instrument(filename) });
   const failed = save('fail', { [filename]: instrument(filename) });
-  failed.outcomes[0] = { kind: 'error', stage: 'code_coverage', viewport: PHONE_VIEWPORT, error: { message: 'test threw' } };
+  failed.outcomes[0] = { kind: 'error', stage: 'code_coverage', ...executionFixture({ viewport: PHONE_VIEWPORT }), error: { message: 'test threw' } };
   const before = fs.readFileSync(path.join(resultsRoot, '.nyc_output/pass-desktop.json'));
   const report = await generate();
   expect(report.incomplete).toBe(true);
@@ -282,8 +283,8 @@ it('rejects retained measurements advertising a different served build revision'
   const filename = write('src/a.js');
   const first = save('old-build', { [filename]: instrument(filename) });
   const second = save('new-build', { [filename]: instrument(filename) });
-  first.outcomes[0]!.runMetadata = { targets: [{ side: 'experiment', commit: { sha: 'aaaa' } }] } as never;
-  second.outcomes[0]!.runMetadata = { targets: [{ side: 'experiment', commit: { sha: 'bbbb' } }] } as never;
+  first.outcomes[0]!.executionDetails = { ...first.outcomes[0]!.executionDetails, measurementMetadata: { targets: [{ side: 'experiment', commit: { sha: 'aaaa' } }] } as never };
+  second.outcomes[0]!.executionDetails = { ...second.outcomes[0]!.executionDetails, measurementMetadata: { targets: [{ side: 'experiment', commit: { sha: 'bbbb' } }] } as never };
   const report = await generate();
   expect(report.incomplete).toBe(true);
   expect(report.contributors.map((entry) => entry.test)).toEqual(['old-build']);
@@ -321,4 +322,40 @@ it('rejects differing served instrumentation hashes even when locations are unch
   config = { instrument: () => ({ ...data, hash: 'current-revision' }) };
   save('stale-served-code', { [filename]: data });
   expect((await generate()).diagnostics.join(' ')).toContain('served build instrumentation differs');
+});
+
+it('invalidates saved coverage when projectRoot changes to an identical source tree', async () => {
+  const filename = write('src/a.js');
+  save('first-project', { [filename]: instrument(filename) });
+  write('other/src/a.js');
+  config = { ...config, projectRoot: 'other' };
+  const report = await generate();
+  expect(report.incomplete).toBe(true);
+  expect(report.contributors).toEqual([]);
+  expect(report.diagnostics.join(' ')).toContain('source scope/instrumenter changed');
+});
+
+it('rejects generated locations in later branch alternatives in loaded-only mode', async () => {
+  config = {};
+  const filename = write('src/a.js', 'export const choose = flag => flag ? 1 : 2;');
+  const data = instrument(filename);
+  const branch = Object.values(data.branchMap)[0]!;
+  branch.locations[1]!.start.line = 0;
+  branch.locations[1]!.end.line = 0;
+  save('generated-branch', { [filename]: data });
+  const report = await generate();
+  expect(report.incomplete).toBe(true);
+  expect(report.diagnostics.join(' ')).toContain('unmapped/generated code locations');
+  expect(final()[filename]).toBeUndefined();
+});
+
+it('does not compare path-dependent instrumentation hashes across mapped Docker and host paths', async () => {
+  const filename = write('src/a.js');
+  config.pathMappings = { '/app': '.' };
+  const measured = { ...instrument(filename), path: '/app/src/a.js', hash: 'docker-path-hash', _coverageSchema: 'same-instrumenter' };
+  config.instrument = (_source, name) => ({ ...instrument(name), hash: 'host-path-hash', _coverageSchema: 'same-instrumenter' });
+  save('docker-build-adapter', { [measured.path]: measured });
+  const report = await generate();
+  expect(report.incomplete).toBe(false);
+  expect(final()[filename]).toBeDefined();
 });
