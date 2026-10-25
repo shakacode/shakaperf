@@ -55,6 +55,7 @@ export type {
   VisregConfigInput,
   PerfConfigInput,
   AuditConfigInput,
+  CodeCoverageConfigInput,
   AccessibilityConfigInput,
   PlaywrightOptionsInput,
   ResembleOutputOptionsInput,
