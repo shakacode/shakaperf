@@ -27,7 +27,7 @@ import { BisectSelectionSummary } from './components/BisectSelectionSummary';
 import { SearchBar } from './components/SearchBar';
 import { ChipFilter, type ChipFilterOption } from './components/ChipFilter';
 import { SortChips, type SortChipOption, type SortDirection } from './components/SortChips';
-import { TestCard } from './components/TestCard';
+import { reviewedKey, TestCard } from './components/TestCard';
 import { stageSection } from './components/OutcomeSlot';
 import { ErrorBanner } from './components/ErrorBanner';
 import { MissingArtifactsCard } from './components/MissingArtifactsCard';
@@ -599,7 +599,7 @@ export function App({
             <MissingArtifactsCard meta={data.meta} tests={missingTests} />
             {visibleTests.map(({ test, dimmed }, idx) => (
               <TestCard
-                key={test.id}
+                key={reviewedKey(data.meta, test)}
                 test={test}
                 meta={data.meta}
                 latestRunId={isBisectReport ? undefined : latestRunKey}

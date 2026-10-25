@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
 import { RunDetails } from './RunDetails';
 import { Pill } from './Pill';
@@ -112,10 +112,19 @@ function TroubleshootCommands({ meta, test }: { meta: ReportMeta; test: TestResu
   );
 }
 
-// Reviewed marks live in the browser, keyed by report and test, so a reload
-// keeps them and a newer report of the same tests starts unreviewed.
-function reviewedKey(meta: ReportMeta, test: TestResult): string {
-  return `shaka-perf:reviewed:${meta.generatedAt}:${test.id}`;
+// Tie review to the saved results, not the report that happens to display them.
+// Include every stage/viewport: a partial rerun can replace just one outcome.
+export function reviewedKey(meta: ReportMeta, test: TestResult): string {
+  const outcomes = test.outcomes.map((outcome) => JSON.stringify([
+    outcome.stage,
+    outcome.viewport.label,
+    outcome.viewport.width,
+    outcome.viewport.height,
+    outcome.runId ?? test.runId ?? test.measuredAt ?? meta.generatedAt,
+  ])).sort();
+  return `shaka-perf:reviewed:v2:${JSON.stringify([
+    meta.cwd, meta.pipelineName, test.id, outcomes,
+  ])}`;
 }
 
 function readReviewed(key: string): boolean {
@@ -169,7 +178,6 @@ export function TestCard({
   const [logsOpen, setLogsOpen] = useState(false);
   const storageKey = reviewedKey(meta, test);
   const [reviewed, setReviewed] = useState(() => readReviewed(storageKey));
-  useEffect(() => writeReviewed(storageKey, reviewed), [storageKey, reviewed]);
   const logs = logsForTest(test, visibleStages);
   const groups = outcomeGroups(test, visibleStages);
   const chips = [...test.chips].sort(compareChips);
@@ -198,7 +206,11 @@ export function TestCard({
             <input
               type="checkbox"
               checked={reviewed}
-              onChange={(e) => setReviewed(e.target.checked)}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                writeReviewed(storageKey, checked);
+                setReviewed(checked);
+              }}
             />
             reviewed
           </label>
