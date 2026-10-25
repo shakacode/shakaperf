@@ -6,7 +6,7 @@
  */
 
 import { Command } from 'commander';
-import { withAbTestsConfigPath } from '../effective-config';
+import { applyPerTestConfigOverrides, withAbTestsConfigPath } from '../effective-config';
 import { findAbTestsConfig, loadAbTestsConfig, loadTests } from '../config-loader';
 import { buildAbTestsConfig, resolvePlaywrightOptions } from '../config';
 import { runPipeline } from '../pipeline/runner';
@@ -114,12 +114,17 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
             testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
             allowEmpty: true,
           });
-          const ids = new Set((opts.burn ? expandTestsForBurn(selected, parseBurnOption(opts.burn)!) : selected).map(testIdForTest));
+          const included = opts.burn ? expandTestsForBurn(selected, parseBurnOption(opts.burn)!) : selected;
+          const ids = new Set(included.map(testIdForTest));
+          const testConfigs = new Map(included.map((test) => [testIdForTest(test),
+            applyPerTestConfigOverrides(config, test).audit.codeCoverage,
+          ]));
           try {
             await generateCumulativeCoverageReport({
               resultsRoot: result.resultsRoot,
               configPath,
               config: config.audit.codeCoverage,
+              testConfigs,
               tests: result.testResults.filter((test) => ids.has(test.id)),
               ...(viewportsFilter ? { viewports: viewportsFilter } : {}),
               ...(result.hasFailures ? { engineFailures: [result.failureSummary] } : {}),

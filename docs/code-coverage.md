@@ -50,6 +50,10 @@ patterns use project-relative paths and minimatch glob syntax. Defaults exclude
 `**/*.d.ts`, and `**/*.abtest.*`; custom exclusions are added
 to those defaults. The effective root, include patterns, exclusions, contributors,
 viewports and original run IDs appear in the HTML and `coverage/scope.json`.
+Per-test `config.audit.codeCoverage` overrides follow normal configuration merging.
+The aggregate uses the union of the selected tests' effective scopes and lists
+which tests use each one. A file excluded by every selected scope stays outside
+its denominator; a test can deliberately override a file-level exclusion.
 Files outside the scope do not enter the denominator, even when the browser loads
 them. Empty include arrays are rejected; patterns matching no files are diagnosed.
 
@@ -136,7 +140,7 @@ Hits are merged by source file and code location. Percentages are calculated fro
 the combined counters, never averaged. Files from conflicting instrumentation are
 excluded and diagnosed. Source/test fingerprints bind measurements to local source
 bytes and scope settings. Changed source files, tests, scope or adapter functions,
-modified mirrors, and legacy records without provenance require remeasurement.
+modified mirrors, conflicting recorded Docker build commits, and legacy records without provenance require remeasurement.
 Source fingerprints describe the local checkout: operators must still serve its
 matching build. Adapter location checks and embedded source content detect many
 build mismatches; identical locations alone cannot prove identical served code.

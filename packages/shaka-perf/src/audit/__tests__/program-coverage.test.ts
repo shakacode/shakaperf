@@ -62,3 +62,14 @@ it('respects skip-report and fails if report generation itself fails', async () 
   expect(process.exitCode).toBe(1);
   expect(console.error).toHaveBeenCalledWith('Coverage report failed: disk full');
 });
+
+it('passes merged per-test coverage settings to saved-report aggregation', async () => {
+  jest.mocked(loadTests).mockResolvedValue([{ ...test, config: {
+    audit: { codeCoverage: { include: ['app/**'], exclude: ['app/generated/**'] } },
+  } }]);
+  await run('--report-only');
+  const options = jest.mocked(generateCumulativeCoverageReport).mock.calls[0]![0];
+  expect(options.testConfigs?.get(testIdForTest(test))).toEqual({
+    include: ['app/**'], exclude: ['app/generated/**'],
+  });
+});
