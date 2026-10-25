@@ -32,10 +32,11 @@ export function coverageScope(input: CodeCoverageConfigInput = {}, configPath = 
     }
     return path.resolve(root, name);
   };
+  const excludes = (filename: string) => exclude.some((pattern) => minimatch(relative(filename), pattern, { dot: true }));
   const includes = (filename: string) => {
     const rel = relative(filename);
     return rel !== '..' && !rel.startsWith('../') && !path.isAbsolute(rel)
-      && !exclude.some((pattern) => minimatch(rel, pattern, { dot: true }))
+      && !excludes(filename)
       && (!input.include || input.include.some((pattern) => minimatch(rel, pattern, { dot: true })));
   };
   const files = (): string[] => {
@@ -55,7 +56,7 @@ export function coverageScope(input: CodeCoverageConfigInput = {}, configPath = 
   };
   const identity = digest(JSON.stringify({ include: input.include, exclude, mappings: input.pathMappings,
     instrument: input.instrument?.toString() }));
-  return { root, include: input.include, exclude, resolve, relative, includes, files, identity, instrument: input.instrument };
+  return { root, include: input.include, exclude, resolve, relative, includes, excludes, files, identity, instrument: input.instrument };
 }
 
 export interface CoverageProvenance {

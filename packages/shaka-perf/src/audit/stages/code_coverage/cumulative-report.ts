@@ -18,11 +18,12 @@ import { nycCoverageFileName } from './coverage-artifacts';
 import { coverageScope, digest, originalSource, sourceHash, type CoverageScope } from './source-scope';
 import type { CodeCoverageResult } from './stage';
 
-interface Contributor { test: string; viewport: string; run: string; artifact: string }
+interface Contributor { test: string; viewport: string; run: string; artifact: string; build?: string }
 export interface CumulativeCoverageReport {
   href: string;
   incomplete: boolean;
   scope: { projectRoot: string; include: string[] | null; exclude: string[] };
+  scopes: { projectRoot: string; include: string[] | null; exclude: string[]; tests: string[] }[];
   contributors: Contributor[];
   diagnostics: string[];
   failures: string[];
@@ -34,24 +35,40 @@ export interface CumulativeCoverageOptions {
   configPath?: string;
   config?: CodeCoverageConfigInput;
   tests: readonly TestResult[];
+  testConfigs?: ReadonlyMap<string, CodeCoverageConfigInput | undefined>;
   viewports?: readonly string[];
   engineFailures?: string[];
 }
 
 /** All aggregation uses Istanbul's location-based union and hit sums, never percentages. */
 export async function generateCumulativeCoverageReport(options: CumulativeCoverageOptions): Promise<CumulativeCoverageReport> {
-  const scope = coverageScope(options.config, options.configPath);
+  const defaultScope = coverageScope(options.config, options.configPath);
+  const scopeByTest = new Map(options.tests.map((test) => [test.id,
+    options.testConfigs?.has(test.id)
+      ? coverageScope(options.testConfigs.get(test.id), options.configPath) : defaultScope,
+  ]));
+  const distinctScopes = new Map<string, { scope: CoverageScope; tests: string[] }>();
+  for (const test of options.tests) {
+    const scope = scopeByTest.get(test.id)!;
+    const key = scope.root + '\0' + scope.identity;
+    if (!distinctScopes.has(key)) distinctScopes.set(key, { scope, tests: [] });
+    distinctScopes.get(key)!.tests.push(test.name);
+  }
+  if (!distinctScopes.size) distinctScopes.set('default', { scope: defaultScope, tests: [] });
+  const scopes = [...distinctScopes.values()];
+  const scope = scopes[0]!.scope;
   const map = createCoverageMap({});
   const diagnostics: string[] = [];
   const failures = [...(options.engineFailures ?? [])];
   const contributors: Contributor[] = [];
+  let buildRevision: string | undefined;
   const signatures = new Map<string, string>();
   const blocked = new Set<string>();
   const reportDir = path.join(options.resultsRoot, 'coverage');
   // A failed regeneration must never leave a previous successful HTML report behind.
   fs.rmSync(reportDir, { recursive: true, force: true });
   fs.mkdirSync(reportDir, { recursive: true });
-  const add = (data: FileCoverageData) => {
+  const add = (data: FileCoverageData, scope: CoverageScope) => {
     if (!scope.includes(data.path) || blocked.has(data.path)) return;
     validateLocations(data);
     const signature = coverageShape(data);
@@ -67,6 +84,7 @@ export async function generateCumulativeCoverageReport(options: CumulativeCovera
   };
 
   for (const test of options.tests) {
+    const scope = scopeByTest.get(test.id)!;
     for (const outcome of test.outcomes) {
       if (outcome.stage !== 'code_coverage' || outcome.outsideCurrentConfig
         || (options.viewports && !options.viewports.includes(outcome.viewport.label))) continue;
@@ -77,6 +95,8 @@ export async function generateCumulativeCoverageReport(options: CumulativeCovera
       }
       if (outcome.kind !== 'ok') continue;
       try {
+        const build = outcome.runMetadata?.targets.find((target) => target.side === 'experiment')?.commit?.sha;
+        if (build && buildRevision && build !== buildRevision) throw new Error(`measured build revision ${build} conflicts with contributing revision ${buildRevision}; remeasure one source revision`);
         const measurement = outcome.measurement as CodeCoverageResult;
         const provenance = measurement.provenance;
         if (!provenance || provenance.version !== 1) throw new Error('saved coverage has no source provenance; rerun this test');
@@ -97,41 +117,50 @@ export async function generateCumulativeCoverageReport(options: CumulativeCovera
         for (const [source, data] of Object.entries(raw)) {
           try {
             const normalized = await normalizeCoverage({ [source]: data as FileCoverageData }, scope);
-            for (const file of normalized.files()) add(normalized.fileCoverageFor(file).data);
+            for (const file of normalized.files()) {
+              if (!scope.include && !scope.includes(file) && !scope.excludes(file)) {
+                diagnostics.push(`${label}: ${file}: source is outside projectRoot; configure pathMappings or projectRoot. Excluded.`);
+              }
+              add(normalized.fileCoverageFor(file).data, scope);
+            }
           } catch (error) {
             diagnostics.push(`${label}: ${source}: ${message(error)}; excluded.`);
           }
         }
+        if (build) buildRevision ??= build;
         contributors.push({ test: test.name, viewport: outcome.viewport.label,
-          run: outcome.runId ?? 'unknown', artifact });
+          run: outcome.runId ?? 'unknown', artifact, ...(build ? { build } : {}) });
       } catch (error) {
         diagnostics.push(`${label}: ${message(error)}.`);
       }
     }
   }
 
-  let eligible: string[] = [];
-  try { eligible = scope.files(); }
-  catch (error) { diagnostics.push(`Cannot enumerate source scope: ${message(error)}`); }
-  if (scope.include && !eligible.length) diagnostics.push('Configured source scope matched no files. Check projectRoot and include patterns.');
-  for (const filename of eligible) {
-    if (blocked.has(filename)) continue;
-    if (map.files().includes(filename)) {
-      // A configured build adapter also verifies the served instrumentation against the current build.
-      if (scope.instrument || /\.[cm]?jsx?$/.test(filename)) {
-        try {
-          const template = await instrumentFile(filename, scope);
-          const measured = map.fileCoverageFor(filename).data;
-          if (coverageShape(template) !== coverageShape(measured)) throw new Error('served build instrumentation differs from the project instrumenter');
-        } catch (error) {
-          diagnostics.push(`${scope.relative(filename)}: ${message(error)}; excluded.`);
-          map.filter((file) => file !== filename);
+  for (const { scope } of scopes) {
+    let eligible: string[] = [];
+    try { eligible = scope.files(); }
+    catch (error) { diagnostics.push(`Cannot enumerate source scope: ${message(error)}`); }
+    if (scope.include && !eligible.length) diagnostics.push('Configured source scope matched no files. Check projectRoot and include patterns.');
+    for (const filename of eligible) {
+      if (blocked.has(filename)) continue;
+      if (map.files().includes(filename)) {
+        // A configured build adapter also verifies the served instrumentation against the current build.
+        if (scope.instrument || /\.[cm]?jsx?$/.test(filename)) {
+          try {
+            const template = await instrumentFile(filename, scope);
+            const measured = map.fileCoverageFor(filename).data;
+            if (coverageShape(template) !== coverageShape(measured)) throw new Error('served build instrumentation differs from the project instrumenter');
+          } catch (error) {
+            diagnostics.push(`${scope.relative(filename)}: ${message(error)}; excluded.`);
+            map.filter((file) => file !== filename);
+            blocked.add(filename);
+          }
         }
+        continue;
       }
-      continue;
+      try { add(await instrumentFile(filename, scope), scope); }
+      catch (error) { diagnostics.push(`${scope.relative(filename)}: cannot analyze unvisited file: ${message(error)}`); }
     }
-    try { add(await instrumentFile(filename, scope)); }
-    catch (error) { diagnostics.push(`${scope.relative(filename)}: cannot analyze unvisited file: ${message(error)}`); }
   }
   // Loaded-only mode must diagnose missing sources as well, before the HTML viewer reads them.
   for (const filename of map.files()) {
@@ -146,6 +175,7 @@ export async function generateCumulativeCoverageReport(options: CumulativeCovera
   const result: CumulativeCoverageReport = {
     href: 'coverage/index.html', incomplete: diagnostics.length > 0 || failures.length > 0,
     scope: { projectRoot: scope.root, include: scope.include ?? null, exclude: scope.exclude },
+    scopes: scopes.map(({ scope, tests }) => ({ projectRoot: scope.root, include: scope.include ?? null, exclude: scope.exclude, tests })),
     contributors, diagnostics: [...new Set(diagnostics)], failures,
     summary: map.getCoverageSummary().data,
   };
@@ -158,7 +188,9 @@ export async function generateCumulativeCoverageReport(options: CumulativeCovera
     const html = fs.readFileSync(filename, 'utf8');
     fs.writeFileSync(filename, html.replace(/<body[^>]*>/, (body) => body + disclosure(result)));
   }
-  console.log(`Coverage scope: ${scope.root} · ${scope.include?.join(', ') ?? 'loaded instrumented files only (not whole-project coverage)'}; exclusions: ${scope.exclude.join(', ')}`);
+  for (const { scope, tests } of scopes) {
+    console.log(`Coverage scope (${tests.join(', ') || 'no tests'}): ${scope.root} · ${scope.include?.join(', ') ?? 'loaded instrumented files only (not whole-project coverage)'}; exclusions: ${scope.exclude.join(', ')}`);
+  }
   for (const diagnostic of result.diagnostics) console.warn(`Coverage incomplete: ${diagnostic}`);
   console.log(`Coverage report${result.incomplete ? ' (incomplete)' : ''}: ${path.join(reportDir, 'index.html')}`);
   return result;
@@ -254,11 +286,12 @@ const escape = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&
 function disclosure(report: CumulativeCoverageReport): string {
   const list = (values: string[]) => `<ul>${values.map((value) => `<li>${escape(value)}</li>`).join('')}</ul>`;
   return `<section style="padding:16px;border-bottom:2px solid #888" aria-label="Coverage scope"><h2>All Tests · executed-code coverage${report.incomplete ? ' · INCOMPLETE' : ''}</h2>`
-    + `<p>${escape(report.scope.include ? 'Configured source scope: ' + report.scope.include.join(', ') : 'Loaded instrumented files only. This is not whole-project coverage.')}</p>`
-    + `<p>Project root: ${escape(report.scope.projectRoot)} · Exclusions: ${escape(report.scope.exclude.join(', '))}</p>`
+    + report.scopes.map((scope) => `<p>${escape(scope.include ? 'Configured source scope: ' + scope.include.join(', ') : 'Loaded instrumented files only. This is not whole-project coverage.')}</p>`
+      + `<p>Project root: ${escape(scope.projectRoot)} · Exclusions: ${escape(scope.exclude.join(', '))}</p>`
+      + `<details><summary>Tests using this scope (${scope.tests.length})</summary>${list(scope.tests)}</details>`).join('')
     + '<p>Source fingerprints describe local files at collection. Serve the matching build; a project instrumenter and embedded source maps provide additional build checks.</p>'
     + '<p>Statement, branch, function and line counters are merged by source location. Screenshot visibility is measured separately in each test’s visibility map.</p>'
-    + `<details><summary>Contributing tests and runs (${report.contributors.length})</summary>${list(report.contributors.map((c) => `${c.test} [${c.viewport}] · run ${c.run} · ${c.artifact}`))}</details>`
+    + `<details><summary>Contributing tests and runs (${report.contributors.length})</summary>${list(report.contributors.map((c) => `${c.test} [${c.viewport}] · run ${c.run}${c.build ? ' · build ' + c.build : ''} · ${c.artifact}`))}</details>`
     + (report.diagnostics.length ? `<h3>Analysis diagnostics</h3>${list(report.diagnostics)}` : '')
     + (report.failures.length ? `<h3>Test / engine failures</h3>${list(report.failures)}` : '') + '</section>';
 }

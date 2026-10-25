@@ -247,3 +247,44 @@ it('diagnoses unmapped generated locations while preserving other files from the
   expect(report.diagnostics.join(' ')).toContain('unmapped/generated code locations');
   expect(final()[good]).toBeDefined();
 });
+
+it('accepts fresh per-test source overrides and discloses their distinct effective scopes', async () => {
+  const filename = write('src/a.js');
+  write('src/b.js');
+  const base = config;
+  const first = save('default-scope', { [filename]: instrument(filename) });
+  config = { ...base, exclude: ['src/b.js'] };
+  const second = save('test-override', { [filename]: instrument(filename) });
+  const override = config;
+  config = base;
+  const report = await generate({ testConfigs: new Map([[first.id, base], [second.id, override]]) });
+  expect(report.incomplete).toBe(false);
+  expect(report.contributors.map((entry) => entry.test)).toEqual(['default-scope', 'test-override']);
+  expect(report).toEqual(expect.objectContaining({ scopes: [
+    expect.objectContaining({ tests: ['default-scope'], exclude: expect.arrayContaining(['src/excluded.js']) }),
+    expect.objectContaining({ tests: ['test-override'], exclude: expect.arrayContaining(['src/b.js']) }),
+  ] }));
+});
+
+it('discloses unresolved Docker sources in loaded-only mode alongside available files', async () => {
+  config = {};
+  const filename = write('src/a.js');
+  const unavailable = instrument(filename);
+  unavailable.path = '/missing-container-root/src/a.js';
+  save('unmapped', { [filename]: instrument(filename), [unavailable.path]: unavailable });
+  const report = await generate();
+  expect(report.diagnostics.join(' ')).toContain('source is outside projectRoot');
+  expect(final()[filename]).toBeDefined();
+});
+
+it('rejects retained measurements advertising a different served build revision', async () => {
+  const filename = write('src/a.js');
+  const first = save('old-build', { [filename]: instrument(filename) });
+  const second = save('new-build', { [filename]: instrument(filename) });
+  first.outcomes[0]!.runMetadata = { targets: [{ side: 'experiment', commit: { sha: 'aaaa' } }] } as never;
+  second.outcomes[0]!.runMetadata = { targets: [{ side: 'experiment', commit: { sha: 'bbbb' } }] } as never;
+  const report = await generate();
+  expect(report.incomplete).toBe(true);
+  expect(report.contributors.map((entry) => entry.test)).toEqual(['old-build']);
+  expect(report.diagnostics.join(' ')).toContain('build revision bbbb conflicts');
+});
