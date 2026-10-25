@@ -16,10 +16,12 @@ import {
   type TestContext,
 } from '../../../stage/stage';
 import type { WorkerPool } from '../../../pipeline/worker-pool';
+import type { CoverageProvenance } from './source-scope';
 import type { SourceAttribution } from './visibility-map';
 import { CodeCoverageArtifactView } from './report';
 
 export interface CodeCoverageResult {
+  provenance?: CoverageProvenance;
   /** Instrumented files this test loaded. */
   files: number;
   /** Statements it executed, across those files. */
