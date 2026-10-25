@@ -63,6 +63,7 @@ export async function generateCumulativeCoverageReport(options: CumulativeCovera
   const contributors: Contributor[] = [];
   let buildRevision: string | undefined;
   const signatures = new Map<string, string>();
+  const identities = new Map<string, string>();
   const blocked = new Set<string>();
   const reportDir = path.join(options.resultsRoot, 'coverage');
   // A failed regeneration must never leave a previous successful HTML report behind.
@@ -73,13 +74,16 @@ export async function generateCumulativeCoverageReport(options: CumulativeCovera
     validateLocations(data);
     const signature = coverageShape(data);
     const previous = signatures.get(data.path);
-    if (previous && previous !== signature) {
+    const identity = instrumentationIdentity(data);
+    const previousIdentity = identities.get(data.path);
+    if ((previous && previous !== signature) || (identity && previousIdentity && identity !== previousIdentity)) {
       diagnostics.push(`${scope.relative(data.path)}: incompatible instrumentation locations; excluded from aggregate.`);
       blocked.add(data.path);
       map.filter((filename) => filename !== data.path);
       return;
     }
     signatures.set(data.path, signature);
+    if (identity) identities.set(data.path, identity);
     map.addFileCoverage(data);
   };
 
@@ -141,15 +145,22 @@ export async function generateCumulativeCoverageReport(options: CumulativeCovera
     try { eligible = scope.files(); }
     catch (error) { diagnostics.push(`Cannot enumerate source scope: ${message(error)}`); }
     if (scope.include && !eligible.length) diagnostics.push('Configured source scope matched no files. Check projectRoot and include patterns.');
-    for (const filename of eligible) {
+    // Loaded-only mode has no enumerated denominator, but adapters must still
+    // validate the files actually measured in that scope.
+    const files = new Set([...eligible, ...map.files().filter(scope.includes)]);
+    for (const filename of files) {
       if (blocked.has(filename)) continue;
       if (map.files().includes(filename)) {
         // A configured build adapter also verifies the served instrumentation against the current build.
-        if (scope.instrument || /\.[cm]?jsx?$/.test(filename)) {
+        if (scope.instrument || (scope.include && /\.[cm]?jsx?$/.test(filename))) {
           try {
             const template = await instrumentFile(filename, scope);
             const measured = map.fileCoverageFor(filename).data;
-            if (coverageShape(template) !== coverageShape(measured)) throw new Error('served build instrumentation differs from the project instrumenter');
+            if (coverageShape(template) !== coverageShape(measured)
+              || (instrumentationIdentity(template) && instrumentationIdentity(measured)
+                && instrumentationIdentity(template) !== instrumentationIdentity(measured))) {
+              throw new Error('served build instrumentation differs from the project instrumenter');
+            }
           } catch (error) {
             diagnostics.push(`${scope.relative(filename)}: ${message(error)}; excluded.`);
             map.filter((file) => file !== filename);
@@ -207,7 +218,6 @@ async function instrumentFile(filename: string, scope: CoverageScope): Promise<F
     raw = instrumenter.lastFileCoverage();
   }
   const data = createFileCoverage(JSON.parse(JSON.stringify(raw)) as FileCoverageData).data;
-  data.path = filename;
   // Adapters may return measured or instrumenter-initial counters; neither is execution evidence.
   const coverage = createFileCoverage(data);
   coverage.resetHits();
@@ -264,6 +274,12 @@ function validateLocations(data: FileCoverageData): void {
       seen.add(key);
     }
   }
+}
+
+function instrumentationIdentity(data: FileCoverageData): string | undefined {
+  const metadata = data as FileCoverageData & { hash?: string; _coverageSchema?: string };
+  return typeof metadata.hash === 'string' && typeof metadata._coverageSchema === 'string'
+    ? `${metadata._coverageSchema}:${metadata.hash}` : undefined;
 }
 
 /** Compare locations independently of counter ids and serialization order. */

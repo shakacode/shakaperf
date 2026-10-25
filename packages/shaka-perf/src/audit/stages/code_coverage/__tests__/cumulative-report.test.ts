@@ -206,6 +206,7 @@ it('remaps transpiled coverage to original TypeScript and rejects stale embedded
   tool.instrumentSync(compiled.outputText, generated, sourceMap);
   const data = tool.lastFileCoverage() as FileCoverageData;
   for (const key of Object.keys(data.s)) data.s[key] = 1;
+  config.instrument = () => data;
   save('mapped', { [generated]: data });
   expect((await generate()).incomplete).toBe(false);
   expect(Object.keys(final())).toEqual([original]);
@@ -287,4 +288,37 @@ it('rejects retained measurements advertising a different served build revision'
   expect(report.incomplete).toBe(true);
   expect(report.contributors.map((entry) => entry.test)).toEqual(['old-build']);
   expect(report.diagnostics.join(' ')).toContain('build revision bbbb conflicts');
+});
+
+it('validates a supplied project adapter in loaded-only reports', async () => {
+  const filename = write('src/a.js');
+  const data = instrument(filename);
+  config = { instrument: () => {
+    const wrongBuild = structuredClone(data);
+    wrongBuild.statementMap['0']!.start.column += 1;
+    return wrongBuild;
+  } };
+  save('loaded-only', { [filename]: data });
+  const report = await generate();
+  expect(report.diagnostics.join(' ')).toContain('served build instrumentation differs');
+  expect(final()[filename]).toBeUndefined();
+});
+
+it('rejects an adapter record for a different source instead of relabeling its counters', async () => {
+  const first = write('src/a.js');
+  const second = write('src/b.js', 'export const completelyDifferent = 42;');
+  config.instrument = () => instrument(first);
+  save('adapter-cache', { [first]: instrument(first) });
+  const report = await generate();
+  expect(report.diagnostics.join(' ')).toContain('instrumenter must map back to exactly this source file');
+  expect(final()[second]).toBeUndefined();
+  expect(final()[first]).toBeDefined();
+});
+
+it('rejects differing served instrumentation hashes even when locations are unchanged', async () => {
+  const filename = write('src/a.js');
+  const data = { ...instrument(filename), hash: 'served-revision', _coverageSchema: 'same-instrumenter' };
+  config = { instrument: () => ({ ...data, hash: 'current-revision' }) };
+  save('stale-served-code', { [filename]: data });
+  expect((await generate()).diagnostics.join(' ')).toContain('served build instrumentation differs');
 });
