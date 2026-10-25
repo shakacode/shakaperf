@@ -174,7 +174,7 @@ async function instrumentFile(filename: string, scope: CoverageScope): Promise<F
     instrumenter.instrumentSync(source, filename);
     raw = instrumenter.lastFileCoverage();
   }
-  const data = createFileCoverage(raw as FileCoverageData).data;
+  const data = createFileCoverage(JSON.parse(JSON.stringify(raw)) as FileCoverageData).data;
   data.path = filename;
   // Adapters may return measured or instrumenter-initial counters; neither is execution evidence.
   const coverage = createFileCoverage(data);

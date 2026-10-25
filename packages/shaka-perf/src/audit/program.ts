@@ -5,17 +5,16 @@
  * License in LICENSE.md.
  */
 
-import { spawnSync } from 'node:child_process';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { Command } from 'commander';
 import { withAbTestsConfigPath } from '../effective-config';
-import { findAbTestsConfig, loadAbTestsConfig } from '../config-loader';
+import { findAbTestsConfig, loadAbTestsConfig, loadTests } from '../config-loader';
 import { buildAbTestsConfig, resolvePlaywrightOptions } from '../config';
 import { runPipeline } from '../pipeline/runner';
 import { selectedViewportFilter, VIEWPORT_OPTION_DESCRIPTION } from '../pipeline/viewport-selection';
-import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../pipeline/burn';
+import { BURN_OPTION_DESCRIPTION, parseBurnOption, expandTestsForBurn } from '../pipeline/burn';
 import { printReportSummary, reportPipelineFailure } from '../pipeline/report-summary';
+import { testIdForTest } from '../pipeline/unit-id';
+import { generateCumulativeCoverageReport } from './stages/code_coverage/cumulative-report';
 import { auditPipelineMetadata, createAuditPipeline } from './pipeline';
 
 export interface CreateAuditCommandOptions {
@@ -51,7 +50,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
       '--filter <value>',
       'Regex/substring to filter tests by name (comma-separated for multiple), OR a path to a single .abtest.ts/.abtest.js file',
     )
-    .option('--viewport <label>', VIEWPORT_OPTION_DESCRIPTION)
+    .option('--viewport <label>', VIEWPORT_OPTION_DESCRIPTION + ' Cumulative coverage also filters saved records by this label during --report-only.')
     .option('--report-only', 'Re-render the HTML report from existing audit-results/ stage outcomes without re-running engines. Complements --skip-report for sharded CI assembly.', false)
     .option('--skip-report', 'Run the audit engine but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
     .option('--keep-old-results', 'Do not wipe audit-results/ before running. Engines still overwrite the files they produce, but unrelated artifacts from a prior run survive instead of being cleared.', false)
@@ -72,7 +71,9 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
         const config = buildAbTestsConfig(await loadAbTestsConfig(configPath));
         const viewportsFilter = selectedViewportFilter(opts.viewport, config);
         const url = opts.url ?? config.shared.experimentURL;
+        const coverageReport = String(opts.categories).split(',').map((category) => category.trim()).includes('code_coverage');
         const pipeline = createAuditPipeline({
+          coverageReport,
           parallelism: config.shared.parallelism,
           lighthouseConfig: config.audit.lighthouseConfig,
           accessibility: {
@@ -107,60 +108,30 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
           burn: parseBurnOption(opts.burn),
         });
         printReportSummary(result);
-        maybeGenerateCoverageReport(result.resultsRoot);
+        if (coverageReport && !opts.skipReport) {
+          const selected = await loadTests({
+            filter: opts.filter ?? config.shared.filter,
+            testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
+            allowEmpty: true,
+          });
+          const ids = new Set((opts.burn ? expandTestsForBurn(selected, parseBurnOption(opts.burn)!) : selected).map(testIdForTest));
+          try {
+            await generateCumulativeCoverageReport({
+              resultsRoot: result.resultsRoot,
+              configPath,
+              config: config.audit.codeCoverage,
+              tests: result.testResults.filter((test) => ids.has(test.id)),
+              ...(viewportsFilter ? { viewports: viewportsFilter } : {}),
+              ...(result.hasFailures ? { engineFailures: [result.failureSummary] } : {}),
+            });
+          } catch (error) {
+            // Report failure must not hide an existing test failure or advertise old HTML.
+            console.error(`Coverage report failed: ${error instanceof Error ? error.message : String(error)}`);
+            process.exitCode = 1;
+          }
+        }
         reportPipelineFailure(result);
       });
     });
 }
 
-// Generates an HTML + text-summary Istanbul report from per-test coverage JSONs
-// the code_coverage stage drained off each Playwright page. Nothing to do when
-// that stage is off (the default) — `.nyc_output/` simply isn't there.
-// Soft-depends on nyc being available in the user's project: if nyc can't be
-// found we print actionable instructions instead of erroring, and the
-// .nyc_output/ dir is still on disk.
-function maybeGenerateCoverageReport(resultsRoot: string): void {
-  const nycDir = path.join(resultsRoot, '.nyc_output');
-  if (!fs.existsSync(nycDir) || fs.readdirSync(nycDir).length === 0) return;
-  const reportDir = path.join(resultsRoot, 'coverage');
-  fs.mkdirSync(reportDir, { recursive: true });
-  const nycBin = resolveNycBin(resultsRoot);
-  const nycArgs = [
-    'report',
-    `--temp-dir=${nycDir}`,
-    `--report-dir=${reportDir}`,
-    '--reporter=html',
-    '--reporter=text-summary',
-  ];
-  if (!nycBin) {
-    console.log(
-      `\nCoverage JSONs: ${nycDir} (install nyc and run \`npx nyc ${nycArgs.join(' ')}\` to view)`,
-    );
-    return;
-  }
-  const proc = spawnSync(nycBin, nycArgs, { stdio: 'inherit' });
-  if (proc.status === 0) {
-    console.log(`Coverage report: ${path.join(reportDir, 'index.html')}`);
-    return;
-  }
-  const signal = proc.signal ? `, signal=${proc.signal}` : '';
-  const spawnError = proc.error ? `, error=${proc.error.message}` : '';
-  console.warn(
-    `\nnyc report failed (status=${proc.status}${signal}${spawnError}). Raw data in ${nycDir}. ` +
-      `Re-run manually: ${nycBin} ${nycArgs.join(' ')}`,
-  );
-}
-
-function resolveNycBin(resultsRoot: string): string | null {
-  // Walk from the results dir to the filesystem root looking for
-  // node_modules/.bin/nyc — works whether the user invoked us from the
-  // project root or a subdirectory of it. One stat per level is cheap.
-  let dir = path.resolve(resultsRoot);
-  for (;;) {
-    const candidate = path.join(dir, 'node_modules', '.bin', 'nyc');
-    if (fs.existsSync(candidate)) return candidate;
-    const parent = path.dirname(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
