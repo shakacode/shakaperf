@@ -8,6 +8,7 @@
 import { useRef, useState } from 'react';
 import type { ReportOutcome } from '../types';
 import { Dialog } from '../../../src/pipeline/stage-report-components';
+import { TooltipLabel } from '../../../src/pipeline/report-tooltip';
 import type { RunMetadata } from '../../../src/pipeline/run-metadata';
 
 export function savedRunDetails(outcomes: readonly ReportOutcome[]) {
@@ -147,8 +148,7 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
     {errorRetries.length || comparisons.length ? <section className="run-details__section">
       <h3>Retries and attempts</h3>
       {errorRetries.length ? <div>
-        <h4>Error recovery</h4>
-        <p>Reruns failed worker tasks after errors. Hard task timeouts are not retried.</p>
+        <h4><TooltipLabel label="Error recovery" explanation="Reruns failed worker tasks after errors. Hard task timeouts are not retried." /></h4>
         <div className="run-details__settings">{errorRetries.map(({ value, items }, index) => <div className="run-details__setting" key={index}>
           <div className="run-details__setting-head">
             <strong>{value.count === undefined ? 'Retry count unavailable' : `${value.count} task ${value.count === 1 ? 'retry' : 'retries'}`}</strong>
@@ -158,8 +158,7 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
         </div>)}</div>
       </div> : null}
       {comparisons.length ? <div>
-        <h4>Visual comparison</h4>
-        <p>Capture-and-compare attempts, including those started before an error. Mismatches trigger another capture.</p>
+        <h4><TooltipLabel label="Visual comparison" explanation="Capture-and-compare attempts, including those started before an error. Mismatches trigger another capture." /></h4>
         <div className="run-details__settings">{comparisons.map(({ value, items }, index) => <div className="run-details__setting" key={index}>
           <div className="run-details__setting-head">
             <strong>{value.count} visual attempts</strong>

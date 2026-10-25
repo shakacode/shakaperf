@@ -13,7 +13,7 @@ import {
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
 import { ScreenshotPreview } from '../../../pipeline/screenshot-preview';
-import { CoverageMetricLabel } from './report-tooltip';
+import { TooltipLabel } from '../../../pipeline/report-tooltip';
 import type { CodeCoverageResult } from './stage';
 
 const count = (value: number) => value.toLocaleString('en-US');
@@ -63,7 +63,7 @@ function CoveragePreview({ measurement: m }: { measurement: CodeCoverageResult }
           <tbody>
             <tr>
               <th scope="row">
-                <CoverageMetricLabel
+                <TooltipLabel
                   label="Statements executed"
                   explanation={`Of the ${count(m.totalStatements)} tracked statements in the source files loaded during this test, ${count(m.coveredStatements)} ran at least once.`}
                 />
@@ -78,7 +78,7 @@ function CoveragePreview({ measurement: m }: { measurement: CodeCoverageResult }
             </tr>
             <tr>
               <th scope="row">
-                <CoverageMetricLabel
+                <TooltipLabel
                   label="Instrumented files loaded"
                   explanation={`During this test, ${count(m.files)} source ${m.files === 1 ? 'file was' : 'files were'} loaded with counters that track which code instructions ran.`}
                 />

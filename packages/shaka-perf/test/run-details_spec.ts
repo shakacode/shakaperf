@@ -171,7 +171,8 @@ it('distinguishes error recovery from visual comparisons and scopes both to thei
   outcomes[0]!.stage = 'visreg';
   Object.assign(outcomes[0]!.runMetadata!, { taskRetries: 1, taskRetryLimit: 2, compareAttempts: 4, compareRetries: 2 });
   const html = details(outcomes);
-  expect(html).toContain('Error recovery');
+  expect(html).toContain('Error recovery: explanation');
+  expect(html).not.toContain('Reruns failed worker tasks');
   expect(html).toContain('1 task retry');
   expect(html).toContain('Visual comparison');
   expect(html).toContain('4 visual attempts');

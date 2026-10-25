@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-export function CoverageMetricLabel({ label, explanation }: { label: string; explanation: string }) {
+export function TooltipLabel({ label, explanation }: { label: string; explanation: string }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0 });
   const button = useRef<HTMLButtonElement>(null);
@@ -55,7 +55,7 @@ export function CoverageMetricLabel({ label, explanation }: { label: string; exp
       <button
         ref={button}
         type="button"
-        className="coverage-preview__metric-label"
+        className="report-tooltip__trigger"
         aria-label={`${label}: explanation`}
         aria-describedby={open ? id : undefined}
         onMouseEnter={() => setOpen(true)}
@@ -63,14 +63,21 @@ export function CoverageMetricLabel({ label, explanation }: { label: string; exp
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onClick={() => setOpen(true)}
+        onKeyDown={(event) => {
+          if (open && event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            setOpen(false);
+          }
+        }}
       >
-        {label} <span className="coverage-preview__help" aria-hidden="true">?</span>
+        {label} <span className="report-tooltip__help" aria-hidden="true">?</span>
       </button>
       {open ? createPortal(
-        <div ref={tooltip} id={id} role="tooltip" className="coverage-tooltip" style={position}>
+        <div ref={tooltip} id={id} role="tooltip" className="report-tooltip" style={position}>
           {explanation}
         </div>,
-        document.body,
+        button.current?.closest('dialog') ?? document.body,
       ) : null}
     </>
   );

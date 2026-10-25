@@ -2926,7 +2926,7 @@ input {
   line-height: 1.6;
 }
 
-.coverage-preview__metric-label {
+.report-tooltip__trigger {
   padding: 0;
   border: 0;
   background: transparent;
@@ -2940,12 +2940,12 @@ input {
   cursor: help;
 }
 
-.coverage-preview__metric-label:hover {
+.report-tooltip__trigger:hover {
   background: transparent;
   color: var(--fg);
 }
 
-.coverage-preview__help {
+.report-tooltip__help {
   display: inline-flex;
   width: 12px;
   height: 12px;
@@ -2958,7 +2958,7 @@ input {
 }
 
 /* Render outside the card so the container and report grid cannot clip it. */
-.coverage-tooltip {
+.report-tooltip {
   position: fixed;
   z-index: 2000;
   width: min(330px, calc(100vw - 24px));
