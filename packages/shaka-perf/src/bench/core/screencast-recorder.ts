@@ -14,6 +14,7 @@ import { spawn } from 'node:child_process';
 import sharp from 'sharp';
 
 import { pipeAndFilterStderr } from './ffmpeg-stderr';
+import { getFfmpegSyncOption } from './ffmpeg-sync-option';
 import { SCREENCAST_FILENAME, SCREENCAST_START_FILENAME } from './lighthouse-config';
 
 /**
@@ -161,7 +162,7 @@ export const screencastRecorder = {
  *
  * Each captured frame carries its real wall-clock-relative timeMs. We feed
  * ffmpeg's `concat` demuxer with per-frame `duration` directives so the
- * playback rate matches reality, then `-r 60 -vsync cfr` resamples to a
+ * playback rate matches reality, then the version-appropriate sync option resamples to a
  * constant 60fps output (frames duplicated during idle stretches, dropped
  * during bursts faster than vsync). The result is a smooth video at the
  * resolution we already captured.
@@ -228,13 +229,7 @@ async function encodeScreencastVideo(
       '-safe', '0',
       '-i', concatPath,
       '-r', '60',
-      // `-vsync cfr` is the cross-version-compatible spelling of the newer
-      // `-fps_mode cfr`. ffmpeg 4.x (default on Ubuntu 22.04 / Debian
-      // bookworm) doesn't know `-fps_mode` and aborts with "Unrecognized
-      // option"; ffmpeg 5.1+ accepts both but prefers `-fps_mode`. The
-      // legacy alias is still honoured on 5/6/7 (deprecation warning only),
-      // and `timeline-comparison.ts` already uses `-vsync` elsewhere.
-      '-vsync', 'cfr',
+      await getFfmpegSyncOption(), 'cfr',
       '-c:v', 'libx264',
       '-pix_fmt', 'yuv420p',
       // Pin output width to 500 across all viewports — mobile emulation
