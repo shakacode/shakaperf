@@ -89,7 +89,9 @@ The adapter must apply the same syntax handling, build transforms, instrumentati
 options and original-source mapping as the served build. It must map back to the
 requested source file. ShakaPerf resets every returned hit counter to zero. It
 reuses measured templates and checks a supplied adapter against measured code
-locations before accepting their hits. A differing shape is diagnosed and excluded.
+locations before accepting their hits, including in loaded-only reports. A differing shape
+or instrumentation hash (when available) is diagnosed and excluded. Adapter source
+paths are preserved and must resolve to the requested original file.
 
 A Babel project can use its existing transformation options and Istanbul plugin,
 returning the transformation's `metadata.coverage`. Ensure the adapter also runs
