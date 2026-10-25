@@ -32,8 +32,9 @@ shaka-perf servers --help
 shaka-perf compare --help
 ```
 
-Setup from scratch uses [shaka-perf-dockerize](../shaka-perf-dockerize/SKILL.md); writing tests uses
-[shaka-perf-add-coverage](../shaka-perf-add-coverage/SKILL.md); checking coverage uses
+Setup from scratch uses [shaka-perf-dockerize](../shaka-perf-dockerize/SKILL.md); writing tests with source access uses
+[shaka-perf-add-coverage](../shaka-perf-add-coverage/SKILL.md); URL-only test discovery uses
+[shaka-perf-discover-abtests](../shaka-perf-discover-abtests/SKILL.md); checking coverage uses
 [shaka-perf-coverage](../shaka-perf-coverage/SKILL.md); hunting regressions uses
 [shaka-perf-find-bugs](../shaka-perf-find-bugs/SKILL.md). Load the named skill or read its sibling file.
 If a required companion is missing, ask the user to install it with `npx skills add shakacode/shakaperf --skill <name> --agent <agent>`.
