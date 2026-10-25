@@ -83,10 +83,10 @@ Each line is the source line, then its measurements as a trailing comment:
 
 `diff` writes `<newer>--vs--<older>.diff/`:
 
-- **`summary.txt`** — per source, elements seen before → after → delta and at 0%, then statements covered. Read this first; it is usually the whole verdict.
+- **`summary.txt`** — per source, elements seen before → after → delta and at 0%, then statements covered. Read this first, then inspect percentage changes in the source diffs: any visibility above 0% counts as seen, so `1% → 100%` and `100% → 1%` leave these counts unchanged.
 - **one `.diff` per source, and ONLY for sources that changed.** The listing is the index: `ls` names the components that moved, `wc -l` ranks them.
 
-**Lead every report with the screenshot numbers.** `seen → seen` answers the question this skill asks; `covered → covered` only says a test executed the code. When they disagree, the screenshot column is the truthful one.
+**Lead every report with the screenshot numbers.** Report partial-visibility improvements and regressions alongside `seen → seen`; `covered → covered` only says a test executed the code. When they disagree, the screenshot column is the truthful one.
 
 - a percentage falling to `0%` while the coverage field never moved is a screenshot that stopped showing the element — usually a layout change pushing it out of the capture
 - a line that gained a letter but stayed `0%` gained nothing a screenshot can show
