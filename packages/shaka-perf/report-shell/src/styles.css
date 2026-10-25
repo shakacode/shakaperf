@@ -1579,6 +1579,40 @@ input {
   background: transparent;
 }
 
+.card__reviewed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  color: var(--fg-muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+}
+
+.card__reviewed input {
+  margin: 0;
+  width: 12px;
+  height: 12px;
+  cursor: pointer;
+  accent-color: var(--fg-muted);
+}
+
+.card__reviewed:hover {
+  color: var(--fg);
+}
+
+.card[data-reviewed="true"] .card__head {
+  border-bottom: none;
+}
+
+.card[data-reviewed="true"] .card__title,
+.card[data-reviewed="true"] .card__pills .pill {
+  opacity: 0.6;
+}
+
 .card__logs-button,
 .card__run-details-button {
   padding: 2px 0;
