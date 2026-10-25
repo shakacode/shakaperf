@@ -110,7 +110,24 @@ function scaffold(patterns: string[], dir: string, tests: Test[], note: string |
       }
     }
   }
-  const letterOf = new Map([...covering].sort().map((name, i) => [name, label(i)]));
+  // Reuse saved labels, including removed tests, so additions do not relabel old cells.
+  const previous = new Map<string, string>();
+  const reserved = new Set<string>();
+  for (const snapshot of snapshots()) for (const line of read(path.join(snapshot, 'legend.txt'))) {
+    const entry = /^([A-Z]+) = (.+)$/.exec(line);
+    if (entry) { previous.set(entry[2], entry[1]); reserved.add(entry[1]); }
+  }
+  const letterOf = new Map<string, string>();
+  let next = 0;
+  for (const name of [...covering].sort()) {
+    let letter = previous.get(name);
+    if (!letter || [...letterOf.values()].includes(letter)) {
+      while (reserved.has(label(next))) next += 1;
+      letter = label(next++);
+      reserved.add(letter);
+    }
+    letterOf.set(name, letter);
+  }
 
   // line → `A+C` of the tests that executed a statement starting there, `0` when none did
   const gutters = (map: FileCoverage['statementMap'], ran: Source['tests']): Map<number, string> => {
