@@ -79,6 +79,7 @@ import { colorizedLogPrefix, testSourcePrefix } from '../visreg/core/util/testCo
 import { attachStickyStatus, formatPoolProgress } from '../bench/cli/commands/compare/sticky-status';
 import { announceStage } from './announce-stage';
 import { resolveUrl } from './unit-urls';
+import { readSideRevisions } from './side-revisions';
 
 // Per-shard persisted engine-errors files. Format: <prefix><shardKey><suffix>.
 // One file per shard identity — re-running the same shard overwrites its
@@ -421,6 +422,9 @@ async function runConfiguredPipelineWithSelection(
     throw new Error('--skip-report and --report-only are mutually exclusive');
   }
   const cwd = runtime.cwd ?? process.cwd();
+  // Read before anything runs: a long run should report what it measured,
+  // not what the checkouts hold by the time the report is written.
+  const revisions = readSideRevisions(runtime.config.twinServers, cwd);
   const executableStages = stageSelection.stages;
   if (executableStages.length === 0 && !runtime.reportOnly) {
     throw new Error('No executable pipeline stages selected.');
@@ -768,6 +772,7 @@ async function runConfiguredPipelineWithSelection(
       experimentUrl: experimentURL,
       durationMs: Date.now() - startedAt,
       cwd,
+      ...(Object.keys(revisions).length > 0 ? { revisions } : {}),
       errors: engineErrors,
       reportOnly: runtime.reportOnly === true,
       pipelineConfig: pipeline.pipelineConfig,

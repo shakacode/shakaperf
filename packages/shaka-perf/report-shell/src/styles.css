@@ -2590,6 +2590,14 @@ input {
   height: 95vh;
 }
 
+/* On a desktop the meta row carries both URLs and their branch @ commit;
+   give every dialog room for it rather than wrapping or clipping. */
+@media (min-width: 1024px) {
+  .ui-dialog {
+    min-width: min(960px, calc(100vw - 32px));
+  }
+}
+
 .ui-dialog--compact {
   width: min(720px, calc(100vw - 32px));
   height: auto;
@@ -2664,6 +2672,14 @@ input {
 .ui-dialog__meta-wrap {
   border-bottom: 1px solid var(--border);
   background: var(--bg-sunken);
+}
+
+.ui-dialog__meta-revision {
+  display: block;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .ui-dialog__meta {
