@@ -292,7 +292,7 @@ After all TODO stubs are implemented:
 
 ### Step E — Coverage comparison (loop until covered)
 
-1. Open the unified report (`compare-results/report.html`) in Chrome
+1. Open the unified report (`compare-results/full-report.html`) in Chrome
 2. Open the live page in another Chrome tab
 3. Go through the report images and compare with the live page to find:
    - Missing page sections (important content not captured by any test)

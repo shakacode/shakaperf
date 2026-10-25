@@ -42,5 +42,5 @@ Read [Writing Good AB Tests](references/writing-good-ab-tests.md) before writing
 
 
 Whenever you are talking about results of your findings with users, give them full path to the generated report.
-If you are running multiple tests, save self-contained-report.html to a temporary file, so you can show it later.
+If you are running multiple tests, save self-contained-performance-report.html to a temporary file, so you can show it later.
 Showing actual reports is way more important than your conclusions, so attach it to the footer of your responses.
