@@ -63,7 +63,9 @@ function addCoverageInstrumentation(config) {
       entry.options.jsc.experimental = entry.options.jsc.experimental || {};
       const plugins = entry.options.jsc.experimental.plugins || [];
       if (!plugins.some(([plugin]) => plugin === coveragePlugin)) {
-        plugins.push([coveragePlugin, {}]);
+        // Instrument original source before loadable generates helper functions
+        // with synthetic (line-zero) locations.
+        plugins.unshift([coveragePlugin, {}]);
       }
       entry.options.jsc.experimental.plugins = plugins;
     });
