@@ -53,6 +53,7 @@ export class PerfEngineStage<M> implements Stage<M> {
     controlLighthouseHref: true,
     experimentLighthouseHref: true,
     timelineHref: true,
+    framesHref: true,
     benchReportHref: true,
     diffHrefs: true,
   };

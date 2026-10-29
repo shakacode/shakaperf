@@ -22,6 +22,7 @@ describe('PerfEngineStage self-contained report stripping', () => {
       controlLighthouseHref: true,
       experimentLighthouseHref: true,
       timelineHref: true,
+      framesHref: true,
       benchReportHref: true,
       diffHrefs: true,
     });

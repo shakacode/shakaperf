@@ -14,6 +14,7 @@ import {
   StageNote,
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
+import { FramePlayerButton } from './frame-player';
 
 const GROUPS: PerfMetricGroup[] = ['vitals', 'diagnostics'];
 
@@ -187,10 +188,11 @@ function ArtifactLinks({ perf }: { perf: PerfArtifact }) {
     perf.timelineHref ? ['timeline', perf.timelineHref] : null,
     ...(perf.diffHrefs ?? []).map((link) => [link.label, link.href]),
   ].filter((link): link is string[] => link !== null);
-  if (links.length === 0) return null;
+  if (links.length === 0 && !perf.framesHref) return null;
   return (
     <FullReportOnly>
       <div className="artifact-links">
+        {perf.framesHref ? <FramePlayerButton href={perf.framesHref} /> : null}
         {links.map(([label, href]) => (
           <DetailedArtifactDialog key={`${label}-${href}`} href={href} label={label}>
             {label}
@@ -234,6 +236,7 @@ function hasAttachments(perf: PerfArtifact): boolean {
     perf.experimentLighthouseHref ||
     perf.timelineHref ||
     perf.timelinePreviewHref ||
+    perf.framesHref ||
     (perf.diffHrefs?.length ?? 0) > 0,
   );
 }
