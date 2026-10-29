@@ -17,6 +17,7 @@
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { readFileSync, writeFileSync } from 'node:fs';
+import { isInternalMark } from '../../../bench/core/timeline-comparison';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const jpeg = require('jpeg-js') as { decode(buf: Buffer, opts?: { useTArray: boolean }): { width: number; height: number; data: Uint8Array } };
@@ -690,7 +691,7 @@ function buildStripRects(profile: ProfileData, pxPerMs: number): StripRect[] {
 
   for (const e of profile.events) {
     if (e.category === 'network-start' || e.category === 'network-end') continue;
-    if (e.category === 'user-timing' && e.label.startsWith(SHAKA_PERF_ANNOTATION_PREFIX)) continue;
+    if (e.category === 'user-timing' && isInternalMark(e.label)) continue;
     const category = e.category as StripCategory;
     const key = originRelative(e.label, profile.baseOrigin);
     const detail = e.detail ? ` (${e.detail})` : '';
