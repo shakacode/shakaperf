@@ -117,29 +117,25 @@ function compareResults(
 }
 
 describe("CompareResults regression threshold", () => {
-  it("keeps the default practical threshold scoped to timing metrics", () => {
+  it("fails only when a significant regression exceeds the configured threshold", () => {
     expect(compareResults([section("FCP", "ms", -20)]).isBelowRegressionThreshold).toBe(true);
     expect(compareResults([section("FCP", "ms", -55)]).isBelowRegressionThreshold).toBe(false);
-  });
-
-  it("uses practical floors for non-timing regression alerts", () => {
-    const result = compareResults([section("js", "KB", -2)]);
-
-    expect(result.isBelowRegressionThreshold).toBe(false);
-    expect(JSON.parse(result.stringifyJSON()).isBelowRegressionThreshold).toBe(false);
+    expect(compareResults([section("js", "KB", -2)]).isBelowRegressionThreshold).toBe(true);
+    expect(compareResults([section("FCP", "ms", -55, { isSignificant: false })]).isBelowRegressionThreshold).toBe(true);
   });
 
   it("uses metric sign for higher-is-better score regressions", () => {
-    const result = compareResults([section("SEO Score", "/100", 2, { sign: -1 })]);
+    const result = compareResults([section("SEO Score", "/100", 60, { sign: -1 })]);
     const json = JSON.parse(result.stringifyJSON());
 
     expect(result.isBelowRegressionThreshold).toBe(false);
+    expect(json.isBelowRegressionThreshold).toBe(false);
     expect(json.vitalsTableData[0].sign).toBe(-1);
   });
 
-  it("uses the selected CI stat only for practical threshold magnitude", () => {
+  it("measures the threshold on the selected CI stat", () => {
     const result = compareResults([
-      section("js", "KB", -0.2, { ciMax: -2, ciMin: -0.1 }),
+      section("FCP", "ms", -20, { ciMax: -80, ciMin: -10 }),
     ], 50, "ci-lower");
 
     expect(result.isBelowRegressionThreshold).toBe(false);
