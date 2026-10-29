@@ -14,6 +14,7 @@ const DIAGNOSTICS_METRICS = [
   'downloads-count-before-LCP',
   'js',
   'js-count',
+  'js-tasks',
   'images',
   'images-count',
   'fonts',
