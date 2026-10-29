@@ -543,6 +543,9 @@ function fakeBrowser(options: { events?: string[] } = {}) {
     detach: jest.fn(async () => { events?.push('cdp:detach'); }),
   };
   const context = {
+    on: jest.fn(),
+    once: jest.fn(),
+    off: jest.fn(),
     // clearBrowserData creates a throwaway page (before the real one, now that
     // pre-nav setup runs before the page is created), so the first newPage is
     // the reset page and the real page comes after.
