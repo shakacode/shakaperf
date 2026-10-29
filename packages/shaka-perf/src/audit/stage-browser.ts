@@ -7,7 +7,7 @@
 
 import { chromium, firefox, webkit } from 'playwright-core';
 import type { Browser, BrowserContextOptions, LaunchOptions } from 'playwright-core';
-import type { FormFactor } from 'shaka-shared';
+import type { Viewport } from 'shaka-shared';
 import type { PlaywrightOptions } from '../config';
 import { applyRealChrome } from './real-chrome';
 
@@ -48,19 +48,12 @@ export function launchStageBrowser(
   );
 }
 
-// The viewport fields a stage's measured-page context is built from.
-export interface StageContextViewport {
-  width: number;
-  height: number;
-  deviceScaleFactor: number;
-  formFactor: FormFactor;
-}
-
 // The shared `newContext` options for a stage's measured page: viewport, device
-// scale, the mobile flag, and certificate handling. Real-Chrome identity is
-// added by the callers once they can read the launched browser version.
+// scale, the mobile flag, and certificate handling. The device identity (user
+// agent, touch) is added by the callers via `deviceContextOptions` once they
+// can read the launched browser version.
 export function stageContextOptions(
-  viewport: StageContextViewport,
+  viewport: Viewport,
   playwrightOptions: PlaywrightOptions,
 ): BrowserContextOptions {
   return {
