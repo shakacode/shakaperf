@@ -104,10 +104,11 @@ import {
   readBisectSession,
 } from './state';
 import {
-  prepareConfiguredRepairs,
+  prepareManifestRepairs,
   verifyPersistedRepairArtifacts,
   type PreparedBisectRepairArtifact,
 } from './repair-artifacts';
+import { loadBisectPatchManifest } from './patch-manifest';
 import type { BisectRepair } from './types';
 import { installCommitRun } from './commit-run-state';
 import {
@@ -300,14 +301,20 @@ async function prepareBisectExecution(
       allowedPaths: [resultsDirectory],
     });
   const rebuildStrategy = persistedRebuildStrategy(options.config);
+  const loadedPatchManifest = preliminaryResume
+    ? null
+    : loadBisectPatchManifest({
+      configDirectory: options.configDirectory ?? options.cwd,
+      configuredPath: options.config.bisect.patchesManifest,
+    });
   const preparedRepairs = preliminaryResume
     ? {
       repairs: preliminaryResume.repairs,
       artifacts: [] as PreparedBisectRepairArtifact[],
     }
-    : await prepareConfiguredRepairs({
-      repairs: options.config.bisect.repairs,
-      configDirectory: options.configDirectory ?? options.cwd,
+    : await prepareManifestRepairs({
+      patches: loadedPatchManifest!.manifest.patches,
+      manifestDirectory: loadedPatchManifest!.directory,
       experimentDir: options.twinServers.experimentDir,
       range: gitRange,
       registeredAt: new Date().toISOString(),

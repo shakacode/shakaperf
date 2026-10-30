@@ -11,6 +11,10 @@ import {
   type CompareMeasurementOptionDefaults,
 } from '../cli/shared-options';
 import { runCompareBisectFromCli, type BisectCliOptions } from './session';
+import {
+  createBisectPatchCommand,
+  type BisectPatchCliDependencies,
+} from './patch-cli';
 
 export interface BisectCliDependencies {
   run?: (
@@ -19,10 +23,11 @@ export interface BisectCliDependencies {
     options: BisectCliOptions,
   ) => Promise<unknown>;
   optionDefaults?: CompareMeasurementOptionDefaults;
+  patch?: BisectPatchCliDependencies;
 }
 
 export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
-  const command = new Command('bisect')
+  const bisect = new Command('bisect')
     .description('Find the first commit for each compare regression')
     .argument('[good-ref]', 'Known-good commit; defaults to control HEAD')
     .argument('[bad-ref]', 'Known-bad commit; defaults to experiment HEAD')
@@ -86,5 +91,6 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
         investigateMerges: local.investigateMerges === true,
       });
     });
-  return addCompareMeasurementOptions(command, { defaults: deps.optionDefaults });
+  bisect.addCommand(createBisectPatchCommand(deps.patch));
+  return addCompareMeasurementOptions(bisect, { defaults: deps.optionDefaults });
 }

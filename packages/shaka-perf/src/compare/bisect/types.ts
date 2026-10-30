@@ -17,7 +17,7 @@ export interface BisectRepairCommand {
 export interface BisectRepair {
   id: string;
   kind: BisectRepairKind;
-  purpose: string;
+  purpose?: string;
   filename: string;
   sha256: string;
   order: number;
@@ -26,7 +26,7 @@ export interface BisectRepair {
   prepareCommands: BisectRepairCommand[];
   cleanupCommands: BisectRepairCommand[];
   registeredAt: string;
-  source: 'config';
+  source: 'manifest';
 }
 
 export type BisectRepairStepStatus = 'not-run' | 'succeeded' | 'failed';
