@@ -93,6 +93,7 @@ Notes that save you debugging later:
 - **Image names and host volume dirs are auto-derived** from a slug of the project path — you don't (and can't) set them. Two checkouts of the same repo therefore never collide.
 - **`composeFile` is optional.** Omit it and the bundled default compose is used. Only add it in Phase 6 if you genuinely need extra services.
 - `controlDir`/`experimentDir`/`dockerBuildDir` are resolved relative to the project dir; `~` is expanded.
+- **First run:** `controlDir` will not exist yet; run `yarn shaka-perf servers build` and accept `Clone now?` to create the control clone there.
 
 ---
 
