@@ -24,6 +24,7 @@ import { warnIfShakaResultsNotIgnored } from '../helpers/dockerignore';
 import { readCheckoutCommit, SERVER_COMMIT_LABEL, requireSyncedServerRebuild, clearSyncedServerCommit } from '../helpers/server-commit';
 import {
   dockerBuildDirForSide,
+  assertBuildDirectory,
   dockerfileAbsForSide,
   dockerfilePathForSide,
   projectDirForSide,
@@ -121,7 +122,7 @@ async function buildInParallel(config: ResolvedConfig, builderName: string, noCa
 
 /** Offer to clone the baseline source and explain the consequence of declining. */
 export async function ensureControlCheckout(config: ResolvedConfig, allowWithoutCloning = false): Promise<boolean> {
-  if (fs.existsSync(config.controlDir) && fs.existsSync(dockerBuildDirForSide(config, 'control'))) return false;
+  if (fs.existsSync(config.controlDir)) return false;
   const experimentRoot = getGitRootDirectory(config.experimentDir);
   const cloneTarget = experimentRoot
     ? path.resolve(config.controlDir,
@@ -149,9 +150,7 @@ export async function ensureControlCheckout(config: ResolvedConfig, allowWithout
   }
   console.log('');
 
-  const occupiedCloneTarget = fs.existsSync(cloneTarget) && fs.readdirSync(cloneTarget).length > 0;
-  if (!remoteUrl || (allowWithoutCloning && occupiedCloneTarget)) {
-    if (occupiedCloneTarget) console.log(`Cannot clone into nonempty directory: ${cloneTarget}`);
+  if (!remoteUrl) {
     if (await confirm('Continue using the existing control image without cloning?')) return false;
     throw new Error('Startup cancelled: control checkout is missing.');
   }
@@ -197,6 +196,9 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
   if (buildingControl && !fs.existsSync(config.controlDir)) {
     await ensureControlCheckout(config);
   }
+
+  if (buildingControl) assertBuildDirectory(config, 'control');
+  if (buildingExperiment) assertBuildDirectory(config, 'experiment');
 
   console.log('Creating bind-mount directories...');
   if (buildingControl) {

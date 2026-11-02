@@ -397,7 +397,12 @@ describe('build command', () => {
     }));
 
     // Mock shell helpers
-    const mockExec = jest.fn().mockResolvedValue({ stdout: '', stderr: '', code: cloneExitCode });
+    const mockExec = jest.fn().mockImplementation(async (command: string, args: string[]) => {
+      if (command === 'git' && args[0] === 'clone' && cloneExitCode === 0) {
+        fs.mkdirSync(path.join(tmpDir, 'control-repo', 'app'), { recursive: true });
+      }
+      return { stdout: '', stderr: '', code: cloneExitCode };
+    });
     const mockConfirm = jest.fn().mockResolvedValue(confirmAnswer);
     jest.doMock('../helpers/shell', () => ({
       exec: mockExec,
@@ -494,6 +499,21 @@ describe('build command', () => {
     await expect(build(config, { target: 'control' })).rejects.toThrow('process.exit(1)');
 
     expect(printError).toHaveBeenCalledWith(`Control directory not found: ${config.controlDir}`);
+  });
+
+  it('rejects a missing build context in an existing control checkout without cloning', async () => {
+    const { mockExec, mockConfirm } = setupBuildMocks();
+    const { build } = require('../commands/build');
+    const config = createMockConfig(tmpDir);
+    config.dockerBuildDir = path.join(config.projectDir, 'packages/web');
+    fs.mkdirSync(config.dockerBuildDir, { recursive: true });
+
+    await expect(build(config, { target: 'control' })).rejects.toThrow(
+      path.join(config.controlDir, 'packages/web'),
+    );
+
+    expect(mockConfirm).not.toHaveBeenCalled();
+    expect(mockExec).not.toHaveBeenCalled();
   });
 
   it('skips cloning when controlDir already exists', async () => {

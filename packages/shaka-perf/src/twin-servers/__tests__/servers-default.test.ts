@@ -114,45 +114,50 @@ describe('servers startup with a missing source checkout and an existing image',
     expect(confirm).toHaveBeenCalledTimes(1);
   });
 
-  it('offers image reuse when both build contexts are missing', async () => {
-    const buildDir = path.join(config.projectDir, 'packages/web');
-    fs.mkdirSync(buildDir, { recursive: true });
-    config.dockerBuildDir = buildDir;
+  it('rejects a missing experiment build context before offering a control clone', async () => {
+    config.dockerBuildDir = path.join(config.projectDir, 'packages/web');
+    fs.mkdirSync(config.dockerBuildDir, { recursive: true });
     config.experimentDir = path.join(root, 'separate-experiment');
     fs.mkdirSync(config.experimentDir);
-    execFileSync('git', ['init', config.experimentDir], { stdio: 'pipe' });
-    jest.mocked(getGitRootDirectory).mockImplementation((cwd) => {
-      try {
-        return execFileSync('git', ['-C', cwd, 'rev-parse', '--show-toplevel'], { encoding: 'utf8', stdio: 'pipe' }).trim();
-      } catch { return ''; }
-    });
-    jest.mocked(confirm).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
 
-    await serversDefault(config);
+    await expect(serversDefault(config)).rejects.toThrow(path.join(config.experimentDir, 'packages/web'));
 
-    expect(confirm).toHaveBeenCalledTimes(2);
-    expect(confirm).toHaveBeenNthCalledWith(1, 'Clone now? Declining will continue using the existing control image without cloning.');
-    expect(confirm).toHaveBeenNthCalledWith(2, 'Continue using the existing experiment image without its source checkout?');
+    expect(confirm).not.toHaveBeenCalled();
     expect(exec).not.toHaveBeenCalled();
-    expect(build).not.toHaveBeenCalled();
-    expect(runServersMenu).toHaveBeenCalledTimes(1);
+    expect(stopContainers).not.toHaveBeenCalled();
+    expect(runServersMenu).not.toHaveBeenCalled();
   });
 
-  it('offers only image reuse when the clone destination already contains a checkout', async () => {
+  it('rejects a missing control build context in an existing checkout without offering cloning', async () => {
     config.dockerBuildDir = path.join(config.projectDir, 'packages/web');
     fs.mkdirSync(config.dockerBuildDir, { recursive: true });
     fs.mkdirSync(config.controlDir);
     fs.writeFileSync(path.join(config.controlDir, '.git'), 'existing checkout');
+
+    await expect(serversDefault(config)).rejects.toThrow(path.join(config.controlDir, 'packages/web'));
+
+    expect(confirm).not.toHaveBeenCalled();
+    expect(exec).not.toHaveBeenCalled();
+    expect(build).not.toHaveBeenCalled();
+    expect(stopContainers).not.toHaveBeenCalled();
+    expect(fs.readFileSync(path.join(config.controlDir, '.git'), 'utf8')).toBe('existing checkout');
+  });
+
+  it('offers cloning based on controlDir even when its parent build directory exists', async () => {
+    const sourceRoot = config.experimentDir;
+    config.projectDir = path.join(sourceRoot, 'app');
+    config.experimentDir = config.projectDir;
+    config.dockerBuildDir = sourceRoot;
+    config.controlDir = path.join(root, 'control/app');
+    fs.mkdirSync(config.experimentDir);
+    fs.mkdirSync(path.dirname(config.controlDir));
     jest.mocked(confirm).mockResolvedValueOnce(true);
 
     await serversDefault(config);
 
     expect(confirm).toHaveBeenCalledTimes(1);
-    expect(confirm).toHaveBeenCalledWith('Continue using the existing control image without cloning?');
-    expect(exec).not.toHaveBeenCalled();
-    expect(build).not.toHaveBeenCalled();
-    expect(fs.readFileSync(path.join(config.controlDir, '.git'), 'utf8')).toBe('existing checkout');
-    expect(runServersMenu).toHaveBeenCalledTimes(1);
+    expect(exec).toHaveBeenCalledWith('git', ['clone', 'https://example.com/app.git', path.dirname(config.controlDir)]);
+    expect(build).toHaveBeenCalledWith(config, { target: 'control' });
   });
 
   it('continues with the existing image when the single clone prompt is declined', async () => {
@@ -193,11 +198,13 @@ describe('servers startup with a missing source checkout and an existing image',
     expect(build).not.toHaveBeenCalled();
   });
 
-  it('leaves the missing-image case to the existing build and clone flow', async () => {
+  it('offers cloning before rebuilding when the control image is also missing', async () => {
     jest.mocked(dockerImageExists).mockImplementation((image) => image !== config.images.control);
+    jest.mocked(confirm).mockResolvedValueOnce(true);
     await serversDefault(config);
 
-    expect(confirm).not.toHaveBeenCalled();
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm).toHaveBeenCalledWith('Clone now? Declining will stop the build.');
     expect(build).toHaveBeenCalledWith(config, { target: 'control' });
   });
 
@@ -240,21 +247,17 @@ describe('servers startup with a missing source checkout and an existing image',
     expect(runServersMenu).not.toHaveBeenCalled();
   });
 
-  it.each([true, false])('requires confirmation to reuse a missing experiment build directory (answer=%s)', async (answer) => {
-    fs.mkdirSync(config.controlDir);
-    fs.rmSync(config.experimentDir, { recursive: true });
-    jest.mocked(confirm).mockResolvedValueOnce(answer);
-    if (answer) {
-      await serversDefault(config);
-      expect(runServersMenu).toHaveBeenCalledTimes(1);
-    } else {
-      await expect(serversDefault(config)).rejects.toThrow('Startup cancelled');
-      expect(runServersMenu).not.toHaveBeenCalled();
-    }
+  it('stops without an image when cloning is declined', async () => {
+    jest.mocked(dockerImageExists).mockReturnValue(false);
+    jest.mocked(confirm).mockResolvedValueOnce(false);
+    jest.spyOn(process, 'exit').mockImplementation(() => { throw new Error('process.exit(1)'); });
+
+    await expect(serversDefault(config)).rejects.toThrow('process.exit(1)');
+
     expect(confirm).toHaveBeenCalledTimes(1);
-    expect(confirm).toHaveBeenCalledWith('Continue using the existing experiment image without its source checkout?');
+    expect(confirm).toHaveBeenCalledWith('Clone now? Declining will stop the build.');
+    expect(exec).not.toHaveBeenCalled();
     expect(build).not.toHaveBeenCalled();
     expect(stopContainers).not.toHaveBeenCalled();
   });
-
 });

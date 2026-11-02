@@ -6,6 +6,7 @@
  */
 
 import * as path from 'path';
+import * as fs from 'fs';
 import type { ResolvedConfig } from '../types';
 
 export type ServerSide = 'control' | 'experiment';
@@ -17,6 +18,15 @@ export function projectDirForSide(config: ResolvedConfig, side: ServerSide): str
 export function dockerBuildDirForSide(config: ResolvedConfig, side: ServerSide): string {
   const relativeBuildDir = path.relative(config.projectDir, config.dockerBuildDir);
   return path.resolve(projectDirForSide(config, side), relativeBuildDir);
+}
+
+export function assertBuildDirectory(config: ResolvedConfig, side: ServerSide): void {
+  const buildDir = dockerBuildDirForSide(config, side);
+  if (!fs.existsSync(buildDir)) {
+    throw new Error(
+      `${side} Docker build directory not found: ${buildDir}. Check dockerBuildDir or the ${side} branch.`,
+    );
+  }
 }
 
 export function dockerfilePathForSide(config: ResolvedConfig, side: ServerSide): string {
