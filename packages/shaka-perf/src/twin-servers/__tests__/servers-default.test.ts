@@ -114,6 +114,30 @@ describe('servers startup with a missing source checkout and an existing image',
     expect(confirm).toHaveBeenCalledTimes(1);
   });
 
+  it('offers image reuse when both build contexts are missing', async () => {
+    const buildDir = path.join(config.projectDir, 'packages/web');
+    fs.mkdirSync(buildDir, { recursive: true });
+    config.dockerBuildDir = buildDir;
+    config.experimentDir = path.join(root, 'separate-experiment');
+    fs.mkdirSync(config.experimentDir);
+    execFileSync('git', ['init', config.experimentDir], { stdio: 'pipe' });
+    jest.mocked(getGitRootDirectory).mockImplementation((cwd) => {
+      try {
+        return execFileSync('git', ['-C', cwd, 'rev-parse', '--show-toplevel'], { encoding: 'utf8', stdio: 'pipe' }).trim();
+      } catch { return ''; }
+    });
+    jest.mocked(confirm).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+
+    await serversDefault(config);
+
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(confirm).toHaveBeenNthCalledWith(1, 'Clone now? Declining will continue using the existing control image without cloning.');
+    expect(confirm).toHaveBeenNthCalledWith(2, 'Continue using the existing experiment image without its source checkout?');
+    expect(exec).not.toHaveBeenCalled();
+    expect(build).not.toHaveBeenCalled();
+    expect(runServersMenu).toHaveBeenCalledTimes(1);
+  });
+
   it('continues with the existing image when the single clone prompt is declined', async () => {
     jest.mocked(confirm).mockResolvedValueOnce(false);
     await serversDefault(config);

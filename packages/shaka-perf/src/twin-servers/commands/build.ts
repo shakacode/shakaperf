@@ -122,12 +122,13 @@ async function buildInParallel(config: ResolvedConfig, builderName: string, noCa
 /** Offer to clone the baseline source and explain the consequence of declining. */
 export async function ensureControlCheckout(config: ResolvedConfig, allowWithoutCloning = false): Promise<boolean> {
   if (fs.existsSync(config.controlDir) && fs.existsSync(dockerBuildDirForSide(config, 'control'))) return false;
-  const experimentBuildDir = dockerBuildDirForSide(config, 'experiment');
-  const experimentRoot = getGitRootDirectory(experimentBuildDir) || experimentBuildDir;
-  const cloneTarget = path.resolve(config.controlDir,
-    path.relative(fs.realpathSync(config.experimentDir), fs.realpathSync(experimentRoot)));
-  const remoteUrl = getGitRemoteUrl(experimentBuildDir);
-  const defaultBranch = getDefaultBranch(experimentBuildDir);
+  const experimentRoot = getGitRootDirectory(config.experimentDir);
+  const cloneTarget = experimentRoot
+    ? path.resolve(config.controlDir,
+      path.relative(fs.realpathSync(config.experimentDir), fs.realpathSync(experimentRoot)))
+    : config.controlDir;
+  const remoteUrl = getGitRemoteUrl(config.experimentDir);
+  const defaultBranch = getDefaultBranch(config.experimentDir);
 
   console.log(`Remote:${remoteUrl} Default Branch:${defaultBranch}`);
 
