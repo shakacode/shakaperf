@@ -30,6 +30,7 @@ import {
 } from './coverage-artifacts';
 import { resolveScreenshotCoveragePlugin } from './source-plugins';
 import type { CodeCoverageResult } from './stage';
+import { coverageScope, coverageProvenance } from './source-scope';
 
 // One browser per unit, launched from that unit's own resolved options and
 // disposed with it — the same lifecycle visreg gives each unit, so a per-test
@@ -103,7 +104,7 @@ async function collectCoverage(ctx: TestContext, browser: Browser): Promise<Code
 async function drainCoverage(
   ctx: TestContext,
   page: Page,
-): Promise<CoverageSummary & Pick<CodeCoverageResult, 'coverageHref'>> {
+): Promise<CoverageSummary & Pick<CodeCoverageResult, 'coverageHref' | 'provenance'>> {
   const coverage = await page.evaluate(
     () => (globalThis as { __coverage__?: unknown }).__coverage__,
   );
@@ -133,7 +134,9 @@ async function drainCoverage(
     `coverage: ${summary.coveredStatements}/${summary.totalStatements} statements ` +
     `across ${summary.files} instrumented files`,
   ));
-  return { ...summary, coverageHref };
+  return { ...summary, coverageHref, provenance: coverageProvenance(
+    coverage as Record<string, unknown>, coverageScope(ctx.config.audit.codeCoverage), ctx.test.file ?? undefined,
+  ) };
 }
 
 // Screenshot coverage: what the finished page SHOWS, scored against the region

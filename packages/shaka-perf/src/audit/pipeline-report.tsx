@@ -5,6 +5,8 @@
  * License in LICENSE.md.
  */
 
+import { FullReportOnly } from '../pipeline/report-mode';
+import type { AuditPipelineConfig } from './pipeline';
 import type { PipelineReport } from '../pipeline/pipeline';
 import type { ReportMeta, TestResult } from '../pipeline/report';
 import type { StageArtifactTestMeta } from '../pipeline/stage-report-components';
@@ -12,10 +14,20 @@ import { troubleshootCommandFor } from '../troubleshoot/command';
 
 function renderHeaderUrls(meta: ReportMeta) {
   return (
-    <div>
-      <dt>url</dt>
-      <dd>{meta.experimentUrl}</dd>
-    </div>
+    <>
+      <div>
+        <dt>url</dt>
+        <dd>{meta.experimentUrl}</dd>
+      </div>
+      {(meta.pipelineConfig as AuditPipelineConfig)?.coverageReport && (
+        <FullReportOnly>
+          <div>
+            <dt>executed-code coverage</dt>
+            <dd><a href="coverage/index.html" target="_blank" rel="noreferrer">All Tests ↗</a></dd>
+          </div>
+        </FullReportOnly>
+      )}
+    </>
   );
 }
 

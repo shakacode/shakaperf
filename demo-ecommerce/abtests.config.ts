@@ -13,6 +13,8 @@ import { assignPortsAutomatically, defineConfig } from 'shaka-shared';
 // one — so the loader could stop resolving them and every suite stayed green.
 import { installSerializationCheck } from './ab-tests/serialization-check';
 
+const { instrumentDemoSource } = require('./config/coverage-instrument.cjs');
+
 // Auto-assign the control/experiment host ports from a required preferred pair.
 // If either port is in use, BOTH shift up by 1 together — preserving their gap —
 // until the first free pair is found; the pair is then remembered per project
@@ -109,6 +111,11 @@ export default defineConfig({
   },
 
   audit: {
+    codeCoverage: {
+      include: ['app/javascript/components/**/*.{js,jsx,ts,tsx}', 'app/javascript/hooks/**/*.{js,jsx,ts,tsx}'],
+      instrument: instrumentDemoSource,
+      // Add pathMappings: { '/app': '.' } when collecting from Docker builds.
+    },
     lighthouseConfig: LIGHTHOUSE_CONFIG,
     // Needs a development build; twin-servers serve production ones and locate
     // nothing. See README.md, "Screenshot coverage".

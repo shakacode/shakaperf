@@ -299,6 +299,15 @@ export const PerfConfigSchema = z
  */
 export const AuditConfigSchema = z
   .object({
+    codeCoverage: z.object({
+      projectRoot: z.string().optional(),
+      include: z.array(z.string().min(1)).min(1).optional(),
+      exclude: z.array(z.string().min(1)).optional(),
+      pathMappings: z.record(z.string()).optional(),
+      instrument: z.custom<(source: string, filename: string) => unknown | Promise<unknown>>(
+        (value) => typeof value === 'function',
+      ).optional(),
+    }).strict().optional(),
     // Unset means "whatever `shared.viewports` says".
     viewports: categoryViewportLabels(),
     // Raw Lighthouse flags (same as `perf.lighthouseConfig`). Set
