@@ -8,6 +8,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { serversDefault } from '../commands/servers-default';
 import { build } from '../commands/build';
 import { startContainers } from '../commands/start-containers';
@@ -16,7 +17,7 @@ import { runServersMenu } from '../commands/servers-menu';
 import { dockerImageExists, getImageCreatedAt, containersRunning } from '../helpers/docker';
 import { invalidateImageCreated } from '../helpers/rebuild-check';
 import { confirm, exec } from '../helpers/shell';
-import { getGitRemoteUrl } from '../helpers/git';
+import { getGitRemoteUrl, getGitRootDirectory } from '../helpers/git';
 import { startProxyServer } from '../ipc/server';
 import type { ResolvedConfig } from '../types';
 
@@ -60,6 +61,7 @@ describe('servers startup with a missing source checkout and an existing image',
     jest.mocked(getImageCreatedAt).mockReturnValue(new Date('2020-01-01'));
     jest.mocked(containersRunning).mockResolvedValue(true);
     jest.mocked(getGitRemoteUrl).mockReturnValue('https://example.com/app.git');
+    jest.mocked(getGitRootDirectory).mockReturnValue(config.experimentDir);
     jest.mocked(exec).mockImplementation(async (_cmd, args) => {
       if (args?.[0] === 'clone') fs.mkdirSync(config.controlDir);
       return { code: 0, stdout: '', stderr: '' };
@@ -84,6 +86,32 @@ describe('servers startup with a missing source checkout and an existing image',
     expect(startContainers).toHaveBeenCalledTimes(1);
     expect(runServersMenu).toHaveBeenCalledTimes(1);
     expect(jest.mocked(exec).mock.invocationCallOrder[0]).toBeLessThan(jest.mocked(stopContainers).mock.invocationCallOrder[0]);
+  });
+
+  it('clones at the repository root when the build context is nested', async () => {
+    const source = config.experimentDir;
+    const buildDir = path.join(source, 'packages/web');
+    fs.mkdirSync(buildDir, { recursive: true });
+    fs.writeFileSync(path.join(buildDir, 'Dockerfile'), 'FROM scratch\n');
+    execFileSync('git', ['init', source], { stdio: 'pipe' });
+    execFileSync('git', ['-C', source, 'add', '.']);
+    execFileSync('git', ['-C', source, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'fixture'], { stdio: 'pipe' });
+    config.dockerBuildDir = buildDir;
+    config.dockerfile = 'packages/web/Dockerfile';
+    jest.mocked(getGitRemoteUrl).mockReturnValue(source);
+    jest.mocked(getGitRootDirectory).mockImplementation((cwd) => execFileSync('git', ['-C', cwd, 'rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim());
+    jest.mocked(exec).mockImplementation(async (cmd, args) => {
+      execFileSync(cmd, args, { stdio: 'pipe' });
+      return { code: 0, stdout: '', stderr: '' };
+    });
+    jest.mocked(confirm).mockResolvedValueOnce(true);
+
+    await serversDefault(config);
+
+    expect(exec).toHaveBeenCalledWith('git', ['clone', source, config.controlDir]);
+    expect(fs.readFileSync(path.join(config.controlDir, 'packages/web/Dockerfile'), 'utf8')).toBe('FROM scratch\n');
+    expect(fs.existsSync(path.join(config.controlDir, '.git'))).toBe(true);
+    expect(confirm).toHaveBeenCalledTimes(1);
   });
 
   it('continues with the existing image when the single clone prompt is declined', async () => {

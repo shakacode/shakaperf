@@ -6,6 +6,7 @@
  */
 
 import * as fs from 'fs';
+import * as path from 'path';
 import type { ResolvedConfig } from '../types';
 import { requireCommand, confirm, exec, runInParallel } from '../helpers/shell';
 import {
@@ -16,7 +17,7 @@ import {
   getUsername,
   ensureProjectBuildxBuilder,
 } from '../helpers/docker';
-import { getGitRemoteUrl, getDefaultBranch } from '../helpers/git';
+import { getGitRemoteUrl, getDefaultBranch, getGitRootDirectory } from '../helpers/git';
 import { printBanner, printSuccess, printError, printInfo } from '../helpers/ui';
 import { invalidateImageCreated, recordBuildAttempt, recordBuildManifest } from '../helpers/rebuild-check';
 import { warnIfShakaResultsNotIgnored } from '../helpers/dockerignore';
@@ -121,8 +122,10 @@ async function buildInParallel(config: ResolvedConfig, builderName: string, noCa
 /** Offer to clone the baseline source and explain the consequence of declining. */
 export async function ensureControlCheckout(config: ResolvedConfig, allowWithoutCloning = false): Promise<boolean> {
   if (fs.existsSync(config.controlDir) && fs.existsSync(dockerBuildDirForSide(config, 'control'))) return false;
-  const cloneTarget = dockerBuildDirForSide(config, 'control');
   const experimentBuildDir = dockerBuildDirForSide(config, 'experiment');
+  const experimentRoot = getGitRootDirectory(experimentBuildDir) || experimentBuildDir;
+  const cloneTarget = path.resolve(config.controlDir,
+    path.relative(fs.realpathSync(config.experimentDir), fs.realpathSync(experimentRoot)));
   const remoteUrl = getGitRemoteUrl(experimentBuildDir);
   const defaultBranch = getDefaultBranch(experimentBuildDir);
 

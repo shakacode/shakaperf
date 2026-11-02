@@ -383,7 +383,7 @@ describe('build command', () => {
       getGitRemoteUrl: jest.fn(() => remoteUrl),
       getDefaultBranch: jest.fn(() => defaultBranch),
       getChangedFiles: jest.fn(() => []),
-      getGitRootDirectory: jest.fn(() => '/project'),
+      getGitRootDirectory: jest.fn(() => path.join(tmpDir, 'repo')),
     }));
 
     // Mock docker helpers
