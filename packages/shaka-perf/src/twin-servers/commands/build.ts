@@ -149,7 +149,9 @@ export async function ensureControlCheckout(config: ResolvedConfig, allowWithout
   }
   console.log('');
 
-  if (!remoteUrl) {
+  const occupiedCloneTarget = fs.existsSync(cloneTarget) && fs.readdirSync(cloneTarget).length > 0;
+  if (!remoteUrl || (allowWithoutCloning && occupiedCloneTarget)) {
+    if (occupiedCloneTarget) console.log(`Cannot clone into nonempty directory: ${cloneTarget}`);
     if (await confirm('Continue using the existing control image without cloning?')) return false;
     throw new Error('Startup cancelled: control checkout is missing.');
   }

@@ -138,6 +138,23 @@ describe('servers startup with a missing source checkout and an existing image',
     expect(runServersMenu).toHaveBeenCalledTimes(1);
   });
 
+  it('offers only image reuse when the clone destination already contains a checkout', async () => {
+    config.dockerBuildDir = path.join(config.projectDir, 'packages/web');
+    fs.mkdirSync(config.dockerBuildDir, { recursive: true });
+    fs.mkdirSync(config.controlDir);
+    fs.writeFileSync(path.join(config.controlDir, '.git'), 'existing checkout');
+    jest.mocked(confirm).mockResolvedValueOnce(true);
+
+    await serversDefault(config);
+
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm).toHaveBeenCalledWith('Continue using the existing control image without cloning?');
+    expect(exec).not.toHaveBeenCalled();
+    expect(build).not.toHaveBeenCalled();
+    expect(fs.readFileSync(path.join(config.controlDir, '.git'), 'utf8')).toBe('existing checkout');
+    expect(runServersMenu).toHaveBeenCalledTimes(1);
+  });
+
   it('continues with the existing image when the single clone prompt is declined', async () => {
     jest.mocked(confirm).mockResolvedValueOnce(false);
     await serversDefault(config);
