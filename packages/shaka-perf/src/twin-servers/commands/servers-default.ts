@@ -8,15 +8,16 @@
 import * as fs from 'node:fs';
 import type { ResolvedConfig } from '../types';
 import { decideRebuild } from '../helpers/rebuild-check';
-import { containersRunning } from '../helpers/docker';
+import { containersRunning, dockerImageExists } from '../helpers/docker';
 import { printBanner } from '../helpers/ui';
-import { build } from './build';
+import { build, ensureControlCheckout } from './build';
 import { startContainers } from './start-containers';
 import { stopContainers } from './stop-containers';
 import { runServersMenu, type MenuController } from './servers-menu';
 import { startProxyServer, type ProxyServer } from '../ipc/server';
 import { createDispatcher } from '../ipc/dispatch';
 import { endpointPaths } from '../ipc/paths';
+import { assertBuildDirectory } from '../helpers/project-paths';
 
 export interface ServersOptions {
   verbose?: boolean;
@@ -31,7 +32,30 @@ export interface ServersOptions {
 export async function serversDefault(config: ResolvedConfig, options: ServersOptions = {}): Promise<void> {
   printBanner('Twin Servers');
 
-  const decision = await decideRebuild(config);
+  assertBuildDirectory(config, 'experiment');
+  const missingControl = !fs.existsSync(config.controlDir);
+  const clonedControl = missingControl
+    ? await ensureControlCheckout(config, dockerImageExists(config.images.control))
+    : false;
+  const reuseControl = missingControl && !clonedControl;
+  if (!reuseControl) assertBuildDirectory(config, 'control');
+
+  let decision = await decideRebuild(config);
+  if (reuseControl && decision.needs && decision.target !== 'experiment') {
+    decision = decision.target === 'control'
+      ? { needs: false, reason: 'Using the existing control image without its checkout, as confirmed.' }
+      : { ...decision, target: 'experiment' };
+  }
+  if (clonedControl) {
+    // A restored checkout must replace the previous image even if mtimes happen
+    // to be older. Preserve an experiment rebuild when it is also needed.
+    const rebuildBoth = decision.needs && decision.target !== 'control';
+    decision = {
+      needs: true,
+      target: rebuildBoth ? undefined : 'control',
+      reason: `control checkout cloned; ${decision.reason}`,
+    };
+  }
 
   if (decision.needs) {
     console.log(`Rebuild needed: ${decision.reason}`);
