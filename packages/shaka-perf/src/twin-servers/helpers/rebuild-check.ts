@@ -404,8 +404,8 @@ function decideSide(
     // safely assume a rebuild is needed either (image-missing already
     // returns `needs:true` above, so this branch only fires when the
     // image exists but the source tree doesn't — e.g. user wiped
-    // controlDir intentionally). Leave the image alone; the clone
-    // prompt in `build` only runs on the image-missing path.
+    // controlDir intentionally). Startup asks whether to clone or reuse
+    // the existing image.
     return { needs: false, reason: `${side} build dir ${buildDir} missing — skipping mtime check` };
   }
 

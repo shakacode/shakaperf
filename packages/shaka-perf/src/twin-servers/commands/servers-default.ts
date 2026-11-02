@@ -8,15 +8,17 @@
 import * as fs from 'node:fs';
 import type { ResolvedConfig } from '../types';
 import { decideRebuild } from '../helpers/rebuild-check';
-import { containersRunning } from '../helpers/docker';
+import { containersRunning, dockerImageExists } from '../helpers/docker';
 import { printBanner } from '../helpers/ui';
-import { build } from './build';
+import { build, ensureControlCheckout } from './build';
 import { startContainers } from './start-containers';
 import { stopContainers } from './stop-containers';
 import { runServersMenu, type MenuController } from './servers-menu';
 import { startProxyServer, type ProxyServer } from '../ipc/server';
 import { createDispatcher } from '../ipc/dispatch';
 import { endpointPaths } from '../ipc/paths';
+import { dockerBuildDirForSide } from '../helpers/project-paths';
+import { confirm } from '../helpers/shell';
 
 export interface ServersOptions {
   verbose?: boolean;
@@ -31,7 +33,42 @@ export interface ServersOptions {
 export async function serversDefault(config: ResolvedConfig, options: ServersOptions = {}): Promise<void> {
   printBanner('Twin Servers');
 
-  const decision = await decideRebuild(config);
+  // Ask once during startup, before any container changes. The menu also polls
+  // decideRebuild, so that helper must remain non-interactive.
+  let clonedControl = false;
+  const reuseWithoutSource = new Set<'control' | 'experiment'>();
+  for (const side of ['control', 'experiment'] as const) {
+    const buildDir = dockerBuildDirForSide(config, side);
+    if (fs.existsSync(buildDir) || !dockerImageExists(config.images[side])) continue;
+    console.log(`${side} build directory ${buildDir} is missing.`);
+    if (side === 'control') {
+      clonedControl = await ensureControlCheckout(config, true);
+      if (!clonedControl) reuseWithoutSource.add(side);
+    } else if (!await confirm('Continue using the existing experiment image without its source checkout?')) {
+      throw new Error('Startup cancelled: experiment build directory is missing.');
+    } else {
+      reuseWithoutSource.add(side);
+    }
+  }
+
+  let decision = await decideRebuild(config);
+  if (decision.needs && reuseWithoutSource.size > 0) {
+    const targets = (decision.target ? [decision.target] : ['control', 'experiment'] as const)
+      .filter((side) => !reuseWithoutSource.has(side));
+    decision = targets.length > 0
+      ? { needs: true, target: targets.length === 1 ? targets[0] : undefined, reason: decision.reason }
+      : { needs: false, reason: 'Using existing images without source checkouts, as confirmed.' };
+  }
+  if (clonedControl) {
+    // A restored checkout must replace the previous image even if mtimes happen
+    // to be older. Preserve an experiment rebuild when it is also needed.
+    const rebuildBoth = decision.needs && decision.target !== 'control';
+    decision = {
+      needs: true,
+      target: rebuildBoth ? undefined : 'control',
+      reason: `control checkout cloned; ${decision.reason}`,
+    };
+  }
 
   if (decision.needs) {
     console.log(`Rebuild needed: ${decision.reason}`);
