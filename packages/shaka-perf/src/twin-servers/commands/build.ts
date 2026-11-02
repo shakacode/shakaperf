@@ -118,6 +118,60 @@ async function buildInParallel(config: ResolvedConfig, builderName: string, noCa
   );
 }
 
+/** Offer to clone the baseline source and explain the consequence of declining. */
+export async function ensureControlCheckout(config: ResolvedConfig, allowWithoutCloning = false): Promise<boolean> {
+  if (fs.existsSync(config.controlDir) && fs.existsSync(dockerBuildDirForSide(config, 'control'))) return false;
+  const cloneTarget = dockerBuildDirForSide(config, 'control');
+  const experimentBuildDir = dockerBuildDirForSide(config, 'experiment');
+  const remoteUrl = getGitRemoteUrl(experimentBuildDir);
+  const defaultBranch = getDefaultBranch(experimentBuildDir);
+
+  console.log(`Remote:${remoteUrl} Default Branch:${defaultBranch}`);
+
+  if (!remoteUrl && !allowWithoutCloning) {
+    printError(`Control directory not found: ${config.controlDir}`);
+    console.log('The control directory should contain the baseline version of your code.');
+    console.log(`Clone your repo to: ${cloneTarget}`);
+    process.exit(1);
+  }
+
+  printInfo(`Control directory not found: ${config.controlDir}`);
+  console.log('');
+  console.log('To build the control image, we need a checkout of the baseline branch.');
+  if (remoteUrl) {
+    console.log(`  git clone ${remoteUrl} ${cloneTarget}`);
+  } else {
+    console.log('Cannot determine the repository remote URL for cloning.');
+  }
+  console.log('');
+
+  if (!remoteUrl) {
+    if (await confirm('Continue using the existing control image without cloning?')) return false;
+    throw new Error('Startup cancelled: control checkout is missing.');
+  }
+
+  const question = allowWithoutCloning
+    ? 'Clone now? Declining will continue using the existing control image without cloning.'
+    : 'Clone now? Declining will stop the build.';
+  const yes = await confirm(question);
+  if (!yes) {
+    if (allowWithoutCloning) return false;
+    console.log('Skipping. Clone manually and re-run the build.');
+    process.exit(1);
+  }
+
+  console.log('');
+  console.log(`Cloning ${remoteUrl} to ${cloneTarget}...`);
+  const result = await exec('git', ['clone', remoteUrl, cloneTarget]);
+  if (result.code !== 0) {
+    printError('Clone failed');
+    process.exit(1);
+  }
+  printSuccess('Clone complete');
+  console.log('');
+  return true;
+}
+
 export async function build(config: ResolvedConfig, options: BuildOptions = {}): Promise<void> {
   const { verbose, target, noCache } = options;
 
@@ -135,41 +189,7 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
 
   // Only check controlDir if building control image
   if (buildingControl && !fs.existsSync(config.controlDir)) {
-    const cloneTarget = dockerBuildDirForSide(config, 'control');
-    const experimentBuildDir = dockerBuildDirForSide(config, 'experiment');
-    const remoteUrl = getGitRemoteUrl(experimentBuildDir);
-    const defaultBranch = getDefaultBranch(experimentBuildDir);
-
-    console.log(`Remote:${remoteUrl} Default Branch:${defaultBranch}`)
-
-    if (!remoteUrl) {
-      printError(`Control directory not found: ${config.controlDir}`);
-      console.log('The control directory should contain the baseline version of your code.');
-      console.log(`Clone your repo to: ${cloneTarget}`);
-      process.exit(1);
-    }
-
-    printInfo(`Control directory not found: ${config.controlDir}`);
-    console.log('');
-    console.log('To build the control image, we need a checkout of the baseline branch.');
-    console.log(`  git clone ${remoteUrl} ${cloneTarget}`);
-    console.log('');
-
-    const yes = await confirm('Clone now?');
-    if (!yes) {
-      console.log('Skipping. Clone manually and re-run the build.');
-      process.exit(1);
-    }
-
-    console.log('');
-    console.log(`Cloning ${remoteUrl} to ${cloneTarget}...`);
-    const result = await exec('git', ['clone', remoteUrl, cloneTarget]);
-    if (result.code !== 0) {
-      printError('Clone failed');
-      process.exit(1);
-    }
-    printSuccess('Clone complete');
-    console.log('');
+    await ensureControlCheckout(config);
   }
 
   console.log('Creating bind-mount directories...');

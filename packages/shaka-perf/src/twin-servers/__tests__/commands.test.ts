@@ -429,7 +429,7 @@ describe('build command', () => {
 
     await build(config, { target: 'control' });
 
-    expect(mockConfirm).toHaveBeenCalledWith('Clone now?');
+    expect(mockConfirm).toHaveBeenCalledWith('Clone now? Declining will stop the build.');
 
     const cloneCalls = mockExec.mock.calls.filter(
       (call: any[]) => call[0] === 'git' && call[1]?.[0] === 'clone'
@@ -455,7 +455,7 @@ describe('build command', () => {
 
     await expect(build(config, { target: 'control' })).rejects.toThrow('process.exit(1)');
 
-    expect(mockConfirm).toHaveBeenCalledWith('Clone now?');
+    expect(mockConfirm).toHaveBeenCalledWith('Clone now? Declining will stop the build.');
 
     // git clone should NOT have been called
     const cloneCalls = mockExec.mock.calls.filter(
@@ -527,7 +527,7 @@ describe('build command', () => {
 
     await build(config, { target: 'control' });
 
-    expect(mockConfirm).toHaveBeenCalledWith('Clone now?');
+    expect(mockConfirm).toHaveBeenCalledWith('Clone now? Declining will stop the build.');
 
     const cloneCalls = mockExec.mock.calls.filter(
       (call: any[]) => call[0] === 'git' && call[1]?.[0] === 'clone'
