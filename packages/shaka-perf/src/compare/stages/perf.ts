@@ -46,6 +46,11 @@ export interface PerfArtifact {
    * Only populated on viewports whose perf status moved off `no_difference`.
    */
   timelinePreviewHref?: string;
+  /**
+   * Report-relative path to the side-by-side frames script behind the
+   * report's frame player (`side_by_side_frames.js`).
+   */
+  framesHref?: string;
   benchReportHref?: string;
   diffHrefs?: { label: string; href: string }[];
 }
