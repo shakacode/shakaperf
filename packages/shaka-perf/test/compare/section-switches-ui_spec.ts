@@ -81,6 +81,41 @@ describe('report section switches', () => {
     }
   }, 30_000);
 
+  it('restores a mixed clean-result/error section after narrowing search to that card', async () => {
+    const data = fixture('self-contained');
+    data.meta.pipelineName = 'audit';
+    for (const test of data.tests) {
+      test.outcomes = [{
+        kind: 'error', stage: 'accessibility', viewport: PHONE_VIEWPORT,
+        error: { message: 'Phone scan failed' },
+      }];
+    }
+    data.tests[0].outcomes.push({
+      kind: 'ok', stage: 'accessibility', viewport: DESKTOP_VIEWPORT,
+      measurement: {
+        scans: [], totalViolations: 0, failOnViolation: false,
+        effectiveConfig: { tags: ['wcag2a'], includeRules: [], disableRules: [] },
+      },
+    });
+    const file = path.join(directory, 'mixed-error.html');
+    fs.writeFileSync(file, renderReportHtml(data));
+    const page = await browser.newPage();
+    try {
+      await page.goto(pathToFileURL(file).href);
+      await page.locator('.card').first().waitFor();
+      const switches = page.getByRole('switch', { name: /accessibility in all test cards/i });
+      expect(await switches.count()).toBe(2);
+      await switches.last().click();
+      await page.getByRole('searchbox').fill('Homepage');
+      expect(await switches.count()).toBe(1);
+      expect(await page.locator('.slot-error').count()).toBe(0);
+      await switches.click();
+      expect(await page.locator('.slot-error').textContent()).toContain('Phone scan failed');
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
   it.each([1280, 390])('keeps accessibility filters in the modal at %spx', async (width) => {
     const data = fixture('self-contained');
     data.meta.pipelineName = 'audit';

@@ -2380,6 +2380,11 @@ input {
   text-transform: none;
 }
 
+/* Mixed errors/results use the outer heading, even when the artifact renders nothing. */
+.outcome-slot[data-has-errors="true"] > .stage-artifact .stage-artifact__title {
+  display: none;
+}
+
 /* Keep each heading available so a hidden section can always be restored. */
 .stage-artifact__content[data-collapsed="true"] > :not(.stage-artifact__title),
 .perf-viewport > [hidden] {

@@ -130,10 +130,10 @@ export function OutcomeSlot({
     .find((stage) => stage.name === first.stage)?.label ?? first.stage;
 
   return (
-    <section className="outcome-slot" data-stage={first.stage} tabIndex={-1}>
+    <section className="outcome-slot" data-stage={first.stage} data-has-errors={errorOutcomes.length > 0 ? 'true' : undefined} tabIndex={-1}>
       <ReportSectionScope section={first.stage}>
         <StageRunChipsProvider value={showRunChips === true}>
-          {!artifact ? <StageArtifactTitle>{label}</StageArtifactTitle> : null}
+          {errorOutcomes.length > 0 ? <StageArtifactTitle>{label}</StageArtifactTitle> : null}
           {visible ? errorOutcomes.map((outcome, index) => (
             <OutcomeError
               key={`error-${outcome.viewport.label}-${index}`}
