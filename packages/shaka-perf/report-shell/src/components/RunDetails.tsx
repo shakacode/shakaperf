@@ -95,7 +95,7 @@ export function RunCommits({ outcomes }: { outcomes: readonly ReportOutcome[] })
   return (
       <div className="run-details__commits">
         {commits.map(({ value: commit, items }, index) => <div key={index}>
-          {commits.length > 1 ? <div className="run-details__label">{unique(items.map(({ target }) => target.side)).join(' / ')}</div> : null}
+          <div className="run-details__label">{unique(items.map(({ target }) => target.side)).join(' / ')}</div>
           {commit ? <CommitDetails commit={commit} /> : <p className="run-details__unavailable">Commit unavailable</p>}
           {scope(items.map(({ entry }) => entry))}
         </div>)}

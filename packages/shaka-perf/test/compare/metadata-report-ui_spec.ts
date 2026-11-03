@@ -50,6 +50,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     expect(await card.locator('.card__path').isVisible()).toBe(true);
     expect(await card.locator('.card__urls').isVisible()).toBe(true);
     expect(await metadata.getByText('1e04e038', { exact: true }).count()).toBe(1);
+    expect(await metadata.locator('.run-details__commits .run-details__label').textContent()).toBe(pipeline === 'compare' ? 'control / experiment' : 'experiment');
     const source = metadata.getByRole('button', { name: 'test source' });
     expect(await source.getAttribute('aria-expanded')).toBe('false');
     await source.click();
