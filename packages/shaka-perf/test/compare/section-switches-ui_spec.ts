@@ -81,7 +81,7 @@ describe('report section switches', () => {
     }
   }, 30_000);
 
-  it.each([1280, 390])('keeps accessibility filters in the cards and synchronized at %spx', async (width) => {
+  it.each([1280, 390])('keeps accessibility filters in the modal at %spx', async (width) => {
     const data = fixture('self-contained');
     data.meta.pipelineName = 'audit';
     for (const test of data.tests) {
@@ -112,31 +112,32 @@ describe('report section switches', () => {
       await page.goto(pathToFileURL(file).href);
       await page.locator('.card').first().waitFor();
       expect(await page.locator('.header__controls .a11y-filter').count()).toBe(0);
-      const filters = page.getByRole('button', { name: 'accessibility filters · 2/2', exact: true });
-      expect(await filters.count()).toBe(2);
-      await filters.first().click();
-      const menu = page.locator('.a11y-filter__menu');
-      const bounds = (await menu.boundingBox())!;
-      expect(bounds.x).toBeGreaterThanOrEqual(0);
-      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+      expect(await page.getByRole('button', { name: /accessibility filters/ }).count()).toBe(0);
+      await page.locator('.a11y-thumb-button').first().click();
+      let dialog = page.locator('dialog[open]');
+      await dialog.getByRole('button', { name: 'test filters · 2/2', exact: true }).click();
+      await dialog.getByRole('button', { name: 'none', exact: true }).click();
+      await dialog.getByRole('button', { name: 'apply globally', exact: true }).click();
       if (process.env.SHAKA_REPORT_UI_CAPTURE_DIR) {
-        await page.screenshot({ path: `${process.env.SHAKA_REPORT_UI_CAPTURE_DIR}/audit-${width}.png`, fullPage: true, animations: 'disabled' });
+        await page.screenshot({ path: `${process.env.SHAKA_REPORT_UI_CAPTURE_DIR}/audit-modal-${width}.png`, fullPage: true, animations: 'disabled' });
       }
-      await menu.getByRole('button', { name: 'none', exact: true }).click();
-      expect(await page.getByRole('button', { name: 'accessibility filters · 0/2', exact: true }).count()).toBe(2);
+      await dialog.getByRole('button', { name: 'close', exact: true }).click();
       for (const summary of await page.locator('.a11y-thumb__count').all()) {
         expect(await summary.textContent()).toContain('0 of 1');
       }
-      await page.getByRole('button', { name: 'close accessibility filters', exact: true }).click();
       const toggles = page.getByRole('switch', { name: 'accessibility in all test cards', exact: true });
       await toggles.first().click();
       for (const preview of await page.locator('.a11y-preview-card').all()) expect(await preview.isVisible()).toBe(false);
       expect(await page.locator('.card').count()).toBe(2);
       await toggles.last().click();
       for (const preview of await page.locator('.a11y-preview-card').all()) expect(await preview.isVisible()).toBe(true);
-      await page.getByRole('button', { name: 'accessibility filters · 0/2', exact: true }).last().click();
-      await menu.getByRole('button', { name: 'all', exact: true }).click();
-      expect(await filters.count()).toBe(2);
+      await page.locator('.a11y-thumb-button').last().click();
+      dialog = page.locator('dialog[open]');
+      await dialog.getByRole('button', { name: 'test filters · 0/2', exact: true }).click();
+      await dialog.getByRole('button', { name: 'all', exact: true }).click();
+      await dialog.getByRole('button', { name: 'apply globally', exact: true }).click();
+      await dialog.getByRole('button', { name: 'close', exact: true }).click();
+      expect(await page.getByRole('button', { name: /accessibility filters/ }).count()).toBe(0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     } finally {
       await page.close();

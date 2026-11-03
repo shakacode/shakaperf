@@ -178,7 +178,7 @@ export function StageArtifact({ children }: { children: ReactNode }) {
 }
 
 export function StageArtifactTitle(
-  { children, verbatim = false, controls }: { children: string; verbatim?: boolean; controls?: ReactNode },
+  { children, verbatim = false }: { children: string; verbatim?: boolean },
 ) {
   // `verbatim` opts out of the default uppercase transform so human-readable
   // multi-word titles (e.g. compare section headings) keep their own casing.
@@ -189,7 +189,6 @@ export function StageArtifactTitle(
     <div className={className}>
       <span>{children}</span>
       <ReportSectionSwitch label={children} />
-      {controls}
     </div>
   );
 }

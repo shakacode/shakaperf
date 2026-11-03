@@ -23,7 +23,7 @@ import type {
 } from '../../src/audit/stages/accessibility/types';
 
 describe('accessibility report UI filters', () => {
-  it('renders report-wide accessibility filters beside the card section heading', () => {
+  it('keeps accessibility filtering in the modal instead of the report header or section heading', () => {
     const data = reportData(accessibilityResult({
       effectiveConfig: {
         tags: ['wcag2a', 'wcag2aa'],
@@ -39,8 +39,7 @@ describe('accessibility report UI filters', () => {
 
     const html = renderToStaticMarkup(React.createElement(App, { data }));
 
-    expect(html).toContain('accessibility filters · 3/3');
-    expect(html.indexOf('accessibility filters · 3/3')).toBeGreaterThan(html.indexOf('card__body'));
+    expect(html).not.toContain('accessibility filters ·');
     expect(html).toContain('aria-label="accessibility in all test cards"');
     expect(html).not.toContain('report sections filter');
   });
