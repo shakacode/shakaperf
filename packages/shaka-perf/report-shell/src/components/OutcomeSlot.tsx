@@ -8,7 +8,8 @@
 import type { ReactNode } from 'react';
 import { renderPersistedStageArtifacts } from '../../../src/pipeline/pipeline-artifacts';
 import { ScreenshotPreview } from '../../../src/pipeline/screenshot-preview';
-import { DetailedArtifactDialog, OldRunChip, StageRunChipsProvider } from '../../../src/pipeline/stage-report-components';
+import { DetailedArtifactDialog, OldRunChip, StageArtifactTitle, StageRunChipsProvider } from '../../../src/pipeline/stage-report-components';
+import { ReportSectionScope, useReportSection } from '../../../src/pipeline/report-section-visibility';
 import type { ReportMeta, ReportOutcome } from '../types';
 
 // V8 stack traces start with `<ErrorName>: <message>` — `Error`,
@@ -122,22 +123,26 @@ export function OutcomeSlot({
   showRunChips?: boolean;
 }) {
   const first = outcomes[0];
+  const { visible } = useReportSection(first?.stage);
   const section = stageSection(meta, outcomes, latestRunId);
   if (!first || !section) return null;
   const { errorOutcomes, artifact } = section;
 
   return (
     <section className="outcome-slot" data-stage={first.stage} tabIndex={-1}>
-      <StageRunChipsProvider value={showRunChips === true}>
-        {errorOutcomes.map((outcome, index) => (
-          <OutcomeError
-            key={`error-${outcome.viewport.label}-${index}`}
-            outcome={outcome}
-            latestRun={latestRunId == null || outcome.runId === latestRunId}
-          />
-        ))}
-        {artifact ? <div className="stage-artifact">{artifact}</div> : null}
-      </StageRunChipsProvider>
+      <ReportSectionScope section={first.stage}>
+        <StageRunChipsProvider value={showRunChips === true}>
+          {!artifact ? <StageArtifactTitle>{first.stage}</StageArtifactTitle> : null}
+          {visible ? errorOutcomes.map((outcome, index) => (
+            <OutcomeError
+              key={`error-${outcome.viewport.label}-${index}`}
+              outcome={outcome}
+              latestRun={latestRunId == null || outcome.runId === latestRunId}
+            />
+          )) : null}
+          {artifact ? <div className="stage-artifact">{artifact}</div> : null}
+        </StageRunChipsProvider>
+      </ReportSectionScope>
     </section>
   );
 }

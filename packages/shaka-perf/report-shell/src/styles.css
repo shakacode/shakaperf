@@ -2489,6 +2489,10 @@ input {
 }
 
 .stage-artifact__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   color: var(--fg);
   font-size: 12px;
   font-weight: 700;
@@ -2498,6 +2502,48 @@ input {
 
 .stage-artifact__title--verbatim {
   text-transform: none;
+}
+
+/* Keep each heading available so a hidden section can always be restored. */
+.stage-artifact__content[data-collapsed="true"] > :not(.stage-artifact__title),
+.perf-viewport > [hidden] {
+  display: none;
+}
+
+.section-switch {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 20px;
+  min-height: 0;
+  padding: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--bg-sunken);
+  cursor: pointer;
+}
+
+.section-switch[aria-checked="true"] {
+  background: var(--ansi-blue);
+  border-color: var(--ansi-blue);
+}
+
+.section-switch__thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--fg-muted);
+}
+
+.section-switch[aria-checked="true"] .section-switch__thumb {
+  transform: translateX(12px);
+  background: #fff;
+}
+
+.section-switch:focus-visible {
+  outline: 2px solid var(--ansi-blue);
+  outline-offset: 3px;
 }
 
 .stage-note {

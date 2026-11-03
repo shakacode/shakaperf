@@ -16,6 +16,7 @@ import {
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
 import { FramePlayerButton } from './frame-player';
+import { ReportSectionSwitch, useReportSection } from '../../../pipeline/report-section-visibility';
 
 const GROUPS: PerfMetricGroup[] = ['vitals', 'diagnostics'];
 
@@ -68,19 +69,25 @@ export function PerfArtifactView({
 }
 
 function PerfViewportBlock({ perf, viewportLabel, latestRun }: PerfRow) {
+  const { section } = useReportSection();
+  const viewportSection = `${section}:${viewportLabel}`;
+  const { visible } = useReportSection(viewportSection);
   const hasSignificantMetrics = significantMetrics(perf).length > 0;
   const hasNoDifference = hasNoDifferenceMetrics(perf);
   return (
     <section className="stage-stack__viewport perf-viewport" aria-label={`${viewportLabel} performance`}>
       <div className="perf-viewport__head">
         <span className="perf-viewport__label">{viewportLabel} performance<OldRunChip latestRun={latestRun} /></span>
+        <ReportSectionSwitch label={`${viewportLabel} performance`} section={viewportSection} />
       </div>
-      <PerfBody
-        perf={perf}
-        hasNoDifference={hasNoDifference}
-        hasSignificantMetrics={hasSignificantMetrics}
-        viewportLabel={viewportLabel}
-      />
+      <div hidden={!visible}>
+        <PerfBody
+          perf={perf}
+          hasNoDifference={hasNoDifference}
+          hasSignificantMetrics={hasSignificantMetrics}
+          viewportLabel={viewportLabel}
+        />
+      </div>
     </section>
   );
 }

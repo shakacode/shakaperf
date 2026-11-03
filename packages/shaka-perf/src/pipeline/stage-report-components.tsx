@@ -8,6 +8,7 @@
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { ImageSizeContext, ImageViewport } from './image-viewport';
 import { renderPipelineDialogMetaUrls } from './pipeline-artifacts';
+import { ReportSectionSwitch, useReportSection } from './report-section-visibility';
 export interface StageArtifactTestMeta {
   readonly name: string;
   readonly filePath: string;
@@ -168,22 +169,29 @@ export function StageArtifactProvider({
 }
 
 export function StageArtifact({ children }: { children: ReactNode }) {
+  const { visible } = useReportSection();
   return (
-    <div className="stage-artifact__content">
+    <div className="stage-artifact__content" data-collapsed={!visible ? 'true' : undefined}>
       {children}
     </div>
   );
 }
 
 export function StageArtifactTitle(
-  { children, verbatim = false }: { children: ReactNode; verbatim?: boolean },
+  { children, verbatim = false, controls }: { children: string; verbatim?: boolean; controls?: ReactNode },
 ) {
   // `verbatim` opts out of the default uppercase transform so human-readable
   // multi-word titles (e.g. compare section headings) keep their own casing.
   const className = verbatim
     ? 'stage-artifact__title stage-artifact__title--verbatim'
     : 'stage-artifact__title';
-  return <div className={className}>{children}</div>;
+  return (
+    <div className={className}>
+      <span>{children}</span>
+      <ReportSectionSwitch label={children} />
+      {controls}
+    </div>
+  );
 }
 
 export function StageNote({ body, label }: { body: string; label?: string }) {
