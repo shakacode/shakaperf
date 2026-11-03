@@ -100,9 +100,11 @@ export async function measuredCommit(urlString: string): Promise<MeasuredCommit 
         : []));
     const ipv4 = boundHosts.has('0.0.0.0') || boundHosts.has('127.0.0.1');
     const ipv6 = boundHosts.has('::') || boundHosts.has('::1');
-    // localhost can resolve to either family. A partial binding does not prove
-    // which application a browser reached, so fail closed rather than guessing.
-    const bound = url.hostname === 'localhost' ? ipv4 && ipv6
+    // localhost resolves to either family and the browser falls back to the
+    // one that answers. This is the only container publishing the port, so a
+    // binding on either family is the application it reached: a Docker daemon
+    // without IPv6 binds 0.0.0.0 alone.
+    const bound = url.hostname === 'localhost' ? ipv4 || ipv6
       : url.hostname === '127.0.0.1' ? ipv4 : ipv6;
     if (!['control-server', 'experiment-server'].includes(service!) || !bound) return null;
     return await readContainerCommit(container, imageCommit);
