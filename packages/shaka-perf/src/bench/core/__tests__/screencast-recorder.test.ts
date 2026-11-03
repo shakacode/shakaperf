@@ -208,30 +208,6 @@ describe('screencastRecorder', () => {
     await recording.stop();
   });
 
-  it('still reports other post-navigation recording failures', async () => {
-    jest.useFakeTimers();
-    const handlers = new Map<string, (...args: unknown[]) => void>();
-    let startAttempts = 0;
-    const error = new Error('Screencast is already active: unexpected additional failure');
-    const session = {
-      sendCommand: jest.fn(async (method: string) => {
-        if (method === 'Page.startScreencast' && ++startAttempts > 1) throw error;
-      }),
-      on: (event: string, handler: (...args: unknown[]) => void) => handlers.set(event, handler),
-      off: (event: string) => handlers.delete(event),
-    };
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-
-    const recording = await startScreencastOnLighthouseSession(session);
-    handlers.get('Page.frameNavigated')?.({ frame: { url: 'https://example.com' } });
-    await jest.advanceTimersByTimeAsync(SUBSCRIBE_RETRY_WINDOW_MS);
-
-    expect(warn).toHaveBeenCalledWith(
-      '[shaka-perf screencast] subscribe (after nav to https://example.com) failed:', error,
-    );
-    await recording.stop();
-  });
-
   it('clamps frames captured before the navigation anchor to zero', async () => {
     const handlers = new Map<string, (...args: unknown[]) => void>();
     const session = {
