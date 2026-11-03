@@ -22,6 +22,14 @@ describe('measured deployment identity', () => {
     expect(execFile).not.toHaveBeenCalled();
   });
 
+  it('attributes localhost to a container bound on IPv4 alone, as on a Docker daemon without IPv6', async () => {
+    const outputs = ['container123\n', '{"3000/tcp":[{"HostPort":"3020","HostIp":"0.0.0.0"}]}\ncontrol-server\n', 'MISSING', `${sha}\0Title\n`];
+    jest.mocked(execFile).mockImplementation(((_file: string, _args: string[], _options: unknown, callback: (err: null, output: { stdout: string }) => void) => {
+      callback(null, { stdout: outputs.shift()! });
+    }) as never);
+    await expect(measuredCommit('http://localhost:3020/')).resolves.toMatchObject({ sha });
+  });
+
   it('reads Git inside the exact running container bound to the measured port', async () => {
     const outputs = ['container123\n', '{"3000/tcp":[{"HostPort":"3020","HostIp":"0.0.0.0"},{"HostPort":"3020","HostIp":"::"}]}\ncontrol-server\n', 'MISSING', `${sha}\0Title\n\nFull body\n`];
     jest.mocked(execFile).mockImplementation(((_file: string, _args: string[], _options: unknown, callback: (err: null, output: { stdout: string }) => void) => {
@@ -36,7 +44,7 @@ describe('measured deployment identity', () => {
   it.each([
     { url: 'http://127.0.0.1:3020', ports: { '3000/tcp': [{ HostPort: '3020', HostIp: '127.0.0.2' }] } },
     { url: 'http://127.0.0.1:3020', ports: { '3000/udp': [{ HostPort: '3020', HostIp: '0.0.0.0' }] } },
-    { url: 'http://localhost:3020', ports: { '3000/tcp': [{ HostPort: '3020', HostIp: '127.0.0.1' }] } },
+    { url: 'http://localhost:3020', ports: { '3000/tcp': [{ HostPort: '3021', HostIp: '0.0.0.0' }] } },
   ])('does not attribute a different socket binding to $url', async ({ url, ports }) => {
     const outputs = ['container123\n', `${JSON.stringify(ports)}\ncontrol-server\n`, `${sha}\0Wrong application`];
     jest.mocked(execFile).mockImplementation(((_file: string, _args: string[], _options: unknown, callback: (err: null, output: { stdout: string }) => void) => {
