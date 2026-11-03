@@ -452,28 +452,6 @@ input {
   color: var(--fg-faint);
 }
 
-.skip-chips {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.skip-chip {
-  display: inline-flex;
-  align-items: center;
-  max-width: 100%;
-  padding: 3px 8px;
-  border: 1px dashed var(--border-strong);
-  background: var(--bg-sunken);
-  color: var(--fg-muted);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* ───────── bisect navigator ───────── */
 
 .bisect-navigator {

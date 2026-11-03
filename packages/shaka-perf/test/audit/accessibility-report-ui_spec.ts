@@ -63,6 +63,8 @@ describe('accessibility report UI filters', () => {
 
     const html = renderToStaticMarkup(React.createElement(App, { data }));
 
+    expect(html).not.toContain('skipped tests grouped by reason');
+    expect(html).not.toContain('1 skipped:');
     expect(html).toContain('report sections filter · 1/6');
     expect(html).toContain('accessibility');
     expect(html).toContain('audit is not present in this report');

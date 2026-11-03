@@ -31,7 +31,6 @@ import { reviewedKey, TestCard } from './components/TestCard';
 import { stageSection } from './components/OutcomeSlot';
 import { ErrorBanner } from './components/ErrorBanner';
 import { MissingArtifactsCard } from './components/MissingArtifactsCard';
-import { SkippedChips } from './components/SkippedChips';
 import { pipelineStagesForReport, type ReportStage } from '../../src/pipeline/pipeline-artifacts';
 import {
   AccessibilityGlobalFilter,
@@ -581,7 +580,6 @@ export function App({
               />
             </div>
           </div>
-          <SkippedChips tests={data.tests} />
         </div>
 
         {/* Sort row sits on its own line under the filter chips, right-aligned
