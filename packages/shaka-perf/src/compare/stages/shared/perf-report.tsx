@@ -75,7 +75,11 @@ function PerfViewportBlock({ perf, viewportLabel, latestRun }: PerfRow) {
   const hasSignificantMetrics = significantMetrics(perf).length > 0;
   const hasNoDifference = hasNoDifferenceMetrics(perf);
   return (
-    <section className="stage-stack__viewport perf-viewport" aria-label={`${viewportLabel} performance`}>
+    <section
+      className="stage-stack__viewport perf-viewport"
+      aria-label={`${viewportLabel} performance`}
+      data-collapsed={!visible ? 'true' : undefined}
+    >
       <div className="perf-viewport__head">
         <span className="perf-viewport__label">{viewportLabel} performance<OldRunChip latestRun={latestRun} /></span>
         <ReportSectionSwitch label={`${viewportLabel} performance`} section={viewportSection} />

@@ -66,9 +66,23 @@ generatedReports('CLI-generated report section switches', () => {
       await page.getByRole('searchbox').fill('');
       for (const toggle of await phone.all()) expect(await toggle.getAttribute('aria-checked')).toBe('true');
 
-      for (const name of ['Visual Diff', 'Performance']) {
+      for (const name of ['Visual Diff', 'desktop performance', 'phone performance']) {
         await page.getByRole('switch', { name: `${name} in all test cards`, exact: true }).first().click();
       }
+      const headings = cards.first().locator('.stage-artifact__title:visible, .perf-viewport__label:visible');
+      expect(await headings.count()).toBe(4);
+      const firstHeading = (await headings.first().boundingBox())!;
+      const lastHeading = (await headings.last().boundingBox())!;
+      if (process.env.SHAKA_REPORT_UI_CAPTURE_DIR) {
+        await page.screenshot({ path: `${process.env.SHAKA_REPORT_UI_CAPTURE_DIR}/real-compact-rows-${width}-${filename}.png`, fullPage: true, animations: 'disabled' });
+      }
+      expect(lastHeading.y + lastHeading.height - firstHeading.y).toBeLessThanOrEqual(128);
+      const typography = await headings.evaluateAll((elements) => elements.map((element) => {
+        const style = getComputedStyle(element);
+        return [style.fontFamily, style.fontSize, style.fontWeight, style.letterSpacing, style.lineHeight].join('|');
+      }));
+      expect(new Set(typography).size).toBe(1);
+      await page.getByRole('switch', { name: 'Performance in all test cards', exact: true }).first().click();
       expect(await cards.count()).toBe(2);
       if (process.env.SHAKA_REPORT_UI_CAPTURE_DIR) {
         await page.screenshot({ path: `${process.env.SHAKA_REPORT_UI_CAPTURE_DIR}/real-collapsed-${width}-${filename}.png`, fullPage: true, animations: 'disabled' });
@@ -92,6 +106,7 @@ generatedReports('CLI-generated report section switches', () => {
       await page.goto(pathToFileURL(report).href);
       const cards = page.locator('[data-report-test-id]');
       await cards.first().waitFor();
+      await page.getByRole('checkbox', { name: 'Show full suite', exact: true }).check();
       expect(await cards.count()).toBe(3);
       expect(await page.getByRole('button', { name: /accessibility filters/ }).count()).toBe(0);
       const switches = page.getByRole('switch', { name: /accessibility in all test cards/i });
@@ -118,6 +133,43 @@ generatedReports('CLI-generated report section switches', () => {
       }
       expect(await page.getByRole('button', { name: /accessibility filters/ }).count()).toBe(0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
+  it.each([
+    [1280, 'full-report.html'], [390, 'full-report.html'],
+    [1280, 'self-contained-performance-report.html'], [390, 'self-contained-performance-report.html'],
+  ] as const)('keeps four collapsed categories compact at %spx in %s', async (width, filename) => {
+    const page = await browser.newPage({ viewport: { width, height: 900 } });
+    try {
+      await page.goto(pathToFileURL(path.join(auditDirectory!, filename)).href);
+      const card = page.locator('[data-report-test-id]').filter({
+        has: page.getByRole('heading', { name: 'Product', exact: true }),
+      });
+      await card.waitFor();
+      const sections = card.locator('.card__body > .outcome-slot');
+      expect(await sections.count()).toBeGreaterThanOrEqual(4);
+      for (const section of await sections.all()) {
+        await section.getByRole('switch').click();
+      }
+      const headings = sections.locator('.stage-artifact__title:visible');
+      const first = (await headings.nth(0).boundingBox())!;
+      const fourth = (await headings.nth(3).boundingBox())!;
+      if (process.env.SHAKA_REPORT_UI_CAPTURE_DIR) {
+        await page.screenshot({ path: `${process.env.SHAKA_REPORT_UI_CAPTURE_DIR}/real-four-collapsed-${width}-${filename}.png`, fullPage: true, animations: 'disabled' });
+      }
+      expect(fourth.y + fourth.height - first.y).toBeLessThanOrEqual(128);
+      const typography = await headings.evaluateAll((elements) => elements.map((element) => {
+        const style = getComputedStyle(element);
+        return [style.fontFamily, style.fontSize, style.fontWeight, style.letterSpacing, style.lineHeight].join('|');
+      }));
+      expect(new Set(typography).size).toBe(1);
+      const restore = sections.nth(0).getByRole('switch');
+      expect(await restore.getAttribute('aria-checked')).toBe('false');
+      await restore.click();
+      expect(await restore.getAttribute('aria-checked')).toBe('true');
     } finally {
       await page.close();
     }
