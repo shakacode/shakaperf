@@ -16,7 +16,7 @@ import chalk from "chalk";
 import type { RegressionThresholdStat } from "../command-config/tb-config";
 import { logHeading } from "../helpers/utils";
 import { GenerateStats, HTMLSectionRenderData } from "./generate-stats";
-import { classifyPracticalDelta } from "./regression-thresholds";
+import { classifyDisplayDirection } from "./regression-thresholds";
 import TBTable from "./tb-table";
 
 export interface ICompareJSONResult {
@@ -229,27 +229,20 @@ export class CompareResults {
     return phaseIsSigArray.includes(true);
   }
 
-  // Returns false when any significant phase has an actionable regression beyond its practical threshold.
+  // Returns false when any significant regression exceeds the configured threshold on the chosen stat.
   public allBelowRegressionThreshold(): boolean {
     // all stats
     const stats = this.vitalsTable.display.concat(this.diagnosticsTable.display);
 
-    return stats.every(({ stats: stat, unit, sign }) => {
-      if (!stat.confidenceInterval.isSig) return true;
-
-      const direction = classifyPracticalDelta({
-        phaseName: stat.name,
-        directionDeltaValue: stat.estimator * -1,
-        thresholdDeltaValue: this.thresholdDisplayDelta(stat),
-        unit,
-        isSignificant: stat.confidenceInterval.isSig,
-        controlValue: stat.sevenFigureSummary.control[50],
-        experimentValue: stat.sevenFigureSummary.experiment[50],
-        regressionThreshold: this.regressionThreshold,
+    return stats.every(({ stats: stat, sign }) => {
+      const direction = classifyDisplayDirection(
+        stat.name,
+        stat.estimator * -1,
+        stat.confidenceInterval.isSig,
         sign,
-      });
-
-      return direction !== "regression";
+      );
+      return direction !== "regression"
+        || Math.abs(this.thresholdDisplayDelta(stat)) <= this.regressionThreshold;
     });
   }
 
