@@ -50,7 +50,7 @@ describe('waitForNetworkSettle', () => {
     consoleLog.mockRestore();
   });
 
-  it('waits while the page reports activity Playwright never saw (loading, resources, long tasks)', async () => {
+  it('waits while the page is still loading or running long tasks', async () => {
     const busyUntil = Date.now() + 3_000;
     const { page } = fakePage(() => (Date.now() < busyUntil ? 0 : 10_000));
 

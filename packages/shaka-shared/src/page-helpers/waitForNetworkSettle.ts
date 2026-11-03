@@ -27,11 +27,10 @@ export interface WaitForNetworkSettleOptions {
  * Lighthouse has started navigating, never sees the requests already in
  * flight, and reports "idle" once, for good. Instead, two views of activity
  * must both be quiet:
- * - the page's own Resource Timing and Long Task records, which cover the
- *   whole load (a long task counts because the app sends its data requests
- *   only after its startup JS finishes);
- * - requests tracked from before navigation, which covers requests still in flight
- *   (Resource Timing records a request only once it completes).
+ * - requests tracked on the context from before navigation, which covers
+ *   requests still in flight;
+ * - the page's own Long Task records, because the app sends its data requests
+ *   only after its startup JS finishes.
  *
  * Requires installNetworkTracking on the context before navigation.
  */
@@ -155,24 +154,21 @@ async function readPageQuietMs(page: Page): Promise<number> {
   }
 }
 
-// Runs in the page: ms since the last finished resource or long task, 0 until
-// the document has loaded. Observers are installed once per document with
-// `buffered`, so they replay what happened before Playwright attached. That
-// replay arrives asynchronously, so installing counts as activity.
+// Runs in the page: ms since the last long task, 0 until the document has
+// loaded. The observer is installed once per document with `buffered`, so it
+// replays tasks that ran before Playwright attached. That replay arrives
+// asynchronously, so installing counts as activity.
 function pageQuietMs(): number {
   const w = window as unknown as { __shakaperfLastActivity?: number };
   if (w.__shakaperfLastActivity === undefined) {
     w.__shakaperfLastActivity = performance.now();
-    const track = (type: string, end: (entry: PerformanceEntry) => number) => {
-      if (!PerformanceObserver.supportedEntryTypes?.includes(type)) return;
+    if (PerformanceObserver.supportedEntryTypes?.includes('longtask')) {
       new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          w.__shakaperfLastActivity = Math.max(w.__shakaperfLastActivity!, end(entry));
+          w.__shakaperfLastActivity = Math.max(w.__shakaperfLastActivity!, entry.startTime + entry.duration);
         }
-      }).observe({ type, buffered: true });
-    };
-    track('resource', (entry) => (entry as PerformanceResourceTiming).responseEnd);
-    track('longtask', (entry) => entry.startTime + entry.duration);
+      }).observe({ type: 'longtask', buffered: true });
+    }
   }
   return document.readyState === 'complete' ? performance.now() - w.__shakaperfLastActivity : 0;
 }
