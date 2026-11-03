@@ -38,10 +38,12 @@ describe('PerfArtifactView', () => {
       title: 'Performance',
       measurements: [
         {
+          latestRun: true,
           measurement: perfWithMetrics([metric('LCP', 'vitals'), metric('js', 'diagnostics')]),
           viewport: PHONE_VIEWPORT,
         },
         {
+          latestRun: true,
           measurement: perfWithMetrics([{ ...metric('FCP', 'vitals'), direction: 'none' }]),
           viewport: DESKTOP_VIEWPORT,
         },
@@ -63,6 +65,7 @@ describe('PerfArtifactView', () => {
     const html = renderToStaticMarkup(createElement(PerfArtifactView, {
       title: 'Performance',
       measurements: [{
+        latestRun: true,
         measurement: { timelinePreviewHref: previewHref },
         viewport: DESKTOP_VIEWPORT,
       }],

@@ -86,6 +86,7 @@ function OutcomeError({ outcome }: { outcome: ReportOutcome }) {
 export function stageSection(
   meta: ReportMeta,
   outcomes: readonly ReportOutcome[],
+  latestRunId?: string | null,
 ): { errorOutcomes: ReportOutcome[]; artifact: ReactNode } | null {
   const first = outcomes[0];
   if (!first) return null;
@@ -94,7 +95,11 @@ export function stageSection(
   const measurements = outcomes.flatMap((outcome) => (
     outcome.kind !== 'ok' || outcome.measurement == null
       ? []
-      : [{ measurement: outcome.measurement, viewport: outcome.viewport }]
+      : [{
+        measurement: outcome.measurement,
+        viewport: outcome.viewport,
+        latestRun: latestRunId == null || outcome.runId === latestRunId,
+      }]
   ));
   const artifact = measurements.length > 0
     ? renderPersistedStageArtifacts(meta.pipelineName, meta.pipelineConfig, first.stage, measurements)
@@ -108,23 +113,28 @@ export function OutcomeSlot({
   meta,
   outcomes,
   latestRunId,
+  showRunChips,
 }: {
   meta: ReportMeta;
   outcomes: readonly ReportOutcome[];
   latestRunId?: string | null;
+  showRunChips?: boolean;
 }) {
   const first = outcomes[0];
-  const section = stageSection(meta, outcomes);
+  const section = stageSection(meta, outcomes, latestRunId);
   if (!first || !section) return null;
   const { errorOutcomes, artifact } = section;
+  const oldOutcomes = showRunChips && latestRunId
+    ? outcomes.filter((outcome) => outcome.runId !== latestRunId)
+    : [];
 
   return (
     <section className="outcome-slot" data-stage={first.stage} tabIndex={-1}>
-      {latestRunId ? (
+      {oldOutcomes.length > 0 ? (
         <div className="outcome-slot__runs">
-          {outcomes.map((outcome, index) => (
-            <span className={`pill pill--${outcome.runId === latestRunId ? 'blue' : 'gray'}`} key={`${outcome.viewport.label}-${index}`}>
-              {outcome.viewport.label} · {outcome.runId === latestRunId ? 'latest' : 'old'} run
+          {oldOutcomes.map((outcome, index) => (
+            <span className="pill pill--gray" key={`${outcome.viewport.label}-${index}`}>
+              {outcome.viewport.label} · old run
             </span>
           ))}
         </div>

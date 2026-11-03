@@ -13,6 +13,9 @@ import { chromium, type Browser } from 'playwright';
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
 import { renderReportHtml, type ReportData, type TestResult } from '../../src/pipeline/report';
 
+import { stageSection } from '../../report-shell/src/components/OutcomeSlot';
+import * as pipelineArtifacts from '../../src/pipeline/pipeline-artifacts';
+
 const OLD = '2026-10-01T00:00:00.000Z';
 const LATEST = '2026-10-02T00:00:00.000Z';
 
@@ -53,6 +56,26 @@ describe('latest measurement run visibility', () => {
   afterAll(async () => {
     await browser?.close();
     fs.rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('passes per-measurement run freshness to stage renderers', () => {
+    const render = jest.spyOn(pipelineArtifacts, 'renderPersistedStageArtifacts').mockReturnValue('artifact');
+    const data = fixture('compare', 'full');
+    const outcomes = [LATEST, OLD].map((runId) => ({
+      kind: 'ok' as const, stage: 'accessibility' as const, viewport: DESKTOP_VIEWPORT,
+      runId, measurement: { runId },
+    }));
+    try {
+      stageSection(data.meta, outcomes, LATEST);
+      expect(render).toHaveBeenLastCalledWith('compare', {}, 'accessibility', [
+        { measurement: { runId: LATEST }, viewport: DESKTOP_VIEWPORT, latestRun: true },
+        { measurement: { runId: OLD }, viewport: DESKTOP_VIEWPORT, latestRun: false },
+      ]);
+      stageSection(data.meta, outcomes, null);
+      expect(render.mock.calls.at(-1)?.[3].map((entry) => entry.latestRun)).toEqual([true, true]);
+    } finally {
+      render.mockRestore();
+    }
   });
 
   it.each([
@@ -159,10 +182,13 @@ describe('latest measurement run visibility', () => {
       expect((await names()).sort()).toEqual(['Current', 'Mixed']);
       const current = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Current', exact: true }) });
       expect(await current.locator('.outcome-slot__runs').count()).toBe(0);
-      expect(await current.locator('.card__pills').textContent()).toContain('latest run');
+      expect(await current.locator('.card__pills').textContent()).not.toContain('latest run');
       const mixed = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Mixed', exact: true }) });
       expect((await mixed.locator('.outcome-slot__runs').allTextContents()).join(' ')).toContain('phone · old run');
-      expect((await mixed.locator('.outcome-slot__runs').allTextContents()).join(' ')).toContain('desktop · latest run');
+      expect(await page.locator('.pill').allTextContents()).not.toEqual(expect.arrayContaining([expect.stringContaining('latest run')]));
+      expect(await mixed.locator('.outcome-slot__runs .pill').allTextContents()).toEqual([
+        'phone · old run', 'desktop · old run',
+      ]);
       const toggle = page.getByRole('checkbox', { name: 'Show full suite', exact: true });
       await toggle.check();
       expect((await names()).sort()).toEqual(['Current', 'Mixed', 'Older']);
