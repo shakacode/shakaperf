@@ -33,9 +33,7 @@ export interface WaitForNetworkSettleOptions {
  * - requests tracked from before navigation, which covers requests still in flight
  *   (Resource Timing records a request only once it completes).
  *
- * Call installNetworkTracking on the context before navigation to include
- * requests that start before this helper. Without it, we also wait for
- * Playwright's initial networkidle state, preserving standalone load behavior.
+ * Requires installNetworkTracking on the context before navigation.
  */
 export async function waitForNetworkSettle(
   page: Page,
@@ -44,15 +42,11 @@ export async function waitForNetworkSettle(
   const url = page.url();
   const start = Date.now();
   const tracked = contextTrackers.get(page.context());
-  const localRequests = tracked ? undefined : trackRequests(page);
-  const requests = tracked ? tracked(page) : localRequests!;
+  if (!tracked) {
+    throw new Error(`${LOG_PREFIX} installNetworkTracking(context) was not called before navigating to ${url}`);
+  }
+  const requests = tracked(page);
   try {
-    if (!tracked) {
-      const idle = page.waitForLoadState('networkidle', { timeout }).then(() => true);
-      if (!(await orAfter(idle, timeout, false))) {
-        throw new Error(`${LOG_PREFIX} timed out after ${timeout} ms for ${url}`);
-      }
-    }
     for (let left = start + timeout - Date.now(); left > 0; left = start + timeout - Date.now()) {
       const pageQuietMs = await orAfter(readPageQuietMs(page), left, 0);
       if (requests.inflight() === 0 && Math.min(pageQuietMs, requests.quietMs()) >= QUIET_MS) {
@@ -67,8 +61,6 @@ export async function waitForNetworkSettle(
       throw new Error(`${LOG_PREFIX} timed out after ${timeout} ms for ${url}`);
     }
     throw err;
-  } finally {
-    localRequests?.stop();
   }
 }
 
@@ -151,22 +143,6 @@ export function installNetworkTracking(context: BrowserContext): void {
     context.off('requestfailed', ended);
     contextTrackers.delete(context);
   });
-}
-
-/** Standalone fallback: track requests that start during this wait. */
-function trackRequests(page: Page) {
-  const state = requestState();
-  page.on('request', state.started);
-  page.on('requestfinished', state.ended);
-  page.on('requestfailed', state.ended);
-  return {
-    ...state,
-    stop() {
-      page.off('request', state.started);
-      page.off('requestfinished', state.ended);
-      page.off('requestfailed', state.ended);
-    },
-  };
 }
 
 /** A navigation mid-read counts as activity; the next poll reads the new document. */

@@ -10,21 +10,20 @@ import { EventEmitter } from 'node:events';
 import { installNetworkTracking, waitForNetworkSettle } from '../page-helpers/waitForNetworkSettle';
 
 /** `pageQuietMs` stands in for the in-page read: 0 while loading or busy. */
-function fakePage(pageQuietMs: () => number) {
-  const events = new EventEmitter();
+function fakePage(pageQuietMs: () => number, { tracked = true } = {}) {
   const context = new EventEmitter();
-  return {
-    context,
-    events,
-    page: {
-      context: () => context,
-      waitForLoadState: jest.fn(async () => {}),
-      url: () => 'http://example.test/menu',
-      on: (event: string, fn: (...args: unknown[]) => void) => events.on(event, fn),
-      off: (event: string, fn: (...args: unknown[]) => void) => events.off(event, fn),
-      evaluate: jest.fn(async () => pageQuietMs()),
-    },
+  const page = {
+    context: () => context,
+    url: () => 'http://example.test/menu',
+    evaluate: jest.fn(async () => pageQuietMs()),
   };
+  const request = (url = 'http://example.test/menu.json') => ({
+    frame: () => ({ page: () => page }),
+    serviceWorker: () => null,
+    url: () => url,
+  });
+  if (tracked) installNetworkTracking(context as never);
+  return { context, page, request };
 }
 
 async function msUntilSettled(promise: Promise<void>): Promise<number> {
@@ -58,40 +57,32 @@ describe('waitForNetworkSettle', () => {
     expect(await msUntilSettled(waitForNetworkSettle(page as never))).toBeGreaterThanOrEqual(3_000);
   });
 
-  it('waits for a request Playwright saw start to finish, then a quiet window', async () => {
-    const { page, events } = fakePage(() => 10_000);
-    const request = { url: () => 'http://example.test/menu.json' };
-    setTimeout(() => events.emit('request', request), 100);
-    setTimeout(() => events.emit('requestfinished', request), 2_000);
+  it('throws when installNetworkTracking was not called on the context', async () => {
+    const { page } = fakePage(() => 10_000, { tracked: false });
+
+    await expect(waitForNetworkSettle(page as never)).rejects.toThrow(
+      '[waitForNetworkSettle] installNetworkTracking(context) was not called before navigating to http://example.test/menu',
+    );
+  });
+
+  it('waits for a request that starts during the wait to finish, then a quiet window', async () => {
+    const { page, context, request } = fakePage(() => 10_000);
+    const r = request();
+    setTimeout(() => context.emit('request', r), 100);
+    setTimeout(() => context.emit('requestfinished', r), 2_000);
 
     expect(await msUntilSettled(waitForNetworkSettle(page as never))).toBeGreaterThanOrEqual(2_500);
   });
 
-  it('ignores finish events for requests that started before it subscribed', async () => {
-    const { page, events } = fakePage(() => 10_000);
-    setTimeout(() => events.emit('requestfinished', { url: () => 'http://example.test/menu.json' }), 100);
-
-    expect(await msUntilSettled(waitForNetworkSettle(page as never))).toBeLessThan(1_000);
-  });
-
-  it('waits for the initial networkidle state without pre-navigation tracking', async () => {
-    const { page } = fakePage(() => 10_000);
-    page.waitForLoadState.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 2_000)));
-
-    expect(await msUntilSettled(waitForNetworkSettle(page as never))).toBeGreaterThanOrEqual(2_000);
-  });
-
   it.each(['requestfinished', 'requestfailed'])('waits for an earlier request through %s and a quiet window', async (endEvent) => {
-    const { page, context } = fakePage(() => 10_000);
-    installNetworkTracking(context as never);
+    const { page, context, request: r } = fakePage(() => 10_000);
     installNetworkTracking(context as never);
     expect(context.listenerCount('request')).toBe(1);
-    const request = { frame: () => ({ page: () => page }), serviceWorker: () => null, url: () => 'http://example.test/menu.json' };
+    const request = r();
     context.emit('request', request);
     setTimeout(() => context.emit(endEvent, request), 2_000);
 
     expect(await msUntilSettled(waitForNetworkSettle(page as never))).toBeGreaterThanOrEqual(2_500);
-    expect(page.waitForLoadState).not.toHaveBeenCalled();
     // A second wait must retain tracking even after the first one resolved.
     context.emit('request', request);
     setTimeout(() => context.emit(endEvent, request), 2_000);
@@ -101,15 +92,14 @@ describe('waitForNetworkSettle', () => {
   });
 
   it('ignores a blob: request that never finishes, such as a terminated Worker script', async () => {
-    const { page, events } = fakePage(() => 10_000);
-    setTimeout(() => events.emit('request', { url: () => 'blob:http://example.test/1234' }), 100);
+    const { page, context, request } = fakePage(() => 10_000);
+    setTimeout(() => context.emit('request', request('blob:http://example.test/1234')), 100);
 
     expect(await msUntilSettled(waitForNetworkSettle(page as never))).toBeLessThan(1_000);
   });
 
   it('shares installed trackers with another copy of the module in the same process', async () => {
     const { page, context } = fakePage(() => 10_000);
-    installNetworkTracking(context as never);
     let otherCopy!: typeof import('../page-helpers/waitForNetworkSettle');
     jest.isolateModules(() => {
       otherCopy = require('../page-helpers/waitForNetworkSettle') as typeof otherCopy;
@@ -118,7 +108,6 @@ describe('waitForNetworkSettle', () => {
 
     await msUntilSettled(otherCopy.waitForNetworkSettle(page as never));
 
-    expect(page.waitForLoadState).not.toHaveBeenCalled();
     context.emit('close');
   });
 
@@ -154,15 +143,5 @@ describe('waitForNetworkSettle', () => {
     const assertion = expect(result).rejects.toThrow('timed out after 1000 ms');
     await jest.advanceTimersByTimeAsync(1_500);
     await assertion;
-  });
-
-  it('removes its listeners when done', async () => {
-    const { page, events } = fakePage(() => 10_000);
-
-    await msUntilSettled(waitForNetworkSettle(page as never));
-
-    for (const event of ['request', 'requestfinished', 'requestfailed']) {
-      expect(events.listenerCount(event)).toBe(0);
-    }
   });
 });

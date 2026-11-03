@@ -11,9 +11,9 @@ import {
   waitForNetworkSettle,
 } from '../packages/shaka-shared/src/page-helpers/waitForNetworkSettle';
 
-for (const mode of ['standalone', 'tracked', 'tracked after prior idle'] as const) {
+for (const mode of ['tracked', 'tracked after prior idle'] as const) {
   test(`waits for a fetch started before the helper (${mode}) @perf`, async ({ context }) => {
-    if (mode !== 'standalone') installNetworkTracking(context);
+    installNetworkTracking(context);
     const page = await context.newPage();
     let release!: () => void;
     const pending = new Promise<void>(resolve => { release = resolve; });
