@@ -6,7 +6,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { renderPersistedStageArtifacts } from '../../../src/pipeline/pipeline-artifacts';
+import { pipelineStagesForReport, renderPersistedStageArtifacts } from '../../../src/pipeline/pipeline-artifacts';
 import { ScreenshotPreview } from '../../../src/pipeline/screenshot-preview';
 import { DetailedArtifactDialog, OldRunChip, StageArtifactTitle, StageRunChipsProvider } from '../../../src/pipeline/stage-report-components';
 import { ReportSectionScope, useReportSection } from '../../../src/pipeline/report-section-visibility';
@@ -82,8 +82,7 @@ function OutcomeError({ outcome, latestRun }: { outcome: ReportOutcome; latestRu
  * The section one stage's outcomes render, or null when they render nothing —
  * a stage whose measurements produce no artifact (an accessibility comparison
  * that found no differences) is as absent as one that never ran. Null here
- * means the stage is absent for every purpose: section counts, the sections
- * filter, and the card itself.
+ * means the stage is absent from the card.
  */
 export function stageSection(
   meta: ReportMeta,
@@ -127,12 +126,14 @@ export function OutcomeSlot({
   const section = stageSection(meta, outcomes, latestRunId);
   if (!first || !section) return null;
   const { errorOutcomes, artifact } = section;
+  const label = pipelineStagesForReport(meta.pipelineName, meta.pipelineConfig)
+    .find((stage) => stage.name === first.stage)?.label ?? first.stage;
 
   return (
     <section className="outcome-slot" data-stage={first.stage} tabIndex={-1}>
       <ReportSectionScope section={first.stage}>
         <StageRunChipsProvider value={showRunChips === true}>
-          {!artifact ? <StageArtifactTitle>{first.stage}</StageArtifactTitle> : null}
+          {!artifact ? <StageArtifactTitle>{label}</StageArtifactTitle> : null}
           {visible ? errorOutcomes.map((outcome, index) => (
             <OutcomeError
               key={`error-${outcome.viewport.label}-${index}`}

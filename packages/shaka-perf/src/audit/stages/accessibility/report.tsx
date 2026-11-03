@@ -15,7 +15,7 @@ import {
 import type { AccessibilityResult } from './types';
 import { ScreenshotPreview } from './report-preview';
 import { SCAN_STYLE } from './report-styles';
-import { useAccessibilityFilterState } from './report-filter';
+import { AccessibilityGlobalFilter, useAccessibilityFilterState } from './report-filter';
 import { collectConfiguredFilterOptions } from './report-utils';
 
 export {
@@ -41,6 +41,7 @@ export function AccessibilityArtifactView({
 }: {
   measurements: readonly StageRenderEntry<AccessibilityResult>[];
 }) {
+  const filterState = useAccessibilityFilterState();
   const rows = measurements.filter((entry) =>
     entry.measurement.scans.some((scan) => scan.violations.length > 0),
   );
@@ -48,7 +49,7 @@ export function AccessibilityArtifactView({
 
   return (
     <StageArtifact>
-      <StageArtifactTitle>accessibility</StageArtifactTitle>
+      <StageArtifactTitle controls={<AccessibilityGlobalFilter state={filterState} />}>accessibility</StageArtifactTitle>
       <div className="stage-stack">
         {rows.map((entry, index) => (
           <div key={`${entry.viewport.label}-${index}`} className="stage-stack__viewport">

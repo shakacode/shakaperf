@@ -150,13 +150,7 @@ export interface Stage<M = unknown> {
    * derived stages never create new measurement metadata. */
   readonly measuresApplication: boolean;
   readonly name: StageName;
-  /**
-   * Human-readable display name for this stage, used by the report's
-   * "report sections filter" chips. Owned by the stage definition so the
-   * report shell never hardcodes a name→label mapping. Distinct from the
-   * in-card artifact heading a stage renders inside `renderArtifacts` (which
-   * may be longer/different); this is the short chip label.
-   */
+  /** Human-readable stage label for report navigation and error headings. */
   readonly label: string;
   renderArtifacts(measurements: readonly StageRenderEntry<M>[]): ReactNode;
   readonly category: StageCategory;

@@ -152,16 +152,15 @@ describe('latest measurement run visibility', () => {
       await page.locator('input[type=search]').fill('Mixed');
       await page.getByRole('button', { name: 'passed · 2', exact: true }).click();
       const filters = await page.locator('.filterbar').first().innerHTML();
-      const summary = page.locator('.stage-filter summary');
-      await summary.click();
-      await page.locator('.stage-filter').getByRole('button', { name: 'none', exact: true }).click();
-      const sections = await summary.textContent();
+      await page.getByRole('switch', { name: /accessibility in all test cards/i }).first().click();
       for (const checked of [true, false]) {
         await toggle.setChecked(checked);
-        expect(await names()).toEqual([]);
+        expect(await names()).toEqual(['Mixed']);
         expect(await page.locator('input[type=search]').inputValue()).toBe('Mixed');
         expect(await page.locator('.filterbar').first().innerHTML()).toBe(filters);
-        expect(await summary.textContent()).toBe(sections);
+        const section = page.getByRole('switch', { name: /accessibility in all test cards/i });
+        expect(await section.getAttribute('aria-checked')).toBe('false');
+        expect(await page.locator('[data-stage="accessibility"] .slot-error').count()).toBe(0);
       }
     } finally {
       await page.close();
@@ -201,30 +200,24 @@ describe('latest measurement run visibility', () => {
       await toggle.uncheck();
       expect((await names()).sort()).toEqual(['Current', 'Mixed']);
 
+      await current.getByRole('switch', { name: /accessibility in all test cards/i }).click();
       await page.locator('input[type=search]').fill('Older');
       await page.getByRole('button', { name: 'broken · 1', exact: true }).click();
       const active = await page.locator('.filterbar').first().innerHTML();
-      const section = page.locator('.stage-filter summary');
-      const sectionText = await section.textContent();
       expect(await names()).toEqual([]);
       await toggle.check();
       expect(await names()).toEqual(['Older']);
       expect(await page.locator('input[type=search]').inputValue()).toBe('Older');
       expect(await page.locator('.filterbar').first().innerHTML()).toBe(active);
-      expect(await section.textContent()).toBe(sectionText);
+      const section = page.getByRole('switch', { name: /accessibility in all test cards/i });
+      expect(await section.getAttribute('aria-checked')).toBe('false');
+      expect(await older.locator('.slot-error').count()).toBe(0);
       await toggle.uncheck();
       expect(await names()).toEqual([]);
-      expect(await page.locator('input[type=search]').inputValue()).toBe('Older');
-      expect(await page.locator('.filterbar').first().innerHTML()).toBe(active);
-      expect(await section.textContent()).toBe(sectionText);
-      await section.click();
-      await page.locator('.stage-filter').getByRole('button', { name: 'none', exact: true }).click();
-      const deselected = await section.textContent();
       await toggle.check();
-      expect(await names()).toEqual([]);
-      expect(await section.textContent()).toBe(deselected);
-      await toggle.uncheck();
-      expect(await section.textContent()).toBe(deselected);
+      expect(await section.getAttribute('aria-checked')).toBe('false');
+      await section.click();
+      expect(await older.locator('.slot-error').count()).toBe(2);
     } finally {
       await page.close();
     }
