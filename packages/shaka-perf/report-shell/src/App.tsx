@@ -608,7 +608,8 @@ export function App({
                 key={reviewedKey(data.meta, test)}
                 test={test}
                 meta={data.meta}
-                latestRunId={isBisectReport ? undefined : latestRunKey}
+                latestRunId={latestRunKey}
+                showViewportRunChips={!isBisectReport}
                 oldRun={showRunChips && runKey(test) !== latestRunKey}
                 animationDelayMs={Math.min(idx, 8) * 40}
                 dimmed={dimmed}

@@ -157,6 +157,7 @@ export function TestCard({
   animationDelayMs,
   oldRun,
   latestRunId,
+  showViewportRunChips = true,
   dimmed,
   visibleStages,
 }: {
@@ -165,6 +166,7 @@ export function TestCard({
   animationDelayMs: number;
   oldRun?: boolean;
   latestRunId?: string | null;
+  showViewportRunChips?: boolean;
   visibleStages: ReadonlySet<string>;
   /**
    * True when the test doesn't match the active chip filter. The card stays
@@ -250,7 +252,7 @@ export function TestCard({
                   meta={meta}
                   outcomes={outcomes}
                   latestRunId={latestRunId}
-                  showRunChips={mixedRuns}
+                  showRunChips={showViewportRunChips && mixedRuns}
                 />
               ))}
             </StageArtifactProvider>
