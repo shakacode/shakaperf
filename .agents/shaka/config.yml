@@ -7,5 +7,5 @@ review:
 merge:
   preference: ask
 wip:
-  include_locations: false
+  include_checkout_path: false
 repo_prefix: PERF
