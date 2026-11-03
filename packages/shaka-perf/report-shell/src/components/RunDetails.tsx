@@ -23,7 +23,7 @@ export function savedRunDetails(outcomes: readonly ReportOutcome[]) {
   return [...groups];
 }
 
-function MeasurementCommand({ command }: { command: string }) {
+export function MeasurementCommand({ command, compact = false }: { command: string; compact?: boolean }) {
   const [status, setStatus] = useState('Copy command');
   const field = useRef<HTMLTextAreaElement>(null);
   async function copy() {
@@ -37,9 +37,10 @@ function MeasurementCommand({ command }: { command: string }) {
     }
   }
   return (
-    <div className="run-details__command">
-      <textarea aria-label="Measurement command" ref={field} value={command} readOnly rows={2} />
-      <button type="button" onClick={copy}>{status}</button>
+    <div className={`run-details__command${compact ? ' run-details__command--compact' : ''}`}>
+      <textarea aria-label={compact ? 'Latest command' : 'Measurement command'} ref={field} value={command} readOnly rows={compact ? 1 : 2} />
+      <button type="button" onClick={copy} aria-label="Copy command" title={status}>{compact ? 'Copy' : status}</button>
+      {compact ? <span className="run-details__copy-status" role="status">{status === 'Copy command' ? '' : status}</span> : null}
     </div>
   );
 }
@@ -85,6 +86,23 @@ function CommitDetails({ commit }: { commit: Pick<NonNullable<RunMetadata['targe
   </details>;
 }
 
+export function RunCommits({ outcomes }: { outcomes: readonly ReportOutcome[] }) {
+  const entries = savedRunDetails(outcomes).flatMap(([, items]) => items);
+  const runs = unique(entries.map(({ metadata }) => metadata.runId));
+  const targets = entries.flatMap((entry) => entry.metadata.targets.map((target) => ({ entry, target })));
+  const commits = groupValues(targets, ({ target }) => target.commit ? { sha: target.commit.sha, message: target.commit.message } : null);
+  const scope = (items: Entry[]) => <Scope items={items} entries={entries} runs={runs} />;
+  return (
+      <div className="run-details__commits">
+        {commits.map(({ value: commit, items }, index) => <div key={index}>
+          {commits.length > 1 ? <div className="run-details__label">{unique(items.map(({ target }) => target.side)).join(' / ')}</div> : null}
+          {commit ? <CommitDetails commit={commit} /> : <p className="run-details__unavailable">Commit unavailable</p>}
+          {scope(items.map(({ entry }) => entry))}
+        </div>)}
+      </div>
+  );
+}
+
 const NETWORK_LABELS: Record<string, string> = {
   rttMs: 'ms RTT', requestLatencyMs: 'ms latency', throughputKbps: 'kbps',
   downloadThroughputKbps: 'kbps down', uploadThroughputKbps: 'kbps up',
@@ -94,7 +112,6 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
   const entries = savedRunDetails(outcomes).flatMap(([, items]) => items);
   const runs = unique(entries.map(({ metadata }) => metadata.runId));
   const targets = entries.flatMap((entry) => entry.metadata.targets.map((target) => ({ entry, target })));
-  const commits = groupValues(targets, ({ target }) => target.commit ? { sha: target.commit.sha, message: target.commit.message } : null);
   const commands = groupValues(entries, ({ metadata }) => metadata.command);
   const categories = groupValues(entries, ({ metadata }) => [...metadata.categories].sort());
   const viewports = groupValues(entries, ({ metadata }) => metadata.viewport);
@@ -118,13 +135,7 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
           {scope(items.map(({ entry }) => entry))}
         </div>)}
       </div>
-      <div className="run-details__commits">
-        {commits.map(({ value: commit, items }, index) => <div key={index}>
-          {commits.length > 1 ? <div className="run-details__label">{unique(items.map(({ target }) => target.side)).join(' / ')}</div> : null}
-          {commit ? <CommitDetails commit={commit} /> : <p className="run-details__unavailable">Commit unavailable</p>}
-          {scope(items.map(({ entry }) => entry))}
-        </div>)}
-      </div>
+      <RunCommits outcomes={outcomes} />
     </section>
     <section className="run-details__section">
       <h3>Measurement command</h3>
