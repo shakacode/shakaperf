@@ -962,6 +962,8 @@ describe('per-side visreg failures', () => {
         };
         return {
           on: () => {},
+          once: () => {},
+          off: () => {},
           clearCookies: async () => {},
           addInitScript: async () => {},
           newPage: async () => page,
