@@ -178,16 +178,27 @@ it('persistent mismatch: spends the retry budget, returns the closest pair with 
   expect(sleeps).toEqual([10, 20]);
 });
 
-it('stops early once no new frames are captured (pixel-stable mismatch)', async () => {
-  // Same mismatching pair every attempt → content-addressed pool never grows
-  // past the first, so retrying can't help; bail after the first retry.
+it('spends the retry budget even when captures repeat, without accumulating duplicate frames', async () => {
   const { deps, counts } = makeDeps((_attempt, side) => png(side === 'ref' ? RED : BLUE));
   const outcomes = await run(deps, makeConfig({ compareRetries: 5 }));
 
   expect(outcomes[0].result.pass).toBe(false);
-  // attempt 0 + one retry that added nothing new, then stop — not all 5 retries.
-  expect(counts().created).toBe(4);
-  expect(deps.onAttempt).toHaveBeenLastCalledWith(2);
+  expect(counts().created).toBe(12);
+  expect(deps.onAttempt).toHaveBeenLastCalledWith(6);
+  expect(fs.readdirSync(path.join(root, 'control_screenshots'))).toHaveLength(1);
+  expect(fs.readdirSync(path.join(root, 'experiment_screenshots'))).toHaveLength(1);
+});
+
+it('cross-matches a later frame after two identical mismatches', async () => {
+  const { deps, counts, sleeps } = makeDeps((attempt, side) => attempt < 2
+    ? png(side === 'ref' ? RED : BLUE)
+    : png(side === 'ref' ? GREEN : RED));
+  const outcomes = await run(deps, makeConfig({ compareRetries: 2 }));
+
+  expect(outcomes[0].result.pass).toBe(true);
+  expect(outcomes[0].savedByRetries).toBe(true);
+  expect(counts()).toMatchObject({ created: 6, disposed: 6 });
+  expect(sleeps).toEqual([10, 20]);
 });
 
 // Crash-resume: the loop derives its pool from the config's screenshot dirs and

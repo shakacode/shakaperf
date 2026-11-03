@@ -50,6 +50,8 @@ The main workflow. Captures screenshots from both control and experiment URLs fo
 
 Each scenario is an `abTest()` registered under `ab-tests/`. The unified `abtests.config.ts` provides `shared.controlURL` and `shared.experimentURL` (defaults: `:3020` / `:3030`), so individual tests don't need their own URLs.
 
+Each measured test/viewport starts with fresh `control_screenshots/` and `experiment_screenshots/` pools, including with `--keep-old-results` or `--restart-from-stage visreg`. Frames accumulate across visual attempts and worker retries within that measurement, so a later experiment frame can match an earlier control frame. `--report-only` preserves the saved pools.
+
 Pass `--filter=<testNameRegex>` to run only tests matching your regex.
 
 > [!TIP]

@@ -28,6 +28,13 @@ import { readVisregArtifacts } from './artifacts';
 
 const SINGLE_UNIT_ENGINE_PARALLELISM = 1;
 
+/** Start a new measurement's pools without disturbing other unit artifacts. */
+export function resetVisregScreenshots(unitArtifactsDir: string): void {
+  for (const dir of ['control_screenshots', 'experiment_screenshots']) {
+    fs.rmSync(path.join(unitArtifactsDir, dir), { recursive: true, force: true });
+  }
+}
+
 export async function runVisregUnit(
   ctx: TestContext,
   stageConfig: VisregStageConfig,
@@ -122,8 +129,9 @@ function writeTempVisregConfig(
     asyncCaptureLimit: SINGLE_UNIT_ENGINE_PARALLELISM,
     asyncCompareLimit: SINGLE_UNIT_ENGINE_PARALLELISM,
     // The one output location the engine gets: everything it writes goes under
-    // this unit's artifacts dir, so the runner's generic per-test wipe (rmSync
-    // of the unit dir) clears it — no visreg-specific cleanup anywhere. We read
+    // this unit's artifacts dir. The stage resets the screenshot pools once
+    // before submitting its retried task; the runner also wipes the whole unit
+    // on a fresh run. We read
     // the results back from here (readVisregArtifacts); the engine owns the
     // layout beneath it.
     paths: { artifacts: unitArtifactsDir },
