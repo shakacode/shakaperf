@@ -8,36 +8,11 @@
 import { useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
 import { RunDetails } from './RunDetails';
+import { TestMetadata } from './TestMetadata';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
 import { AnsiLog, firstElapsedSeconds } from './AnsiLog';
 import { Dialog, StageArtifactProvider, TestMeta } from '../../../src/pipeline/stage-report-components';
-import {
-  pipelineTroubleshootCommands,
-  renderPipelineTestCardUrls,
-} from '../../../src/pipeline/pipeline-artifacts';
-
-// Full-word units so "12m" isn't mistaken for "12 months" — especially
-// relevant in merged --report-only views where artifacts can be weeks old.
-function pluralize(n: number, unit: string): string {
-  return `${n} ${unit}${n === 1 ? '' : 's'}`;
-}
-
-function formatMeasuredAt(measuredAt: number | null): string | null {
-  if (measuredAt == null) return 'never measured';
-  const diffMs = Date.now() - measuredAt;
-  if (diffMs < 0) return 'just now';
-  const totalHours = Math.floor(diffMs / (60 * 60 * 1000));
-  const days = Math.floor(totalHours / 24);
-  const hours = totalHours % 24;
-  if (diffMs < 60 * 60 * 1000) {
-    const mins = Math.max(1, Math.floor(diffMs / (60 * 1000)));
-    return `${pluralize(mins, 'minute')} ago`;
-  }
-  if (days === 0) return `${pluralize(hours, 'hour')} ago`;
-  if (hours === 0) return `${pluralize(days, 'day')} ago`;
-  return `${pluralize(days, 'day')} ${pluralize(hours, 'hour')} ago`;
-}
 
 interface LogEntry {
   label: string;
@@ -90,26 +65,6 @@ function outcomeGroups(test: TestResult, visibleStages: ReadonlySet<string>): Re
     group.push(outcome);
   }
   return groups;
-}
-
-function TroubleshootCommands({ meta, test }: { meta: ReportMeta; test: TestResult }) {
-  const [open, setOpen] = useState(false);
-  const viewports = [...new Set(test.outcomes.map((outcome) => outcome.viewport.label))];
-  const commands = pipelineTroubleshootCommands(meta, test.name, viewports);
-  if (commands.length === 0) return null;
-  return (
-    <div>
-      <button
-        type="button"
-        className="card__code-toggle"
-        onClick={() => setOpen((prev) => !prev)}
-        aria-expanded={open}
-      >
-        {open ? '▾ troubleshoot' : '▸ troubleshoot'}
-      </button>
-      {open ? <pre className="card__code">{commands.join('\n')}</pre> : null}
-    </div>
-  );
 }
 
 // Tie review to the saved results, not the report that happens to display them.
@@ -175,8 +130,6 @@ export function TestCard({
    */
   dimmed?: boolean;
 }) {
-  const [codeOpen, setCodeOpen] = useState(false);
-  const [artifactsOpen, setArtifactsOpen] = useState(false);
   const [logsOpen, setLogsOpen] = useState(false);
   const storageKey = reviewedKey(meta, test);
   const [reviewed, setReviewed] = useState(() => readReviewed(storageKey));
@@ -198,10 +151,6 @@ export function TestCard({
       <div className="card__head">
         <div>
           <h3 className="card__title">{test.name}</h3>
-          <div className="card__path">{test.filePath}</div>
-          <div className="card__measured-at" title="mtime of the freshest per-test artifact on disk">
-            updated {formatMeasuredAt(test.measuredAt)}
-          </div>
         </div>
         <div className="card__pills">
           <label className="card__reviewed">
@@ -238,62 +187,22 @@ export function TestCard({
         </div>
       </div>
 
+      <TestMetadata meta={meta} test={test} />
+
       {reviewed ? null : (
-        <>
-          <dl className="card__urls">
-            {renderPipelineTestCardUrls(meta, test)}
-          </dl>
-
-          <div className="card__body">
-            <StageArtifactProvider test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}>
-              {groups.map((outcomes, index) => (
-                <OutcomeSlot
-                  key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
-                  meta={meta}
-                  outcomes={outcomes}
-                  latestRunId={latestRunId}
-                  showRunChips={showViewportRunChips && mixedRuns}
-                />
-              ))}
-            </StageArtifactProvider>
-
-            {test.code ? (
-              <div>
-                <button
-                  type="button"
-                  className="card__code-toggle"
-                  onClick={() => setCodeOpen((prev) => !prev)}
-                  aria-expanded={codeOpen}
-                >
-                  {codeOpen ? '▾ test source' : '▸ test source'}
-                </button>
-                {codeOpen ? <pre className="card__code">{test.code}</pre> : null}
-              </div>
-            ) : null}
-
-            <TroubleshootCommands meta={meta} test={test} />
-
-            {test.viewportArtifactPaths && test.viewportArtifactPaths.length > 0 ? (
-              <div>
-                <button
-                  type="button"
-                  className="card__code-toggle"
-                  onClick={() => setArtifactsOpen((prev) => !prev)}
-                  aria-expanded={artifactsOpen}
-                >
-                  {artifactsOpen ? '▾ artifact paths' : '▸ artifact paths'}
-                </button>
-                {artifactsOpen ? (
-                  <pre className="card__code">
-                    {test.viewportArtifactPaths
-                      .map(({ viewport, path }) => `${viewport}: ${path}`)
-                      .join('\n')}
-                  </pre>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </>
+        <div className="card__body">
+          <StageArtifactProvider test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}>
+            {groups.map((outcomes, index) => (
+              <OutcomeSlot
+                key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
+                meta={meta}
+                outcomes={outcomes}
+                latestRunId={latestRunId}
+                showRunChips={showViewportRunChips && mixedRuns}
+              />
+            ))}
+          </StageArtifactProvider>
+        </div>
       )}
 
       <Dialog
