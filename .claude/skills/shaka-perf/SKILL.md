@@ -7,11 +7,10 @@ description: Map of the shaka-perf CLI. Load whenever a task mentions shaka-perf
 
 `shaka-perf` is a frontend performance toolkit: it runs your app twice in Docker
 (control = main, experiment = your branch) and diffs screenshots, Web Vitals,
-Lighthouse, and accessibility between them. In a Yarn project call it as
-`yarn shaka-perf`.
+Lighthouse, and accessibility between them.
 
 **The `--help` output is the documentation.** Before running any command, run
-`shaka-perf <command> --help` and follow it. Do not guess flags from memory.
+`shaka-perf <command> --help` and follow it. Do not guess flags from memory (seriosly, you will waste tokens if you don't read the --help pages).
 
 | Command | What it does |
 | --- | --- |
