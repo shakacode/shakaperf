@@ -12,7 +12,7 @@ version being released and updates the "Current version" line at the bottom.
 
 ---
 
-## Unreleased
+## 0.7.0 — 2026-11-04
 
 ### `init` creates config only; install agent skills separately
 
@@ -558,5 +558,5 @@ Notes:
 ---
 
 <!-- deploy: keep this line last; /deploy updates the version on publish -->
-Current version: shaka-perf 0.3.1, shaka-shared 0.3.0 (breaking changes under
+Current version: shaka-perf 0.7.0, shaka-shared 0.7.0 (breaking changes under
 **Unreleased** ship in the next release).
