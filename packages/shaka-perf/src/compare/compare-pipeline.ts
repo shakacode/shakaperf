@@ -215,8 +215,8 @@ export function createComparePipeline(input: ComparePipelineConfig) {
             chips.push({
               tag: 'visual change',
               text: `visual change: ${visualChanges} diff${visualChanges === 1 ? '' : 's'}`,
-              color: 'yellow',
-              sortingWeight: 20,
+              color: 'red',
+              sortingWeight: 10,
             });
           }
           const improvedMetrics = collectPerfMetrics('improvedMetrics', results.perf, results['perf-low-noise']);
@@ -230,15 +230,14 @@ export function createComparePipeline(input: ComparePipelineConfig) {
             });
           }
           // A visual comparison that initially mismatched but matched on a
-          // later retry — the screenshots are unstable. Informational warning
-          // chip (doesn't drive card order); filterable to isolate them.
+          // later retry — the screenshots are unstable. Ranked with the
+          // regressions so flaky tests surface at the top of the grid.
           if (entriesHave(results.visreg, hasSavedByRetries)) {
             chips.push({
               tag: 'visreg unstable',
               text: 'visreg unstable (matched after retries)',
-              color: 'yellow',
-              sortingWeight: 15,
-              affectsCardOrder: false,
+              color: 'red',
+              sortingWeight: 12,
               tooltip: 'A visual comparison initially mismatched but matched on a later retry — the screenshots are unstable.',
             });
           }
