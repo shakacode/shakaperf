@@ -267,6 +267,7 @@ export async function runCompareAttempts(
 
       // Frames are content-addressed, so identical re-captures are no-ops and
       // the pools only grow by genuinely new frames.
+      const framesBefore = run.control.length + run.experiment.length;
       run.pool.add('control', refBuffer);
       run.pool.add('experiment', testBuffer);
       run.control = run.pool.load('control');
@@ -279,9 +280,10 @@ export async function runCompareAttempts(
       );
       const budgetSpent = run.control.length > maxRetries &&
         run.experiment.length > maxRetries;
-      // Duplicate frames do not prove later captures will stay the same. Keep
-      // trying within the configured budget; the pools still deduplicate PNGs.
-      run.done = run.result.pass || budgetSpent;
+      // A retry that added no frames is pixel-stable — retrying can't change it.
+      const pixelStable = attempt > 0 &&
+        run.control.length + run.experiment.length === framesBefore;
+      run.done = run.result.pass || budgetSpent || pixelStable;
     }
   }
 
