@@ -144,7 +144,7 @@ describe('latest measurement run visibility', () => {
       await toggle.check();
       expect((await names()).sort()).toEqual(['Current', 'Mixed', 'Older']);
       expect(await card.textContent()).toContain('Older phone result');
-      expect(await card.textContent()).toContain('phone · old run');
+      expect(await card.locator('.slot-error__label').allTextContents()).toEqual(expect.arrayContaining([expect.stringContaining('phone:old run')]));
       await toggle.uncheck();
       expect(await names()).toEqual(['Mixed']);
       expect(await card.textContent()).not.toContain('Older phone result');
@@ -184,17 +184,20 @@ describe('latest measurement run visibility', () => {
       expect(await current.locator('.outcome-slot__runs').count()).toBe(0);
       expect(await current.locator('.card__pills').textContent()).not.toContain('latest run');
       const mixed = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Mixed', exact: true }) });
-      expect((await mixed.locator('.outcome-slot__runs').allTextContents()).join(' ')).toContain('phone · old run');
+      expect(await mixed.locator('.outcome-slot__runs').count()).toBe(0);
       expect(await page.locator('.pill').allTextContents()).not.toEqual(expect.arrayContaining([expect.stringContaining('latest run')]));
-      expect(await mixed.locator('.outcome-slot__runs .pill').allTextContents()).toEqual([
-        'phone · old run', 'desktop · old run',
+      expect(await mixed.locator('.slot-error__label .old-run-chip').allTextContents()).toEqual(['old run', 'old run']);
+      expect(await mixed.locator('.slot-error__label').allTextContents()).toEqual([
+        'Error during \"accessibility\" · desktop:',
+        'Error during \"accessibility\" · phone:old run',
+        `Error during \"${pipeline === 'audit' ? 'audit' : 'visreg'}\" · desktop:old run`,
       ]);
       const toggle = page.getByRole('checkbox', { name: 'Show full suite', exact: true });
       await toggle.check();
       expect((await names()).sort()).toEqual(['Current', 'Mixed', 'Older']);
       const older = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Older', exact: true }) });
       expect(await older.locator('.card__pills').textContent()).toContain('old run');
-      expect(await older.locator('.outcome-slot__runs').count()).toBe(0);
+      expect(await older.locator('.old-run-chip').count()).toBe(0);
       await toggle.uncheck();
       expect((await names()).sort()).toEqual(['Current', 'Mixed']);
 

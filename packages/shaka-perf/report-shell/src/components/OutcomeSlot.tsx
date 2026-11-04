@@ -8,7 +8,7 @@
 import type { ReactNode } from 'react';
 import { renderPersistedStageArtifacts } from '../../../src/pipeline/pipeline-artifacts';
 import { ScreenshotPreview } from '../../../src/pipeline/screenshot-preview';
-import { DetailedArtifactDialog } from '../../../src/pipeline/stage-report-components';
+import { DetailedArtifactDialog, OldRunChip, StageRunChipsProvider } from '../../../src/pipeline/stage-report-components';
 import type { ReportMeta, ReportOutcome } from '../types';
 
 // V8 stack traces start with `<ErrorName>: <message>` — `Error`,
@@ -17,7 +17,7 @@ import type { ReportMeta, ReportOutcome } from '../types';
 // above in bold; the duplication is noise.
 const STACK_HEAD_PATTERN = /^[A-Z][A-Za-z]*: [^\n]*\n+/;
 
-function OutcomeError({ outcome }: { outcome: ReportOutcome }) {
+function OutcomeError({ outcome, latestRun }: { outcome: ReportOutcome; latestRun: boolean }) {
   const message = outcome.error?.message?.trim();
   const displayMessage = message && message.length > 0 ? message : 'stage failed';
   const stack = (outcome.error?.stack ?? '').replace(STACK_HEAD_PATTERN, '');
@@ -39,6 +39,7 @@ function OutcomeError({ outcome }: { outcome: ReportOutcome }) {
         <p className="slot-error__message">
           <span className="slot-error__label">
             Error during "{heading}" · {outcome.viewport.label}:
+            <OldRunChip latestRun={latestRun} />
           </span>{' '}
           <span className="slot-error__detail">{displayMessage}</span>
         </p>
@@ -124,25 +125,19 @@ export function OutcomeSlot({
   const section = stageSection(meta, outcomes, latestRunId);
   if (!first || !section) return null;
   const { errorOutcomes, artifact } = section;
-  const oldOutcomes = showRunChips && latestRunId
-    ? outcomes.filter((outcome) => outcome.runId !== latestRunId)
-    : [];
 
   return (
     <section className="outcome-slot" data-stage={first.stage} tabIndex={-1}>
-      {oldOutcomes.length > 0 ? (
-        <div className="outcome-slot__runs">
-          {oldOutcomes.map((outcome, index) => (
-            <span className="pill pill--gray" key={`${outcome.viewport.label}-${index}`}>
-              {outcome.viewport.label} · old run
-            </span>
-          ))}
-        </div>
-      ) : null}
-      {errorOutcomes.map((outcome, index) => (
-        <OutcomeError key={`error-${outcome.viewport.label}-${index}`} outcome={outcome} />
-      ))}
-      {artifact ? <div className="stage-artifact">{artifact}</div> : null}
+      <StageRunChipsProvider value={showRunChips === true}>
+        {errorOutcomes.map((outcome, index) => (
+          <OutcomeError
+            key={`error-${outcome.viewport.label}-${index}`}
+            outcome={outcome}
+            latestRun={latestRunId == null || outcome.runId === latestRunId}
+          />
+        ))}
+        {artifact ? <div className="stage-artifact">{artifact}</div> : null}
+      </StageRunChipsProvider>
     </section>
   );
 }

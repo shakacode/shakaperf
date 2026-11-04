@@ -8,7 +8,7 @@
 import type { CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { VisregArtifact, VisregResult } from '../visreg';
-import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, StageNote } from '../../../pipeline/stage-report-components';
+import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, OldRunChip, StageNote } from '../../../pipeline/stage-report-components';
 import { ImageViewport } from '../../../pipeline/image-viewport';
 import { Scrubber } from './scrubber';
 
@@ -21,6 +21,7 @@ export function VisregArtifactView({
     .flatMap((entry) => entry.measurement.map((artifact) => ({
       artifact,
       viewportLabel: entry.viewport.label,
+      latestRun: entry.latestRun,
     })))
     .sort((a, b) => a.artifact.selector.localeCompare(b.artifact.selector) || a.viewportLabel.localeCompare(b.viewportLabel));
 
@@ -47,6 +48,7 @@ export function VisregArtifactView({
 }
 
 interface VisregRow {
+  latestRun: boolean;
   artifact: VisregArtifact;
   viewportLabel: string;
 }
@@ -56,7 +58,7 @@ function VisregCard({ row }: { row: VisregRow }) {
   const changed = artifact.diffImage !== null;
   const head = (
     <div className="artifact-card__head">
-      <span className="artifact-card__title">{viewportLabel}</span>
+      <span className="artifact-card__title">{viewportLabel}<OldRunChip latestRun={row.latestRun} /></span>
       <span className="artifact-card__subtitle">{artifact.selector}</span>
       <span className="artifact-card__value">{artifact.misMatchPercentage.toFixed(2)}%</span>
       {changed ? <span className="artifact-card__status">visual change</span> : null}

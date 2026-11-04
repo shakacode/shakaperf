@@ -13,6 +13,7 @@ import {
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
+  OldRunChip,
   StageNote,
 } from '../../../pipeline/stage-report-components';
 import {
@@ -518,6 +519,7 @@ export function AccessibilityCompareArtifactView({
             <AccessibilityCompareViewport
               result={entry.measurement}
               viewportLabel={entry.viewport.label}
+              latestRun={entry.latestRun}
             />
           </div>
         ))}
@@ -529,13 +531,15 @@ export function AccessibilityCompareArtifactView({
 function AccessibilityCompareViewport({
   result,
   viewportLabel,
+  latestRun,
 }: {
   result: AccessibilityCompareResult;
   viewportLabel: string;
+  latestRun: boolean;
 }) {
   return (
     <div className="stage-section">
-      <div className="stage-section__head">{viewportLabel}</div>
+      <div className="stage-section__head">{viewportLabel}<OldRunChip latestRun={latestRun} /></div>
       <div style={CARD_STYLE}>
         <div style={CARD_HEADER_STYLE}>
           <div style={SUMMARY_STYLE}>

@@ -11,6 +11,7 @@ import {
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
+  OldRunChip,
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
 import { ScreenshotPreview } from '../../../pipeline/screenshot-preview';
@@ -54,6 +55,7 @@ export function AuditArtifactView({
     .map((entry) => ({
       audit: entry.measurement,
       viewportLabel: entry.viewport.label,
+      latestRun: entry.latestRun,
     }))
     .filter(({ audit }) => hasRenderableData(audit));
   if (rows.length === 0) return null;
@@ -64,7 +66,7 @@ export function AuditArtifactView({
       <div className="stage-stack">
         {rows.map((row, index) => (
           <div key={`${row.viewportLabel}-${index}`} className="stage-stack__viewport">
-            <AuditBody audit={row.audit} viewportLabel={row.viewportLabel} />
+            <AuditBody audit={row.audit} viewportLabel={row.viewportLabel} latestRun={row.latestRun} />
           </div>
         ))}
       </div>
@@ -72,22 +74,24 @@ export function AuditArtifactView({
   );
 }
 
-function AuditBody({ audit, viewportLabel }: { audit: AuditResult; viewportLabel: string }) {
-  return <MetricTable audit={audit} viewportLabel={viewportLabel} />;
+function AuditBody({ audit, viewportLabel, latestRun }: { audit: AuditResult; viewportLabel: string; latestRun: boolean }) {
+  return <MetricTable audit={audit} viewportLabel={viewportLabel} latestRun={latestRun} />;
 }
 
 function MetricTable({
   audit,
   viewportLabel,
+  latestRun,
 }: {
   audit: AuditResult;
   viewportLabel: string;
+  latestRun: boolean;
 }) {
   const metrics = audit.metrics ?? [];
   if (metrics.length === 0 && !hasArtifacts(audit)) return null;
   return (
     <div className="stage-section">
-      <div className="stage-section__head">{viewportLabel}</div>
+      <div className="stage-section__head">{viewportLabel}<OldRunChip latestRun={latestRun} /></div>
       <div style={METRIC_COLUMNS_STYLE}>
         {GROUPS.map((group) => {
           const groupMetrics = metrics.filter((metric) => metric.group === group.id);

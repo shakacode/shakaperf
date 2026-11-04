@@ -9,6 +9,7 @@ import type { StageRenderEntry } from '../../../stage/stage';
 import {
   StageArtifact,
   StageArtifactTitle,
+  OldRunChip,
 } from '../../../pipeline/stage-report-components';
 import type { AgentReadinessResult } from './types';
 
@@ -33,7 +34,7 @@ export function AgentReadinessArtifactView({
           const coverage = r.textWords > 0 ? Math.round((rawWords / r.textWords) * 100) : 0;
           return (
             <div key={`${entry.viewport.label}-${index}`} className="stage-stack__viewport">
-              <div className="stage-section__head">{entry.viewport.label}</div>
+              <div className="stage-section__head">{entry.viewport.label}<OldRunChip latestRun={entry.latestRun} /></div>
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
                 <li>
                   Raw fetch: {m.raw.ok ? 'ok' : 'failed'}
