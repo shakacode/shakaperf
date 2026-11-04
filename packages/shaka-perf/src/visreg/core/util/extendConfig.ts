@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import type { RuntimeConfig, VisregConfig } from '../types';
+import { screenshotPoolPaths } from './screenshotPoolPaths';
 
 function extendConfig (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
   artifactPaths(config, userConfig);
@@ -50,10 +51,7 @@ function artifactPaths (config: Partial<RuntimeConfig>, userConfig: VisregConfig
     );
   }
   config.unitArtifactsDir = artifacts;
-  // Plural: each dir holds MANY frames per comparison (the crash-resumable
-  // accumulation), not one.
-  config.controlScreenshotDir = path.join(artifacts, 'control_screenshots');
-  config.experimentScreenshotDir = path.join(artifacts, 'experiment_screenshots');
+  Object.assign(config, screenshotPoolPaths(artifacts));
 }
 
 function tempCompareConfigPath (config: Partial<RuntimeConfig>) {

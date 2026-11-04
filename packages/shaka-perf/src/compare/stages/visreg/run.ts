@@ -11,6 +11,7 @@ import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import chalk from 'chalk';
 import visregRunner from '../../../visreg/core/runner';
+import { screenshotPoolPaths } from '../../../visreg/core/util/screenshotPoolPaths';
 import { resolvePlaywrightOptions } from '../../../config';
 import { withCdpPort } from '../../../troubleshoot/debug-session';
 import type { VisregConfig, Viewport } from '../../../config';
@@ -30,8 +31,9 @@ const SINGLE_UNIT_ENGINE_PARALLELISM = 1;
 
 /** Start a new measurement's pools without disturbing other unit artifacts. */
 export function resetVisregScreenshots(unitArtifactsDir: string): void {
-  for (const dir of ['control_screenshots', 'experiment_screenshots']) {
-    fs.rmSync(path.join(unitArtifactsDir, dir), { recursive: true, force: true });
+  const { controlScreenshotDir, experimentScreenshotDir } = screenshotPoolPaths(unitArtifactsDir);
+  for (const dir of [controlScreenshotDir, experimentScreenshotDir]) {
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 }
 
