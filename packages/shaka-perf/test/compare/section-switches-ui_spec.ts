@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium, type Browser } from 'playwright';
+import { chromium, type Browser, type Locator } from 'playwright';
 
 // Run compare/audit against the same two-page suite first. The audit suite must
 // include a "Mixed accessibility" test with a clean desktop result and a phone
@@ -19,6 +19,24 @@ if (Boolean(compareDirectory) !== Boolean(auditDirectory)) {
   throw new Error('Set both SHAKA_REPORT_COMPARE_DIR and SHAKA_REPORT_AUDIT_DIR to real CLI output directories.');
 }
 const generatedReports = compareDirectory && auditDirectory ? describe : describe.skip;
+
+async function checkMetadata(card: Locator) {
+  const metadata = card.locator('.card__metadata');
+  expect(await metadata.getAttribute('open')).toBeNull();
+  const urls = metadata.getByLabel('URLs', { exact: true });
+  expect(await urls.isVisible()).toBe(false);
+  await metadata.locator('summary').first().click();
+  expect(await urls.isVisible()).toBe(true);
+  expect(await urls.locator('a').count()).toBeGreaterThan(0);
+  expect(await metadata.getByLabel('Latest command').inputValue()).toContain('shaka-perf');
+  expect(await urls.locator('dd').evaluateAll((elements) => elements.every((element) => {
+    const row = element.parentElement!.getBoundingClientRect();
+    const value = element.getBoundingClientRect();
+    return value.left >= row.left && value.right <= row.right;
+  }))).toBe(true);
+  await metadata.locator('summary').first().click();
+  expect(await metadata.getAttribute('open')).toBeNull();
+}
 
 generatedReports('CLI-generated report section switches', () => {
   let browser: Browser;
@@ -89,6 +107,7 @@ generatedReports('CLI-generated report section switches', () => {
       }
       await visual.last().click();
       expect(await page.locator('.artifact-stack').last().isVisible()).toBe(true);
+      await checkMetadata(cards.first());
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     } finally {
       await page.close();
@@ -170,6 +189,7 @@ generatedReports('CLI-generated report section switches', () => {
       expect(await restore.getAttribute('aria-checked')).toBe('false');
       await restore.click();
       expect(await restore.getAttribute('aria-checked')).toBe('true');
+      await checkMetadata(card);
     } finally {
       await page.close();
     }

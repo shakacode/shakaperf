@@ -98,9 +98,7 @@ describe('contextual old-run chips', () => {
     try {
       await page.goto(pathToFileURL(file).href);
       await page.locator('.card').waitFor();
-      await page.locator('.stage-filter summary').click();
-      await page.locator('.stage-filter').getByRole('button', { name: 'all', exact: true }).click();
-      await page.locator('.stage-filter summary').click();
+      expect(await page.locator('.stage-filter').count()).toBe(0);
       expect(await page.locator('.outcome-slot__runs').count()).toBe(0);
       expect(await page.locator('.pill').allTextContents()).not.toEqual(expect.arrayContaining([
         expect.stringContaining('latest run'), expect.stringContaining('desktop · old run'),

@@ -35,7 +35,7 @@ export function AiSummaryArtifactView({
 
   return (
     <StageArtifact>
-      <StageArtifactTitle>summary<OldRunChip latestRun={entry.latestRun} /></StageArtifactTitle>
+      <StageArtifactTitle badge={<OldRunChip latestRun={entry.latestRun} />}>summary</StageArtifactTitle>
       <div style={SUMMARY_BOX_STYLE}>{entry.measurement.summary}</div>
     </StageArtifact>
   );
