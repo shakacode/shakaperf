@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
   DESKTOP_VIEWPORT,
   PHONE_VIEWPORT,

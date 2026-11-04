@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 export const SetupCommandSchema = z.object({
   /** The shell command to execute in the container */
