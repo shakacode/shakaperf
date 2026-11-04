@@ -11647,7 +11647,7 @@ __metadata:
     race-cancellation: "npm:^0.4.1"
     react: "npm:^19.0.0"
     react-dom: "npm:^19.0.0"
-    shaka-shared: "npm:0.3.0"
+    shaka-shared: "npm:0.7.0"
     sharp: "npm:^0.35.4"
     tesseract.js: "npm:^7.0.0"
     ts-jest: "npm:^29.2.0"
@@ -11662,18 +11662,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"shaka-shared@npm:0.3.0":
-  version: 0.3.0
-  resolution: "shaka-shared@npm:0.3.0"
-  dependencies:
-    chalk: "npm:^4.1.2"
-  peerDependencies:
-    playwright-core: ^1.50.0
-  checksum: 10c0/318f3d8b999dfd498169007cba9911587e30f4f789e3d0ba423fc3c8e3cab4a15ddfcc7f06dc5c238be151ff1191965f4e955d98a5256a6e545729fb219e8270
-  languageName: node
-  linkType: hard
-
-"shaka-shared@workspace:^, shaka-shared@workspace:packages/shaka-shared":
+"shaka-shared@npm:0.7.0, shaka-shared@workspace:^, shaka-shared@workspace:packages/shaka-shared":
   version: 0.0.0-use.local
   resolution: "shaka-shared@workspace:packages/shaka-shared"
   dependencies:

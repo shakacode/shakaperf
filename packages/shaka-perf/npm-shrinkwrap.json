@@ -45,7 +45,7 @@
         "portfinder": "^1.0.32",
         "race-cancellation": "^0.4.1",
         "react": "^19.0.0",
-        "shaka-shared": "0.3.0",
+        "shaka-shared": "0.7.0",
         "sharp": "^0.35.4",
         "tesseract.js": "^7.0.0",
         "tslib": "^2.2.0",
@@ -4695,9 +4695,9 @@
       "license": "ISC"
     },
     "node_modules/shaka-shared": {
-      "version": "0.3.0",
-      "resolved": "https://registry.npmjs.org/shaka-shared/-/shaka-shared-0.3.0.tgz",
-      "integrity": "sha512-tfWD2fbZh+jOfHo8RuQog3koUI7LQ9sPTvcEums+JZMqQhFpvVCBuS8+GX8ezjkte1ifp7bcBZKHGFzUKSBALA==",
+      "version": "0.7.0",
+      "resolved": "https://registry.npmjs.org/shaka-shared/-/shaka-shared-0.7.0.tgz",
+      "integrity": "sha512-wunt9hK8iZjV8RZ9HWUUtfy4Qb0NccHfelP85SuwUFOEQqGTusCb+pgg2ufQQ14Tjlvax3lJpID9xqw1OFCyWQ==",
       "license": "SEE LICENSE IN LICENSE.md",
       "dependencies": {
         "chalk": "^4.1.2"
