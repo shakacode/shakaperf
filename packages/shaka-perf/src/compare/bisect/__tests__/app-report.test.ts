@@ -196,7 +196,8 @@ describe('bisect report App rendering', () => {
 
     expect(html).toContain('<h3 class="card__title">Product page</h3>');
     expect(html).not.toContain('card--missing-artifacts');
-    expect(html).toContain('1 skipped: fixture skip');
+    expect(html).not.toContain('1 skipped: fixture skip');
+    expect(html).not.toContain('skipped tests grouped by reason');
   });
 
   it('announces only the concise selection status', () => {
