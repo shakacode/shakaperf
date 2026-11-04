@@ -8,7 +8,7 @@
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import type { TestResult } from '../../pipeline/report';
 import type {
   BisectCategory,
