@@ -318,7 +318,7 @@ export async function startScreencastOnLighthouseSession(
     if (stopped) return;
     const evt = args[0] as { frame: { parentId?: string; url?: string } };
     if (evt?.frame?.parentId) return; // sub-frames don't reset the screencast
-    // Renderer-swap (cross-origin nav): re-arm.
+    // Re-arm after a renderer swap; Chrome may also preserve the active stream.
     const generation = ++subscriptionGeneration;
     void subscribe(`after nav to ${evt.frame.url ?? '?'}`, generation, true);
   };
@@ -384,6 +384,12 @@ export async function startScreencastOnLighthouseSession(
       } catch (err) {
         lastErr = err;
         if (stopped || generation !== subscriptionGeneration) return;
+        // Chrome can preserve capture across navigation and reject a duplicate
+        // start without disturbing the existing frame stream. Only
+        // accept this response during recovery; an initial failure must warn.
+        if (retry && err instanceof Error && /(?:^|: )Screencast is already active$/.test(err.message)) {
+          return;
+        }
         if (!retry || Date.now() + SUBSCRIBE_RETRY_DELAY_MS >= deadline) break;
         await new Promise((resolve) => setTimeout(resolve, SUBSCRIBE_RETRY_DELAY_MS));
         if (stopped || generation !== subscriptionGeneration) return;

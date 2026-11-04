@@ -126,6 +126,88 @@ describe('screencastRecorder', () => {
     await recording.stop();
   });
 
+  it('keeps receiving and acknowledging frames when navigation preserves the screencast', async () => {
+    jest.useFakeTimers();
+    const handlers = new Map<string, (...args: unknown[]) => void>();
+    let startAttempts = 0;
+    const sendCommand = jest.fn(async (method: string) => {
+      if (method === 'Page.startScreencast' && ++startAttempts > 1) {
+        throw new Error('Protocol error (Page.startScreencast): Screencast is already active');
+      }
+    });
+    const session = {
+      sendCommand,
+      on: (event: string, handler: (...args: unknown[]) => void) => handlers.set(event, handler),
+      off: (event: string) => handlers.delete(event),
+    };
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const recording = await startScreencastOnLighthouseSession(session);
+    handlers.get('Page.screencastFrame')?.({
+      data: 'before-navigation', sessionId: 1, metadata: { timestamp: Date.now() / 1000 },
+    });
+    handlers.get('Page.frameNavigated')?.({ frame: { url: 'https://example.com' } });
+    await jest.advanceTimersByTimeAsync(SUBSCRIBE_RETRY_WINDOW_MS + 500);
+    handlers.get('Page.screencastFrame')?.({
+      data: 'after-navigation', sessionId: 1, metadata: { timestamp: Date.now() / 1000 },
+    });
+
+    expect(startAttempts).toBe(2);
+    expect(warn).not.toHaveBeenCalled();
+    expect(recording.frames).toEqual([
+      { timeMs: 0, data: 'before-navigation' },
+      { timeMs: 3500, data: 'after-navigation' },
+    ]);
+    expect(sendCommand.mock.calls.filter(([method]) => method === 'Page.screencastFrameAck'))
+      .toHaveLength(2);
+    expect(sendCommand).not.toHaveBeenCalledWith('Page.stopScreencast');
+    await recording.stop();
+    expect(handlers.size).toBe(0);
+  });
+
+  it('ends renderer-attach retries when Chrome reports the screencast is already active', async () => {
+    jest.useFakeTimers();
+    const handlers = new Map<string, (...args: unknown[]) => void>();
+    let startAttempts = 0;
+    const sendCommand = jest.fn(async (method: string) => {
+      if (method !== 'Page.startScreencast') return;
+      startAttempts += 1;
+      if (startAttempts === 2) throw new Error('Not attached to an active page');
+      if (startAttempts > 2) throw new Error('Screencast is already active');
+    });
+    const session = {
+      sendCommand,
+      on: (event: string, handler: (...args: unknown[]) => void) => handlers.set(event, handler),
+      off: (event: string) => handlers.delete(event),
+    };
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const recording = await startScreencastOnLighthouseSession(session);
+    handlers.get('Page.frameNavigated')?.({ frame: { url: 'https://example.com' } });
+    await jest.advanceTimersByTimeAsync(SUBSCRIBE_RETRY_WINDOW_MS);
+
+    expect(startAttempts).toBe(3);
+    expect(warn).not.toHaveBeenCalled();
+    await recording.stop();
+  });
+
+  it('reports an already-active failure on the initial subscription', async () => {
+    const error = new Error('Protocol error (Page.startScreencast): Screencast is already active');
+    const session = {
+      sendCommand: jest.fn(async (method: string) => {
+        if (method === 'Page.startScreencast') throw error;
+      }),
+      on: jest.fn(),
+      off: jest.fn(),
+    };
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const recording = await startScreencastOnLighthouseSession(session);
+
+    expect(warn).toHaveBeenCalledWith('[shaka-perf screencast] subscribe (initial) failed:', error);
+    await recording.stop();
+  });
+
   it('clamps frames captured before the navigation anchor to zero', async () => {
     const handlers = new Map<string, (...args: unknown[]) => void>();
     const session = {
