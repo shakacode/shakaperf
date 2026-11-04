@@ -68,8 +68,8 @@ export function TestMetadata({ meta, test }: { meta: ReportMeta; test: TestResul
             updated {formatMeasuredAt(test.measuredAt)}
           </div>
         </div>
-        <dl className="card__urls">{renderPipelineTestCardUrls(meta, test)}</dl>
-        <RunCommits outcomes={test.outcomes} />
+        <dl className="card__urls" aria-label="URLs">{renderPipelineTestCardUrls(meta, test)}</dl>
+        <RunCommits outcomes={test.outcomes} compact />
         <div>
           <div className="run-details__label">Latest command</div>
           {latest ? <MeasurementCommand key={latest.command} command={latest.command} compact /> : <span className="run-details__unavailable">Latest command unavailable</span>}

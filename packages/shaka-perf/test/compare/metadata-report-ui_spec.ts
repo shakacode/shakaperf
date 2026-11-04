@@ -45,12 +45,12 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     expect(await metadata.count()).toBe(1);
     expect(await metadata.getAttribute('open')).toBeNull();
     expect(await card.locator('.card__path').isVisible()).toBe(false);
-    expect(await card.locator('.card__urls').isVisible()).toBe(false);
+    expect(await card.getByLabel('URLs', { exact: true }).isVisible()).toBe(false);
     await metadata.locator('summary').first().click();
     expect(await card.locator('.card__path').isVisible()).toBe(true);
-    expect(await card.locator('.card__urls').isVisible()).toBe(true);
-    expect(await metadata.getByText('1e04e038', { exact: true }).count()).toBe(1);
-    expect(await metadata.locator('.run-details__commits .run-details__label').textContent()).toBe(pipeline === 'compare' ? 'control / experiment' : 'experiment');
+    expect(await card.getByLabel('URLs', { exact: true }).isVisible()).toBe(true);
+    expect(await metadata.getByText('1e04e038', { exact: true }).count()).toBe(pipeline === 'compare' ? 2 : 1);
+    expect(await metadata.getByLabel('Commits', { exact: true }).locator('dt').allTextContents()).toEqual(pipeline === 'compare' ? ['control', 'experiment'] : ['experiment']);
     const source = metadata.getByRole('button', { name: 'test source' });
     expect(await source.getAttribute('aria-expanded')).toBe('false');
     await source.click();
