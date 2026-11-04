@@ -108,5 +108,12 @@ export function createCompareCommand(
     defaults: optionDefaults,
     categoriesDefault: validCategories.join(','),
   });
+  compare.addHelpText('after', `
+
+# For AI
+  when analyzing performance regressions, read:
+    compare-results/<test>-<viewport>-<hash>/artifacts/the_only_file_ai_needs_to_analyze.diff
+  The rest of the perf artifacts are optimized for humans.
+`);
   return compare;
 }
