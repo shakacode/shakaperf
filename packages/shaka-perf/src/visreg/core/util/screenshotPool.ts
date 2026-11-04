@@ -26,9 +26,8 @@ import { compareBuffers } from './compare/pixelmatch-inline';
  * filename template: the `__<sha1>` suffix lets many frames per comparison
  * coexist (re-capturing an identical frame is a no-op — the pool holds DISTINCT
  * frames only), while the shared `<key>` prefix lets a restart find them again.
- * Cleanup is NOT done here: the stage resets the pools once per measurement,
- * before submitting its retried task. Frames survive every attempt of that
- * measurement, but never enter a later measurement's cross-match.
+ * Cleanup is NOT done here: the runner wipes the unit dir once per test, before
+ * any stage runs, which clears these dirs generically.
  */
 export type PoolSide = 'control' | 'experiment';
 
