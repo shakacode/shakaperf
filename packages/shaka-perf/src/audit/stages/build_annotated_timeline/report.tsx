@@ -11,6 +11,7 @@ import {
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
+  OldRunChip,
 } from '../../../pipeline/stage-report-components';
 import { useReportMode } from '../../../pipeline/report-mode';
 import {
@@ -36,7 +37,7 @@ export function BuildAnnotatedTimelineArtifactView({
 }) {
   const mode = useReportMode();
   const rows = measurements
-    .map((entry) => ({ timeline: entry.measurement, viewportLabel: entry.viewport.label }))
+    .map((entry) => ({ timeline: entry.measurement, viewportLabel: entry.viewport.label, latestRun: entry.latestRun }))
     .filter(({ timeline }) => {
       const frames = timeline.frames;
       if (!frames || frames.length === 0) return false;
@@ -53,7 +54,7 @@ export function BuildAnnotatedTimelineArtifactView({
           return (
             <div key={`${row.viewportLabel}-${index}`} className="stage-stack__viewport">
               <div className="stage-section">
-                <div className="stage-section__head">{row.viewportLabel}</div>
+                <div className="stage-section__head">{row.viewportLabel}<OldRunChip latestRun={row.latestRun} /></div>
                 <DetailedArtifactDialog
                   body={
                     <AnnotatedTimelineDialog

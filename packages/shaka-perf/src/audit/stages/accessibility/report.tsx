@@ -10,6 +10,7 @@ import type { StageRenderEntry } from '../../../stage/stage';
 import {
   StageArtifact,
   StageArtifactTitle,
+  OldRunChip,
 } from '../../../pipeline/stage-report-components';
 import type { AccessibilityResult } from './types';
 import { ScreenshotPreview } from './report-preview';
@@ -54,6 +55,7 @@ export function AccessibilityArtifactView({
             <AccessibilityBody
               result={entry.measurement}
               viewportLabel={entry.viewport.label}
+              latestRun={entry.latestRun}
             />
           </div>
         ))}
@@ -65,9 +67,11 @@ export function AccessibilityArtifactView({
 function AccessibilityBody({
   result,
   viewportLabel,
+  latestRun,
 }: {
   result: AccessibilityResult;
   viewportLabel: string;
+  latestRun: boolean;
 }) {
   const filterState = useAccessibilityFilterState();
   const localOptions = useMemo(() => collectConfiguredFilterOptions([result]), [result]);
@@ -77,7 +81,7 @@ function AccessibilityBody({
   if (totalCount === 0) return null;
   return (
     <div className="stage-section">
-      <div className="stage-section__head">{viewportLabel}</div>
+      <div className="stage-section__head">{viewportLabel}<OldRunChip latestRun={latestRun} /></div>
       <div style={SCAN_STYLE}>
         <ScreenshotPreview
           filterOptions={filterState?.options ?? localOptions}

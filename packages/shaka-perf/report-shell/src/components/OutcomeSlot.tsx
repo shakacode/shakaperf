@@ -8,7 +8,7 @@
 import type { ReactNode } from 'react';
 import { renderPersistedStageArtifacts } from '../../../src/pipeline/pipeline-artifacts';
 import { ScreenshotPreview } from '../../../src/pipeline/screenshot-preview';
-import { DetailedArtifactDialog } from '../../../src/pipeline/stage-report-components';
+import { DetailedArtifactDialog, OldRunChip, StageRunChipsProvider } from '../../../src/pipeline/stage-report-components';
 import type { ReportMeta, ReportOutcome } from '../types';
 
 // V8 stack traces start with `<ErrorName>: <message>` — `Error`,
@@ -17,7 +17,7 @@ import type { ReportMeta, ReportOutcome } from '../types';
 // above in bold; the duplication is noise.
 const STACK_HEAD_PATTERN = /^[A-Z][A-Za-z]*: [^\n]*\n+/;
 
-function OutcomeError({ outcome }: { outcome: ReportOutcome }) {
+function OutcomeError({ outcome, latestRun }: { outcome: ReportOutcome; latestRun: boolean }) {
   const message = outcome.error?.message?.trim();
   const displayMessage = message && message.length > 0 ? message : 'stage failed';
   const stack = (outcome.error?.stack ?? '').replace(STACK_HEAD_PATTERN, '');
@@ -39,6 +39,7 @@ function OutcomeError({ outcome }: { outcome: ReportOutcome }) {
         <p className="slot-error__message">
           <span className="slot-error__label">
             Error during "{heading}" · {outcome.viewport.label}:
+            <OldRunChip latestRun={latestRun} />
           </span>{' '}
           <span className="slot-error__detail">{displayMessage}</span>
         </p>
@@ -86,6 +87,7 @@ function OutcomeError({ outcome }: { outcome: ReportOutcome }) {
 export function stageSection(
   meta: ReportMeta,
   outcomes: readonly ReportOutcome[],
+  latestRunId?: string | null,
 ): { errorOutcomes: ReportOutcome[]; artifact: ReactNode } | null {
   const first = outcomes[0];
   if (!first) return null;
@@ -94,7 +96,11 @@ export function stageSection(
   const measurements = outcomes.flatMap((outcome) => (
     outcome.kind !== 'ok' || outcome.measurement == null
       ? []
-      : [{ measurement: outcome.measurement, viewport: outcome.viewport }]
+      : [{
+        measurement: outcome.measurement,
+        viewport: outcome.viewport,
+        latestRun: latestRunId == null || outcome.runId === latestRunId,
+      }]
   ));
   const artifact = measurements.length > 0
     ? renderPersistedStageArtifacts(meta.pipelineName, meta.pipelineConfig, first.stage, measurements)
@@ -108,31 +114,30 @@ export function OutcomeSlot({
   meta,
   outcomes,
   latestRunId,
+  showRunChips,
 }: {
   meta: ReportMeta;
   outcomes: readonly ReportOutcome[];
   latestRunId?: string | null;
+  showRunChips?: boolean;
 }) {
   const first = outcomes[0];
-  const section = stageSection(meta, outcomes);
+  const section = stageSection(meta, outcomes, latestRunId);
   if (!first || !section) return null;
   const { errorOutcomes, artifact } = section;
 
   return (
     <section className="outcome-slot" data-stage={first.stage} tabIndex={-1}>
-      {latestRunId ? (
-        <div className="outcome-slot__runs">
-          {outcomes.map((outcome, index) => (
-            <span className={`pill pill--${outcome.runId === latestRunId ? 'blue' : 'gray'}`} key={`${outcome.viewport.label}-${index}`}>
-              {outcome.viewport.label} · {outcome.runId === latestRunId ? 'latest' : 'old'} run
-            </span>
-          ))}
-        </div>
-      ) : null}
-      {errorOutcomes.map((outcome, index) => (
-        <OutcomeError key={`error-${outcome.viewport.label}-${index}`} outcome={outcome} />
-      ))}
-      {artifact ? <div className="stage-artifact">{artifact}</div> : null}
+      <StageRunChipsProvider value={showRunChips === true}>
+        {errorOutcomes.map((outcome, index) => (
+          <OutcomeError
+            key={`error-${outcome.viewport.label}-${index}`}
+            outcome={outcome}
+            latestRun={latestRunId == null || outcome.runId === latestRunId}
+          />
+        ))}
+        {artifact ? <div className="stage-artifact">{artifact}</div> : null}
+      </StageRunChipsProvider>
     </section>
   );
 }

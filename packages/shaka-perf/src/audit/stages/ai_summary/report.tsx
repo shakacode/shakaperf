@@ -7,7 +7,7 @@
 
 import type { CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
-import { StageArtifact, StageArtifactTitle } from '../../../pipeline/stage-report-components';
+import { StageArtifact, StageArtifactTitle, OldRunChip } from '../../../pipeline/stage-report-components';
 import type { AiSummaryResult } from './stage';
 
 const SUMMARY_BOX_STYLE: CSSProperties = {
@@ -30,15 +30,13 @@ export function AiSummaryArtifactView({
   // All viewports audit the same page, so a single plain-language line is
   // enough — show the first non-empty summary. Nothing to render if the AI
   // call produced no summary.
-  const summary = measurements
-    .map((entry) => entry.measurement.summary)
-    .find((text) => text != null && text.trim().length > 0);
-  if (!summary) return null;
+  const entry = measurements.find(({ measurement }) => measurement.summary?.trim());
+  if (!entry) return null;
 
   return (
     <StageArtifact>
-      <StageArtifactTitle>summary</StageArtifactTitle>
-      <div style={SUMMARY_BOX_STYLE}>{summary}</div>
+      <StageArtifactTitle>summary<OldRunChip latestRun={entry.latestRun} /></StageArtifactTitle>
+      <div style={SUMMARY_BOX_STYLE}>{entry.measurement.summary}</div>
     </StageArtifact>
   );
 }

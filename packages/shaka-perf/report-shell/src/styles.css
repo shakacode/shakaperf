@@ -3283,7 +3283,13 @@ input {
   cursor: pointer;
 }
 .suite-toggle input { accent-color: #2563eb; }
-.outcome-slot__runs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.old-run-chip {
+  margin-left: 8px;
+  vertical-align: middle;
+  font-weight: 400;
+  text-transform: none;
+  white-space: nowrap;
+}
 
 /* Saved measurement details: shared facts first, individual results on demand. */
 .run-details { padding: 0 24px; color: var(--fg); font-size: 12px; line-height: 1.6; }

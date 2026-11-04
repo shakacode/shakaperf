@@ -11,6 +11,7 @@ import {
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
+  OldRunChip,
   StageNote,
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
@@ -39,6 +40,7 @@ export function PerfArtifactView({
     .map((entry) => ({
       perf: entry.measurement,
       viewportLabel: entry.viewport.label,
+      latestRun: entry.latestRun,
     }))
     .filter(({ perf }) => hasRenderableData(perf));
   if (perfs.length === 0) return null;
@@ -57,6 +59,7 @@ export function PerfArtifactView({
             key={`${row.viewportLabel}-${index}`}
             perf={row.perf}
             viewportLabel={row.viewportLabel}
+            latestRun={row.latestRun}
           />
         ))}
       </div>
@@ -64,13 +67,13 @@ export function PerfArtifactView({
   );
 }
 
-function PerfViewportBlock({ perf, viewportLabel }: PerfRow) {
+function PerfViewportBlock({ perf, viewportLabel, latestRun }: PerfRow) {
   const hasSignificantMetrics = significantMetrics(perf).length > 0;
   const hasNoDifference = hasNoDifferenceMetrics(perf);
   return (
     <section className="stage-stack__viewport perf-viewport" aria-label={`${viewportLabel} performance`}>
       <div className="perf-viewport__head">
-        <span className="perf-viewport__label">{viewportLabel} performance</span>
+        <span className="perf-viewport__label">{viewportLabel} performance<OldRunChip latestRun={latestRun} /></span>
       </div>
       <PerfBody
         perf={perf}
@@ -208,6 +211,7 @@ function significantMetrics(perf: PerfArtifact): PerfMetric[] {
 }
 
 interface PerfRow {
+  latestRun: boolean;
   perf: PerfArtifact;
   viewportLabel: string;
 }

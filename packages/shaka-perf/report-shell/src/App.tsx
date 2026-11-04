@@ -238,7 +238,11 @@ function reportStages(meta: ReportMeta): ReportStage[] {
  * and the empty-card rule read this, so the filter never offers (or blames) a
  * section the card was never going to show.
  */
-export function stagesThatRender(meta: ReportMeta, test: TestResult): Set<string> {
+export function stagesThatRender(
+  meta: ReportMeta,
+  test: TestResult,
+  latestRunId?: string | null,
+): Set<string> {
   // A persisted outcome may name a stage this build no longer registers (a
   // merged or --report-only report); the renderer throws on those, and the card
   // never shows them anyway.
@@ -252,7 +256,7 @@ export function stagesThatRender(meta: ReportMeta, test: TestResult): Set<string
   }
   const rendered = new Set<string>();
   for (const [stage, outcomes] of byStage) {
-    if (stageSection(meta, outcomes) != null) rendered.add(stage);
+    if (stageSection(meta, outcomes, latestRunId) != null) rendered.add(stage);
   }
   return rendered;
 }
@@ -286,10 +290,14 @@ function hasReportableOutcomes(test: TestResult, includePersistedOutcomes: boole
   );
 }
 
-export function buildStageFilterOptions(meta: ReportMeta, tests: readonly TestResult[]): StageFilterOption[] {
+export function buildStageFilterOptions(
+  meta: ReportMeta,
+  tests: readonly TestResult[],
+  latestRunId?: string | null,
+): StageFilterOption[] {
   const counts = new Map<string, number>();
   for (const test of tests) {
-    for (const stage of stagesThatRender(meta, test)) {
+    for (const stage of stagesThatRender(meta, test, latestRunId)) {
       counts.set(stage, (counts.get(stage) ?? 0) + 1);
     }
   }
@@ -392,13 +400,14 @@ export function App({
       setSelection: setAccessibilityFilterSelection,
     };
   }, [accessibilityFilterOptions, accessibilityFilterSelection, setAccessibilityFilterSelection]);
+  const latestRunKey = useMemo(() => newestRunKey(data.tests), [data.tests]);
   const stageFilterOptions = useMemo(
-    () => buildStageFilterOptions(data.meta, cardTests),
-    [cardTests, data.meta],
+    () => buildStageFilterOptions(data.meta, cardTests, latestRunKey),
+    [cardTests, data.meta, latestRunKey],
   );
   const renderedStagesByTest = useMemo(
-    () => new Map(displayTests.map((test) => [test.id, stagesThatRender(data.meta, test)])),
-    [displayTests, data.meta],
+    () => new Map(displayTests.map((test) => [test.id, stagesThatRender(data.meta, test, latestRunKey)])),
+    [displayTests, data.meta, latestRunKey],
   );
   const visibleStages = useMemo(
     () => normalizeStageSelection(visibleStageOverride, stageFilterOptions),
@@ -460,7 +469,6 @@ export function App({
     }
     return out;
   }, [chipTestSets, visibleTestIds]);
-  const latestRunKey = useMemo(() => newestRunKey(data.tests), [data.tests]);
   const showRunChips = latestRunKey != null && cardTests.some((test) => runKey(test) !== latestRunKey);
   const missingTests = useMemo(
     () => data.tests.filter((test) => (
@@ -600,8 +608,9 @@ export function App({
                 key={reviewedKey(data.meta, test)}
                 test={test}
                 meta={data.meta}
-                latestRunId={isBisectReport ? undefined : latestRunKey}
-                runLabel={showRunChips ? (runKey(test) === latestRunKey ? 'latest' : 'old') : null}
+                latestRunId={latestRunKey}
+                showViewportRunChips={!isBisectReport}
+                oldRun={showRunChips && runKey(test) !== latestRunKey}
                 animationDelayMs={Math.min(idx, 8) * 40}
                 dimmed={dimmed}
                 visibleStages={effectiveVisibleStages}

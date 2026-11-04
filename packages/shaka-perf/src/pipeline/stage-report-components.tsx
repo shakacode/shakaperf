@@ -20,6 +20,18 @@ export interface StageArtifactTestMeta {
 
 const StageArtifactContext = createContext<StageArtifactTestMeta | null>(null);
 
+// Whole-test warnings and bisect reports suppress repeated viewport warnings,
+// without changing the freshness metadata supplied to stage renderers.
+const StageRunChipsContext = createContext(true);
+export const StageRunChipsProvider = StageRunChipsContext.Provider;
+
+export function OldRunChip({ latestRun }: { latestRun: boolean }) {
+  const visible = useContext(StageRunChipsContext);
+  return visible && latestRun === false
+    ? <span className="pill pill--gray old-run-chip">old run</span>
+    : null;
+}
+
 interface DialogProps {
   open: boolean;
   onClose: () => void;

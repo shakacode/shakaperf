@@ -155,16 +155,18 @@ export function TestCard({
   test,
   meta,
   animationDelayMs,
-  runLabel,
+  oldRun,
   latestRunId,
+  showViewportRunChips = true,
   dimmed,
   visibleStages,
 }: {
   test: TestResult;
   meta: ReportMeta;
   animationDelayMs: number;
-  runLabel?: 'latest' | 'old' | null;
+  oldRun?: boolean;
   latestRunId?: string | null;
+  showViewportRunChips?: boolean;
   visibleStages: ReadonlySet<string>;
   /**
    * True when the test doesn't match the active chip filter. The card stays
@@ -214,9 +216,9 @@ export function TestCard({
             />
             reviewed
           </label>
-          {runLabel ? (
-            <span className={`pill pill--${runLabel === 'latest' ? 'blue' : 'gray'}`}>
-              <span className="pill__label">{runLabel} run</span>
+          {oldRun ? (
+            <span className="pill pill--gray">
+              <span className="pill__label">old run</span>
             </span>
           ) : null}
           {chips.map((chip) => (
@@ -249,7 +251,8 @@ export function TestCard({
                   key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
                   meta={meta}
                   outcomes={outcomes}
-                  latestRunId={mixedRuns ? latestRunId : undefined}
+                  latestRunId={latestRunId}
+                  showRunChips={showViewportRunChips && mixedRuns}
                 />
               ))}
             </StageArtifactProvider>
