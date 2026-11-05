@@ -59,7 +59,7 @@ export function TestMetadata({ meta, test }: { meta: ReportMeta; test: TestResul
   const latest = test.outcomes.flatMap((outcome) => outcome.runMetadata ? [outcome.runMetadata] : [])
     .sort((a, b) => (Date.parse(b.measuredAt) || Date.parse(b.runId) || 0) - (Date.parse(a.measuredAt) || Date.parse(a.runId) || 0))[0];
   return (
-    <details className="card__metadata">
+    <details className="card__disclosure card__metadata">
       <summary>Metadata</summary>
       <div className="card__metadata-content">
         <div>

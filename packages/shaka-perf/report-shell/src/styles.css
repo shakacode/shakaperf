@@ -1474,7 +1474,7 @@ input {
 }
 
 .card[data-reviewed="true"] .card__title,
-.card[data-reviewed="true"] .card__pills .pill {
+.card[data-reviewed="true"] .card__tags .pill {
   opacity: 0.6;
 }
 
@@ -3231,9 +3231,9 @@ input {
 .run-details__command-variant > summary .run-details__scope { display: block; margin: 0; }
 .run-details__command-variant .run-details__command { padding: 0 12px 12px; }
 
-.card__metadata { border-bottom: 1px solid var(--border); font-size: 11px; }
-.card__metadata > summary { padding: 9px 20px; cursor: pointer; color: var(--fg-muted); }
-.card__metadata > summary:hover { color: var(--fg); background: var(--bg-hover); }
+.card__disclosure { border-bottom: 1px solid var(--border); font-size: 11px; }
+.card__disclosure > summary { padding: 9px 20px; cursor: pointer; color: var(--fg-muted); }
+.card__disclosure > summary:hover { color: var(--fg); background: var(--bg-hover); }
 .card__metadata-content { display: grid; gap: 10px; min-width: 0; padding: 0 20px 14px; }
 .card__metadata-content > * { min-width: 0; }
 .card__metadata .card__urls { padding: 0; margin: 0; border: 0; }
@@ -3304,3 +3304,12 @@ input {
   padding-top: 0;
   border-top: 0;
 }
+
+.card__tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 0 20px 14px;
+}
+.card__tag-list .pill { max-width: 100%; }

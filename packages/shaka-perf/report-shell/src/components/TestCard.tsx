@@ -165,14 +165,6 @@ export function TestCard({
             />
             reviewed
           </label>
-          {oldRun ? (
-            <span className="pill pill--gray">
-              <span className="pill__label">old run</span>
-            </span>
-          ) : null}
-          {chips.map((chip) => (
-            <Pill key={`${chip.tag}:${chip.text}`} chip={chip} />
-          ))}
           <RunDetails outcomes={test.outcomes} />
           {logs.length > 0 ? (
             <button
@@ -186,6 +178,20 @@ export function TestCard({
           ) : null}
         </div>
       </div>
+
+      <details className="card__disclosure card__tags" open>
+        <summary>Tags</summary>
+        <div className="card__tag-list">
+          {oldRun ? (
+            <span className="pill pill--gray">
+              <span className="pill__label">old run</span>
+            </span>
+          ) : null}
+          {chips.map((chip) => (
+            <Pill key={`${chip.tag}:${chip.text}`} chip={chip} />
+          ))}
+        </div>
+      </details>
 
       <TestMetadata meta={meta} test={test} />
 
