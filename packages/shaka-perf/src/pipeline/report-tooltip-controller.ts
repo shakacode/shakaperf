@@ -122,3 +122,11 @@ export const REPORT_TOOLTIP_CSS = `
 }
 
 `;
+
+// HTML adapter for standalone artifacts that do not load the React report shell.
+export function renderTooltipHelp(id: string, label: string, explanation: string): string {
+  const escape = (text: string) => text.replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[char]!);
+  return `<button id="${escape(id)}" type="button" class="report-tooltip__trigger" aria-label="${escape(label)}: explanation" data-tooltip="${escape(explanation)}"><span class="report-tooltip__help" aria-hidden="true">?</span></button>`;
+}

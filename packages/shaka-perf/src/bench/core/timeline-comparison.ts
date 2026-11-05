@@ -10,10 +10,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { PNG } from 'pngjs';
 import sharp from 'sharp';
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { TooltipLabel } from '../../pipeline/report-tooltip';
-import { attachReportTooltip, REPORT_TOOLTIP_CSS } from '../../pipeline/report-tooltip-controller';
+import { attachReportTooltip, renderTooltipHelp, REPORT_TOOLTIP_CSS } from '../../pipeline/report-tooltip-controller';
 import { pipeAndFilterStderr } from './ffmpeg-stderr';
 import { getFfmpegSyncOption } from './ffmpeg-sync-option';
 import { rendererMainThreadEvents } from './main-thread-tasks';
@@ -1691,13 +1688,13 @@ function buildTimelineHtml(
   <div class="controls">
     <div class="controls__option">
       <label><input type="checkbox" id="align-annotations"${alignment.pairCount === 0 ? ' disabled' : ''}>align test annotations</label>
-      ${renderToStaticMarkup(createElement(TooltipLabel, { label: 'align test annotations', helpOnly: true, explanation: alignment.pairCount === 0
+      ${renderTooltipHelp('align-help', 'align test annotations', alignment.pairCount === 0
         ? 'no test annotation is shared by both sides'
-        : 'shift the side that reached each test annotation earlier so both sides line up there' }), { identifierPrefix: 'align-' })}
+        : 'shift the side that reached each test annotation earlier so both sides line up there')}
     </div>
     <div class="controls__option">
       <label><input type="checkbox" id="highlight-progress">highlight progress</label>
-      ${renderToStaticMarkup(createElement(TooltipLabel, { label: 'highlight progress', helpOnly: true, explanation: 'paint the pixels that changed since the previous frame red' }), { identifierPrefix: 'progress-' })}
+      ${renderTooltipHelp('progress-help', 'highlight progress', 'paint the pixels that changed since the previous frame red')}
     </div>
   </div>
   ${(['control', 'experiment'] as const).map(side =>

@@ -25,7 +25,6 @@ export function TooltipLabel({ label, explanation, helpOnly = false }: {
       type="button"
       className="report-tooltip__trigger"
       aria-label={`${label}: explanation`}
-      data-tooltip={explanation}
     >
       {helpOnly ? null : `${label} `}<span className="report-tooltip__help" aria-hidden="true">?</span>
     </button>

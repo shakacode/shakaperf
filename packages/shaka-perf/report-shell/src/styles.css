@@ -3246,7 +3246,7 @@ input {
 .card__tag-list .pill { max-width: 100%; }
 
 .card__metadata-row { position: relative; }
-.card__metadata-row .card__metadata > summary { padding-right: 210px; }
+.card__metadata-row .card__metadata > summary { margin-right: 210px; padding-right: 0; }
 .card__actions {
   position: absolute;
   top: 9px;
