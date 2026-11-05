@@ -439,24 +439,18 @@ export function App({
         ) : null}
 
         <div className="header__controls">
-          <SearchBar value={query} onChange={setQuery} />
-          <div className="header__filter-stack">
-            <ChipFilter active={activeChipKeys} filters={chipFilters} onSelect={selectChip} />
-            <div className="header__secondary-filters">
-              {!isBisectReport ? (
-                <label className="suite-toggle">
-                  <input type="checkbox" checked={showOldRuns} onChange={(event) => setShowOldRuns(event.target.checked)} />
-                  Show old runs
-                </label>
-              ) : null}
-
-            </div>
+          <div className="header__search-row">
+            <SearchBar value={query} onChange={setQuery} />
+            {!isBisectReport ? (
+              <label className="suite-toggle">
+                <input type="checkbox" checked={showOldRuns} onChange={(event) => setShowOldRuns(event.target.checked)} />
+                Show old runs
+              </label>
+            ) : null}
           </div>
+          <ChipFilter active={activeChipKeys} filters={chipFilters} onSelect={selectChip} />
+          <SortChips options={sortOptions} active={sort} onSelect={selectSort} />
         </div>
-
-        {/* Sort row sits on its own line under the filter chips, right-aligned
-            to match them. */}
-        <SortChips options={sortOptions} active={sort} onSelect={selectSort} />
 
         {data.bisect ? (
           <BisectSelectionSummary model={data.bisect} selection={bisectSelection} />
