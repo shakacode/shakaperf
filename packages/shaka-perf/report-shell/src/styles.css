@@ -3323,3 +3323,4 @@ input {
 }
 
 .card__tag-list .pill__label { white-space: normal; }
+.perf-timeline-preview { margin-block: 12px; }
