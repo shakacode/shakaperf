@@ -9,7 +9,7 @@ import { useRef, useState } from 'react';
 import type { ReportOutcome } from '../types';
 import { Dialog } from '../../../src/pipeline/stage-report-components';
 import { TooltipLabel } from '../../../src/pipeline/report-tooltip';
-import type { RunMetadata } from '../../../src/pipeline/run-metadata';
+import type { LoadedRunMetadata } from '../../../src/pipeline/run-metadata';
 
 export function savedRunDetails(outcomes: readonly ReportOutcome[]) {
   const groups = new Map<string, Entry[]>();
@@ -45,7 +45,7 @@ export function MeasurementCommand({ command, compact = false }: { command: stri
   );
 }
 
-type Entry = { stage: string; metadata: RunMetadata; recoveredAfterRetries?: boolean };
+type Entry = { stage: string; metadata: LoadedRunMetadata; recoveredAfterRetries?: boolean };
 
 function groupValues<T, V>(items: readonly T[], select: (item: T) => V) {
   const groups = new Map<string, { value: V; items: T[] }>();
@@ -74,7 +74,7 @@ function Scope({ items, entries, runs, always = false }: { items: Entry[]; entri
   ).join(' / ')}</span>;
 }
 
-function CommitDetails({ commit }: { commit: Pick<NonNullable<RunMetadata['targets'][number]['commit']>, 'sha' | 'message'> }) {
+function CommitDetails({ commit }: { commit: Pick<NonNullable<LoadedRunMetadata['targets'][number]['commit']>, 'sha' | 'message'> }) {
   const [subject = '', ...body] = commit.message.split('\n');
   const heading = <><code title={commit.sha}>{commit.sha.slice(0, 8)}</code><span>{subject || (body.join('\n').trim() ? 'Commit message' : 'Empty commit message')}</span></>;
   if (!body.join('\n').trim()) return <div className="run-details__commit"><div className="run-details__commit-heading">{heading}</div></div>;

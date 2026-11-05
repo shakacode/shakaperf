@@ -18,6 +18,12 @@ import type { AccessibilityCompareResult, AccessibilityCompareSummary } from '..
 import { runPipeline } from '../../pipeline/runner';
 import { buildAbTestsConfig, type AbTestsConfig } from '../../config';
 
+jest.mock('shaka-shared', () => ({
+  ...jest.requireActual('shaka-shared'),
+  // These engine fixtures use in-memory definitions rather than source files.
+  readTestSource: jest.fn(() => 'abTest("Fixture", {}, async () => {});'),
+}));
+
 describe('compare accessibility pipeline integration', () => {
   it('derives reusable pipeline construction options from parsed config', () => {
     const parsed = {

@@ -7,8 +7,9 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { createHash } from 'node:crypto';
 import type { AbTestDefinition } from 'shaka-shared';
-import type { Outcome } from './outcome';
+import { parseOutcome, type Outcome, type RecordedOutcome } from './outcome';
 import type { StageName } from '../stage/stage';
 import { testIdForTest, unitIdForTest } from './unit-id';
 import { toPosixRelative } from './path-utils';
@@ -80,7 +81,22 @@ export class ArtifactStore {
     );
   }
 
-  writeOutcome(test: AbTestDefinition, viewportLabel: string, outcome: Outcome): void {
+  /** One immutable snapshot shared by every measuring stage at this viewport. */
+  writeTestSource(test: AbTestDefinition, viewportLabel: string, source: string): ArtifactPath {
+    const hash = createHash('sha256').update(source).digest('hex');
+    const name = `test-source-${hash}.ts`;
+    const scope = this.scopeFor(test, viewportLabel);
+    fs.mkdirSync(scope.dir, { recursive: true });
+    const file = path.join(scope.dir, name);
+    try {
+      fs.writeFileSync(file, source, { flag: 'wx' });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    }
+    return scope.pathFor(name);
+  }
+
+  writeOutcome(test: AbTestDefinition, viewportLabel: string, outcome: RecordedOutcome): void {
     const dir = this.unitDirForViewport(test, viewportLabel);
     fs.mkdirSync(dir, { recursive: true });
     const payload = this.runId && outcome.runId == null
@@ -118,7 +134,7 @@ export class ArtifactStore {
   readOutcome(test: AbTestDefinition, viewportLabel: string, stage: StageName): Outcome | null {
     const p = path.join(this.unitDirForViewport(test, viewportLabel), `${stage}.json`);
     try {
-      return JSON.parse(fs.readFileSync(p, 'utf8')) as Outcome;
+      return parseOutcome(fs.readFileSync(p, 'utf8'));
     } catch {
       return null;
     }
@@ -136,7 +152,7 @@ export class ArtifactStore {
     for (const entry of entries) {
       if (!entry.endsWith('.json')) continue;
       try {
-        outcomes.push(JSON.parse(fs.readFileSync(path.join(dir, entry), 'utf8')) as Outcome);
+        outcomes.push(parseOutcome(fs.readFileSync(path.join(dir, entry), 'utf8')));
       } catch {
         // Report-only can still use any other readable outcomes.
       }
@@ -145,6 +161,16 @@ export class ArtifactStore {
   }
 
   readJsonArtifact<T>(artifactPath: string): T | undefined {
+    const text = this.readTextArtifact(artifactPath);
+    if (text === undefined) return undefined;
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      return undefined;
+    }
+  }
+
+  readTextArtifact(artifactPath: string): string | undefined {
     const absolutePath = path.resolve(this.resultsRoot, artifactPath);
     const relativePath = path.relative(this.resultsRoot, absolutePath);
     if (
@@ -156,7 +182,7 @@ export class ArtifactStore {
       return undefined;
     }
     try {
-      return JSON.parse(fs.readFileSync(absolutePath, 'utf8')) as T;
+      return fs.readFileSync(absolutePath, 'utf8');
     } catch {
       return undefined;
     }

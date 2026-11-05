@@ -9,7 +9,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import playwright from 'playwright';
-import type { AbTestDefinition } from 'shaka-shared';
+import { readTestSource, type AbTestDefinition } from 'shaka-shared';
 import { loadTests } from '../../config-loader';
 import {
   createPipeline,
@@ -19,6 +19,13 @@ import {
 import { runPipeline, type RuntimeOptions } from '../runner';
 import { ArtifactStore } from '../artifact-store';
 import { unitIdForTest } from '../unit-id';
+
+// Most runner fixtures supply in-memory definitions. Source-specific cases
+// below switch back to the real reader and real source files.
+jest.mock('shaka-shared', () => ({
+  ...jest.requireActual('shaka-shared'),
+  readTestSource: jest.fn(() => 'abTest("Fixture", {}, async () => {});'),
+}));
 
 // These fixtures do not take real measurements; leave the machine queue to real runs.
 jest.mock('../measurement-lock', () => ({
@@ -253,6 +260,7 @@ describe('runPipeline', () => {
 
   beforeEach(() => {
     jest.mocked(loadTests).mockReset();
+    jest.mocked(readTestSource).mockReturnValue('abTest("Fixture", {}, async () => {});');
   });
 
   async function runWithFrozenTest(

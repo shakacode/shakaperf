@@ -12,7 +12,7 @@ import type { ReportData as PipelineReportData } from '../../report';
 import type { BisectReportModel } from '../../../compare/bisect/report-model';
 type ReportData = PipelineReportData & { bisect?: BisectReportModel };
 import type { ReportOutcome, TestResult } from '../../report';
-import type { RunMetadata } from '../../run-metadata';
+import type { LoadedRunMetadata } from '../../run-metadata';
 
 const firstRun = '2026-10-20T20:54:53.891Z';
 const secondRun = '2026-10-20T21:00:50.722Z';
@@ -26,7 +26,8 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
     controlDisplay: '1.8 s', experimentDisplay: '2.1 s', deltaDisplay: '+300 ms', percentDisplay: '+16.7%', deltaPercent: 16.7,
     pValue: 0.0078, direction: 'regression',
   }] };
-  const metadata = (runId: string): RunMetadata => ({
+  const metadata = (runId: string): LoadedRunMetadata => ({
+    testSourcePath: null,
     command: `shaka-perf ${pipelineName} --filter 'Homepage' --categories ${audit ? 'audit,accessibility' : 'perf,accessibility'}`,
     runId, measuredAt: runId, stages: [stage, 'accessibility'], categories: [audit ? 'audit' : 'perf', 'accessibility'],
     viewport: DESKTOP_VIEWPORT,

@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import type { RunMetadata } from './run-metadata';
+import type { LoadedRunMetadata, RunMetadata } from './run-metadata';
 import type { StageName } from '../stage/stage';
 import type { StageFailureArtifacts } from '../stage/stage-failure';
 
@@ -37,7 +37,7 @@ export interface Outcome {
   reason?: string;
   logs?: string;
   runId?: string;
-  runMetadata?: RunMetadata;
+  runMetadata?: LoadedRunMetadata;
   /**
    * True when the worker pool ran this stage task more than once — it crashed
    * or timed out on an earlier attempt but a retry succeeded. Set by the runner
@@ -45,4 +45,16 @@ export interface Outcome {
    * after retries)" chip. Only meaningful on `kind === 'ok'`.
    */
   recoveredAfterRetries?: boolean;
+}
+
+/** New outcomes cannot persist metadata without a captured source. */
+export type RecordedOutcome = Omit<Outcome, 'runMetadata'> & {
+  runMetadata?: RunMetadata;
+};
+
+/** Normalize missing legacy source fields at the JSON read boundary. */
+export function parseOutcome(json: string): Outcome {
+  const outcome = JSON.parse(json) as Outcome;
+  if (outcome.runMetadata) outcome.runMetadata.testSourcePath ??= null;
+  return outcome;
 }

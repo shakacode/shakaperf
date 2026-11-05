@@ -12,7 +12,7 @@ import type { AuditResult } from '../audit/stages/audit/stage';
 import type { AccessibilityResult } from '../audit/stages/accessibility/types';
 import type { AgentReadinessResult } from '../audit/stages/agent_readiness/types';
 import type { ChipDescriptor } from '../pipeline/report';
-import type { Outcome } from '../pipeline/outcome';
+import { parseOutcome } from '../pipeline/outcome';
 
 // Cross-page synthesis over a SAVED audit-results directory. shaka-perf computes
 // the worst metric WITHIN a page but does not rank pages against each other;
@@ -152,7 +152,7 @@ export function synthesizeSite(resultsDir: string): SiteScorecard {
       try {
         // audit.json is the audit stage's persisted Outcome (artifact-store
         // writes `${outcome.stage}.json`); its measurement is an AuditResult.
-        const outcome = JSON.parse(fs.readFileSync(auditPath, 'utf8')) as Outcome;
+        const outcome = parseOutcome(fs.readFileSync(auditPath, 'utf8'));
         const ms = (outcome.measurement as Partial<AuditResult> | undefined)?.metrics ?? [];
         for (const m of ms) {
           if (m && m.label) {
@@ -181,7 +181,7 @@ export function synthesizeSite(resultsDir: string): SiteScorecard {
     const a11yPath = path.join(resultsDir, String(t.id), 'accessibility.json');
     if (fs.existsSync(a11yPath)) {
       try {
-        const outcome = JSON.parse(fs.readFileSync(a11yPath, 'utf8')) as Outcome;
+        const outcome = parseOutcome(fs.readFileSync(a11yPath, 'utf8'));
         const measurement = outcome.measurement as AccessibilityResult | undefined;
         if (measurement && Array.isArray(measurement.scans)) a11y = measurement;
       } catch {
@@ -195,7 +195,7 @@ export function synthesizeSite(resultsDir: string): SiteScorecard {
     const agentPath = path.join(resultsDir, String(t.id), 'agent-readiness.json');
     if (fs.existsSync(agentPath)) {
       try {
-        const outcome = JSON.parse(fs.readFileSync(agentPath, 'utf8')) as Outcome;
+        const outcome = parseOutcome(fs.readFileSync(agentPath, 'utf8'));
         const measurement = outcome.measurement as AgentReadinessResult | undefined;
         // Validate the shape the scorer relies on: a truncated/corrupt file (e.g.
         // `{rendered:{}}` from an interrupted write) would otherwise throw deep

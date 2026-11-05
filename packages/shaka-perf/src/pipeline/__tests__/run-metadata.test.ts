@@ -7,6 +7,12 @@
 
 import { DEFAULT_LH_CONFIG } from '../../bench/core/lighthouse-config';
 import { measurementCommand, lighthouseThrottling } from '../run-metadata';
+import type { RunMetadata } from '../run-metadata';
+import { DESKTOP_VIEWPORT, type AbTestDefinition } from 'shaka-shared';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { ArtifactStore } from '../artifact-store';
 
 describe('saved measurement metadata', () => {
   it('records resolved Lighthouse defaults and only active network fields', () => {
@@ -31,5 +37,75 @@ describe('saved measurement metadata', () => {
     expect(lighthouseThrottling({})).toBeUndefined();
     expect(lighthouseThrottling({ throttlingMethod: 'devtools', throttling: { requestLatencyMs: 123 } }))
       .toEqual({ engine: 'Lighthouse', method: 'devtools', network: { requestLatencyMs: 123 } });
+  });
+});
+
+describe('source artifacts at the persistence boundary', () => {
+  const test: AbTestDefinition = {
+    name: 'Homepage', file: null, line: null, startingPath: '/', testTypes: null,
+    testFn: async () => {},
+  };
+  const source = "abTest('Homepage', {}, async () => {});";
+  const metadata: Omit<RunMetadata, 'testSourcePath'> = {
+    command: 'shaka-perf compare', runId: '2026-11-04T10:00:00Z', measuredAt: '2026-11-04T10:00:00Z',
+    stages: ['visreg'], categories: ['visreg'], viewport: DESKTOP_VIEWPORT, targets: [],
+  };
+  let dir: string;
+  let store: ArtifactStore;
+  beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-source-artifact-')); store = new ArtifactStore(dir); });
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  it('shares one immutable source artifact across stage outcomes', () => {
+    const testSourcePath = store.writeTestSource(test, 'desktop', source);
+    const file = path.join(dir, testSourcePath);
+    const mtime = fs.statSync(file).mtimeMs;
+    expect(store.writeTestSource(test, 'desktop', source)).toBe(testSourcePath);
+    expect(fs.statSync(file).mtimeMs).toBe(mtime);
+    for (const stage of ['visreg', 'perf'] as const) {
+      store.writeOutcome(test, 'desktop', { kind: 'ok', stage, runMetadata: { ...metadata, testSourcePath } });
+      const saved = JSON.parse(fs.readFileSync(path.join(store.unitDirForViewport(test, 'desktop'), `${stage}.json`), 'utf8'));
+      expect(saved.runMetadata).toMatchObject({ testSourcePath });
+    }
+    expect(store.readTextArtifact(testSourcePath)).toBe(source);
+    expect(fs.readdirSync(store.artifactsDirForViewport(test, 'desktop'))).toEqual([path.basename(testSourcePath)]);
+    const changed = source.replace('Homepage', 'Changed homepage');
+    const changedPath = store.writeTestSource(test, 'desktop', changed);
+    expect(changedPath).not.toBe(testSourcePath);
+    expect(store.readTextArtifact(changedPath)).toBe(changed);
+    expect(store.readTextArtifact(testSourcePath)).toBe(source);
+  });
+
+  it.each([null, undefined])('normalizes source path %p without rewriting saved JSON', (testSourcePath) => {
+    const unit = store.unitDirForViewport(test, 'desktop');
+    fs.mkdirSync(unit, { recursive: true });
+    const file = path.join(unit, 'visreg.json');
+    const json = JSON.stringify({ kind: 'ok', stage: 'visreg', runMetadata: { ...metadata, testSourcePath } });
+    fs.writeFileSync(file, json);
+    for (const outcome of [store.readOutcome(test, 'desktop', 'visreg'), ...store.readOutcomesForViewport(test, 'desktop')]) {
+      expect(outcome?.runMetadata?.testSourcePath).toBeNull();
+    }
+    expect(fs.readFileSync(file, 'utf8')).toBe(json);
+  });
+
+  it('keeps measured outcomes readable when their source artifact is missing', () => {
+    const testSourcePath = store.writeTestSource(test, 'desktop', source);
+    store.writeOutcome(test, 'desktop', { kind: 'ok', stage: 'visreg', runMetadata: { ...metadata, testSourcePath } });
+    fs.unlinkSync(path.join(dir, testSourcePath));
+    expect(store.readOutcome(test, 'desktop', 'visreg')?.kind).toBe('ok');
+    expect(store.readOutcome(test, 'desktop', 'visreg')?.runMetadata?.testSourcePath).toBe(testSourcePath);
+    expect(store.readTextArtifact(testSourcePath)).toBeUndefined();
+  });
+
+  it('does not read source paths outside the results root', () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-outside-source-'));
+    try {
+      const file = path.join(outside, 'source.ts');
+      fs.writeFileSync(file, source);
+      for (const candidate of [file, path.relative(dir, file), '.']) {
+        expect(store.readTextArtifact(candidate)).toBeUndefined();
+      }
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true });
+    }
   });
 });
