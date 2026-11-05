@@ -1656,6 +1656,14 @@ input {
   line-height: 1.35;
 }
 
+.report-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font: inherit;
+}
+
 .artifact-card__title {
   grid-column: 1;
   color: var(--fg);

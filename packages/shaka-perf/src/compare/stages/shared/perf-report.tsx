@@ -11,6 +11,7 @@ import {
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
+  ReportHeading,
   OldRunChip,
   StageNote,
 } from '../../../pipeline/stage-report-components';
@@ -52,7 +53,7 @@ export function PerfArtifactView({
 
   return (
     <StageArtifact>
-      <StageArtifactTitle verbatim>{title}</StageArtifactTitle>
+      <StageArtifactTitle verbatim title={title} />
       <div className="stage-stack">
         {rows.map((row, index) => (
           <PerfViewportBlock
@@ -73,7 +74,7 @@ function PerfViewportBlock({ perf, viewportLabel, latestRun }: PerfRow) {
   return (
     <section className="stage-stack__viewport perf-viewport" aria-label={`${viewportLabel} performance`}>
       <div className="perf-viewport__head">
-        <span className="perf-viewport__label">{viewportLabel} performance<OldRunChip latestRun={latestRun} /></span>
+        <ReportHeading className="perf-viewport__label" level={5} title={`${viewportLabel} performance`} badge={<OldRunChip latestRun={latestRun} />} />
       </div>
       <PerfBody
         perf={perf}
@@ -143,7 +144,7 @@ function MetricsTable({ group, metrics }: { group: PerfMetricGroup; metrics: rea
   if (metrics.length === 0) return null;
   return (
     <div className="stage-section">
-      <div className="stage-section__head">{group}</div>
+      <ReportHeading className="stage-section__head" level={6} title={group} />
       <table className="stage-table">
         <thead>
           <tr>

@@ -6,8 +6,12 @@
  */
 
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { ReportHeading, type ReportHeadingProps } from './report-heading';
 import { ImageSizeContext, ImageViewport } from './image-viewport';
 import { renderPipelineDialogMetaUrls } from './pipeline-artifacts';
+
+export { ReportHeading } from './report-heading';
+
 export interface StageArtifactTestMeta {
   readonly name: string;
   readonly filePath: string;
@@ -176,14 +180,14 @@ export function StageArtifact({ children }: { children: ReactNode }) {
 }
 
 export function StageArtifactTitle(
-  { children, verbatim = false }: { children: ReactNode; verbatim?: boolean },
+  { title, badge, verbatim = false }: Pick<ReportHeadingProps, 'title' | 'badge'> & { verbatim?: boolean },
 ) {
   // `verbatim` opts out of the default uppercase transform so human-readable
   // multi-word titles (e.g. compare section headings) keep their own casing.
   const className = verbatim
     ? 'stage-artifact__title stage-artifact__title--verbatim'
     : 'stage-artifact__title';
-  return <div className={className}>{children}</div>;
+  return <ReportHeading className={className} title={title} badge={badge} />;
 }
 
 export function StageNote({ body, label }: { body: string; label?: string }) {

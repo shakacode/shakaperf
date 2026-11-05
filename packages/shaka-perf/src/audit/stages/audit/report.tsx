@@ -11,6 +11,7 @@ import {
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
+  ReportHeading,
   OldRunChip,
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
@@ -62,7 +63,7 @@ export function AuditArtifactView({
 
   return (
     <StageArtifact>
-      <StageArtifactTitle>audit</StageArtifactTitle>
+      <StageArtifactTitle title="audit" />
       <div className="stage-stack">
         {rows.map((row, index) => (
           <div key={`${row.viewportLabel}-${index}`} className="stage-stack__viewport">
@@ -91,7 +92,7 @@ function MetricTable({
   if (metrics.length === 0 && !hasArtifacts(audit)) return null;
   return (
     <div className="stage-section">
-      <div className="stage-section__head">{viewportLabel}<OldRunChip latestRun={latestRun} /></div>
+      <ReportHeading className="stage-section__head" level={5} title={viewportLabel} badge={<OldRunChip latestRun={latestRun} />} />
       <div style={METRIC_COLUMNS_STYLE}>
         {GROUPS.map((group) => {
           const groupMetrics = metrics.filter((metric) => metric.group === group.id);

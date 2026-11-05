@@ -13,6 +13,7 @@ import {
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
+  ReportHeading,
   OldRunChip,
   StageNote,
 } from '../../../pipeline/stage-report-components';
@@ -512,7 +513,7 @@ export function AccessibilityCompareArtifactView({
 
   return (
     <StageArtifact>
-      <StageArtifactTitle>accessibility</StageArtifactTitle>
+      <StageArtifactTitle title="accessibility" />
       <div className="stage-stack">
         {rows.map((entry) => (
           <div key={entry.viewport.label} className="stage-stack__viewport">
@@ -539,7 +540,7 @@ function AccessibilityCompareViewport({
 }) {
   return (
     <div className="stage-section">
-      <div className="stage-section__head">{viewportLabel}<OldRunChip latestRun={latestRun} /></div>
+      <ReportHeading className="stage-section__head" level={5} title={viewportLabel} badge={<OldRunChip latestRun={latestRun} />} />
       <div style={CARD_STYLE}>
         <div style={CARD_HEADER_STYLE}>
           <div style={SUMMARY_STYLE}>

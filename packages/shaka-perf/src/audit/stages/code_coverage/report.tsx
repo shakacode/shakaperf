@@ -10,6 +10,7 @@ import {
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
+  ReportHeading,
   OldRunChip,
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
@@ -27,11 +28,11 @@ export function CodeCoverageArtifactView({
   if (measurements.length === 0) return null;
   return (
     <StageArtifact>
-      <StageArtifactTitle>code coverage</StageArtifactTitle>
+      <StageArtifactTitle title="code coverage" />
       <div className="stage-stack">
         {measurements.map((entry, index) => (
           <div key={`${entry.viewport.label}-${index}`} className="stage-stack__viewport coverage-preview">
-            <div className="stage-section__head">{entry.viewport.label}<OldRunChip latestRun={entry.latestRun} /></div>
+            <ReportHeading className="stage-section__head" level={5} title={entry.viewport.label} badge={<OldRunChip latestRun={entry.latestRun} />} />
             <CoveragePreview measurement={entry.measurement} />
           </div>
         ))}
