@@ -138,7 +138,7 @@ describe('audit and coverage screenshot previews', () => {
   it('opens full-size coverage, Lighthouse, and failure artifacts in dialogs', async () => {
     page = await browser.newPage();
     await page.goto(pathToFileURL(path.join(directory, 'report.html')).href);
-    const coverage = page.locator('[data-stage="code_coverage"] button').first();
+    const coverage = page.locator('.coverage-preview__button').first();
     await coverage.click();
     await page.locator('dialog[open]').waitFor();
     expect(await page.locator('dialog[open] img').getAttribute('src')).toBe(TALL_IMAGE);

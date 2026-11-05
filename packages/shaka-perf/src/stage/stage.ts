@@ -159,6 +159,8 @@ export interface Stage<M = unknown> {
    */
   readonly label: string;
   renderArtifacts(measurements: readonly StageRenderEntry<M>[]): ReactNode;
+  /** Badge for the main section heading, when the stage displays one result. */
+  renderHeadingBadge?(measurements: readonly StageRenderEntry<M>[]): ReactNode;
   readonly category: StageCategory;
   readonly description: string;
   /**

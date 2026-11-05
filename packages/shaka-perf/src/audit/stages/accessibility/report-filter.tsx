@@ -17,7 +17,6 @@ import { useCloseOnOutsideInteraction } from '../../../pipeline/use-close-on-out
 import { ACCESSIBILITY_FILTER_CSS } from './report-styles';
 import {
   defaultAccessibilityFilterSelection,
-  hasAccessibilityFilterOptions,
   type AccessibilityFilterOptions,
   type AccessibilityFilterSelection,
   type FilterOption,
@@ -40,24 +39,9 @@ export function AccessibilityReportFilterProvider({
 }) {
   return (
     <AccessibilityFilterContext.Provider value={value}>
+      <style>{ACCESSIBILITY_FILTER_CSS}</style>
       {children}
     </AccessibilityFilterContext.Provider>
-  );
-}
-
-export function AccessibilityGlobalFilter({ state }: { state: AccessibilityFilterState | null }) {
-  if (!state || !hasAccessibilityFilterOptions(state.options)) return null;
-  return (
-    <>
-      <style>{ACCESSIBILITY_FILTER_CSS}</style>
-      <AccessibilityFilter
-        options={state.options}
-        selection={state.selection}
-        setSelection={state.setSelection}
-        title="accessibility filters"
-        variant="popover"
-      />
-    </>
   );
 }
 

@@ -11,7 +11,6 @@ import type {
   ChipDescriptor,
   ReportData,
   ReportMeta,
-  ReportOutcome,
   SortDescriptor,
   TestResult,
 } from './types';
@@ -28,12 +27,10 @@ import { SearchBar } from './components/SearchBar';
 import { ChipFilter, type ChipFilterOption } from './components/ChipFilter';
 import { SortChips, type SortChipOption, type SortDirection } from './components/SortChips';
 import { reviewedKey, TestCard } from './components/TestCard';
-import { stageSection } from './components/OutcomeSlot';
 import { ErrorBanner } from './components/ErrorBanner';
 import { MissingArtifactsCard } from './components/MissingArtifactsCard';
 import { pipelineStagesForReport, type ReportStage } from '../../src/pipeline/pipeline-artifacts';
 import {
-  AccessibilityGlobalFilter,
   AccessibilityReportFilterProvider,
   collectConfiguredFilterOptions,
   defaultAccessibilityFilterSelection,
@@ -43,11 +40,7 @@ import {
   type AccessibilityFilterState,
 } from '../../src/audit/stages/accessibility/report';
 import type { AccessibilityResult } from '../../src/audit/stages/accessibility/types';
-import {
-  StageFilter,
-  type StageFilterOption,
-  type StageFilterSelectionUpdate,
-} from './components/StageFilter';
+import { ReportSectionVisibilityProvider } from '../../src/pipeline/report-section';
 
 const ALL_FILTER_KEY = '__all__';
 
@@ -231,103 +224,10 @@ function reportStages(meta: ReportMeta): ReportStage[] {
     .filter((stage) => !HIDDEN_STAGE_FILTERS.has(stage.name));
 }
 
-/**
- * The stages this test actually draws a section for — asked of the same
- * renderer the card uses, so a stage whose outcomes are all skips, or whose
- * measurements produce no artifact, does not count. Both the section counts
- * and the empty-card rule read this, so the filter never offers (or blames) a
- * section the card was never going to show.
- */
-export function stagesThatRender(
-  meta: ReportMeta,
-  test: TestResult,
-  latestRunId?: string | null,
-): Set<string> {
-  // A persisted outcome may name a stage this build no longer registers (a
-  // merged or --report-only report); the renderer throws on those, and the card
-  // never shows them anyway.
-  const known = new Set(reportStages(meta).map((stage) => stage.name));
-  const byStage = new Map<string, ReportOutcome[]>();
-  for (const outcome of test.outcomes) {
-    if (!known.has(outcome.stage)) continue;
-    const group = byStage.get(outcome.stage);
-    if (group) group.push(outcome);
-    else byStage.set(outcome.stage, [outcome]);
-  }
-  const rendered = new Set<string>();
-  for (const [stage, outcomes] of byStage) {
-    if (stageSection(meta, outcomes, latestRunId) != null) rendered.add(stage);
-  }
-  return rendered;
-}
-
-function intersects(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
-  for (const value of a) {
-    if (b.has(value)) return true;
-  }
-  return false;
-}
-
-/**
- * True when the report-sections filter hid everything this card had to show,
- * leaving a bare shell — such a card drops out of the grid. `unfilteredStages`
- * is what the card would show with every section checked, so cards that render
- * nothing for other reasons (a bisect selection that owns none of their
- * stages) stay put.
- */
-export function isEmptiedByStageFilter(
-  renderedStages: ReadonlySet<string>,
-  visibleStages: ReadonlySet<string>,
-  unfilteredStages: ReadonlySet<string>,
-): boolean {
-  return intersects(renderedStages, unfilteredStages) &&
-    !intersects(renderedStages, visibleStages);
-}
-
 function hasReportableOutcomes(test: TestResult, includePersistedOutcomes: boolean): boolean {
   return test.measuredAt != null || (
     includePersistedOutcomes && test.outcomes.length > 0
   );
-}
-
-export function buildStageFilterOptions(
-  meta: ReportMeta,
-  tests: readonly TestResult[],
-  latestRunId?: string | null,
-): StageFilterOption[] {
-  const counts = new Map<string, number>();
-  for (const test of tests) {
-    for (const stage of stagesThatRender(meta, test, latestRunId)) {
-      counts.set(stage, (counts.get(stage) ?? 0) + 1);
-    }
-  }
-  // `label` rides along on each stage, so it's a guaranteed `string` here — no
-  // name→label lookup that could miss. Stable sort keeps pipeline order within
-  // the enabled/disabled groups.
-  return reportStages(meta)
-    .map((stage) => {
-      const count = counts.get(stage.name) ?? 0;
-      return {
-        stage: stage.name,
-        label: stage.label,
-        count,
-        disabled: count === 0,
-      };
-    })
-    .sort((a, b) => Number(a.disabled) - Number(b.disabled));
-}
-
-function enabledStageNames(options: readonly StageFilterOption[]): Set<string> {
-  return new Set(options.filter((option) => !option.disabled).map((option) => option.stage));
-}
-
-function normalizeStageSelection(
-  selected: ReadonlySet<string> | null,
-  options: readonly StageFilterOption[],
-): Set<string> {
-  const valid = enabledStageNames(options);
-  if (selected == null) return valid;
-  return new Set([...selected].filter((stage) => valid.has(stage)));
 }
 
 export function App({
@@ -350,11 +250,11 @@ export function App({
   const [visibleOverride, setVisibleOverride] = useState<Set<string> | null>(null);
   const [accessibilityFilterOverride, setAccessibilityFilterOverride] =
     useState<AccessibilityFilterSelection | null>(null);
-  const [visibleStageOverride, setVisibleStageOverride] = useState<Set<string> | null>(null);
   // Active sort dimension + direction. null → default (chip/run-recency) order.
   const [showFullSuite, setShowFullSuite] = useState(false);
   const [sort, setSort] = useState<{ tag: string; dir: SortDirection } | null>(null);
   const isBisectReport = data.bisect != null;
+  const latestRunKey = useMemo(() => newestRunKey(data.tests), [data.tests]);
   const cardTests = useMemo(
     () => data.tests.filter((test) => hasReportableOutcomes(test, isBisectReport)),
     [data.tests, isBisectReport],
@@ -400,19 +300,6 @@ export function App({
       setSelection: setAccessibilityFilterSelection,
     };
   }, [accessibilityFilterOptions, accessibilityFilterSelection, setAccessibilityFilterSelection]);
-  const latestRunKey = useMemo(() => newestRunKey(data.tests), [data.tests]);
-  const stageFilterOptions = useMemo(
-    () => buildStageFilterOptions(data.meta, cardTests, latestRunKey),
-    [cardTests, data.meta, latestRunKey],
-  );
-  const renderedStagesByTest = useMemo(
-    () => new Map(displayTests.map((test) => [test.id, stagesThatRender(data.meta, test, latestRunKey)])),
-    [displayTests, data.meta, latestRunKey],
-  );
-  const visibleStages = useMemo(
-    () => normalizeStageSelection(visibleStageOverride, stageFilterOptions),
-    [stageFilterOptions, visibleStageOverride],
-  );
   const bisectTestIds = useMemo(
     () => data.bisect == null
       ? new Set<string>()
@@ -429,21 +316,10 @@ export function App({
     if (data.bisect == null || bisectSelection.kind === 'all') return stages;
     return stageNamesForCategories(reportStages(data.meta), stages, bisectCategories);
   }, [bisectCategories, bisectSelection.kind, data.bisect, data.meta]);
-  const effectiveVisibleStages = useMemo(
-    () => narrowToBisectSelection(visibleStages),
-    [narrowToBisectSelection, visibleStages],
-  );
   const unfilteredStages = useMemo(
-    () => narrowToBisectSelection(enabledStageNames(stageFilterOptions)),
-    [narrowToBisectSelection, stageFilterOptions],
+    () => narrowToBisectSelection(new Set(reportStages(data.meta).map((stage) => stage.name))),
+    [data.meta, narrowToBisectSelection],
   );
-  const setVisibleStageSelection = useCallback((update: StageFilterSelectionUpdate) => {
-    setVisibleStageOverride((previous) => {
-      const current = normalizeStageSelection(previous, stageFilterOptions);
-      const next = typeof update === 'function' ? update(current) : update;
-      return normalizeStageSelection(next, stageFilterOptions);
-    });
-  }, [stageFilterOptions]);
   const sortOptions = useMemo(() => buildSortOptions(testsForFilterAndSortOptions), [testsForFilterAndSortOptions]);
   const sortValues = useMemo(() => buildSortValues(displayTests), [displayTests]);
   const allTestIds = useMemo(
@@ -477,7 +353,7 @@ export function App({
     [data.tests, isBisectReport, query],
   );
 
-  // "Show full suite", search, and report sections determine which cards appear.
+  // "Show full suite" and search determine which cards appear.
   // Status filters keep nonmatching cards visible but dimmed and listed last.
   // Within each group, use the selected sort or show newer runs first.
   const visibleTests = useMemo<{ test: TestResult; dimmed: boolean }[]>(() => {
@@ -486,8 +362,6 @@ export function App({
       if (!hasReportableOutcomes(t, isBisectReport)) continue;
       if (!isBisectReport && !showFullSuite && latestRunKey != null && runKey(t) !== latestRunKey) continue;
       if (!matchesQuery(t, query)) continue;
-      const rendered = renderedStagesByTest.get(t.id) ?? new Set<string>();
-      if (isEmptiedByStageFilter(rendered, effectiveVisibleStages, unfilteredStages)) continue;
       const excludedByBisect = data.bisect != null &&
         bisectSelection.kind !== 'all' &&
         !bisectTestIds.has(t.id);
@@ -514,9 +388,6 @@ export function App({
     latestRunKey,
     showFullSuite,
     data.bisect,
-    effectiveVisibleStages,
-    renderedStagesByTest,
-    unfilteredStages,
     visibleTestIds,
     query,
     sort,
@@ -555,6 +426,7 @@ export function App({
   };
 
   return (
+    <ReportSectionVisibilityProvider>
     <AccessibilityReportFilterProvider value={accessibilityFilterState}>
       <div className={isBisectReport ? 'app app--bisect' : 'app'}>
         <Header meta={data.meta} total={data.tests.length} />
@@ -580,12 +452,7 @@ export function App({
                   Show full suite
                 </label>
               ) : null}
-              <AccessibilityGlobalFilter state={accessibilityFilterState} />
-              <StageFilter
-                options={stageFilterOptions}
-                selected={visibleStages}
-                onChange={setVisibleStageSelection}
-              />
+
             </div>
           </div>
         </div>
@@ -613,13 +480,14 @@ export function App({
                 oldRun={showRunChips && runKey(test) !== latestRunKey}
                 animationDelayMs={Math.min(idx, 8) * 40}
                 dimmed={dimmed}
-                visibleStages={effectiveVisibleStages}
+                visibleStages={unfilteredStages}
               />
             ))}
           </div>
         )}
       </div>
     </AccessibilityReportFilterProvider>
+    </ReportSectionVisibilityProvider>
   );
 }
 

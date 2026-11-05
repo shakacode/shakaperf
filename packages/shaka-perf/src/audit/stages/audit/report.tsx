@@ -13,6 +13,7 @@ import {
   StageArtifactTitle,
   OldRunChip,
 } from '../../../pipeline/stage-report-components';
+import { ReportSection } from '../../../pipeline/report-section';
 import { FullReportOnly } from '../../../pipeline/report-mode';
 import { ScreenshotPreview } from '../../../pipeline/screenshot-preview';
 import { METRIC_LEVEL_CSS_VAR } from './metrics';
@@ -62,7 +63,7 @@ export function AuditArtifactView({
 
   return (
     <StageArtifact>
-      <StageArtifactTitle>audit</StageArtifactTitle>
+      <StageArtifactTitle title="audit" />
       <div className="stage-stack">
         {rows.map((row, index) => (
           <div key={`${row.viewportLabel}-${index}`} className="stage-stack__viewport">
@@ -91,7 +92,8 @@ function MetricTable({
   if (metrics.length === 0 && !hasArtifacts(audit)) return null;
   return (
     <div className="stage-section">
-      <div className="stage-section__head">{viewportLabel}<OldRunChip latestRun={latestRun} /></div>
+      <ReportSection sectionKey={`audit:viewport:${viewportLabel}`} title={`${viewportLabel} performance`} badge={<OldRunChip latestRun={latestRun} />} nested>
+
       <div style={METRIC_COLUMNS_STYLE}>
         {GROUPS.map((group) => {
           const groupMetrics = metrics.filter((metric) => metric.group === group.id);
@@ -107,6 +109,7 @@ function MetricTable({
         ) : null}
       </div>
       <ArtifactLinks audit={audit} />
+      </ReportSection>
     </div>
   );
 }

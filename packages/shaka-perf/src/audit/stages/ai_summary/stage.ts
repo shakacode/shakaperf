@@ -17,7 +17,7 @@ import {
   type TestContext,
 } from '../../../stage/stage';
 import type { WorkerPool } from '../../../pipeline/worker-pool';
-import { AiSummaryArtifactView } from './report';
+import { AiSummaryArtifactView, summaryHeadingBadge } from './report';
 
 export interface AiSummaryResult {
   /** ≤280-char plain-language summary (performance-led, plus a11y/agent when present), or ''. */
@@ -56,6 +56,10 @@ export class AiSummaryStage implements Stage<AiSummaryResult> {
 
   renderArtifacts(measurements: readonly StageRenderEntry<AiSummaryResult>[]) {
     return createElement(AiSummaryArtifactView, { measurements });
+  }
+
+  renderHeadingBadge(measurements: readonly StageRenderEntry<AiSummaryResult>[]) {
+    return summaryHeadingBadge(measurements);
   }
 
   machineReadableSummary(measurement: AiSummaryResult): JsonValue {

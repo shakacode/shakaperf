@@ -11,6 +11,7 @@ import {
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
+  ReportHeading,
   OldRunChip,
 } from '../../../pipeline/stage-report-components';
 import { useReportMode } from '../../../pipeline/report-mode';
@@ -47,14 +48,14 @@ export function BuildAnnotatedTimelineArtifactView({
 
   return (
     <StageArtifact>
-      <StageArtifactTitle>annotated timeline</StageArtifactTitle>
+      <StageArtifactTitle title="annotated timeline" />
       <div className="stage-stack">
         {rows.map((row, index) => {
           const frames = row.timeline.frames!;
           return (
             <div key={`${row.viewportLabel}-${index}`} className="stage-stack__viewport">
               <div className="stage-section">
-                <div className="stage-section__head">{row.viewportLabel}<OldRunChip latestRun={row.latestRun} /></div>
+                <ReportHeading className="stage-section__head" level={5} title={row.viewportLabel} badge={<OldRunChip latestRun={row.latestRun} />} />
                 <DetailedArtifactDialog
                   body={
                     <AnnotatedTimelineDialog

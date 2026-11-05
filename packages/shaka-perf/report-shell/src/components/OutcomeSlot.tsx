@@ -6,10 +6,11 @@
  */
 
 import type { ReactNode } from 'react';
-import { renderPersistedStageArtifacts } from '../../../src/pipeline/pipeline-artifacts';
+import { pipelineStagesForReport, renderPersistedStageArtifacts, renderPersistedStageHeadingBadge } from '../../../src/pipeline/pipeline-artifacts';
 import { ScreenshotPreview } from '../../../src/pipeline/screenshot-preview';
 import { DetailedArtifactDialog, OldRunChip, StageRunChipsProvider } from '../../../src/pipeline/stage-report-components';
 import type { ReportMeta, ReportOutcome } from '../types';
+import { ReportSection } from '../../../src/pipeline/report-section';
 
 // V8 stack traces start with `<ErrorName>: <message>` — `Error`,
 // `TypeError`, `RangeError`, custom subclasses. We strip that prefix
@@ -88,7 +89,7 @@ export function stageSection(
   meta: ReportMeta,
   outcomes: readonly ReportOutcome[],
   latestRunId?: string | null,
-): { errorOutcomes: ReportOutcome[]; artifact: ReactNode } | null {
+): { errorOutcomes: ReportOutcome[]; artifact: ReactNode; badge: ReactNode } | null {
   const first = outcomes[0];
   if (!first) return null;
 
@@ -107,7 +108,8 @@ export function stageSection(
     : null;
 
   if (errorOutcomes.length === 0 && artifact == null) return null;
-  return { errorOutcomes, artifact };
+  const badge = renderPersistedStageHeadingBadge(meta.pipelineName, meta.pipelineConfig, first.stage, measurements);
+  return { errorOutcomes, artifact, badge };
 }
 
 export function OutcomeSlot({
@@ -124,19 +126,23 @@ export function OutcomeSlot({
   const first = outcomes[0];
   const section = stageSection(meta, outcomes, latestRunId);
   if (!first || !section) return null;
-  const { errorOutcomes, artifact } = section;
+  const { errorOutcomes, artifact, badge } = section;
+  const title = pipelineStagesForReport(meta.pipelineName, meta.pipelineConfig)
+    .find((stage) => stage.name === first.stage)!.label;
 
   return (
     <section className="outcome-slot" data-stage={first.stage} tabIndex={-1}>
       <StageRunChipsProvider value={showRunChips === true}>
-        {errorOutcomes.map((outcome, index) => (
-          <OutcomeError
-            key={`error-${outcome.viewport.label}-${index}`}
-            outcome={outcome}
-            latestRun={latestRunId == null || outcome.runId === latestRunId}
-          />
-        ))}
-        {artifact ? <div className="stage-artifact">{artifact}</div> : null}
+        <ReportSection sectionKey={first.stage} title={title} badge={badge}>
+          {errorOutcomes.map((outcome, index) => (
+            <OutcomeError
+              key={`error-${outcome.viewport.label}-${index}`}
+              outcome={outcome}
+              latestRun={latestRunId == null || outcome.runId === latestRunId}
+            />
+          ))}
+          {artifact ? <div className="stage-artifact">{artifact}</div> : null}
+        </ReportSection>
       </StageRunChipsProvider>
     </section>
   );

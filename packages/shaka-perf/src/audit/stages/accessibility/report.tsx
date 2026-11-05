@@ -10,6 +10,7 @@ import type { StageRenderEntry } from '../../../stage/stage';
 import {
   StageArtifact,
   StageArtifactTitle,
+  ReportHeading,
   OldRunChip,
 } from '../../../pipeline/stage-report-components';
 import type { AccessibilityResult } from './types';
@@ -19,7 +20,6 @@ import { useAccessibilityFilterState } from './report-filter';
 import { collectConfiguredFilterOptions } from './report-utils';
 
 export {
-  AccessibilityGlobalFilter,
   AccessibilityReportFilterProvider,
   type AccessibilityFilterState,
 } from './report-filter';
@@ -48,7 +48,7 @@ export function AccessibilityArtifactView({
 
   return (
     <StageArtifact>
-      <StageArtifactTitle>accessibility</StageArtifactTitle>
+      <StageArtifactTitle title="accessibility" />
       <div className="stage-stack">
         {rows.map((entry, index) => (
           <div key={`${entry.viewport.label}-${index}`} className="stage-stack__viewport">
@@ -81,7 +81,7 @@ function AccessibilityBody({
   if (totalCount === 0) return null;
   return (
     <div className="stage-section">
-      <div className="stage-section__head">{viewportLabel}<OldRunChip latestRun={latestRun} /></div>
+      <ReportHeading className="stage-section__head" level={5} title={viewportLabel} badge={<OldRunChip latestRun={latestRun} />} />
       <div style={SCAN_STYLE}>
         <ScreenshotPreview
           filterOptions={filterState?.options ?? localOptions}

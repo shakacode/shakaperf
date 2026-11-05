@@ -22,6 +22,15 @@ const SUMMARY_BOX_STYLE: CSSProperties = {
   padding: '12px 14px',
 };
 
+export function displayedSummary(measurements: readonly StageRenderEntry<AiSummaryResult>[]) {
+  return measurements.find(({ measurement }) => measurement.summary?.trim());
+}
+
+export function summaryHeadingBadge(measurements: readonly StageRenderEntry<AiSummaryResult>[]) {
+  const entry = displayedSummary(measurements);
+  return entry ? <OldRunChip latestRun={entry.latestRun} /> : null;
+}
+
 export function AiSummaryArtifactView({
   measurements,
 }: {
@@ -30,12 +39,12 @@ export function AiSummaryArtifactView({
   // All viewports audit the same page, so a single plain-language line is
   // enough — show the first non-empty summary. Nothing to render if the AI
   // call produced no summary.
-  const entry = measurements.find(({ measurement }) => measurement.summary?.trim());
+  const entry = displayedSummary(measurements);
   if (!entry) return null;
 
   return (
     <StageArtifact>
-      <StageArtifactTitle>summary<OldRunChip latestRun={entry.latestRun} /></StageArtifactTitle>
+      <StageArtifactTitle title="summary" badge={summaryHeadingBadge(measurements)} />
       <div style={SUMMARY_BOX_STYLE}>{entry.measurement.summary}</div>
     </StageArtifact>
   );

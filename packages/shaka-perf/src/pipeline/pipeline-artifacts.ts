@@ -59,6 +59,16 @@ export function renderPersistedStageArtifacts(
   return renderPipelineStageArtifacts(pipelineForReport(pipelineName, config), name, measurements);
 }
 
+export function renderPersistedStageHeadingBadge(
+  pipelineName: string | undefined,
+  config: unknown,
+  name: StageName,
+  measurements: readonly StageRenderEntry[],
+): ReactNode {
+  const stage = pipelineForReport(pipelineName, config).stages.find((candidate) => candidate.name === name);
+  return stage?.renderHeadingBadge?.(measurements);
+}
+
 export function renderPipelineHeaderUrls(meta: ReportMeta): ReactNode {
   return pipelineForReport(meta.pipelineName, meta.pipelineConfig).report.renderHeaderUrls(meta);
 }
