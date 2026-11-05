@@ -251,7 +251,7 @@ export function App({
   const [accessibilityFilterOverride, setAccessibilityFilterOverride] =
     useState<AccessibilityFilterSelection | null>(null);
   // Active sort dimension + direction. null → default (chip/run-recency) order.
-  const [showFullSuite, setShowFullSuite] = useState(false);
+  const [showOldRuns, setShowOldRuns] = useState(false);
   const [sort, setSort] = useState<{ tag: string; dir: SortDirection } | null>(null);
   const isBisectReport = data.bisect != null;
   const latestRunKey = useMemo(() => newestRunKey(data.tests), [data.tests]);
@@ -260,18 +260,19 @@ export function App({
     [data.tests, isBisectReport],
   );
   const displayTests = useMemo(() =>
-    !isBisectReport && !showFullSuite ? cardTests.map(currentConfigurationTest) : cardTests,
-  [cardTests, isBisectReport, showFullSuite]);
-  // Keep controls from both summaries available: archived errors can replace
-  // the full-suite chips and sorts even when the current configuration succeeds.
-  // These options stay stable when "Show full suite" changes.
-  const testsForFilterAndSortOptions = useMemo(() => cardTests.map((test) => ({
+    !isBisectReport && !showOldRuns ? cardTests.map(currentConfigurationTest) : cardTests,
+  [cardTests, isBisectReport, showOldRuns]);
+  const runScopedTests = useMemo(() => displayTests.filter((test) =>
+    hasReportableOutcomes(test, isBisectReport) &&
+    (isBisectReport || showOldRuns || latestRunKey == null || runKey(test) === latestRunKey)),
+  [displayTests, isBisectReport, showOldRuns, latestRunKey]);
+  // Keep sort dimensions available when archived errors replace current results.
+  const testsForSortOptions = useMemo(() => cardTests.map((test) => ({
     ...test,
-    chips: [...(test.currentConfig?.chips ?? []), ...test.chips],
     sorts: [...(test.currentConfig?.sorts ?? []), ...(test.sorts ?? [])],
   })), [cardTests]);
-  const chipFilters = useMemo(() => buildChipFilters(testsForFilterAndSortOptions), [testsForFilterAndSortOptions]);
-  const chipTestSets = useMemo(() => buildChipTestSets(testsForFilterAndSortOptions), [testsForFilterAndSortOptions]);
+  const chipFilters = useMemo(() => buildChipFilters(runScopedTests), [runScopedTests]);
+  const chipTestSets = useMemo(() => buildChipTestSets(runScopedTests), [runScopedTests]);
   const accessibilityResults = useMemo(() => accessibilityResultsForTests(cardTests), [cardTests]);
   const accessibilityFilterOptions = useMemo(
     () => collectConfiguredFilterOptions(accessibilityResults),
@@ -320,7 +321,7 @@ export function App({
     () => narrowToBisectSelection(new Set(reportStages(data.meta).map((stage) => stage.name))),
     [data.meta, narrowToBisectSelection],
   );
-  const sortOptions = useMemo(() => buildSortOptions(testsForFilterAndSortOptions), [testsForFilterAndSortOptions]);
+  const sortOptions = useMemo(() => buildSortOptions(testsForSortOptions), [testsForSortOptions]);
   const sortValues = useMemo(() => buildSortValues(displayTests), [displayTests]);
   const allTestIds = useMemo(
     () => chipTestSets.get(ALL_FILTER_KEY) ?? new Set<string>(),
@@ -353,14 +354,12 @@ export function App({
     [data.tests, isBisectReport, query],
   );
 
-  // "Show full suite" and search determine which cards appear.
+  // "Show old runs" and search determine which cards appear.
   // Status filters keep nonmatching cards visible but dimmed and listed last.
   // Within each group, use the selected sort or show newer runs first.
   const visibleTests = useMemo<{ test: TestResult; dimmed: boolean }[]>(() => {
     const out: { test: TestResult; dimmed: boolean }[] = [];
-    for (const t of displayTests) {
-      if (!hasReportableOutcomes(t, isBisectReport)) continue;
-      if (!isBisectReport && !showFullSuite && latestRunKey != null && runKey(t) !== latestRunKey) continue;
+    for (const t of runScopedTests) {
       if (!matchesQuery(t, query)) continue;
       const excludedByBisect = data.bisect != null &&
         bisectSelection.kind !== 'all' &&
@@ -383,10 +382,8 @@ export function App({
   }, [
     bisectSelection.kind,
     bisectTestIds,
-    displayTests,
-    isBisectReport,
+    runScopedTests,
     latestRunKey,
-    showFullSuite,
     data.bisect,
     visibleTestIds,
     query,
@@ -448,8 +445,8 @@ export function App({
             <div className="header__secondary-filters">
               {!isBisectReport ? (
                 <label className="suite-toggle">
-                  <input type="checkbox" checked={showFullSuite} onChange={(event) => setShowFullSuite(event.target.checked)} />
-                  Show full suite
+                  <input type="checkbox" checked={showOldRuns} onChange={(event) => setShowOldRuns(event.target.checked)} />
+                  Show old runs
                 </label>
               ) : null}
 

@@ -54,12 +54,12 @@ describe.each([
     await page.reload();
   }
 
-  it('keeps an old result reviewed in Show full suite after a partial run, and saves unchecking', async () => {
+  it('keeps an old result reviewed in Show old runs after a partial run, and saves unchecking', async () => {
     await reviewed().check();
     data.tests[1] = testResult('product', 'run-2');
     await regenerate();
     expect(await page.locator('[data-report-test-id="home"]').count()).toBe(0);
-    await page.getByRole('checkbox', { name: 'Show full suite' }).check();
+    await page.getByRole('checkbox', { name: 'Show old runs' }).check();
     if (process.env.SHAKA_REPORT_UI_CAPTURE_DIR) {
       await page.screenshot({
         path: `${process.env.SHAKA_REPORT_UI_CAPTURE_DIR}/partial-run-${viewport.width}.png`,
@@ -71,7 +71,7 @@ describe.each([
     expect(await page.locator('[data-report-test-id="home"] .card__body').count()).toBe(0);
     await reviewed().uncheck();
     await page.reload();
-    await page.getByRole('checkbox', { name: 'Show full suite' }).check();
+    await page.getByRole('checkbox', { name: 'Show old runs' }).check();
     expect(await reviewed().isChecked()).toBe(false);
     expect(await page.locator('[data-report-test-id="home"] .card__body').count()).toBe(1);
   });
@@ -95,15 +95,15 @@ describe.each([
     });
     await regenerate();
     await reviewed().check();
-    await page.getByRole('checkbox', { name: 'Show full suite' }).check();
+    await page.getByRole('checkbox', { name: 'Show old runs' }).check();
     expect(await reviewed().isChecked()).toBe(false);
     await reviewed().check();
-    await page.getByRole('checkbox', { name: 'Show full suite' }).uncheck();
+    await page.getByRole('checkbox', { name: 'Show old runs' }).uncheck();
     expect(await reviewed().isChecked()).toBe(true);
-    await page.getByRole('checkbox', { name: 'Show full suite' }).check();
+    await page.getByRole('checkbox', { name: 'Show old runs' }).check();
     expect(await reviewed().isChecked()).toBe(true);
     await reviewed().uncheck();
-    await page.getByRole('checkbox', { name: 'Show full suite' }).uncheck();
+    await page.getByRole('checkbox', { name: 'Show old runs' }).uncheck();
     expect(await reviewed().isChecked()).toBe(true);
   });
 

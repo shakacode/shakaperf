@@ -81,7 +81,41 @@ describe('latest measurement run visibility', () => {
   it.each([
     ['compare', 'full'], ['compare', 'self-contained'],
     ['audit', 'full'], ['audit', 'self-contained'],
-  ] as const)('%s %s retains current-configuration status and sort controls despite archived errors', async (pipeline, mode) => {
+  ] as const)('%s %s counts and selects status chips within the chosen run scope', async (pipeline, mode) => {
+    const data = fixture(pipeline, mode);
+    const older = data.tests.find((test) => test.name === 'Older')!;
+    older.chips.push({ tag: 'flaky', text: 'flaky', color: 'yellow', sortingWeight: 1 });
+    const file = path.join(directory, `chip-scope-${pipeline}-${mode}.html`);
+    fs.writeFileSync(file, renderReportHtml(data));
+    const page = await browser.newPage();
+    try {
+      await page.goto(pathToFileURL(file).href);
+      await page.locator('.card').first().waitFor();
+      const filters = page.locator('.filterbar').first();
+      const toggle = page.getByRole('checkbox', { name: 'Show old runs', exact: true });
+      expect(await filters.getByRole('button').allTextContents()).toEqual(['all · 2', 'passed · 2']);
+      await toggle.check();
+      expect(await filters.getByRole('button').allTextContents()).toEqual(['all · 3', 'broken · 1', 'passed · 2', 'flaky · 1']);
+      await filters.getByRole('button', { name: 'flaky · 1', exact: true }).click();
+      const undimmedNames = () => page.locator('.card:not([data-dimmed="true"]) .card__title').allTextContents();
+      expect(await undimmedNames()).toEqual(['Older']);
+      await toggle.uncheck();
+      expect(await filters.getByRole('button').allTextContents()).toEqual(['all · 2', 'passed · 2']);
+      expect(await undimmedNames()).toEqual([]);
+      await filters.getByRole('button', { name: 'all · 2', exact: true }).click();
+      expect((await undimmedNames()).sort()).toEqual(['Current', 'Mixed']);
+      await toggle.check();
+      expect((await undimmedNames()).sort()).toEqual(['Current', 'Mixed']);
+      expect(await filters.getByRole('button', { name: 'flaky · 1', exact: true }).getAttribute('data-active')).not.toBe('true');
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
+  it.each([
+    ['compare', 'full'], ['compare', 'self-contained'],
+    ['audit', 'full'], ['audit', 'self-contained'],
+  ] as const)('%s %s switches status summaries while retaining sort controls despite archived errors', async (pipeline, mode) => {
     const data = fixture(pipeline, mode);
     const mixed = data.tests.find((test) => test.name === 'Mixed')!;
     mixed.chips = [{ tag: 'broken', text: 'broken', color: 'gray', sortingWeight: 0 }];
@@ -104,12 +138,15 @@ describe('latest measurement run visibility', () => {
       expect(await card.getAttribute('data-dimmed')).not.toBe('true');
       const sort = page.getByRole('button', { name: /Score/ });
       await sort.click({ timeout: 2000 });
-      const filters = await page.locator('.filterbar').first().innerHTML();
+      const filters = page.locator('.filterbar').first().getByRole('button');
+      expect(await filters.allTextContents()).toEqual(['all · 2', 'passed · 1', 'regression · 1']);
       expect(await sort.getAttribute('data-active')).toBe('true');
-      const toggle = page.getByRole('checkbox', { name: 'Show full suite', exact: true });
+      const toggle = page.getByRole('checkbox', { name: 'Show old runs', exact: true });
       for (const checked of [true, false]) {
         await toggle.setChecked(checked);
-        expect(await page.locator('.filterbar').first().innerHTML()).toBe(filters);
+        expect(await filters.allTextContents()).toEqual(checked
+          ? ['all · 3', 'broken · 2', 'passed · 1']
+          : ['all · 2', 'passed · 1', 'regression · 1']);
         expect(await sort.getAttribute('data-active')).toBe('true');
         expect(await card.getAttribute('data-dimmed')).not.toBe('true');
       }
@@ -121,7 +158,7 @@ describe('latest measurement run visibility', () => {
   it.each([
     ['compare', 'full'], ['compare', 'self-contained'],
     ['audit', 'full'], ['audit', 'self-contained'],
-  ] as const)('%s %s reveals config-excluded viewports only in full suite', async (pipeline, mode) => {
+  ] as const)('%s %s reveals config-excluded viewports only with old runs', async (pipeline, mode) => {
     const data = fixture(pipeline, mode);
     const mixed = data.tests.find((test) => test.name === 'Mixed')!;
     mixed.outcomes = mixed.outcomes.map((outcome) => ({
@@ -138,7 +175,7 @@ describe('latest measurement run visibility', () => {
       await page.locator('.card').first().waitFor();
       const card = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Mixed', exact: true }) });
       const names = () => page.locator('.card__title').allTextContents();
-      const toggle = page.getByRole('checkbox', { name: 'Show full suite', exact: true });
+      const toggle = page.getByRole('checkbox', { name: 'Show old runs', exact: true });
       expect(await names()).toEqual(['Mixed']);
       expect(await card.textContent()).not.toContain('Older phone result');
       await toggle.check();
@@ -150,15 +187,14 @@ describe('latest measurement run visibility', () => {
       expect(await card.textContent()).not.toContain('Older phone result');
 
       await page.locator('input[type=search]').fill('Mixed');
-      await page.getByRole('button', { name: 'passed · 2', exact: true }).click();
-      const filters = await page.locator('.filterbar').first().innerHTML();
+      await page.getByRole('button', { name: 'passed · 1', exact: true }).click();
       const section = () => card.getByRole('button', { name: 'Accessibility visibility for all tests' });
       await section().click();
       for (const checked of [true, false]) {
         await toggle.setChecked(checked);
         expect(await names()).toEqual(['Mixed']);
         expect(await page.locator('input[type=search]').inputValue()).toBe('Mixed');
-        expect(await page.locator('.filterbar').first().innerHTML()).toBe(filters);
+        expect(await page.getByRole('button', { name: checked ? 'passed · 2' : 'passed · 1', exact: true }).getAttribute('data-active')).toBe(checked ? 'false' : 'true');
         expect(await section().getAttribute('aria-expanded')).toBe('false');
         expect(await card.locator('[data-report-section="accessibility"] > .report-section__body').isHidden()).toBe(true);
       }
@@ -193,7 +229,7 @@ describe('latest measurement run visibility', () => {
         'Error during \"accessibility\" · phone:old run',
         `Error during \"${pipeline === 'audit' ? 'audit' : 'visreg'}\" · desktop:old run`,
       ]);
-      const toggle = page.getByRole('checkbox', { name: 'Show full suite', exact: true });
+      const toggle = page.getByRole('checkbox', { name: 'Show old runs', exact: true });
       await toggle.check();
       expect((await names()).sort()).toEqual(['Current', 'Mixed', 'Older']);
       const older = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Older', exact: true }) });
@@ -204,20 +240,21 @@ describe('latest measurement run visibility', () => {
 
       await page.getByRole('button', { name: 'Accessibility visibility for all tests' }).first().click();
       await page.locator('input[type=search]').fill('Older');
+      await toggle.check();
       await page.getByRole('button', { name: 'broken · 1', exact: true }).click();
-      const active = await page.locator('.filterbar').first().innerHTML();
+      await toggle.uncheck();
       expect(await names()).toEqual([]);
       await toggle.check();
       expect(await names()).toEqual(['Older']);
       expect(await page.locator('input[type=search]').inputValue()).toBe('Older');
-      expect(await page.locator('.filterbar').first().innerHTML()).toBe(active);
+      expect(await page.getByRole('button', { name: 'broken · 1', exact: true }).getAttribute('data-active')).toBe('true');
       const section = page.getByRole('button', { name: 'Accessibility visibility for all tests' });
       expect(await section.getAttribute('aria-expanded')).toBe('false');
       expect(await older.getByRole('alert').count()).toBe(0);
       await toggle.uncheck();
       expect(await names()).toEqual([]);
       expect(await page.locator('input[type=search]').inputValue()).toBe('Older');
-      expect(await page.locator('.filterbar').first().innerHTML()).toBe(active);
+      expect(await page.getByRole('button', { name: 'broken · 1', exact: true }).count()).toBe(0);
       await toggle.check();
       expect(await names()).toEqual(['Older']);
       expect(await section.getAttribute('aria-expanded')).toBe('false');

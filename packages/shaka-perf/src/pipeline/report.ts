@@ -85,7 +85,7 @@ export type Status =
 
 export type ReportOutcome = Outcome & {
   viewport: Viewport;
-  /** Saved result outside the current measurement configuration; revealed by Show full suite. */
+  /** Saved result outside the current measurement configuration; revealed by Show old runs. */
   outsideCurrentConfig?: boolean;
 };
 
