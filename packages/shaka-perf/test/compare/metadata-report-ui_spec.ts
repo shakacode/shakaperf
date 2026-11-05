@@ -80,7 +80,8 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     expect(await page.locator('body').getAttribute('data-copied')).toBe(latest.command);
     const legacy = page.locator('[data-report-test-id="legacy"] .card__metadata');
     await legacy.locator('summary').first().click();
-    expect(await legacy.getByText('Latest command unavailable').isVisible()).toBe(true);
+    expect(await legacy.getByText('Latest command', { exact: true }).count()).toBe(0);
+    expect(await legacy.getByText('Latest command unavailable').count()).toBe(0);
     expect(await legacy.getByLabel('Latest command').count()).toBe(0);
   });
 
