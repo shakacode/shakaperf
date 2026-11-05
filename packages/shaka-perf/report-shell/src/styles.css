@@ -1126,7 +1126,8 @@ input {
 }
 
 .card,
-.outcome-slot {
+.outcome-slot,
+.report-section__disclosure {
   scroll-margin-top: 180px;
 }
 
@@ -3287,6 +3288,12 @@ input {
   margin-bottom: 0;
 }
 .report-section__body[hidden] { display: none; }
+.report-section--nested {
+  margin-inline-start: 8px;
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--border-strong);
+  min-width: 0;
+}
 .report-section--nested > .report-section__head { margin-bottom: 6px; }
 .report-section--nested > .report-section__head .report-section__title {
   color: var(--fg-muted);

@@ -87,6 +87,9 @@ describe.each(['full', 'self-contained'] as const)('%s section disclosures', (mo
       expect(await sections.locator(':scope > .report-section__body').evaluateAll((bodies) => bodies.every((body) => (body as HTMLElement).hidden))).toBe(true);
       expect(await sections.last().locator(':scope > .report-section__head button').getAttribute('aria-expanded')).toBe('false');
     }
+    const parent = page.locator('[data-report-section="perf"] > .report-section__head').first();
+    const child = page.locator('[data-report-section="perf:viewport:desktop"] > .report-section__head').first();
+    expect((await child.boundingBox())!.x).toBeGreaterThan((await parent.boundingBox())!.x + 12);
     const hiddenRows = page.locator('[data-report-section][data-hidden="true"] > .report-section__head');
     const dimensions = await hiddenRows.evaluateAll((rows) => rows.map((row) => ({ height: (row as HTMLElement).offsetHeight, font: getComputedStyle(row.querySelector('button')!).fontSize })));
     expect(dimensions.every((row) => row.height <= 32 && row.font === dimensions[0].font)).toBe(true);
@@ -113,4 +116,54 @@ describe.each(['full', 'self-contained'] as const)('%s section disclosures', (mo
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 
+  it('does not take focus back after the reader moves to search', async () => {
+    page = await browser.newPage();
+    await page.goto(url);
+    const search = page.getByRole('searchbox');
+    await page.evaluate(async () => {
+      (document.querySelector('.report-section__disclosure') as HTMLButtonElement).click();
+      (document.querySelector('input[type="search"]') as HTMLInputElement).focus();
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    });
+    expect(await search.evaluate((input) => document.activeElement === input)).toBe(true);
+    await page.keyboard.insertText('Product');
+    await page.waitForFunction(() => document.querySelectorAll('.card').length === 1);
+    expect(await search.inputValue()).toBe('Product');
+    expect(await page.locator('.card__title').textContent()).toBe('Product');
+  });
+
+  it.each(['reduce', 'no-preference'] as const)('returns to only the originating control after a global layout shift (%s motion)', async (motion) => {
+    data.tests[0].outcomes[0] = {
+      kind: 'error', stage: 'visreg', viewport: DESKTOP_VIEWPORT,
+      error: { message: 'Saved visual capture failure', stack: Array(40).fill('    at savedCapture (example.abtest.ts:1:1)').join('\n') },
+    };
+    page = await browser.newPage({ viewport: { width: 390, height: 420 }, reducedMotion: motion });
+    await page.addInitScript(() => {
+      const scroll = HTMLElement.prototype.scrollIntoView;
+      HTMLElement.prototype.scrollIntoView = function(options) {
+        if (this.matches('.report-section__disclosure')) {
+          const calls = JSON.parse(document.documentElement.dataset.sectionScrolls ?? '[]');
+          calls.push({ test: this.closest('[data-report-test-id]')?.getAttribute('data-report-test-id'), expanded: this.getAttribute('aria-expanded'), ...(typeof options === 'object' ? options : {}) });
+          document.documentElement.dataset.sectionScrolls = JSON.stringify(calls);
+        }
+        scroll.call(this, options);
+      };
+    });
+    await page.goto(url);
+    const control = page.locator('[data-report-test-id="Product"]').getByRole('button', { name: 'Visual Diff visibility for all tests' });
+    for (const [index, expanded] of ['false', 'true'].entries()) {
+      await control.click();
+      await page.waitForFunction((count) => JSON.parse(document.documentElement.dataset.sectionScrolls ?? '[]').length === count, index + 1, { timeout: 3000 });
+      const calls = await page.evaluate(() => JSON.parse(document.documentElement.dataset.sectionScrolls!));
+      expect(calls[index]).toEqual({ test: 'Product', expanded, behavior: motion === 'reduce' ? 'auto' : 'smooth', block: 'center', inline: 'nearest' });
+      const element = await control.elementHandle();
+      await page.waitForFunction((button) => {
+        const box = button!.getBoundingClientRect();
+        const visibleElement = document.elementFromPoint((box.left + box.right) / 2, (box.top + box.bottom) / 2);
+        return box.top > 0 && box.bottom < innerHeight && button!.contains(visibleElement) && document.activeElement === button;
+      }, element, { timeout: 3000 });
+      expect(await control.getAttribute('aria-expanded')).toBe(expanded);
+      expect(await page.locator('[data-report-section="visreg"] > .report-section__head button').evaluateAll((buttons, state) => buttons.every((button) => button.getAttribute('aria-expanded') === state), expanded)).toBe(true);
+    }
+  });
 });

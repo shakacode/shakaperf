@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { createContext, useContext, useId, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { ReportHeading } from './report-heading';
 
 const VisibilityContext = createContext<{
@@ -45,7 +45,23 @@ export function ReportSection({ sectionKey, title, children, badge, nested = fal
   const contentId = useId();
   const hidden = visibility?.hidden.has(sectionKey) ?? false;
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const scrollPending = useRef(false);
 
+  useEffect(() => {
+    if (!scrollPending.current) return;
+    scrollPending.current = false;
+    const frame = requestAnimationFrame(() => {
+      const button = buttonRef.current;
+      // A subsequent interaction owns focus and must not be interrupted.
+      if (!button || document.activeElement !== button) return;
+      button.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [hidden]);
 
   return (
     <SectionContext.Provider value={sectionKey}>
@@ -61,7 +77,11 @@ export function ReportSection({ sectionKey, title, children, badge, nested = fal
               controls: contentId,
               expanded: !hidden,
               buttonRef,
-              onToggle: () => visibility.toggle(sectionKey),
+              onToggle: () => {
+                buttonRef.current?.focus({ preventScroll: true });
+                scrollPending.current = true;
+                visibility.toggle(sectionKey);
+              },
             } : undefined}
           />
         </div>
