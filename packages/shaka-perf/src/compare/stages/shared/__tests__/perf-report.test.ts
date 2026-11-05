@@ -52,8 +52,8 @@ describe('PerfArtifactView', () => {
 
     expect(html).toContain('aria-label="phone performance"');
     expect(html).toContain('aria-label="desktop performance"');
-    expect(html).toContain('<h5 class="report-heading perf-viewport__label">phone performance</h5>');
-    expect(html).toContain('<h5 class="report-heading perf-viewport__label">desktop performance</h5>');
+    expect(html).toContain('<h5 class="report-heading report-section__title">phone performance</h5>');
+    expect(html).toContain('<h5 class="report-heading report-section__title">desktop performance</h5>');
     expect(html).toContain('<h6 class="report-heading stage-section__head">vitals</h6>');
     expect(html).toContain('<h6 class="report-heading stage-section__head">diagnostics</h6>');
     expect(html).toContain('<span class="stage-note__label">desktop:</span>');

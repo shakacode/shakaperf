@@ -11,9 +11,9 @@ import {
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
-  ReportHeading,
   OldRunChip,
 } from '../../../pipeline/stage-report-components';
+import { ReportSection } from '../../../pipeline/report-section';
 import { FullReportOnly } from '../../../pipeline/report-mode';
 import { ScreenshotPreview } from '../../../pipeline/screenshot-preview';
 import { METRIC_LEVEL_CSS_VAR } from './metrics';
@@ -92,7 +92,8 @@ function MetricTable({
   if (metrics.length === 0 && !hasArtifacts(audit)) return null;
   return (
     <div className="stage-section">
-      <ReportHeading className="stage-section__head" level={5} title={viewportLabel} badge={<OldRunChip latestRun={latestRun} />} />
+      <ReportSection sectionKey={`audit:viewport:${viewportLabel}`} title={`${viewportLabel} performance`} badge={<OldRunChip latestRun={latestRun} />} nested>
+
       <div style={METRIC_COLUMNS_STYLE}>
         {GROUPS.map((group) => {
           const groupMetrics = metrics.filter((metric) => metric.group === group.id);
@@ -108,6 +109,7 @@ function MetricTable({
         ) : null}
       </div>
       <ArtifactLinks audit={audit} />
+      </ReportSection>
     </div>
   );
 }

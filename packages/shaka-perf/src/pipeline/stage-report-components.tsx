@@ -6,6 +6,7 @@
  */
 
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useReportSection } from './report-section';
 import { ReportHeading, type ReportHeadingProps } from './report-heading';
 import { ImageSizeContext, ImageViewport } from './image-viewport';
 import { renderPipelineDialogMetaUrls } from './pipeline-artifacts';
@@ -182,6 +183,10 @@ export function StageArtifact({ children }: { children: ReactNode }) {
 export function StageArtifactTitle(
   { title, badge, verbatim = false }: Pick<ReportHeadingProps, 'title' | 'badge'> & { verbatim?: boolean },
 ) {
+  const section = useReportSection();
+  // The enclosing report section owns the main heading. Subsections use
+  // ReportHeading directly, independently of the title's JSX structure.
+  if (section != null) return null;
   // `verbatim` opts out of the default uppercase transform so human-readable
   // multi-word titles (e.g. compare section headings) keep their own casing.
   const className = verbatim

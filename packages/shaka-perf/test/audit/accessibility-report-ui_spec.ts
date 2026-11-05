@@ -5,18 +5,10 @@
  * License in LICENSE.md.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
-import {
-  App,
-  buildStageFilterOptions,
-  isEmptiedByStageFilter,
-  stagesThatRender,
-} from '../../report-shell/src/App';
-import { toggleStageInSelection } from '../../report-shell/src/components/StageFilter';
+import { App } from '../../report-shell/src/App';
 import type { ReportData } from '../../src/pipeline/report';
 import {
   AccessibilityArtifactView,
@@ -31,7 +23,7 @@ import type {
 } from '../../src/audit/stages/accessibility/types';
 
 describe('accessibility report UI filters', () => {
-  it('renders a global accessibility filter button from report-wide configured tags and included rules', () => {
+  it('keeps configured accessibility finding filters out of the report header', () => {
     const data = reportData(accessibilityResult({
       effectiveConfig: {
         tags: ['wcag2a', 'wcag2aa'],
@@ -47,117 +39,9 @@ describe('accessibility report UI filters', () => {
 
     const html = renderToStaticMarkup(React.createElement(App, { data }));
 
-    expect(html).toContain('accessibility filters · 3/3');
-  });
-
-  it('shows all report sections and disables sections without renderable outcomes', () => {
-    const data = reportData(accessibilityResult({
-      violations: [violation('button-name', ['wcag2a'])],
-    }));
-    data.tests[0].outcomes.push({
-      kind: 'skipped',
-      stage: 'audit',
-      viewport: DESKTOP_VIEWPORT,
-      reason: 'skipped by --categories accessibility',
-    });
-
-    const html = renderToStaticMarkup(React.createElement(App, { data }));
-
     expect(html).not.toContain('skipped tests grouped by reason');
-    expect(html).not.toContain('1 skipped:');
-    expect(html).toContain('report sections filter · 1/6');
-    expect(html).toContain('accessibility');
-    expect(html).toContain('audit is not present in this report');
-    expect(html).toContain('agent-readiness is not present in this report');
-    expect(html).toContain('code_coverage is not present in this report');
-    expect(html).toContain('build_annotated_timeline is not present in this report');
-    expect(html).toContain('ai_summary is not present in this report');
-    expect(html).toContain('disabled=""');
-  });
-
-  it('drops a card once the report-sections filter hides every section it has', () => {
-    const data = reportData(accessibilityResult({
-      violations: [violation('button-name', ['wcag2a'])],
-    }));
-    const rendered = stagesThatRender(data.meta, data.tests[0]);
-    const sections = new Set(['accessibility']);
-
-    expect([...rendered]).toEqual(['accessibility']);
-    expect(isEmptiedByStageFilter(rendered, sections, sections)).toBe(false);
-    expect(isEmptiedByStageFilter(rendered, new Set(), sections)).toBe(true);
-  });
-
-  it('counts a skipped stage as no section, so leaving it checked cannot save a card', () => {
-    const data = reportData(accessibilityResult({
-      violations: [violation('button-name', ['wcag2a'])],
-    }));
-    data.tests[0].outcomes.push({
-      kind: 'skipped',
-      stage: 'audit',
-      viewport: DESKTOP_VIEWPORT,
-      reason: 'skipped by --categories accessibility',
-    });
-    const rendered = stagesThatRender(data.meta, data.tests[0]);
-
-    expect([...rendered]).toEqual(['accessibility']);
-    expect(isEmptiedByStageFilter(
-      rendered,
-      new Set(['audit']),
-      new Set(['accessibility', 'audit']),
-    )).toBe(true);
-  });
-
-  it('ignores a persisted outcome for a stage this build no longer registers', () => {
-    const data = reportData(accessibilityResult({
-      violations: [violation('button-name', ['wcag2a'])],
-    }));
-    data.tests[0].outcomes.push({
-      kind: 'ok',
-      stage: 'retired-stage',
-      viewport: DESKTOP_VIEWPORT,
-      measurement: { anything: true },
-    } as unknown as ReportData['tests'][number]['outcomes'][number]);
-
-    expect([...stagesThatRender(data.meta, data.tests[0])]).toEqual(['accessibility']);
-  });
-
-  it('keeps a card that renders nothing for reasons other than the sections filter', () => {
-    const data = reportData(accessibilityResult({
-      violations: [violation('button-name', ['wcag2a'])],
-    }));
-    // Nothing renders at all, so the filter cannot be what emptied this card.
-    data.tests[0].outcomes = [{
-      kind: 'skipped',
-      stage: 'audit',
-      viewport: DESKTOP_VIEWPORT,
-      reason: 'skipped by --categories accessibility',
-    }];
-    const rendered = stagesThatRender(data.meta, data.tests[0]);
-
-    expect([...rendered]).toEqual([]);
-    expect(isEmptiedByStageFilter(rendered, new Set(), new Set(['accessibility']))).toBe(false);
-  });
-
-  it('fails loud for an unreconstructable pipeline rather than silently degrading', () => {
-    // Report-section labels are sourced from the reconstructed pipeline's stage
-    // definitions (type-enforced), so a pipeline that cannot be reconstructed
-    // throws instead of falling back to title-cased guesses. Real reports only
-    // ever carry the 'compare' / 'audit' pipeline names, which always
-    // reconstruct — this guards the fail-loud contract for anything else.
-    const data = reportData(accessibilityResult({
-      violations: [violation('button-name', ['wcag2a'])],
-    }));
-    data.meta.pipelineName = 'legacy';
-
-    expect(() => buildStageFilterOptions(data.meta, data.tests)).toThrow(/Unknown pipeline "legacy"/);
-  });
-
-  it('applies report-section checkbox changes from the previous selection', () => {
-    const first = toggleStageInSelection(new Set(['audit']), 'accessibility', true);
-    const second = toggleStageInSelection(first, 'audit', false);
-
-    expect([...first].sort()).toEqual(['accessibility', 'audit']);
-    expect([...second]).toEqual(['accessibility']);
+    expect(html).not.toContain('accessibility filters ·');
+    expect(html).toMatch(/Accessibility visibility for all tests/i);
   });
 
   it('keeps the screenshot preview mounted when active accessibility filters hide every finding', () => {
@@ -316,24 +200,7 @@ describe('accessibility report UI filters', () => {
     expect(html).toContain('apply globally');
   });
 
-  it('keeps the accessibility and report-section filter buttons on one row', () => {
-    const css = fs.readFileSync(
-      path.resolve(__dirname, '../../report-shell/src/styles.css'),
-      'utf8',
-    );
-    const accessibilityCss = fs.readFileSync(
-      path.resolve(__dirname, '../../src/audit/stages/accessibility/report-styles.ts'),
-      'utf8',
-    );
 
-    expect(css).toContain('--control-height: 34px;');
-    expect(css).toContain('max-width: 980px;');
-    expect(css).toContain('.header__secondary-filters');
-    expect(css).toContain('flex-wrap: wrap;');
-    expect(css).toContain('justify-content: flex-end;');
-    expect(accessibilityCss).toContain('height: var(--control-height, 34px);');
-    expect(accessibilityCss).toContain('font-size: var(--control-font-size, 11px);');
-  });
 });
 
 function reportData(accessibility: AccessibilityResult): ReportData {

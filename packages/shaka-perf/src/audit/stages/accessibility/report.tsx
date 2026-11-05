@@ -20,7 +20,6 @@ import { useAccessibilityFilterState } from './report-filter';
 import { collectConfiguredFilterOptions } from './report-utils';
 
 export {
-  AccessibilityGlobalFilter,
   AccessibilityReportFilterProvider,
   type AccessibilityFilterState,
 } from './report-filter';
