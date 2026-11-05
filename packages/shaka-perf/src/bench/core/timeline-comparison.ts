@@ -10,6 +10,10 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { PNG } from 'pngjs';
 import sharp from 'sharp';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { TooltipLabel } from '../../pipeline/report-tooltip';
+import { attachReportTooltip, REPORT_TOOLTIP_CSS } from '../../pipeline/report-tooltip-controller';
 import { pipeAndFilterStderr } from './ffmpeg-stderr';
 import { getFfmpegSyncOption } from './ffmpeg-sync-option';
 import { rendererMainThreadEvents } from './main-thread-tasks';
@@ -1240,8 +1244,12 @@ function buildTimelineHtml(
     padding: 6px 10px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     display: flex;
-    gap: 14px;
+    flex-wrap: wrap;
+    max-width: calc(100vw - 32px);
+    box-sizing: border-box;
+    gap: 8px 14px;
   }
+  .controls__option { display: inline-flex; align-items: center; gap: 6px; }
   .controls label { cursor: pointer; color: #1a1d22; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
   .controls label:has(input:disabled) { cursor: default; color: #9ca3af; }
   /* Live tally of everything between the baseline and the mouse cursor: one
@@ -1667,6 +1675,10 @@ function buildTimelineHtml(
   @keyframes toast-out { to { transform: translateX(-50%) translateY(-10px); opacity: 0; } }
 
 
+  ${REPORT_TOOLTIP_CSS}
+  .report-tooltip__trigger { color: #1a1d22; }
+  .report-tooltip__help { border-color: #9ca3af; }
+  .report-tooltip { background: #1a1d22; color: #fff; border-color: #9ca3af; }
 </style>
 </head>
 <body>
@@ -1677,14 +1689,16 @@ function buildTimelineHtml(
     Click anywhere else to measure from there instead of 0ms · its &times; or Esc resets
   </div>
   <div class="controls">
-    <label title="${alignment.pairCount === 0
-      ? 'no test annotation is shared by both sides'
-      : 'shift the side that reached each test annotation earlier so both sides line up there'}">
-      <input type="checkbox" id="align-annotations"${alignment.pairCount === 0 ? ' disabled' : ''}>align test annotations
-    </label>
-    <label title="paint the pixels that changed since the previous frame red">
-      <input type="checkbox" id="highlight-progress">highlight progress
-    </label>
+    <div class="controls__option">
+      <label><input type="checkbox" id="align-annotations"${alignment.pairCount === 0 ? ' disabled' : ''}>align test annotations</label>
+      ${renderToStaticMarkup(createElement(TooltipLabel, { label: 'align test annotations', helpOnly: true, explanation: alignment.pairCount === 0
+        ? 'no test annotation is shared by both sides'
+        : 'shift the side that reached each test annotation earlier so both sides line up there' }), { identifierPrefix: 'align-' })}
+    </div>
+    <div class="controls__option">
+      <label><input type="checkbox" id="highlight-progress">highlight progress</label>
+      ${renderToStaticMarkup(createElement(TooltipLabel, { label: 'highlight progress', helpOnly: true, explanation: 'paint the pixels that changed since the previous frame red' }), { identifierPrefix: 'progress-' })}
+    </div>
   </div>
   ${(['control', 'experiment'] as const).map(side =>
     `<div class="status-chip ${side}" id="status-${side}"><span class="side">${side}</span><span class="metrics"></span></div>`
@@ -2347,6 +2361,11 @@ function buildTimelineHtml(
         }
       });
     })();
+  </script>
+  <script>
+    document.querySelectorAll('.controls .report-tooltip__trigger').forEach(function(button) {
+      (${attachReportTooltip.toString()})(button, button.dataset.tooltip);
+    });
   </script>
   <script>
     // Ping the parent compare-report so it knows the timeline rendered.

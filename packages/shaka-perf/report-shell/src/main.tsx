@@ -12,6 +12,7 @@ import type { ReportData } from './types';
 import { parseReportData } from './report-data';
 import { ReportModeProvider } from '../../src/pipeline/report-mode';
 import './styles.css';
+import { REPORT_TOOLTIP_CSS } from '../../src/pipeline/report-tooltip-controller';
 
 function readReportData(): ReportData | null {
   const node = document.getElementById('__shaka_report_data__');
@@ -24,6 +25,7 @@ const root = document.getElementById('root');
 if (root) {
   createRoot(root).render(
     <StrictMode>
+      <style>{REPORT_TOOLTIP_CSS}</style>
       {data ? (
         <ReportModeProvider mode={data.meta.reportMode ?? 'full'}>
           <App data={data} />
