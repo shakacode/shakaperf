@@ -494,7 +494,7 @@ async function runConfiguredPipelineWithSelection(
   // Execute only the selected tests, but include all saved suite outcomes in
   // the report with their original run ids and freshness. By default, show
   // results within the current configuration on cards updated by the latest
-  // measurement run. “Show full suite” reveals the other saved results.
+  // measurement run. “Show old runs” reveals the other saved results.
   // `--report-only` rebuilds reports without measuring or changing freshness.
   const explicitlySuppliedTestDefinitions = runtime.tests ? [...runtime.tests] : undefined;
   const selectedTestDefinitions = await loadTestsSelectedForMeasurement(runtime, explicitlySuppliedTestDefinitions);
