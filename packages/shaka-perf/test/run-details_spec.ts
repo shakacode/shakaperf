@@ -12,11 +12,11 @@ import { savedRunDetails, RunDetailsContent } from '../report-shell/src/componen
 import { runDetailsFixture } from '../src/pipeline/__tests__/fixtures/run-details';
 import { reportDataForMode } from '../src/pipeline/report';
 
-it.each(['compare', 'audit'] as const)('%s cards show Run details only where saved metadata exists', (pipeline) => {
+it.each(['compare', 'audit'] as const)('%s cards show Metadata details only where saved metadata exists', (pipeline) => {
   const data = runDetailsFixture(pipeline);
   const render = (index: number) => renderToStaticMarkup(createElement(TestCard, { test: data.tests[index]!, meta: data.meta, animationDelayMs: 0, visibleStages: new Set(['perf', 'audit', 'accessibility']) }));
-  expect(render(0)).toContain('Run details');
-  expect(render(1)).not.toContain('Run details');
+  expect(render(0)).toContain('Metadata details');
+  expect(render(1)).not.toContain('Metadata details');
 });
 
 it('preserves every mixed-run result and omits viewports without metadata', () => {

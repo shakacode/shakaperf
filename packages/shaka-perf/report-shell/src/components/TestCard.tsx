@@ -165,17 +165,7 @@ export function TestCard({
             />
             reviewed
           </label>
-          <RunDetails outcomes={test.outcomes} />
-          {logs.length > 0 ? (
-            <button
-              type="button"
-              className="card__logs-button"
-              onClick={() => setLogsOpen(true)}
-              aria-haspopup="dialog"
-            >
-              logs
-            </button>
-          ) : null}
+
         </div>
       </div>
 
@@ -193,7 +183,22 @@ export function TestCard({
         </div>
       </details>
 
-      <TestMetadata meta={meta} test={test} />
+      <div className="card__metadata-row">
+        <TestMetadata meta={meta} test={test} />
+        <div className="card__actions">
+          <RunDetails outcomes={test.outcomes} />
+          {logs.length > 0 ? (
+            <button
+              type="button"
+              className="card__logs-button"
+              onClick={() => setLogsOpen(true)}
+              aria-haspopup="dialog"
+            >
+              logs
+            </button>
+          ) : null}
+        </div>
+      </div>
 
       {reviewed ? null : (
         <div className="card__body">

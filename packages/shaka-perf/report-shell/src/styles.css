@@ -1230,10 +1230,7 @@ input {
   padding: 18px 20px 14px;
   border-bottom: 1px solid var(--border);
   display: grid;
-  /* Cap the pills column at ~half the card and give both cells `min-width: 0`
-     so long chip labels wrap inside the pill column instead of widening the
-     card header. */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 50%);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px 16px;
   align-items: start;
 }
@@ -3313,3 +3310,16 @@ input {
   padding: 0 20px 14px;
 }
 .card__tag-list .pill { max-width: 100%; }
+
+.card__metadata-row { position: relative; }
+.card__metadata-row .card__metadata > summary { padding-right: 210px; }
+.card__actions {
+  position: absolute;
+  top: 9px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.card__tag-list .pill__label { white-space: normal; }

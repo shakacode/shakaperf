@@ -58,7 +58,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     await metadata.getByRole('button', { name: 'artifact paths' }).click();
     expect(await metadata.getByText('desktop: results/homepage-desktop').isVisible()).toBe(true);
     expect(await card.locator('.card__body').getByRole('button', { name: /source|paths|troubleshoot/ }).count()).toBe(0);
-    await card.getByRole('button', { name: 'Run details', exact: true }).click();
+    await card.getByRole('button', { name: 'Metadata details', exact: true }).click();
     expect(await page.getByRole('dialog').isVisible()).toBe(true);
     expect(await page.getByRole('dialog').getByRole('heading', { name: 'Applications' }).isVisible()).toBe(true);
     expect(await metadata.evaluate((el) => el.getBoundingClientRect().right <= window.innerWidth && Array.from(el.querySelectorAll('*')).every((child) => child.getBoundingClientRect().right <= window.innerWidth))).toBe(true);

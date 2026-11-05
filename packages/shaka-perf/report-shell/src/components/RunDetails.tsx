@@ -223,8 +223,8 @@ export function RunDetails({ outcomes }: { outcomes: readonly ReportOutcome[] })
   const [open, setOpen] = useState(false);
   if (!outcomes.some((outcome) => outcome.runMetadata)) return null;
   return <>
-    <button type="button" className="card__run-details-button" aria-haspopup="dialog" onClick={() => setOpen(true)}>Run details</button>
-    {open ? <Dialog open variant="compact" onClose={() => setOpen(false)} title={<span className="ui-dialog__title-text">Run details</span>}>
+    <button type="button" className="card__run-details-button" aria-haspopup="dialog" onClick={() => setOpen(true)}>Metadata details</button>
+    {open ? <Dialog open variant="compact" onClose={() => setOpen(false)} title={<span className="ui-dialog__title-text">Metadata details</span>}>
       <RunDetailsContent outcomes={outcomes} />
     </Dialog> : null}
   </>;
