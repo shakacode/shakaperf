@@ -62,6 +62,26 @@ describe('reportDataForMode', () => {
     fs.rmSync(resultsRoot, { recursive: true, force: true });
   });
 
+  it('embeds resolved source once and leaves metadata paths out of the artifact dictionary', async () => {
+    const source = "abTest('Checkout', {}, async () => {});";
+    const scope = new ArtifactScope(path.join(resultsRoot, 'checkout-desktop', 'artifacts'), resultsRoot);
+    const testSourcePath = await scope.writeFile('test-source.ts', source);
+    const data = {
+      meta: { reportMode: 'full' },
+      tests: [{ name: 'Checkout', code: source, outcomes: [{
+        kind: 'ok', stage: 'visreg', runMetadata: { testSourcePath },
+      }] }],
+    } as unknown as ReportData;
+    const dictionary = await buildSelfContainedArtifactDictionary(data, [], resultsRoot);
+    expect(dictionary).not.toHaveProperty(testSourcePath);
+    for (const mode of ['full', 'self-contained'] as const) {
+      const projected = reportDataForMode(data, mode, [], resultsRoot, dictionary);
+      expect(projected.tests[0]!.code).toBe(source);
+      expect(projected.tests[0]!.outcomes[0]!.runMetadata).toEqual({ testSourcePath });
+      expect(JSON.stringify(projected).split(source)).toHaveLength(2);
+    }
+  });
+
   it('inlines every artifact path only in the self-contained report', () => {
     const artifactDir = path.join(resultsRoot, 'checkout-tablet', 'artifacts');
     fs.mkdirSync(artifactDir, { recursive: true });

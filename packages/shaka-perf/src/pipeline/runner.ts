@@ -1619,7 +1619,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
         test.experimentPathOverride ?? test.startingPath,
         test.config?.shared?.experimentURL ?? experimentURL,
       ),
-      code: readTestSource(test.file, test.line),
+      code: savedTestSource(outcomes, store),
       durationMs: 0,
       measuredAt: freshestArtifactMtime(resultsRoot, test, outcomes),
       runId,
@@ -1682,6 +1682,19 @@ function newestRunId(outcomes: readonly Outcome[]): string | null {
     if (newest == null || outcome.runId > newest) newest = outcome.runId;
   }
   return newest;
+}
+
+function savedTestSource(outcomes: readonly Outcome[], store: ArtifactStore): string | null {
+  let newest: Outcome['runMetadata'];
+  for (const { runMetadata } of outcomes) {
+    if (runMetadata && (!newest || runMetadata.runId > newest.runId)) newest = runMetadata;
+  }
+  // Legacy results and unavailable snapshots must never borrow today's source
+  // or an older run's source. A missing saved artifact also hides the source.
+  if (typeof newest?.testSourcePath === 'string') {
+    return store.readTextArtifact(newest.testSourcePath) ?? null;
+  }
+  return null;
 }
 
 function skippedOutcome(stage: StageName, reason: string): RecordedOutcome {

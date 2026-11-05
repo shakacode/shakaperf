@@ -468,7 +468,10 @@ function collectArtifactPaths(
     return;
   }
   if (value && typeof value === 'object') {
-    for (const item of Object.values(value)) {
+    for (const [key, item] of Object.entries(value)) {
+      // Metadata paths are provenance, not display assets. Source text is
+      // already resolved once into TestResult.code by the report builder.
+      if (key === 'runMetadata') continue;
       collectArtifactPaths(item, resultsRoot, artifactPaths);
     }
   }
