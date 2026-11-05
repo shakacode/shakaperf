@@ -16,6 +16,12 @@ import { createPipeline } from '../pipeline';
 import { runPipeline } from '../runner';
 import { ArtifactStore } from '../artifact-store';
 
+jest.mock('shaka-shared', () => ({
+  ...jest.requireActual('shaka-shared'),
+  // These engine fixtures use in-memory definitions rather than source files.
+  readTestSource: jest.fn(() => 'abTest("Fixture", {}, async () => {});'),
+}));
+
 jest.mock('node:child_process', () => ({ ...jest.requireActual('node:child_process'), execFile: jest.fn() }));
 
 // These fixtures do not take real measurements; leave the machine queue to real runs.

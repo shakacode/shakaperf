@@ -7,7 +7,7 @@
 
 import { isDeepStrictEqual } from 'node:util';
 import { measuredCommit, measurementCommand } from './run-metadata';
-import type { MeasurementThrottling } from './run-metadata';
+import type { MeasurementThrottling, RunMetadata } from './run-metadata';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
@@ -76,8 +76,8 @@ import { WorkerPool, type TaskLimits, type WorkerTaskProgressSink } from './work
 import type { StageSelection } from './pipeline';
 import { testIdForTest, unitIdForTest } from './unit-id';
 import { burnDisplayName, expandTestsForBurn } from './burn';
-import { ArtifactStore } from './artifact-store';
-import type { Outcome, ErrorInfo } from './outcome';
+import { ArtifactStore, type ArtifactPath } from './artifact-store';
+import type { Outcome, RecordedOutcome, ErrorInfo } from './outcome';
 import { findFailureArtifacts, findLastAnnotation } from '../stage/stage-failure';
 import { colorizedLogPrefix, testSourcePrefix } from '../visreg/core/util/testContext';
 import { attachStickyStatus, formatPoolProgress } from '../bench/cli/commands/compare/sticky-status';
@@ -121,6 +121,8 @@ function resultsRootFor(cwd: string, pipeline: Pipeline): string {
 
 interface WorkUnit {
   test: AbTestDefinition;
+  testSource: string | null;
+  testSourcePath: ArtifactPath | null;
   viewport: Viewport;
   priorOutcomes: Map<StageName, Outcome>;
 }
@@ -648,6 +650,9 @@ async function runConfiguredPipelineWithSelection(
     }
     for (const unit of units) {
       fs.mkdirSync(store.artifactsDirForViewport(unit.test, unit.viewport.label), { recursive: true });
+      if (unit.testSource !== null) {
+        unit.testSourcePath = store.writeTestSource(unit.test, unit.viewport.label, unit.testSource);
+      }
     }
     // Restart discards the redone stages' prior results before they re-run.
     // The blanket wipe above is skipped on restart to protect the retained
@@ -1129,7 +1134,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   // contract so stages don't need to special-case its absence.
   const [raceCancellation] = cancellableRace();
   const throttling: MeasurementThrottling[] = [];
-  let metadata: Outcome['runMetadata'];
+  let metadata: RunMetadata | undefined;
   const ctx: TestContext = {
     recordMeasurementOptions: (options) => {
       if (metadata) Object.assign(metadata, options);
@@ -1170,7 +1175,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     readPriorResult: <M = unknown>(priorStage: StageName): M | undefined =>
       store.readOutcome(unit.test, unit.viewport.label, priorStage)?.measurement as M | undefined,
   };
-  let outcome: Outcome;
+  let outcome: RecordedOutcome;
   // Failed attempts for THIS task only (the shared `taskProgress.errors` is a
   // stage-wide aggregate). If the task ultimately succeeds with this > 0, a
   // retry recovered it from a crash/timeout → "flaky (recovered after retries)".
@@ -1200,8 +1205,10 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   try {
     const run = runtime.measurementRun;
     if (stage.measuresApplication && run) {
+      // Measuring units have their source artifact written before stages execute.
       metadata = {
         command: run.command, runId: run.runId, measuredAt: new Date().toISOString(),
+        testSourcePath: unit.testSourcePath!,
         stages: run.stages, categories: run.categories, viewport: unit.viewport,
         taskRetries: 0, taskRetryLimit: taskLimits.retries,
         targets: await Promise.all(run.sides.map(async (side) => {
@@ -1263,7 +1270,7 @@ function persistStageOutcome(
   store: ArtifactStore,
   unit: WorkUnit,
   logger: StageLogger,
-  outcome: Outcome,
+  outcome: RecordedOutcome,
 ): void {
   const logs = logger.flush();
   if (logs) outcome.logs = logs;
@@ -1338,15 +1345,25 @@ function expandWorkUnits(
   const units: WorkUnit[] = [];
   const declared = new Set<string>();
   for (const test of tests) {
+    let testSource: string | null = null;
     for (const viewport of viewportsForTestAcrossStages(test, stages, config)) {
       declared.add(viewport.label);
       if (options.viewportsFilter && !options.viewportsFilter.includes(viewport.label)) continue;
+      // Capture once, before execution, when a selected viewport needs measurement.
+      if (testSource === null && stages.some((stage) => stage.measuresApplication
+        && testDeclaresStageCategory(test, stage)
+        && resolveViewportsForTest(test, config, stage.category).some((vp) => vp.label === viewport.label))) {
+        testSource = readTestSource(test.file, test.line);
+        if (testSource === null) {
+          throw new Error(`Cannot capture abTest source for "${test.name}" (${test.file ?? 'unknown file'}:${test.line ?? '?'}). No measurements were started.`);
+        }
+      }
       const priorOutcomes = new Map<StageName, Outcome>();
       for (const stage of options.hydratePriorStages ?? []) {
         const outcome = options.store?.readOutcome(test, viewport.label, stage.name);
         if (outcome) priorOutcomes.set(stage.name, leanPriorOutcome(outcome));
       }
-      units.push({ test, viewport, priorOutcomes });
+      units.push({ test, testSource, testSourcePath: null, viewport, priorOutcomes });
     }
   }
   // Otherwise the run does nothing and exits 0, which reads as success.
@@ -1602,7 +1619,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
         test.experimentPathOverride ?? test.startingPath,
         test.config?.shared?.experimentURL ?? experimentURL,
       ),
-      code: readTestSource(test.file, test.line),
+      code: savedTestSource(outcomes, store),
       durationMs: 0,
       measuredAt: freshestArtifactMtime(resultsRoot, test, outcomes),
       runId,
@@ -1667,7 +1684,20 @@ function newestRunId(outcomes: readonly Outcome[]): string | null {
   return newest;
 }
 
-function skippedOutcome(stage: StageName, reason: string): Outcome {
+function savedTestSource(outcomes: readonly Outcome[], store: ArtifactStore): string | null {
+  let newest: Outcome['runMetadata'];
+  for (const { runMetadata } of outcomes) {
+    if (runMetadata && (!newest || runMetadata.runId > newest.runId)) newest = runMetadata;
+  }
+  // Legacy results and unavailable snapshots must never borrow today's source
+  // or an older run's source. A missing saved artifact also hides the source.
+  if (typeof newest?.testSourcePath === 'string') {
+    return store.readTextArtifact(newest.testSourcePath) ?? null;
+  }
+  return null;
+}
+
+function skippedOutcome(stage: StageName, reason: string): RecordedOutcome {
   return { kind: 'skipped', stage, reason };
 }
 

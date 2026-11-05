@@ -9,14 +9,15 @@ import * as fs from 'fs';
 
 /**
  * Reads the source file at `file` and returns the verbatim text of the
- * `abTest(...)` call that starts at (or just before) `line`. Returns null
+ * test registration that starts at `line`. Returns null
  * if the file cannot be read or the call cannot be located.
  *
- * Walks forward counting parentheses until balanced, so multi-line argument
- * objects and arrow-function bodies are captured as written.
+ * For the usual one-registration-per-line style, counts parentheses while
+ * ignoring quoted text and comments. This is a lightweight display reader,
+ * not a full JavaScript parser.
  */
 export function readTestSource(file: string | null, line: number | null): string | null {
-  if (!file || !line) return null;
+  if (!file || !line || line < 1) return null;
 
   let text: string;
   try {
@@ -26,15 +27,31 @@ export function readTestSource(file: string | null, line: number | null): string
   }
 
   const lines = text.split('\n');
+  if (line > lines.length) return null;
   // Lines are 1-indexed in stack traces.
-  const startIdx = findCallStart(lines, line - 1);
-  if (startIdx == null) return null;
+  const startIdx = line - 1;
 
   let depth = 0;
   let endIdx: number | null = null;
   let started = false;
+  let quote: string | null = null;
+  let blockComment = false;
   for (let i = startIdx; i < lines.length; i++) {
-    for (const ch of lines[i]) {
+    for (let j = 0; j < lines[i].length; j++) {
+      const ch = lines[i][j];
+      const next = lines[i][j + 1];
+      if (blockComment) {
+        if (ch === '*' && next === '/') { blockComment = false; j++; }
+        continue;
+      }
+      if (quote) {
+        if (ch === '\\') j++;
+        else if (ch === quote) quote = null;
+        continue;
+      }
+      if (ch === '/' && next === '/') break;
+      if (ch === '/' && next === '*') { blockComment = true; j++; continue; }
+      if (ch === "'" || ch === '"' || ch === '`') { quote = ch; continue; }
       if (ch === '(') {
         depth++;
         started = true;
@@ -51,14 +68,4 @@ export function readTestSource(file: string | null, line: number | null): string
 
   if (endIdx == null) return null;
   return lines.slice(startIdx, endIdx + 1).join('\n');
-}
-
-function findCallStart(lines: string[], hint: number): number | null {
-  // The stack trace points at the line where `abTest(` opens, but if the
-  // identifier and `(` are split across lines we may need to walk back one.
-  for (let i = Math.min(hint, lines.length - 1); i >= Math.max(0, hint - 4); i--) {
-    if (/\babTest\s*\(/.test(lines[i])) return i;
-  }
-  // Fallback: assume the hint line is correct.
-  return Math.min(hint, lines.length - 1);
 }

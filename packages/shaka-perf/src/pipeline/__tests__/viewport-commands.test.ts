@@ -21,6 +21,12 @@ import { mirrorCoverageToNycOutput } from '../../audit/stages/code_coverage/cove
 import { unitIdForTest } from '../unit-id';
 import type { TestContext, StageCategory } from '../../stage/stage';
 
+jest.mock('shaka-shared', () => ({
+  ...jest.requireActual('shaka-shared'),
+  // These engine fixtures use in-memory definitions rather than source files.
+  readTestSource: jest.fn(() => 'abTest("Fixture", {}, async () => {});'),
+}));
+
 // These stages do no browser measurement and must not contend with real runs.
 jest.mock('../measurement-lock', () => ({
   acquireMeasurementLock: async () => ({ release: () => {} }),

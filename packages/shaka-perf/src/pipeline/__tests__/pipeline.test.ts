@@ -9,7 +9,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import playwright from 'playwright';
-import type { AbTestDefinition } from 'shaka-shared';
+import { readTestSource, type AbTestDefinition } from 'shaka-shared';
 import { loadTests } from '../../config-loader';
 import {
   createPipeline,
@@ -19,6 +19,13 @@ import {
 import { runPipeline, type RuntimeOptions } from '../runner';
 import { ArtifactStore } from '../artifact-store';
 import { unitIdForTest } from '../unit-id';
+
+// Most runner fixtures supply in-memory definitions. Source-specific cases
+// below switch back to the real reader and real source files.
+jest.mock('shaka-shared', () => ({
+  ...jest.requireActual('shaka-shared'),
+  readTestSource: jest.fn(() => 'abTest("Fixture", {}, async () => {});'),
+}));
 
 // These fixtures do not take real measurements; leave the machine queue to real runs.
 jest.mock('../measurement-lock', () => ({
@@ -253,6 +260,7 @@ describe('runPipeline', () => {
 
   beforeEach(() => {
     jest.mocked(loadTests).mockReset();
+    jest.mocked(readTestSource).mockReturnValue('abTest("Fixture", {}, async () => {});');
   });
 
   async function runWithFrozenTest(
@@ -312,6 +320,156 @@ describe('runPipeline', () => {
     expect(result.testResults[0]!.outcomes.every((outcome) => !outcome.runMetadata)).toBe(true);
     if (mode === 'derived') expect(run).toHaveBeenCalled();
     else expect(run).not.toHaveBeenCalled();
+  });
+
+  it('does not require live source when running only derived stages', async () => {
+    const selected = pipeline();
+    Object.assign(selected.stages[0]!, { measuresApplication: false });
+    jest.mocked(readTestSource).mockClear().mockImplementation(() => { throw new Error("Source must not be required"); });
+    const result = await runWithFrozenTest({ categories: 'visreg', skipReport: true }, selected);
+    expect(readTestSource).not.toHaveBeenCalled();
+    expect(result.hasFailures).toBe(false);
+    expect(result.testResults[0]!.outcomes.every((outcome) => !outcome.runMetadata)).toBe(true);
+  });
+
+  it('does not require source for tests excluded by the requested viewport', async () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-selected-source-'));
+    const file = path.join(cwd, 'phone.abtest.ts');
+    fs.writeFileSync(file, "abTest('Phone', {}, async () => {});");
+    jest.mocked(readTestSource).mockClear().mockImplementation(jest.requireActual('shaka-shared').readTestSource);
+    try {
+      const desktop: AbTestDefinition = { ...frozenTest, name: 'Desktop', file: path.join(cwd, 'missing.abtest.ts'), line: 1, config: { shared: { viewports: ['desktop'] } } };
+      const phone: AbTestDefinition = { ...frozenTest, name: 'Phone', file, line: 1, config: { shared: { viewports: ['phone'] } } };
+      const result = await runWithFrozenTest({ cwd, tests: [desktop, phone], categories: 'visreg', viewportsFilter: ['phone'], skipReport: true });
+      expect(result.hasFailures).toBe(false);
+      expect(readTestSource).not.toHaveBeenCalledWith(desktop.file, desktop.line);
+      expect(readTestSource).toHaveBeenCalledWith(phone.file, phone.line);
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('requires source only for measuring stages that run at a selected viewport', async () => {
+    const selected = pipeline();
+    for (const stage of selected.stages.slice(1)) Object.assign(stage, { measuresApplication: false });
+    jest.mocked(readTestSource).mockClear().mockImplementation(() => { throw new Error("Source must not be required"); });
+    const test: AbTestDefinition = { ...frozenTest, config: { visreg: { viewports: ['desktop'] }, perf: { viewports: ['phone'] } } };
+    const result = await runWithFrozenTest({ tests: [test], viewportsFilter: ['phone'], skipReport: true }, selected);
+    expect(result.hasFailures).toBe(false);
+    expect(readTestSource).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('saves source before execution and reuses it after edits or deletion (failed: %p)', async (failed) => {
+    jest.mocked(readTestSource).mockImplementation(jest.requireActual('shaka-shared').readTestSource);
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-test-source-'));
+    const file = path.join(cwd, 'homepage.abtest.ts');
+    const source = "abTest('Frozen homepage', { startingPath: '/' }, async ({ page }) => {\n  await page.goto('/original');\n});";
+    const changed = source.replace('/original', '/changed');
+    const test = { ...frozenTest, file, line: 1 };
+    fs.writeFileSync(file, source);
+    const selected = pipeline();
+    selected.stages[0]!.run = async (ctx) => {
+      const snapshots = fs.readdirSync(ctx.artifacts.dir).filter((name) => name.startsWith('test-source-'));
+      expect(snapshots).toHaveLength(1);
+      expect(fs.readFileSync(path.join(ctx.artifacts.dir, snapshots[0]!), 'utf8')).toBe(source);
+      fs.writeFileSync(file, changed);
+      if (failed) throw new Error('measurement failed');
+      return {};
+    };
+    try {
+      const first = await runWithFrozenTest({ cwd, tests: [test], categories: 'visreg', skipReport: true }, selected);
+      expect(first.testResults[0]!.code).toBe(source);
+      const store = new ArtifactStore(first.resultsRoot);
+      const measured = first.testResults[0]!.outcomes.filter((o) => o.stage === 'visreg');
+      expect(measured.length).toBeGreaterThan(0);
+      for (const outcome of measured) {
+        expect(outcome.kind).toBe(failed ? 'error' : 'ok');
+        const metadata = store.readOutcome(test, outcome.viewport.label, 'visreg')?.runMetadata;
+        expect(metadata?.testSourcePath).toBeTruthy();
+        expect(store.readTextArtifact(metadata!.testSourcePath!)).toBe(source);
+      }
+      for (const deleted of [false, true]) {
+        if (deleted) fs.unlinkSync(file);
+        const report = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
+        expect(report.testResults[0]!.code).toBe(source);
+        expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'visreg')?.runMetadata?.testSourcePath).toBeTruthy();
+      }
+      // Results from before source snapshots cannot borrow the current source.
+      for (const outcome of measured) {
+        const file = path.join(store.unitDirForViewport(test, outcome.viewport.label), 'visreg.json');
+        const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
+        delete saved.runMetadata.testSourcePath;
+        fs.writeFileSync(file, JSON.stringify(saved));
+      }
+      fs.writeFileSync(file, changed);
+      const legacy = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
+      expect(legacy.testResults[0]!.code).toBeNull();
+      expect(legacy.testResults[0]!.outcomes.find((o) => o.stage === 'visreg')?.runMetadata?.testSourcePath).toBeNull();
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps source snapshots per measurement across restarts and selects the newest measured source', async () => {
+    jest.mocked(readTestSource).mockImplementation(jest.requireActual('shaka-shared').readTestSource);
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-mixed-test-source-'));
+    const file = path.join(cwd, 'homepage.abtest.ts');
+    const source = "abTest('Frozen homepage', {}, async () => { original(); });";
+    const changed = source.replace('original', 'changed');
+    const test = { ...frozenTest, file, line: 1 };
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-20T10:00:00Z'));
+    try {
+      fs.writeFileSync(file, source);
+      const first = await runWithFrozenTest({ cwd, tests: [test], categories: 'visreg', skipReport: true });
+      const original = first.testResults[0]!.outcomes.find((o) => o.stage === 'visreg')!;
+      fs.writeFileSync(file, changed);
+      clock.mockReturnValue(Date.parse('2026-10-20T11:00:00Z'));
+      const second = await runWithFrozenTest({ cwd, tests: [test], restartFromStage: 'perf', skipReport: true });
+      const outcomes = second.testResults[0]!.outcomes;
+      expect(outcomes.find((o) => o.stage === 'visreg')?.runMetadata).toEqual(original.runMetadata);
+      const store = new ArtifactStore(second.resultsRoot);
+      const originalPath = original.runMetadata!.testSourcePath!;
+      const changedPath = outcomes.find((o) => o.stage === 'perf')!.runMetadata!.testSourcePath!;
+      expect(changedPath).not.toBe(originalPath);
+      expect(store.readTextArtifact(originalPath)).toBe(source);
+      expect(store.readTextArtifact(changedPath)).toBe(changed);
+      for (const viewport of new Set(outcomes.map((o) => o.viewport.label))) {
+        expect(fs.readdirSync(store.artifactsDirForViewport(test, viewport))).toHaveLength(2);
+        const measuredPaths = new Set(outcomes.filter((o) => o.viewport.label === viewport && o.stage !== 'visreg')
+          .map((o) => o.runMetadata?.testSourcePath).filter(Boolean));
+        expect(measuredPaths.size).toBe(1);
+      }
+      expect(second.testResults[0]!.code).toBe(changed);
+      fs.unlinkSync(file);
+      const report = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
+      expect(report.testResults[0]!.code).toBe(changed);
+      clock.mockReturnValue(Date.parse('2026-10-20T12:00:00Z'));
+      // Source capture fails before new work or cleanup can replace old results.
+      const pending = pipeline();
+      const engines = pending.stages.map((stage) => jest.spyOn(stage, 'run'));
+      await expect(runWithFrozenTest({ cwd, tests: [test], restartFromStage: 'perf', skipReport: true }, pending))
+        .rejects.toThrow('Cannot capture abTest source');
+      for (const engine of engines) expect(engine).not.toHaveBeenCalled();
+      const retained = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
+      expect(retained.testResults[0]!.code).toBe(changed);
+      for (const outcome of outcomes) {
+        if (outcome.runMetadata && outcome.runMetadata.runId !== original.runMetadata!.runId) {
+          fs.rmSync(path.join(second.resultsRoot, outcome.runMetadata.testSourcePath!), { force: true });
+        }
+      }
+      const missing = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
+      expect(missing.testResults[0]!.code).toBeNull();
+      expect(missing.testResults[0]!.outcomes).toHaveLength(retained.testResults[0]!.outcomes.length);
+      expect(store.readTextArtifact(originalPath)).toBe(source);
+      // A normal rerun removes obsolete snapshots with the other unit artifacts.
+      fs.writeFileSync(file, changed);
+      await runWithFrozenTest({ cwd, tests: [test], skipReport: true });
+      expect(store.readTextArtifact(originalPath)).toBeUndefined();
+      expect(fs.readdirSync(store.artifactsDirForViewport(test, original.viewport.label))).toHaveLength(1);
+    } finally {
+      clock.mockRestore();
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
   });
 
   it.each([false, true])('saves actual worker retries, including exhausted tasks: %p', async (exhausted) => {
