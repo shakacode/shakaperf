@@ -6,6 +6,7 @@
  */
 
 import { Fragment, type KeyboardEvent } from 'react';
+import { flushSync } from 'react-dom';
 import { selectionTargetIds, type BisectSelection } from '../bisect-selection';
 import { formatPValue } from '../../../src/compare/stages/shared/perf-report';
 import type { BisectReportModel, BisectReportTarget } from '../types';
@@ -181,6 +182,8 @@ function scrollToDetailedTarget(target: BisectReportTarget): void {
   const card = Array.from(document.querySelectorAll<HTMLElement>('[data-report-test-id]'))
     .find((element) => element.dataset.reportTestId === target.testId);
   if (!card) return;
+  const toggle = card.querySelector<HTMLButtonElement>('.card__title-toggle[aria-expanded="false"]');
+  if (toggle) flushSync(() => toggle.click());
   const stage = card.querySelector<HTMLElement>(`[data-stage="${target.category}"]`);
   const destination = stage ?? card;
   document.querySelectorAll<HTMLElement>('[data-bisect-scroll-target="true"]')

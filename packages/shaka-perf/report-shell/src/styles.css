@@ -1234,6 +1234,43 @@ input {
   line-height: 1.2;
 }
 
+.card__title-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-transform: none;
+}
+
+.card__title-toggle:hover { background: transparent; color: var(--fg); }
+.card__title-toggle:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
+.card__title-caret {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 12px;
+  height: 1.2em;
+  color: var(--fg-muted);
+}
+
+.card__title-caret::before {
+  content: '';
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid currentColor;
+}
+
+.card__title-toggle[aria-expanded="true"] .card__title-caret::before { transform: rotate(90deg); }
+.card[data-collapsed="true"] { align-self: start; }
+.card[data-collapsed="true"] .card__head { border-bottom: none; }
+
 .card__path {
   font-size: 11px;
   color: var(--fg-muted);

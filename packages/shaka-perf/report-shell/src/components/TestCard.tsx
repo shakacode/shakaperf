@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
 import { RunDetails } from './RunDetails';
 import { TestMetadata } from './TestMetadata';
@@ -131,6 +131,8 @@ export function TestCard({
   dimmed?: boolean;
 }) {
   const [logsOpen, setLogsOpen] = useState(false);
+  const [expanded, setExpanded] = useState(true);
+  const contentId = useId();
   const storageKey = reviewedKey(meta, test);
   const [reviewed, setReviewed] = useState(() => readReviewed(storageKey));
   const logs = logsForTest(test, visibleStages);
@@ -145,12 +147,24 @@ export function TestCard({
       data-chip-color={chips[0]?.color ?? 'gray'}
       data-dimmed={dimmed ? 'true' : undefined}
       data-reviewed={reviewed ? 'true' : undefined}
+      data-collapsed={expanded ? undefined : 'true'}
       tabIndex={-1}
       style={{ animationDelay: `${animationDelayMs}ms` }}
     >
       <div className="card__head">
         <div>
-          <h3 className="card__title">{test.name}</h3>
+          <h3 className="card__title">
+            <button
+              type="button"
+              className="card__title-toggle"
+              aria-expanded={expanded}
+              aria-controls={contentId}
+              onClick={() => setExpanded((previous) => !previous)}
+            >
+              <span className="card__title-caret" aria-hidden="true" />
+              <span>{test.name}</span>
+            </button>
+          </h3>
         </div>
         <div className="card__pills">
           <label className="card__reviewed">
@@ -168,52 +182,54 @@ export function TestCard({
         </div>
       </div>
 
-      <details className="card__disclosure card__tags" open>
-        <summary>Tags</summary>
-        <div className="card__tag-list">
-          {oldRun ? (
-            <span className="pill pill--gray">
-              <span className="pill__label">old run</span>
-            </span>
-          ) : null}
-          {chips.map((chip) => (
-            <Pill key={`${chip.tag}:${chip.text}`} chip={chip} />
-          ))}
-        </div>
-      </details>
-
-      <div className="card__metadata-row">
-        <TestMetadata meta={meta} test={test} />
-        <div className="card__actions">
-          <RunDetails outcomes={test.outcomes} />
-          {logs.length > 0 ? (
-            <button
-              type="button"
-              className="card__logs-button"
-              onClick={() => setLogsOpen(true)}
-              aria-haspopup="dialog"
-            >
-              logs
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      {reviewed ? null : (
-        <div className="card__body">
-          <StageArtifactProvider test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}>
-            {groups.map((outcomes, index) => (
-              <OutcomeSlot
-                key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
-                meta={meta}
-                outcomes={outcomes}
-                latestRunId={latestRunId}
-                showRunChips={showViewportRunChips && mixedRuns}
-              />
+      <div id={contentId} hidden={!expanded}>
+        <details className="card__disclosure card__tags" open>
+          <summary>Tags</summary>
+          <div className="card__tag-list">
+            {oldRun ? (
+              <span className="pill pill--gray">
+                <span className="pill__label">old run</span>
+              </span>
+            ) : null}
+            {chips.map((chip) => (
+              <Pill key={`${chip.tag}:${chip.text}`} chip={chip} />
             ))}
-          </StageArtifactProvider>
+          </div>
+        </details>
+
+        <div className="card__metadata-row">
+          <TestMetadata meta={meta} test={test} />
+          <div className="card__actions">
+            <RunDetails outcomes={test.outcomes} />
+            {logs.length > 0 ? (
+              <button
+                type="button"
+                className="card__logs-button"
+                onClick={() => setLogsOpen(true)}
+                aria-haspopup="dialog"
+              >
+                logs
+              </button>
+            ) : null}
+          </div>
         </div>
-      )}
+
+        {reviewed ? null : (
+          <div className="card__body">
+            <StageArtifactProvider test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}>
+              {groups.map((outcomes, index) => (
+                <OutcomeSlot
+                  key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
+                  meta={meta}
+                  outcomes={outcomes}
+                  latestRunId={latestRunId}
+                  showRunChips={showViewportRunChips && mixedRuns}
+                />
+              ))}
+            </StageArtifactProvider>
+          </div>
+        )}
+      </div>
 
       <Dialog
         open={logsOpen}

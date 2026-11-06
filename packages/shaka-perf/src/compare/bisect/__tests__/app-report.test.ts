@@ -132,7 +132,7 @@ describe('bisect report App rendering', () => {
     const html = renderApp(data);
 
     expect(html).toContain('card--missing-artifacts');
-    expect(html).not.toContain('<h3 class="card__title">Product page</h3>');
+    expect(cardMarkup(html, 'Product page')).toBe('');
   });
 
   it('composes the initial card with both performance report stages', () => {
@@ -141,7 +141,7 @@ describe('bisect report App rendering', () => {
     const lowNoiseIndex = html.indexOf('data-stage="perf-low-noise"');
 
     expect(html).toContain('<article class="card"');
-    expect(html).toContain('<h3 class="card__title">Product page</h3>');
+    expect(cardMarkup(html, 'Product page')).not.toBe('');
     expect(perfIndex).toBeGreaterThan(-1);
     expect(lowNoiseIndex).toBeGreaterThan(perfIndex);
   });
@@ -173,9 +173,9 @@ describe('bisect report App rendering', () => {
 
     const html = renderApp(data);
 
-    expect(html).toContain('<h3 class="card__title">Homepage</h3>');
-    expect(html).toContain('<h3 class="card__title">Product page</h3>');
-    expect(html).toContain('<h3 class="card__title">Unrelated page</h3>');
+    expect(cardMarkup(html, 'Homepage')).not.toBe('');
+    expect(cardMarkup(html, 'Product page')).not.toBe('');
+    expect(cardMarkup(html, 'Unrelated page')).not.toBe('');
     expect(html).not.toContain('card--missing-artifacts');
   });
 
@@ -194,7 +194,7 @@ describe('bisect report App rendering', () => {
 
     const html = renderApp(data);
 
-    expect(html).toContain('<h3 class="card__title">Product page</h3>');
+    expect(cardMarkup(html, 'Product page')).not.toBe('');
     expect(html).not.toContain('card--missing-artifacts');
     expect(html).not.toContain('1 skipped: fixture skip');
     expect(html).not.toContain('skipped tests grouped by reason');
@@ -309,10 +309,11 @@ function renderApp(data: AppReportData, initialBisectSelection?: InitialBisectSe
 }
 
 function cardMarkup(html: string, title: string): string {
-  const titleIndex = html.indexOf(`<h3 class="card__title">${title}</h3>`);
-  const start = html.lastIndexOf('<article', titleIndex);
-  const end = html.indexOf('</article>', titleIndex);
-  return html.slice(start, end + '</article>'.length);
+  const cards = html.match(/<article\b[\s\S]*?<\/article>/g) ?? [];
+  return cards.find((card) => {
+    const heading = card.match(/<h3 class="card__title">([\s\S]*?)<\/h3>/)?.[1];
+    return heading?.replace(/<[^>]+>/g, '') === title;
+  }) ?? '';
 }
 
 function testGroupMarkup(html: string, testId: string): string {
