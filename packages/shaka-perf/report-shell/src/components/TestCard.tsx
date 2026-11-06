@@ -115,6 +115,8 @@ export function TestCard({
   showViewportRunChips = true,
   dimmed,
   visibleStages,
+  expanded: sharedExpanded,
+  onToggleExpanded,
 }: {
   test: TestResult;
   meta: ReportMeta;
@@ -123,6 +125,8 @@ export function TestCard({
   latestRunId?: string | null;
   showViewportRunChips?: boolean;
   visibleStages: ReadonlySet<string>;
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
   /**
    * True when the test doesn't match the active chip filter. The card stays
    * in the grid (the filter is a focus tool, not a hide) but greys out and
@@ -131,7 +135,8 @@ export function TestCard({
   dimmed?: boolean;
 }) {
   const [logsOpen, setLogsOpen] = useState(false);
-  const [expanded, setExpanded] = useState(true);
+  const [localExpanded, setLocalExpanded] = useState(true);
+  const expanded = sharedExpanded ?? localExpanded;
   const contentId = useId();
   const storageKey = reviewedKey(meta, test);
   const [reviewed, setReviewed] = useState(() => readReviewed(storageKey));
@@ -159,7 +164,7 @@ export function TestCard({
               className="card__title-toggle"
               aria-expanded={expanded}
               aria-controls={contentId}
-              onClick={() => setExpanded((previous) => !previous)}
+              onClick={onToggleExpanded ?? (() => setLocalExpanded((previous) => !previous))}
             >
               <span className="card__title-caret" aria-hidden="true" />
               <span>{test.name}</span>

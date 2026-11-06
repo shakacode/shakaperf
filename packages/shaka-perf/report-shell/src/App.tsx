@@ -238,6 +238,7 @@ export function App({
   initialBisectSelection?: BisectSelection;
 }) {
   const [query, setQuery] = useState('');
+  const [cardsExpanded, setCardsExpanded] = useState(true);
   const [bisectSelection, setBisectSelection] = useState<BisectSelection>(
     initialBisectSelection ?? { kind: 'all' },
   );
@@ -472,6 +473,8 @@ export function App({
                 animationDelayMs={Math.min(idx, 8) * 40}
                 dimmed={dimmed}
                 visibleStages={unfilteredStages}
+                expanded={cardsExpanded}
+                onToggleExpanded={() => setCardsExpanded((previous) => !previous)}
               />
             ))}
           </div>

@@ -64,7 +64,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     expect(await metadata.evaluate((el) => el.getBoundingClientRect().right <= window.innerWidth && Array.from(el.querySelectorAll('*')).every((child) => child.getBoundingClientRect().right <= window.innerWidth))).toBe(true);
   });
 
-  it.each([1280, 390])('collapses only the selected card from its title and preserves nested state at %i px', async (width) => {
+  it.each([1280, 390])('collapses all cards from a title and preserves nested state at %i px', async (width) => {
     await page.setViewportSize({ width, height: 900 });
     const card = page.locator('[data-report-test-id="homepage"]');
     const title = card.getByRole('button', { name: 'Homepage', exact: true });
@@ -85,7 +85,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     expect(await metadata.isVisible()).toBe(false);
     expect(await card.locator('.card__body').isVisible()).toBe(false);
     expect((await card.boundingBox())!.height).toBeLessThan(expandedHeight / 2);
-    expect(await page.locator('[data-report-test-id="legacy"] .card__body').isVisible()).toBe(true);
+    expect(await page.locator('[data-report-test-id="legacy"] .card__body').isVisible()).toBe(false);
     const reviewed = card.getByRole('checkbox', { name: 'reviewed', exact: true });
     expect(await reviewed.isVisible()).toBe(true);
     expect(await reviewed.isChecked()).toBe(false);
