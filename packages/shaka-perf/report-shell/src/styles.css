@@ -254,7 +254,6 @@ input {
   justify-content: flex-end;
   align-items: center;
   gap: var(--control-gap);
-  max-width: 980px;
 }
 
 .filterbar button {
