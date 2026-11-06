@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
 import { RunDetails } from './RunDetails';
 import { TestMetadata } from './TestMetadata';
@@ -138,6 +138,23 @@ export function TestCard({
   const [localExpanded, setLocalExpanded] = useState(true);
   const expanded = sharedExpanded ?? localExpanded;
   const contentId = useId();
+  const titleRef = useRef<HTMLButtonElement>(null);
+  const scrollPending = useRef(false);
+
+  useEffect(() => {
+    if (!expanded || !scrollPending.current) return;
+    scrollPending.current = false;
+    const frame = requestAnimationFrame(() => {
+      const title = titleRef.current;
+      if (!title || document.activeElement !== title) return;
+      title.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [expanded]);
   const storageKey = reviewedKey(meta, test);
   const [reviewed, setReviewed] = useState(() => readReviewed(storageKey));
   const logs = logsForTest(test, visibleStages);
@@ -162,9 +179,15 @@ export function TestCard({
             <button
               type="button"
               className="card__title-toggle"
+              ref={titleRef}
               aria-expanded={expanded}
               aria-controls={contentId}
-              onClick={onToggleExpanded ?? (() => setLocalExpanded((previous) => !previous))}
+              onClick={() => {
+                titleRef.current?.focus({ preventScroll: true });
+                scrollPending.current = !expanded;
+                if (onToggleExpanded) onToggleExpanded();
+                else setLocalExpanded((previous) => !previous);
+              }}
             >
               <span className="card__title-caret" aria-hidden="true" />
               <span>{test.name}</span>
