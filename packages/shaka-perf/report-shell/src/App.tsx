@@ -239,6 +239,8 @@ export function App({
 }) {
   const [query, setQuery] = useState('');
   const [cardsExpanded, setCardsExpanded] = useState(true);
+  const [tagsExpanded, setTagsExpanded] = useState(true);
+  const [metadataExpanded, setMetadataExpanded] = useState(false);
   const [bisectSelection, setBisectSelection] = useState<BisectSelection>(
     initialBisectSelection ?? { kind: 'all' },
   );
@@ -475,6 +477,10 @@ export function App({
                 visibleStages={unfilteredStages}
                 expanded={cardsExpanded}
                 onToggleExpanded={() => setCardsExpanded((previous) => !previous)}
+                tagsExpanded={tagsExpanded}
+                onToggleTags={() => setTagsExpanded((previous) => !previous)}
+                metadataExpanded={metadataExpanded}
+                onToggleMetadata={() => setMetadataExpanded((previous) => !previous)}
               />
             ))}
           </div>

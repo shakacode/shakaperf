@@ -117,6 +117,10 @@ export function TestCard({
   visibleStages,
   expanded: sharedExpanded,
   onToggleExpanded,
+  tagsExpanded: sharedTagsExpanded,
+  onToggleTags,
+  metadataExpanded,
+  onToggleMetadata,
 }: {
   test: TestResult;
   meta: ReportMeta;
@@ -127,6 +131,10 @@ export function TestCard({
   visibleStages: ReadonlySet<string>;
   expanded?: boolean;
   onToggleExpanded?: () => void;
+  tagsExpanded?: boolean;
+  onToggleTags?: () => void;
+  metadataExpanded?: boolean;
+  onToggleMetadata?: () => void;
   /**
    * True when the test doesn't match the active chip filter. The card stays
    * in the grid (the filter is a focus tool, not a hide) but greys out and
@@ -137,6 +145,8 @@ export function TestCard({
   const [logsOpen, setLogsOpen] = useState(false);
   const [localExpanded, setLocalExpanded] = useState(true);
   const expanded = sharedExpanded ?? localExpanded;
+  const [localTagsExpanded, setLocalTagsExpanded] = useState(true);
+  const tagsExpanded = sharedTagsExpanded ?? localTagsExpanded;
   const contentId = useId();
   const titleRef = useRef<HTMLButtonElement>(null);
   const scrollPending = useRef(false);
@@ -211,8 +221,12 @@ export function TestCard({
       </div>
 
       <div id={contentId} hidden={!expanded}>
-        <details className="card__disclosure card__tags" open>
-          <summary>Tags</summary>
+        <details className="card__disclosure card__tags" open={tagsExpanded}>
+          <summary onClick={(event) => {
+            event.preventDefault();
+            if (onToggleTags) onToggleTags();
+            else setLocalTagsExpanded((previous) => !previous);
+          }}>Tags</summary>
           <div className="card__tag-list">
             {oldRun ? (
               <span className="pill pill--gray">
@@ -226,7 +240,7 @@ export function TestCard({
         </details>
 
         <div className="card__metadata-row">
-          <TestMetadata meta={meta} test={test} />
+          <TestMetadata meta={meta} test={test} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} />
           <div className="card__actions">
             <RunDetails outcomes={test.outcomes} />
             {logs.length > 0 ? (
