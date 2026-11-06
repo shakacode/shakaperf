@@ -113,15 +113,19 @@ function PerfBody({
       ) : hasNoDifference ? (
         <NoDifferenceNote viewportLabel={viewportLabel} />
       ) : null}
-      {timelinePreview && perf.timelineHref ? (
-        <DetailedArtifactDialog
-          variant="preview"
-          href={perf.timelineHref}
-          label="timeline"
-        >
-          {timelinePreview}
-        </DetailedArtifactDialog>
-      ) : timelinePreview}
+      {timelinePreview ? (
+        <div className="perf-timeline-preview">
+          {perf.timelineHref ? (
+            <DetailedArtifactDialog
+              variant="preview"
+              href={perf.timelineHref}
+              label="timeline"
+            >
+              {timelinePreview}
+            </DetailedArtifactDialog>
+          ) : timelinePreview}
+        </div>
+      ) : null}
       <ArtifactLinks perf={perf} />
     </>
   );

@@ -233,7 +233,7 @@ describe('latest measurement run visibility', () => {
       await toggle.check();
       expect((await names()).sort()).toEqual(['Current', 'Mixed', 'Older']);
       const older = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Older', exact: true }) });
-      expect(await older.locator('.card__pills').textContent()).toContain('old run');
+      expect(await older.locator('.card__tags').textContent()).toContain('old run');
       expect(await older.locator('.old-run-chip').count()).toBe(0);
       await toggle.uncheck();
       expect((await names()).sort()).toEqual(['Current', 'Mixed']);

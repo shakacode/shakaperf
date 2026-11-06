@@ -52,15 +52,26 @@ function TroubleshootCommands({ meta, test }: { meta: ReportMeta; test: TestResu
   );
 }
 
-export function TestMetadata({ meta, test }: { meta: ReportMeta; test: TestResult }) {
+export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExpanded }: {
+  meta: ReportMeta;
+  test: TestResult;
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
+}) {
+  const [localExpanded, setLocalExpanded] = useState(false);
+  const expanded = sharedExpanded ?? localExpanded;
   const [codeOpen, setCodeOpen] = useState(false);
   const [artifactsOpen, setArtifactsOpen] = useState(false);
   // Outcome order follows stages/viewports, not measurement chronology.
   const latest = test.outcomes.flatMap((outcome) => outcome.runMetadata ? [outcome.runMetadata] : [])
     .sort((a, b) => (Date.parse(b.measuredAt) || Date.parse(b.runId) || 0) - (Date.parse(a.measuredAt) || Date.parse(a.runId) || 0))[0];
   return (
-    <details className="card__metadata">
-      <summary>Metadata</summary>
+    <details className="card__disclosure card__metadata" open={expanded}>
+      <summary onClick={(event) => {
+        event.preventDefault();
+        if (onToggleExpanded) onToggleExpanded();
+        else setLocalExpanded((previous) => !previous);
+      }}>Metadata</summary>
       <div className="card__metadata-content">
         <div>
           <div className="card__path">{test.filePath}</div>

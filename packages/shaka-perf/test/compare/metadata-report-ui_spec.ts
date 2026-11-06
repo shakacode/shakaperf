@@ -58,10 +58,53 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     await metadata.getByRole('button', { name: 'artifact paths' }).click();
     expect(await metadata.getByText('desktop: results/homepage-desktop').isVisible()).toBe(true);
     expect(await card.locator('.card__body').getByRole('button', { name: /source|paths|troubleshoot/ }).count()).toBe(0);
-    await card.getByRole('button', { name: 'Run details', exact: true }).click();
+    await card.getByRole('button', { name: 'Metadata details', exact: true }).click();
     expect(await page.getByRole('dialog').isVisible()).toBe(true);
     expect(await page.getByRole('dialog').getByRole('heading', { name: 'Applications' }).isVisible()).toBe(true);
     expect(await metadata.evaluate((el) => el.getBoundingClientRect().right <= window.innerWidth && Array.from(el.querySelectorAll('*')).every((child) => child.getBoundingClientRect().right <= window.innerWidth))).toBe(true);
+  });
+
+  it.each([1280, 390])('collapses all cards from a title and preserves nested state at %i px', async (width) => {
+    await page.setViewportSize({ width, height: 900 });
+    const card = page.locator('[data-report-test-id="homepage"]');
+    const title = card.getByRole('button', { name: 'Homepage', exact: true });
+    expect(await title.count()).toBe(1);
+    expect(await title.getAttribute('aria-expanded')).toBe('true');
+    const contentId = await title.getAttribute('aria-controls');
+    expect(contentId).toBeTruthy();
+    expect(await page.locator('[id]').evaluateAll((nodes, id) => nodes.filter((node) => node.id === id).length, contentId)).toBe(1);
+    const tags = card.locator('.card__tags');
+    const metadata = card.locator('.card__metadata');
+    await tags.locator('summary').click();
+    await metadata.locator('summary').first().click();
+    await metadata.getByRole('button', { name: 'test source' }).click();
+    const expandedHeight = (await card.boundingBox())!.height;
+    await title.click();
+    expect(await title.getAttribute('aria-expanded')).toBe('false');
+    expect(await tags.isVisible()).toBe(false);
+    expect(await metadata.isVisible()).toBe(false);
+    expect(await card.locator('.card__body').isVisible()).toBe(false);
+    expect((await card.boundingBox())!.height).toBeLessThan(expandedHeight / 2);
+    expect(await page.locator('[data-report-test-id="legacy"] .card__body').isVisible()).toBe(false);
+    const reviewed = card.getByRole('checkbox', { name: 'reviewed', exact: true });
+    expect(await reviewed.isVisible()).toBe(true);
+    expect(await reviewed.isChecked()).toBe(false);
+    await title.press('Space');
+    expect(await title.getAttribute('aria-expanded')).toBe('true');
+    expect(await tags.getAttribute('open')).toBeNull();
+    expect(await metadata.getAttribute('open')).not.toBeNull();
+    expect(await metadata.getByRole('button', { name: 'test source' }).getAttribute('aria-expanded')).toBe('true');
+    expect(await metadata.locator('.card__code').isVisible()).toBe(true);
+    await title.press('Enter');
+    expect(await title.getAttribute('aria-expanded')).toBe('false');
+    await reviewed.check();
+    expect(await title.getAttribute('aria-expanded')).toBe('false');
+    await title.click();
+    expect(await title.getAttribute('aria-expanded')).toBe('true');
+    expect(await reviewed.isChecked()).toBe(true);
+    expect(await card.locator('.card__body').count()).toBe(0);
+    await reviewed.uncheck();
+    expect(await card.locator('.card__body').isVisible()).toBe(true);
   });
 
   it('copies the newest saved command even when outcomes arrive in reverse time order', async () => {

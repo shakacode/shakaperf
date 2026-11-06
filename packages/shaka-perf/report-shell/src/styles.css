@@ -211,25 +211,17 @@ input {
 }
 
 .header__controls {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 16px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--control-gap);
   margin-top: 18px;
 }
 
-.header__filter-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--control-gap);
-}
-
-.header__secondary-filters {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--control-gap);
+.header__search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
 }
 
 .search {
@@ -262,7 +254,6 @@ input {
   justify-content: flex-end;
   align-items: center;
   gap: var(--control-gap);
-  max-width: 980px;
 }
 
 .filterbar button {
@@ -1230,10 +1221,7 @@ input {
   padding: 18px 20px 14px;
   border-bottom: 1px solid var(--border);
   display: grid;
-  /* Cap the pills column at ~half the card and give both cells `min-width: 0`
-     so long chip labels wrap inside the pill column instead of widening the
-     card header. */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 50%);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px 16px;
   align-items: start;
 }
@@ -1245,6 +1233,43 @@ input {
   letter-spacing: -0.01em;
   line-height: 1.2;
 }
+
+.card__title-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-transform: none;
+}
+
+.card__title-toggle:hover { background: transparent; color: var(--fg); }
+.card__title-toggle:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
+.card__title-caret {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 12px;
+  height: 1.2em;
+  color: var(--fg-muted);
+}
+
+.card__title-caret::before {
+  content: '';
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid currentColor;
+}
+
+.card__title-toggle[aria-expanded="true"] .card__title-caret::before { transform: rotate(90deg); }
+.card[data-collapsed="true"] { align-self: start; }
+.card[data-collapsed="true"] .card__head { border-bottom: none; }
 
 .card__path {
   font-size: 11px;
@@ -1474,7 +1499,7 @@ input {
 }
 
 .card[data-reviewed="true"] .card__title,
-.card[data-reviewed="true"] .card__pills .pill {
+.card[data-reviewed="true"] .card__tags .pill {
   opacity: 0.6;
 }
 
@@ -2101,16 +2126,6 @@ input {
   .header {
     margin: -20px -14px 24px;
     padding: 18px 14px 16px;
-  }
-
-  .header__controls {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .header__filter-stack,
-  .header__secondary-filters {
-    align-items: stretch;
-    justify-content: flex-start;
   }
 
   .filterbar-wrap {
@@ -2909,54 +2924,6 @@ input {
   line-height: 1.6;
 }
 
-.report-tooltip__trigger {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  text-transform: none;
-  letter-spacing: normal;
-  text-decoration: underline dotted var(--fg-faint);
-  text-underline-offset: 4px;
-  cursor: help;
-}
-
-.report-tooltip__trigger:hover {
-  background: transparent;
-  color: var(--fg);
-}
-
-.report-tooltip__help {
-  display: inline-flex;
-  width: 12px;
-  height: 12px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--fg-faint);
-  border-radius: 50%;
-  font-size: 9px;
-  vertical-align: middle;
-}
-
-/* Render outside the card so the container and report grid cannot clip it. */
-.report-tooltip {
-  position: fixed;
-  z-index: 2000;
-  width: min(330px, calc(100vw - 24px));
-  padding: 11px 13px;
-  border: 1px solid var(--border-strong);
-  border-radius: 5px;
-  background: var(--fg);
-  color: var(--bg);
-  font-size: 12px;
-  line-height: 1.6;
-  font-weight: 400;
-  box-shadow: 0 5px 18px #17233125;
-  pointer-events: none;
-}
-
 @container (max-width: 460px) {
   .coverage-preview__layout {
     grid-template-columns: minmax(0, 1fr);
@@ -3231,9 +3198,9 @@ input {
 .run-details__command-variant > summary .run-details__scope { display: block; margin: 0; }
 .run-details__command-variant .run-details__command { padding: 0 12px 12px; }
 
-.card__metadata { border-bottom: 1px solid var(--border); font-size: 11px; }
-.card__metadata > summary { padding: 9px 20px; cursor: pointer; color: var(--fg-muted); }
-.card__metadata > summary:hover { color: var(--fg); background: var(--bg-hover); }
+.card__disclosure { border-bottom: 1px solid var(--border); font-size: 11px; }
+.card__disclosure > summary { padding: 9px 20px; cursor: pointer; color: var(--fg-muted); }
+.card__disclosure > summary:hover { color: var(--fg); background: var(--bg-hover); }
 .card__metadata-content { display: grid; gap: 10px; min-width: 0; padding: 0 20px 14px; }
 .card__metadata-content > * { min-width: 0; }
 .card__metadata .card__urls { padding: 0; margin: 0; border: 0; }
@@ -3304,3 +3271,25 @@ input {
   padding-top: 0;
   border-top: 0;
 }
+
+.card__tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 0 20px 14px;
+}
+.card__tag-list .pill { max-width: 100%; }
+
+.card__metadata-row { position: relative; }
+.card__metadata-row .card__metadata > summary { margin-right: 210px; padding-right: 0; }
+.card__actions {
+  position: absolute;
+  top: 9px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.perf-timeline-preview { margin-block: 12px; }

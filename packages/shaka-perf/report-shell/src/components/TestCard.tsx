@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
 import { RunDetails } from './RunDetails';
 import { TestMetadata } from './TestMetadata';
@@ -115,6 +115,12 @@ export function TestCard({
   showViewportRunChips = true,
   dimmed,
   visibleStages,
+  expanded: sharedExpanded,
+  onToggleExpanded,
+  tagsExpanded: sharedTagsExpanded,
+  onToggleTags,
+  metadataExpanded,
+  onToggleMetadata,
 }: {
   test: TestResult;
   meta: ReportMeta;
@@ -123,6 +129,12 @@ export function TestCard({
   latestRunId?: string | null;
   showViewportRunChips?: boolean;
   visibleStages: ReadonlySet<string>;
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
+  tagsExpanded?: boolean;
+  onToggleTags?: () => void;
+  metadataExpanded?: boolean;
+  onToggleMetadata?: () => void;
   /**
    * True when the test doesn't match the active chip filter. The card stays
    * in the grid (the filter is a focus tool, not a hide) but greys out and
@@ -131,6 +143,28 @@ export function TestCard({
   dimmed?: boolean;
 }) {
   const [logsOpen, setLogsOpen] = useState(false);
+  const [localExpanded, setLocalExpanded] = useState(true);
+  const expanded = sharedExpanded ?? localExpanded;
+  const [localTagsExpanded, setLocalTagsExpanded] = useState(true);
+  const tagsExpanded = sharedTagsExpanded ?? localTagsExpanded;
+  const contentId = useId();
+  const titleRef = useRef<HTMLButtonElement>(null);
+  const scrollPending = useRef(false);
+
+  useEffect(() => {
+    if (!expanded || !scrollPending.current) return;
+    scrollPending.current = false;
+    const frame = requestAnimationFrame(() => {
+      const title = titleRef.current;
+      if (!title || document.activeElement !== title) return;
+      title.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [expanded]);
   const storageKey = reviewedKey(meta, test);
   const [reviewed, setReviewed] = useState(() => readReviewed(storageKey));
   const logs = logsForTest(test, visibleStages);
@@ -145,12 +179,30 @@ export function TestCard({
       data-chip-color={chips[0]?.color ?? 'gray'}
       data-dimmed={dimmed ? 'true' : undefined}
       data-reviewed={reviewed ? 'true' : undefined}
+      data-collapsed={expanded ? undefined : 'true'}
       tabIndex={-1}
       style={{ animationDelay: `${animationDelayMs}ms` }}
     >
       <div className="card__head">
         <div>
-          <h3 className="card__title">{test.name}</h3>
+          <h3 className="card__title">
+            <button
+              type="button"
+              className="card__title-toggle"
+              ref={titleRef}
+              aria-expanded={expanded}
+              aria-controls={contentId}
+              onClick={() => {
+                titleRef.current?.focus({ preventScroll: true });
+                scrollPending.current = !expanded;
+                if (onToggleExpanded) onToggleExpanded();
+                else setLocalExpanded((previous) => !previous);
+              }}
+            >
+              <span className="card__title-caret" aria-hidden="true" />
+              <span>{test.name}</span>
+            </button>
+          </h3>
         </div>
         <div className="card__pills">
           <label className="card__reviewed">
@@ -165,45 +217,61 @@ export function TestCard({
             />
             reviewed
           </label>
-          {oldRun ? (
-            <span className="pill pill--gray">
-              <span className="pill__label">old run</span>
-            </span>
-          ) : null}
-          {chips.map((chip) => (
-            <Pill key={`${chip.tag}:${chip.text}`} chip={chip} />
-          ))}
-          <RunDetails outcomes={test.outcomes} />
-          {logs.length > 0 ? (
-            <button
-              type="button"
-              className="card__logs-button"
-              onClick={() => setLogsOpen(true)}
-              aria-haspopup="dialog"
-            >
-              logs
-            </button>
-          ) : null}
         </div>
       </div>
 
-      <TestMetadata meta={meta} test={test} />
-
-      {reviewed ? null : (
-        <div className="card__body">
-          <StageArtifactProvider test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}>
-            {groups.map((outcomes, index) => (
-              <OutcomeSlot
-                key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
-                meta={meta}
-                outcomes={outcomes}
-                latestRunId={latestRunId}
-                showRunChips={showViewportRunChips && mixedRuns}
-              />
+      <div id={contentId} hidden={!expanded}>
+        <details className="card__disclosure card__tags" open={tagsExpanded}>
+          <summary onClick={(event) => {
+            event.preventDefault();
+            if (onToggleTags) onToggleTags();
+            else setLocalTagsExpanded((previous) => !previous);
+          }}>Tags</summary>
+          <div className="card__tag-list">
+            {oldRun ? (
+              <span className="pill pill--gray">
+                <span className="pill__label">old run</span>
+              </span>
+            ) : null}
+            {chips.map((chip) => (
+              <Pill key={`${chip.tag}:${chip.text}`} chip={chip} />
             ))}
-          </StageArtifactProvider>
+          </div>
+        </details>
+
+        <div className="card__metadata-row">
+          <TestMetadata meta={meta} test={test} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} />
+          <div className="card__actions">
+            <RunDetails outcomes={test.outcomes} />
+            {logs.length > 0 ? (
+              <button
+                type="button"
+                className="card__logs-button"
+                onClick={() => setLogsOpen(true)}
+                aria-haspopup="dialog"
+              >
+                logs
+              </button>
+            ) : null}
+          </div>
         </div>
-      )}
+
+        {reviewed ? null : (
+          <div className="card__body">
+            <StageArtifactProvider test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}>
+              {groups.map((outcomes, index) => (
+                <OutcomeSlot
+                  key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
+                  meta={meta}
+                  outcomes={outcomes}
+                  latestRunId={latestRunId}
+                  showRunChips={showViewportRunChips && mixedRuns}
+                />
+              ))}
+            </StageArtifactProvider>
+          </div>
+        )}
+      </div>
 
       <Dialog
         open={logsOpen}

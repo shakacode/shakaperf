@@ -205,6 +205,21 @@ describe('bisect report browser acceptance', () => {
     );
   });
 
+  it.each([
+    ['homepage-card', 'visual-target', 'visreg'],
+    ['product-card', 'perf-target', 'perf'],
+  ])('expands a collapsed %s card before focusing its evidence', async (testId, targetId, stage) => {
+    const card = page.locator(`[data-report-test-id="${testId}"]`);
+    const toggle = card.locator('.card__title-toggle');
+    await toggle.click();
+    expect(await toggle.getAttribute('aria-expanded')).toBe('false');
+    await page.locator(`[data-target-id="${targetId}"][role="link"]`).press('Enter');
+    expect(await toggle.getAttribute('aria-expanded')).toBe('true');
+    const destination = card.locator(`.outcome-slot[data-stage="${stage}"]`);
+    expect(await destination.isVisible()).toBe(true);
+    expect(await destination.evaluate((element) => element === document.activeElement)).toBe(true);
+  });
+
   it('uses keyboard-visible focus and switches the commit tree to phone flow', async () => {
     const tree = page.locator('.bisect-tree__list');
     expect(await tree.evaluate((element) => getComputedStyle(element).flexDirection)).toBe('row');
