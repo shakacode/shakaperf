@@ -258,7 +258,14 @@ export function TestCard({
 
         {reviewed ? null : (
           <div className="card__body">
-            <StageArtifactProvider test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}>
+            <StageArtifactProvider
+              test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}
+              renderMetadata={(fields) => (
+                <TestMetadata meta={meta} test={test} defaultExpanded>
+                  {fields}
+                </TestMetadata>
+              )}
+            >
               {groups.map((outcomes, index) => (
                 <OutcomeSlot
                   key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
