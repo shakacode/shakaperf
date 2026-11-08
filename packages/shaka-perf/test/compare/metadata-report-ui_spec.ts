@@ -124,6 +124,27 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     await verifyLayout();
   });
 
+  it('keeps target URLs and commits top-aligned when one commit expands', async () => {
+    if (pipeline !== 'compare') return;
+    for (const outcome of data.tests[0]!.outcomes) {
+      const commit = outcome.runMetadata?.targets.find((target) => target.side === 'control')?.commit;
+      if (commit) commit.message = 'Control subject\n\nExpanded commit body\n\nMore detail';
+    }
+    await page.reload();
+    await page.setViewportSize({ width: 1440, height: 1100 });
+    const card = page.locator('[data-report-test-id="homepage"]');
+    await card.evaluate((el) => { (el.parentElement as HTMLElement).style.gridTemplateColumns = 'minmax(0, 1fr)'; });
+    const metadata = card.locator('.card__metadata');
+    await metadata.locator('summary').first().click();
+    await metadata.locator('.card__targets > div').first().locator('.run-details__commit summary').first().click();
+    const targets = metadata.locator('.card__targets > div');
+    for (const selector of ['dd > a', '.run-details__commit']) {
+      const control = (await targets.nth(0).locator(selector).first().boundingBox())!;
+      const experiment = (await targets.nth(1).locator(selector).first().boundingBox())!;
+      expect(Math.abs(control.y - experiment.y)).toBeLessThan(1);
+    }
+  });
+
   it('preserves saved commit variants, their scopes, and expandable messages', async () => {
     const old = data.tests[0]!.outcomes[0]!.runMetadata!.targets[0]!;
     old.commit = { ...old.commit!, sha: 'abcdef1234567890', message: 'Earlier subject\n\nEarlier body' };
