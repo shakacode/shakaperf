@@ -22,11 +22,6 @@ function groupValues<T, V>(items: readonly T[], select: (item: T) => V) {
   return [...groups.values()];
 }
 
-function timestamp(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.valueOf()) ? value : date.toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC');
-}
-
 function unique(values: string[]) { return [...new Set(values)]; }
 
 function Scope({ items, entries, runs, always = false }: { items: Entry[]; entries: Entry[]; runs: string[]; always?: boolean }) {
