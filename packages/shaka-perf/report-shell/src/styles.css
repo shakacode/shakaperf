@@ -2958,7 +2958,7 @@ input {
 .ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata-row) {
   max-height: 50%;
 }
-@media (max-height: 600px) {
+@media (max-height: 800px) {
   .ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata-row) {
     max-height: 24%;
   }
