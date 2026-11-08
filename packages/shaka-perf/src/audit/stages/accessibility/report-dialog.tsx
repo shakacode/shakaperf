@@ -13,6 +13,7 @@ import {
   type CSSProperties,
 } from 'react';
 import { ImageViewport } from '../../../pipeline/image-viewport';
+import { useStageArtifactTest } from '../../../pipeline/stage-report-components';
 import type {
   AccessibilityNodeTarget,
   AccessibilityScan,
@@ -45,6 +46,8 @@ export function AccessibilityDialogMeta({
   hotspotCount: number;
   scan: AccessibilityScan;
 }) {
+  const test = useStageArtifactTest();
+  const showScannedUrl = !test || scan.url !== test.experimentUrl;
   const nodeCount = scan.violations.reduce((total, violation) => total + violation.nodes.length, 0);
   return (
     <>
@@ -60,6 +63,10 @@ export function AccessibilityDialogMeta({
         <dt>hotspots</dt>
         <dd>{hotspotCount}</dd>
       </div>
+      {showScannedUrl ? <div>
+        <dt>scanned URL</dt>
+        <dd className="ui-dialog__meta-break">{scan.url}</dd>
+      </div> : null}
     </>
   );
 }

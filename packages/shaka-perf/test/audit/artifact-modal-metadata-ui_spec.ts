@@ -7,6 +7,10 @@
 
 import { createServer, type Server } from 'node:http';
 import { chromium, type Browser } from 'playwright';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { AccessibilityDialogMeta } from '../../src/audit/stages/accessibility/report-dialog';
+import type { AccessibilityResult } from '../../src/audit/stages/accessibility/types';
 import { renderReportHtml, type ReportData, type ReportOutcome } from '../../src/pipeline/report';
 import { runDetailsFixture } from '../../src/pipeline/__tests__/fixtures/run-details';
 import { imageModalFixture, TALL_IMAGE } from './image-modal-fixture';
@@ -63,6 +67,38 @@ describe('artifact modal measurement context', () => {
     await new Promise<void>(resolve => server.close(() => resolve()));
   });
 
+  it.each([
+    { scannedUrl: 'https://example.test', distinct: false },
+    { scannedUrl: 'https://example.test/after-checkout', distinct: true },
+  ])('preserves scanned URL after navigation: $distinct', async ({ scannedUrl, distinct }) => {
+    data = fixture(cases[1]);
+    const scan = (data.tests[0]!.outcomes[0]!.measurement as AccessibilityResult).scans[0]!;
+    scan.url = scannedUrl;
+    const page = await browser.newPage({ viewport: { width: 560, height: 620 } });
+    try {
+      await page.goto(url);
+      await page.locator('.a11y-thumb-button').click();
+      const metadata = page.getByRole('dialog').locator('.card__metadata');
+      expect(await metadata.locator('.card__targets a').allTextContents()).toEqual(['https://example.test']);
+      const scannedRow = metadata.locator('.ui-dialog__meta > div').filter({ has: page.getByText('scanned URL', { exact: true }) });
+      expect(await scannedRow.count()).toBe(distinct ? 1 : 0);
+      if (distinct) {
+        await scannedRow.scrollIntoViewIfNeeded();
+        expect(await scannedRow.locator('dd').textContent()).toBe(scannedUrl);
+        expect(await scannedRow.isVisible()).toBe(true);
+      }
+      // Additional provenance must leave room for the screenshot at this shorter height.
+      expect(await page.getByRole('dialog').locator('.image-viewport').first().evaluate(el => el.clientHeight)).toBeGreaterThan(0);
+    } finally { await page.close(); }
+  });
+
+  it('preserves scanned URL when metadata is rendered without a test context', () => {
+    const scan = (fixture(cases[1]).tests[0]!.outcomes[0]!.measurement as AccessibilityResult).scans[0]!;
+    const html = renderToStaticMarkup(createElement(AccessibilityDialogMeta, { scan, hotspotCount: 1 }));
+    expect(html).toContain('<dt>scanned URL</dt>');
+    expect(html).toContain(scan.url);
+  });
+
   it.each(cases)('shows selected $pipeline $title context', async example => {
     data = fixture(example);
     const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
@@ -85,7 +121,7 @@ describe('artifact modal measurement context', () => {
       }
       if (example.opener === '.a11y-thumb-button') {
         // The shared target block owns URL provenance; stage fields do not repeat it.
-        expect(await metadata.locator('.ui-dialog__meta dt').allTextContents()).not.toContain('url');
+        expect(await metadata.locator('.ui-dialog__meta dt').allTextContents()).not.toContain('scanned URL');
       }
     } finally { await page.close(); }
   });
