@@ -60,10 +60,6 @@ export function AccessibilityDialogMeta({
         <dt>hotspots</dt>
         <dd>{hotspotCount}</dd>
       </div>
-      <div>
-        <dt>url</dt>
-        <dd className="ui-dialog__meta-break">{scan.url}</dd>
-      </div>
     </>
   );
 }

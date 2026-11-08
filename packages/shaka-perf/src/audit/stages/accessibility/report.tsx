@@ -8,6 +8,7 @@
 import { useMemo } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import {
+  ArtifactScope,
   StageArtifact,
   StageArtifactTitle,
   ReportHeading,
@@ -51,13 +52,15 @@ export function AccessibilityArtifactView({
       <StageArtifactTitle title="accessibility" />
       <div className="stage-stack">
         {rows.map((entry, index) => (
-          <div key={`${entry.viewport.label}-${index}`} className="stage-stack__viewport">
-            <AccessibilityBody
-              result={entry.measurement}
-              viewportLabel={entry.viewport.label}
-              latestRun={entry.latestRun}
-            />
-          </div>
+          <ArtifactScope key={`${entry.viewport.label}-${index}`} outcome={entry.outcome}>
+            <div className="stage-stack__viewport">
+              <AccessibilityBody
+                result={entry.measurement}
+                viewportLabel={entry.viewport.label}
+                latestRun={entry.latestRun}
+              />
+            </div>
+          </ArtifactScope>
         ))}
       </div>
     </StageArtifact>

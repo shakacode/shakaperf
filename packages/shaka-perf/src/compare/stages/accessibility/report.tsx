@@ -10,6 +10,7 @@ import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'reac
 import { FullReportOnly } from '../../../pipeline/report-mode';
 import type { StageRenderEntry } from '../../../stage/stage';
 import {
+  ArtifactScope,
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
@@ -516,13 +517,15 @@ export function AccessibilityCompareArtifactView({
       <StageArtifactTitle title="accessibility" />
       <div className="stage-stack">
         {rows.map((entry) => (
-          <div key={entry.viewport.label} className="stage-stack__viewport">
-            <AccessibilityCompareViewport
-              result={entry.measurement}
-              viewportLabel={entry.viewport.label}
-              latestRun={entry.latestRun}
-            />
-          </div>
+          <ArtifactScope key={entry.viewport.label} outcome={entry.outcome}>
+            <div className="stage-stack__viewport">
+              <AccessibilityCompareViewport
+                result={entry.measurement}
+                viewportLabel={entry.viewport.label}
+                latestRun={entry.latestRun}
+              />
+            </div>
+          </ArtifactScope>
         ))}
       </div>
     </StageArtifact>
