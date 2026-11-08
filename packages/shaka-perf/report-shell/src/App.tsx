@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import type {
   BisectCategory,
   ChipDescriptor,
@@ -28,7 +28,7 @@ import { ChipFilter, type ChipFilterOption } from './components/ChipFilter';
 import { SortChips, type SortChipOption, type SortDirection } from './components/SortChips';
 import { reviewedKey, TestCard } from './components/TestCard';
 import { ErrorBanner } from './components/ErrorBanner';
-import { MissingArtifactsCard } from './components/MissingArtifactsCard';
+import { MissingArtifactsDetails, MissingArtifactsToggle } from './components/MissingArtifacts';
 import { pipelineStagesForReport, type ReportStage } from '../../src/pipeline/pipeline-artifacts';
 import {
   AccessibilityReportFilterProvider,
@@ -238,6 +238,8 @@ export function App({
   initialBisectSelection?: BisectSelection;
 }) {
   const [query, setQuery] = useState('');
+  const [missingExpanded, setMissingExpanded] = useState(false);
+  const missingDetailsId = useId();
   const [cardsExpanded, setCardsExpanded] = useState(true);
   const [tagsExpanded, setTagsExpanded] = useState(true);
   const [metadataExpanded, setMetadataExpanded] = useState(false);
@@ -351,10 +353,8 @@ export function App({
   }, [chipTestSets, visibleTestIds]);
   const showRunChips = latestRunKey != null && cardTests.some((test) => runKey(test) !== latestRunKey);
   const missingTests = useMemo(
-    () => data.tests.filter((test) => (
-      !hasReportableOutcomes(test, isBisectReport) && matchesQuery(test, query)
-    )),
-    [data.tests, isBisectReport, query],
+    () => data.tests.filter((test) => !hasReportableOutcomes(test, isBisectReport)),
+    [data.tests, isBisectReport],
   );
 
   // "Show old runs" and search determine which cards appear.
@@ -444,13 +444,22 @@ export function App({
         <div className="header__controls">
           <div className="header__search-row">
             <SearchBar value={query} onChange={setQuery} />
-            {!isBisectReport ? (
-              <label className="suite-toggle">
-                <input type="checkbox" checked={showOldRuns} onChange={(event) => setShowOldRuns(event.target.checked)} />
-                Show old runs
-              </label>
-            ) : null}
+            <div className="header__search-actions">
+              {!isBisectReport ? (
+                <label className="suite-toggle">
+                  <input type="checkbox" checked={showOldRuns} onChange={(event) => setShowOldRuns(event.target.checked)} />
+                  Show old runs
+                </label>
+              ) : null}
+              <MissingArtifactsToggle
+                count={missingTests.length}
+                expanded={missingExpanded}
+                onToggle={() => setMissingExpanded((previous) => !previous)}
+                controlsId={missingDetailsId}
+              />
+            </div>
           </div>
+          <MissingArtifactsDetails meta={data.meta} tests={missingTests} expanded={missingExpanded} id={missingDetailsId} />
           <ChipFilter active={activeChipKeys} filters={chipFilters} onSelect={selectChip} />
           <SortChips options={sortOptions} active={sort} onSelect={selectSort} />
         </div>
@@ -459,11 +468,10 @@ export function App({
           <BisectSelectionSummary model={data.bisect} selection={bisectSelection} />
         ) : null}
 
-        {visibleTests.length === 0 && missingTests.length === 0 ? (
-          <div className="empty">no tests match current filter</div>
+        {visibleTests.length === 0 ? (
+          <div className="empty">{cardTests.length === 0 && missingTests.length > 0 ? 'no saved results available' : 'no tests match current filter'}</div>
         ) : (
           <div className="grid">
-            <MissingArtifactsCard meta={data.meta} tests={missingTests} />
             {visibleTests.map(({ test, dimmed }, idx) => (
               <TestCard
                 key={reviewedKey(data.meta, test)}
