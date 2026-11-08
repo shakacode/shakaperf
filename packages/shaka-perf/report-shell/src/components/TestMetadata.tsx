@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { ReportMeta, TestResult } from '../types';
 import { MeasurementCommand, RunCommits } from './RunDetails';
 import { pipelineTroubleshootCommands, renderPipelineTestCardUrls } from '../../../src/pipeline/pipeline-artifacts';
@@ -32,26 +32,6 @@ function formatMeasuredAt(measuredAt: number | null): string | null {
   return `${pluralize(days, 'day')} ${pluralize(hours, 'hour')} ago`;
 }
 
-function TroubleshootCommands({ meta, test }: { meta: ReportMeta; test: TestResult }) {
-  const [open, setOpen] = useState(false);
-  const viewports = [...new Set(test.outcomes.map((outcome) => outcome.viewport.label))];
-  const commands = pipelineTroubleshootCommands(meta, test.name, viewports);
-  if (commands.length === 0) return null;
-  return (
-    <div>
-      <button
-        type="button"
-        className="card__code-toggle"
-        onClick={() => setOpen((prev) => !prev)}
-        aria-expanded={open}
-      >
-        {open ? '▾ troubleshoot' : '▸ troubleshoot'}
-      </button>
-      {open ? <pre className="card__code">{commands.join('\n')}</pre> : null}
-    </div>
-  );
-}
-
 export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExpanded }: {
   meta: ReportMeta;
   test: TestResult;
@@ -60,11 +40,23 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
 }) {
   const [localExpanded, setLocalExpanded] = useState(false);
   const expanded = sharedExpanded ?? localExpanded;
-  const [codeOpen, setCodeOpen] = useState(false);
-  const [artifactsOpen, setArtifactsOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const panelId = useId();
+  const viewports = [...new Set(test.outcomes.map((outcome) => outcome.viewport.label))];
+  const troubleshoot = pipelineTroubleshootCommands(meta, test.name, viewports);
   // Outcome order follows stages/viewports, not measurement chronology.
   const latest = test.outcomes.flatMap((outcome) => outcome.runMetadata ? [outcome.runMetadata] : [])
     .sort((a, b) => (Date.parse(b.measuredAt) || Date.parse(b.runId) || 0) - (Date.parse(a.measuredAt) || Date.parse(a.runId) || 0))[0];
+  const sections = [
+    { id: 'command', label: 'command', content: latest ? <>
+      <div className="run-details__label">Latest command</div>
+      <MeasurementCommand key={latest.command} command={latest.command} compact />
+    </> : null },
+    { id: 'source', label: 'test source', content: test.code ? <pre className="card__code">{test.code}</pre> : null },
+    { id: 'troubleshoot', label: 'troubleshoot', content: troubleshoot.length ? <pre className="card__code">{troubleshoot.join('\n')}</pre> : null },
+    { id: 'artifacts', label: 'artifact paths', content: test.viewportArtifactPaths?.length ? <pre className="card__code">{test.viewportArtifactPaths.map(({ viewport, path }) => `${viewport}: ${path}`).join('\n')}</pre> : null },
+  ].filter((section) => section.content !== null);
+  const active = sections.find((section) => section.id === activeSection);
   return (
     <details className="card__disclosure card__metadata" open={expanded}>
       <summary onClick={(event) => {
@@ -79,49 +71,28 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
             updated {formatMeasuredAt(test.measuredAt)}
           </div>
         </div>
-        <dl className="card__urls" aria-label="URLs">{renderPipelineTestCardUrls(meta, test)}</dl>
-        <RunCommits outcomes={test.outcomes} compact />
-        {latest ? (
-          <div>
-            <div className="run-details__label">Latest command</div>
-            <MeasurementCommand key={latest.command} command={latest.command} compact />
-          </div>
-        ) : null}
-        {test.code ? (
-          <div>
-            <button
+        <dl className="card__urls card__targets" aria-label="URLs">
+          {renderPipelineTestCardUrls(meta, test, (side) => <RunCommits outcomes={test.outcomes} side={side} />)}
+        </dl>
+        {sections.length ? <div>
+          <div className="card__metadata-controls" aria-label="Metadata sections">
+            {sections.map(({ id, label }) => <button
+              key={id}
+              id={`${panelId}-${id}`}
               type="button"
               className="card__code-toggle"
-              onClick={() => setCodeOpen((prev) => !prev)}
-              aria-expanded={codeOpen}
+              aria-label={label}
+              aria-expanded={active?.id === id}
+              aria-controls={panelId}
+              onClick={() => setActiveSection((previous) => previous === id ? null : id)}
             >
-              {codeOpen ? '▾ test source' : '▸ test source'}
-            </button>
-            {codeOpen ? <pre className="card__code">{test.code}</pre> : null}
+              {active?.id === id ? '▾' : '▸'} {label}
+            </button>)}
           </div>
-        ) : null}
-
-        <TroubleshootCommands meta={meta} test={test} />
-
-        {test.viewportArtifactPaths && test.viewportArtifactPaths.length > 0 ? (
-          <div>
-            <button
-              type="button"
-              className="card__code-toggle"
-              onClick={() => setArtifactsOpen((prev) => !prev)}
-              aria-expanded={artifactsOpen}
-            >
-              {artifactsOpen ? '▾ artifact paths' : '▸ artifact paths'}
-            </button>
-            {artifactsOpen ? (
-              <pre className="card__code">
-                {test.viewportArtifactPaths
-                  .map(({ viewport, path }) => `${viewport}: ${path}`)
-                  .join('\n')}
-              </pre>
-            ) : null}
+          <div id={panelId} className="card__metadata-panel" hidden={!active} aria-labelledby={active ? `${panelId}-${active.id}` : undefined}>
+            {active?.content}
           </div>
-        ) : null}
+        </div> : null}
       </div>
     </details>
   );

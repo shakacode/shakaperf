@@ -97,7 +97,7 @@ export type PipelineStep =
 export interface PipelineReport {
   readonly reportLabel: string;
   renderHeaderUrls(meta: ReportMeta): ReactNode;
-  renderTestCardUrls(test: TestResult): ReactNode;
+  renderTestCardUrls(test: TestResult, details?: (side: 'control' | 'experiment') => ReactNode): ReactNode;
   renderDialogMetaUrls(test: StageArtifactTestMeta): ReactNode;
   /**
    * The command that re-runs this test at this viewport with its browsers left

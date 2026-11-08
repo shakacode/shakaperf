@@ -19,7 +19,7 @@ function renderHeaderUrls(meta: ReportMeta) {
   );
 }
 
-function renderTestCardUrls(test: TestResult) {
+function renderTestCardUrls(test: TestResult, details?: Parameters<PipelineReport['renderTestCardUrls']>[1]) {
   return (
     <div>
       <dt>url</dt>
@@ -27,6 +27,7 @@ function renderTestCardUrls(test: TestResult) {
         <a href={test.experimentUrl} target="_blank" rel="noreferrer">
           {test.experimentUrl}
         </a>
+        {details?.('experiment')}
       </dd>
     </div>
   );
