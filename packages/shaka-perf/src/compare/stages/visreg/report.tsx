@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { VisregArtifact, VisregResult } from '../visreg';
 import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, ReportHeading, OldRunChip, StageNote, ArtifactMetadata } from '../../../pipeline/stage-report-components';
@@ -93,7 +93,9 @@ function VisregCard({ row }: { row: VisregRow }) {
         body={<VisregDialogImages row={artifact} />}
       >
         <div className="artifact-card__media">
-          <ImageCell kind="no diff" src={artifact.controlImage} />
+          <ImageCell kind="no diff" src={artifact.controlImage}>
+            <RecoveryLabels row={row} />
+          </ImageCell>
         </div>
       </DetailedArtifactDialog>
     </div>
@@ -150,6 +152,17 @@ function TaskRetryMetadata({ outcome }: Pick<StageRenderEntry, 'outcome'>) {
     <dt>error retries</dt>
     <dd>{retries ?? '?'}/{limit ?? '?'}{recovered ? ' · recovered' : ''}</dd>
   </div>;
+}
+
+function RecoveryLabels({ row: { artifact, entry } }: { row: VisregRow }) {
+  return <>
+    {entry.outcome?.recoveredAfterRetries ? (
+      <span className="artifact-card__image-label artifact-card__image-label--flaky">flaky</span>
+    ) : null}
+    {artifact.savedByRetries ? (
+      <span className="artifact-card__image-label artifact-card__image-label--unstable">unstable</span>
+    ) : null}
+  </>;
 }
 
 function DiffImages({ row, diffImage }: { row: VisregArtifact; diffImage: string }) {
@@ -217,12 +230,20 @@ function DialogImage({ kind, src }: { kind: string; src: string }) {
   );
 }
 
-function ImageCell({ kind, src, imgH }: { kind: string; src: string; imgH?: number }) {
+function ImageCell({ kind, src, imgH, children }: {
+  kind: string;
+  src: string;
+  imgH?: number;
+  children?: ReactNode;
+}) {
   const style = imgH == null ? undefined : ({ '--img-h': imgH } as CSSProperties);
   return (
     <div className="artifact-card__image">
       <img src={src} alt={kind} loading="lazy" style={style} />
-      <span className="artifact-card__image-label">{kind}</span>
+      <span className="artifact-card__image-labels">
+        <span className="artifact-card__image-label">{kind}</span>
+        {children}
+      </span>
     </div>
   );
 }
