@@ -3213,7 +3213,7 @@ input {
 }
 .card__metadata-content { display: grid; gap: 10px; min-width: 0; padding: 0 20px 14px; }
 .card__metadata-content > * { min-width: 0; }
-.card__metadata-provenance { display: flex; align-items: baseline; gap: 7px; }
+.card__metadata-provenance { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
 .card__metadata-content .ui-dialog__meta { padding: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 .card__metadata-content .ui-dialog__meta dd { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 .ui-dialog__meta .visreg-meta__retries { flex-wrap: nowrap; }

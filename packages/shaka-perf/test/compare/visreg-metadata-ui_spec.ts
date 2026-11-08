@@ -18,6 +18,7 @@ function fixture() {
   const data = runDetailsFixture('compare');
   const test = data.tests[0]!;
   const saved = test.outcomes[0]!;
+  test.filePath = `ab-tests/${'nested-long-test-directory/'.repeat(8)}carousel.abtest.ts`;
   test.controlUrl = 'http://new-control.example/';
   test.experimentUrl = 'http://new-experiment.example/';
   test.outcomes = [{
@@ -64,6 +65,7 @@ describe('visual preview metadata', () => {
       await preview.getByRole('button').click();
       const dialog = page.getByRole('dialog');
       const metadata = dialog.locator('.card__metadata');
+      expect(await metadata.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
       const targets = metadata.locator('.card__targets > div');
       const control = (await targets.nth(0).boundingBox())!;
       const experiment = (await targets.nth(1).boundingBox())!;
