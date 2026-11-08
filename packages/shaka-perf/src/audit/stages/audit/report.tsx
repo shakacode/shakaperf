@@ -8,6 +8,7 @@
 import type { CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import {
+  ArtifactScope,
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
@@ -54,6 +55,7 @@ export function AuditArtifactView({
 }) {
   const rows = measurements
     .map((entry) => ({
+      outcome: entry.outcome,
       audit: entry.measurement,
       viewportLabel: entry.viewport.label,
       latestRun: entry.latestRun,
@@ -66,9 +68,11 @@ export function AuditArtifactView({
       <StageArtifactTitle title="audit" />
       <div className="stage-stack">
         {rows.map((row, index) => (
-          <div key={`${row.viewportLabel}-${index}`} className="stage-stack__viewport">
-            <AuditBody audit={row.audit} viewportLabel={row.viewportLabel} latestRun={row.latestRun} />
-          </div>
+          <ArtifactScope key={`${row.viewportLabel}-${index}`} outcome={row.outcome}>
+            <div className="stage-stack__viewport">
+              <AuditBody audit={row.audit} viewportLabel={row.viewportLabel} latestRun={row.latestRun} />
+            </div>
+          </ArtifactScope>
         ))}
       </div>
     </StageArtifact>
@@ -104,11 +108,11 @@ function MetricTable({
         })}
         {audit.lighthouseHref ? (
           <FullReportOnly>
-            <LighthouseColumn audit={audit} />
+            <LighthouseColumn audit={audit} viewportLabel={viewportLabel} />
           </FullReportOnly>
         ) : null}
       </div>
-      <ArtifactLinks audit={audit} />
+      <ArtifactLinks audit={audit} viewportLabel={viewportLabel} />
       </ReportSection>
     </div>
   );
@@ -117,7 +121,7 @@ function MetricTable({
 // The single-side halves of compare's "profile diff" / "network diff" — the
 // profile timeline this stage renders, and the network log every run already
 // wrote but nothing surfaced.
-function ArtifactLinks({ audit }: { audit: AuditResult }) {
+function ArtifactLinks({ audit, viewportLabel }: { audit: AuditResult; viewportLabel: string }) {
   const links = [
     audit.performanceProfileHref ? ['performance profile', audit.performanceProfileHref] : null,
     audit.networkActivityHref ? ['network activity', audit.networkActivityHref] : null,
@@ -127,7 +131,7 @@ function ArtifactLinks({ audit }: { audit: AuditResult }) {
     <FullReportOnly>
       <div className="artifact-links">
         {links.map(([label, href]) => (
-          <DetailedArtifactDialog key={label} href={href} label={label}>
+          <DetailedArtifactDialog key={label} href={href} label={label} title={`${viewportLabel} ${label}`}>
             {label}
           </DetailedArtifactDialog>
         ))}
@@ -159,13 +163,14 @@ function MetricGroupColumn({ title, metrics }: { title: string; metrics: readonl
   );
 }
 
-function LighthouseColumn({ audit }: { audit: AuditResult }) {
+function LighthouseColumn({ audit, viewportLabel }: { audit: AuditResult; viewportLabel: string }) {
   if (!audit.lighthouseHref) return null;
   return (
     <div style={METRIC_COLUMN_STYLE}>
       <DetailedArtifactDialog
         href={audit.lighthouseHref}
         label="Lighthouse report"
+        title={`${viewportLabel} Lighthouse report`}
         variant="preview"
       >
         <span style={LIGHTHOUSE_BUTTON_STYLE}>

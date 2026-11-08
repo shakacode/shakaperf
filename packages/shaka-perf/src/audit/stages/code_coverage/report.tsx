@@ -7,6 +7,7 @@
 
 import type { StageRenderEntry } from '../../../stage/stage';
 import {
+  ArtifactScope,
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
@@ -31,17 +32,19 @@ export function CodeCoverageArtifactView({
       <StageArtifactTitle title="code coverage" />
       <div className="stage-stack">
         {measurements.map((entry, index) => (
-          <div key={`${entry.viewport.label}-${index}`} className="stage-stack__viewport coverage-preview">
-            <ReportHeading className="stage-section__head" level={5} title={entry.viewport.label} badge={<OldRunChip latestRun={entry.latestRun} />} />
-            <CoveragePreview measurement={entry.measurement} />
-          </div>
+          <ArtifactScope key={`${entry.viewport.label}-${index}`} outcome={entry.outcome}>
+            <div className="stage-stack__viewport coverage-preview">
+              <ReportHeading className="stage-section__head" level={5} title={entry.viewport.label} badge={<OldRunChip latestRun={entry.latestRun} />} />
+              <CoveragePreview measurement={entry.measurement} viewportLabel={entry.viewport.label} />
+            </div>
+          </ArtifactScope>
         ))}
       </div>
     </StageArtifact>
   );
 }
 
-function CoveragePreview({ measurement: m }: { measurement: CodeCoverageResult }) {
+function CoveragePreview({ measurement: m, viewportLabel }: { measurement: CodeCoverageResult; viewportLabel: string }) {
   const percent = m.totalStatements > 0
     ? Math.round((m.coveredStatements / m.totalStatements) * 100)
     : 0;
@@ -51,8 +54,9 @@ function CoveragePreview({ measurement: m }: { measurement: CodeCoverageResult }
         <div className="coverage-preview__media">
           <DetailedArtifactDialog
             image
-                    href={m.screenshotHref}
+            href={m.screenshotHref}
             label="page the visibility map describes"
+            title={`${viewportLabel} code coverage screenshot`}
             className="coverage-preview__button"
           >
             <ScreenshotPreview src={m.screenshotHref} alt="page the visibility map describes" />
@@ -110,12 +114,12 @@ function CoveragePreview({ measurement: m }: { measurement: CodeCoverageResult }
         <FullReportOnly>
           <div className="artifact-links">
             {m.visibilityMapHref ? (
-              <DetailedArtifactDialog href={m.visibilityMapHref} label="visibility-map.txt">
+              <DetailedArtifactDialog href={m.visibilityMapHref} label="visibility-map.txt" title={`${viewportLabel} visibility map`}>
                 visibility-map.txt
               </DetailedArtifactDialog>
             ) : null}
             {m.coverageHref ? (
-              <DetailedArtifactDialog href={m.coverageHref} label="coverage.json">
+              <DetailedArtifactDialog href={m.coverageHref} label="coverage.json" title={`${viewportLabel} code coverage`}>
                 coverage.json
               </DetailedArtifactDialog>
             ) : null}

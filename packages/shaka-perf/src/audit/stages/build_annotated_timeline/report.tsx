@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import {
+  ArtifactScope,
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
@@ -38,7 +39,7 @@ export function BuildAnnotatedTimelineArtifactView({
 }) {
   const mode = useReportMode();
   const rows = measurements
-    .map((entry) => ({ timeline: entry.measurement, viewportLabel: entry.viewport.label, latestRun: entry.latestRun }))
+    .map((entry) => ({ timeline: entry.measurement, outcome: entry.outcome, viewportLabel: entry.viewport.label, latestRun: entry.latestRun }))
     .filter(({ timeline }) => {
       const frames = timeline.frames;
       if (!frames || frames.length === 0) return false;
@@ -53,29 +54,32 @@ export function BuildAnnotatedTimelineArtifactView({
         {rows.map((row, index) => {
           const frames = row.timeline.frames!;
           return (
-            <div key={`${row.viewportLabel}-${index}`} className="stage-stack__viewport">
-              <div className="stage-section">
-                <ReportHeading className="stage-section__head" level={5} title={row.viewportLabel} badge={<OldRunChip latestRun={row.latestRun} />} />
-                <DetailedArtifactDialog
-                  body={
-                    <AnnotatedTimelineDialog
+            <ArtifactScope key={`${row.viewportLabel}-${index}`} outcome={row.outcome}>
+              <div className="stage-stack__viewport">
+                <div className="stage-section">
+                  <ReportHeading className="stage-section__head" level={5} title={row.viewportLabel} badge={<OldRunChip latestRun={row.latestRun} />} />
+                  <DetailedArtifactDialog
+                    body={
+                      <AnnotatedTimelineDialog
+                        frames={frames}
+                        screencastHref={mode === 'self-contained' ? undefined : row.timeline.screencastHref}
+                        debugAllFrames={row.timeline.debugAllFrames}
+                      />
+                    }
+                    variant="preview"
+                    href="#"
+                    label="annotated timeline"
+                    title={`${row.viewportLabel} annotated timeline`}
+                  >
+                    <GroupedTimeline
                       frames={frames}
-                      screencastHref={mode === 'self-contained' ? undefined : row.timeline.screencastHref}
-                      debugAllFrames={row.timeline.debugAllFrames}
+                      minTileCssPx={MIN_TILE_CSS_PX}
+                      clipMaxHeight={PREVIEW_MAX_HEIGHT}
                     />
-                  }
-                  variant="preview"
-                  href="#"
-                  label="annotated timeline"
-                >
-                  <GroupedTimeline
-                    frames={frames}
-                    minTileCssPx={MIN_TILE_CSS_PX}
-                    clipMaxHeight={PREVIEW_MAX_HEIGHT}
-                  />
-                </DetailedArtifactDialog>
+                  </DetailedArtifactDialog>
+                </div>
               </div>
-            </div>
+            </ArtifactScope>
           );
         })}
       </div>
