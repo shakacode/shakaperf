@@ -6,7 +6,7 @@
  */
 
 import type { ReportMeta, TestResult } from '../types';
-import { MeasurementCommand } from './RunDetails';
+import { MeasurementCommand } from './MeasurementCommand';
 
 export function MissingArtifactsToggle({ count, expanded, onToggle, controlsId }: {
   count: number;

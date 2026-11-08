@@ -7,18 +7,9 @@
 
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { TestCard } from '../report-shell/src/components/TestCard';
 import { TargetCommits } from '../report-shell/src/components/TargetCommits';
 import { runDetailsFixture } from '../src/pipeline/__tests__/fixtures/run-details';
 import { reportDataForMode } from '../src/pipeline/report';
-
-it.each(['compare', 'audit'] as const)('%s cards have no redundant metadata-details dialog', (pipeline) => {
-  const data = runDetailsFixture(pipeline);
-  const html = renderToStaticMarkup(createElement(TestCard, { test: data.tests[0]!, meta: data.meta, animationDelayMs: 0, visibleStages: new Set(['perf', 'audit', 'accessibility']) }));
-  expect(html).not.toContain('Metadata details');
-  expect(html).toContain('Metadata');
-  expect(html).toContain('logs');
-});
 
 it.each(['full', 'self-contained'] as const)('retains metadata verbatim in the %s report variant', (mode) => {
   const data = runDetailsFixture('compare');

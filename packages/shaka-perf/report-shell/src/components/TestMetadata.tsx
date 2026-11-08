@@ -7,7 +7,8 @@
 
 import { useId, useState, type ReactNode } from 'react';
 import type { ReportMeta, TestResult } from '../types';
-import { MeasurementCommand, RunCommits } from './RunDetails';
+import { MeasurementCommand } from './MeasurementCommand';
+import { TargetCommits } from './TargetCommits';
 import { pipelineTroubleshootCommands, renderPipelineTestCardUrls } from '../../../src/pipeline/pipeline-artifacts';
 
 // Full-word units so "12m" isn't mistaken for "12 months" — especially
@@ -53,7 +54,7 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
     .sort((a, b) => (Date.parse(b.measuredAt) || Date.parse(b.runId) || 0) - (Date.parse(a.measuredAt) || Date.parse(a.runId) || 0))[0];
   const sections = [
     { id: 'command', label: 'command', content: latest ? <>
-      <div className="run-details__label">Latest command</div>
+      <div className="metadata-label">Latest command</div>
       <MeasurementCommand key={latest.command} command={latest.command} compact />
     </> : null },
     { id: 'source', label: 'test source', content: test.code ? <pre className="card__code">{test.code}</pre> : null },
@@ -81,7 +82,7 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
       <div className="card__metadata-content">
         {variant === 'card' ? provenance : null}
         <dl className="card__urls card__targets" aria-label="URLs">
-          {renderPipelineTestCardUrls(meta, test, (side) => <RunCommits outcomes={test.outcomes} side={side} />)}
+          {renderPipelineTestCardUrls(meta, test, (side) => <TargetCommits outcomes={test.outcomes} side={side} />)}
         </dl>
         {children}
         {sections.length ? <div>
