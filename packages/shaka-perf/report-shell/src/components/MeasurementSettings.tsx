@@ -6,6 +6,7 @@
  */
 
 import type { ReportOutcome } from '../types';
+import type { MeasurementThrottling } from '../../../src/pipeline/run-metadata';
 
 const NETWORK_UNITS: Record<string, string> = {
   rttMs: 'ms RTT',
@@ -19,6 +20,24 @@ function distinct<T>(values: T[]): T[] {
   return [...new Map(values.map((value) => [JSON.stringify(value), value])).values()];
 }
 
+function groupThrottling(settings: readonly MeasurementThrottling[]) {
+  const groups = new Map<string, { setting: MeasurementThrottling; sides: Set<string> }>();
+  for (const saved of settings) {
+    if (saved.engine !== 'Lighthouse') continue;
+    const setting = {
+      engine: saved.engine,
+      method: saved.method,
+      cpuSlowdownMultiplier: saved.method === 'provided' ? undefined : saved.cpuSlowdownMultiplier,
+      network: Object.fromEntries(Object.entries(saved.network).sort(([a], [b]) => a.localeCompare(b))),
+    };
+    const key = JSON.stringify(setting);
+    const group = groups.get(key) ?? { setting, sides: new Set<string>() };
+    if (saved.side) group.sides.add(saved.side);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}
+
 /** Display measured settings, never values inferred from today's report config. */
 export function MeasurementSettings({ outcomes }: { outcomes: readonly ReportOutcome[] }) {
   const metadata = outcomes.flatMap((outcome) => outcome.runMetadata ? [outcome.runMetadata] : []);
@@ -26,14 +45,7 @@ export function MeasurementSettings({ outcomes }: { outcomes: readonly ReportOut
     count: saved.numberOfMeasurements,
     perSide: saved.targets.length > 1,
   }]));
-  const settings = distinct(metadata.flatMap((saved) => (saved.throttling ?? [])
-    .filter((setting) => setting.engine === 'Lighthouse')
-    .map((setting) => ({
-      engine: setting.engine,
-      method: setting.method,
-      cpu: setting.method === 'provided' ? undefined : setting.cpuSlowdownMultiplier,
-      network: Object.entries(setting.network).sort(([a], [b]) => a.localeCompare(b)),
-    }))));
+  const settings = groupThrottling(metadata.flatMap((saved) => saved.throttling ?? []));
 
   if (counts.length === 0 && settings.length === 0) return null;
   return <dl className="ui-dialog__meta measurement-settings">
@@ -41,13 +53,13 @@ export function MeasurementSettings({ outcomes }: { outcomes: readonly ReportOut
       <dt>number of measurements</dt>
       <dd>{count}{perSide ? ' per side' : ''}</dd>
     </div>)}
-    {settings.map((setting) => <div key={JSON.stringify(setting)}>
-      <dt>throttling</dt>
+    {settings.map(({ setting, sides }) => <div key={JSON.stringify(setting)}>
+      <dt>throttling{settings.length > 1 && sides.size > 0 ? ` · ${[...sides].join(' / ')}` : ''}</dt>
       <dd>{[
         setting.engine,
         setting.method,
-        ...(setting.cpu === undefined ? [] : [`${setting.cpu}× CPU`]),
-        ...(setting.network.length === 0 ? ['No network emulation'] : setting.network.map(([key, amount]) =>
+        ...(setting.cpuSlowdownMultiplier === undefined ? [] : [`${setting.cpuSlowdownMultiplier}× CPU`]),
+        ...(Object.keys(setting.network).length === 0 ? ['No network emulation'] : Object.entries(setting.network).map(([key, amount]) =>
           `${amount.toLocaleString('en-US')} ${NETWORK_UNITS[key] ?? key}`)),
       ].join(' · ')}</dd>
     </div>)}
