@@ -9,8 +9,17 @@ demo-ecommerce/config/credentials/*.key
 # Ignore git directory
 .git/
 
-# Ignore node_modules (yarn PnP install happens in Docker)
-demo-ecommerce/node_modules/
+# Ignore host dependency installs; keep committed Yarn releases and plugins.
+**/node_modules/
+**/.pnp.*
+**/.yarn/install-state.gz
+**/.yarn/build-state.yml
+**/.yarn/unplugged/
+**/.yarn/cache/
+**/.yarn/sdks/
+**/.bundle/
+**/vendor/bundle/
+packages/**/build/
 
 # Ignore logs, tmp, storage
 demo-ecommerce/log/*
@@ -18,13 +27,22 @@ demo-ecommerce/tmp/*
 demo-ecommerce/storage/*
 
 # Ignore host-side Shaka Perf results (these can be many gigabytes)
-demo-ecommerce/audit-results*/
-demo-ecommerce/compare-bisect-results*/
-demo-ecommerce/compare-results*/
-demo-ecommerce/troubleshoot-results*/
+audit-results*/
+**/audit-results*/
+compare-bisect-results*/
+**/compare-bisect-results*/
+compare-results*/
+**/compare-results*/
+troubleshoot-results*/
+**/troubleshoot-results*/
 
 # Ignore built assets (rebuilt in Docker)
 demo-ecommerce/public/assets
+demo-ecommerce/public/packs/
+demo-ecommerce/public/packs-test/
+demo-ecommerce/ssr-generated/
+demo-ecommerce/.swc/
+demo-ecommerce/app/javascript/**/generated/
 demo-ecommerce/app/assets/builds/*
 
 # Workspace package contents the demo's container never uses. Kept out of
@@ -32,8 +50,8 @@ demo-ecommerce/app/assets/builds/*
 # runs, template tweaks) don't invalidate the docker image.
 #
 # What we keep: each package's `package.json` (workspace resolution),
-# `binding.gyp` + `native/` (shaka-perf's install script runs
-# `node-gyp rebuild` against these inside the container), and anything
+# `binding.gyp` + `native/` (the dependency layer runs shaka-perf's
+# `build-native` script against these inside the container), and anything
 # else not explicitly listed below.
 packages/**/dist
 packages/**/src
