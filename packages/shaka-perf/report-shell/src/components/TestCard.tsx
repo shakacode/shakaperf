@@ -12,7 +12,7 @@ import { TestMetadata } from './TestMetadata';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
 import { AnsiLog, firstElapsedSeconds } from './AnsiLog';
-import { Dialog, StageArtifactProvider, TestMeta } from '../../../src/pipeline/stage-report-components';
+import { Dialog, StageArtifactProvider } from '../../../src/pipeline/stage-report-components';
 
 interface LogEntry {
   label: string;
@@ -257,13 +257,15 @@ export function TestCard({
           <div className="card__body">
             <StageArtifactProvider
               test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}
-              renderMetadata={(fields) => (
-                <TestMetadata meta={meta} test={test} defaultExpanded variant="dialog" actions={logs.length > 0 ? (
+              renderMetadata={(fields, outcome) => {
+                const selected = test.outcomes.find((candidate) => candidate === outcome);
+                const scopedTest = { ...test, outcomes: selected ? [selected] : [] };
+                return <TestMetadata meta={meta} test={scopedTest} defaultExpanded variant="dialog" actions={logs.length > 0 ? (
                   <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button>
                 ) : null}>
                   {fields}
-                </TestMetadata>
-              )}
+                </TestMetadata>;
+              }}
             >
               {groups.map((outcomes, index) => (
                 <OutcomeSlot
@@ -279,11 +281,11 @@ export function TestCard({
         )}
       </div>
 
-      <Dialog
+      {logsOpen ? <Dialog
         open={logsOpen}
         onClose={() => setLogsOpen(false)}
-        title={<span className="ui-dialog__title-text">measurement logs</span>}
-        meta={<TestMeta test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }} />}
+        title={<span className="ui-dialog__title-text">measurement logs · {test.name}</span>}
+        meta={<TestMetadata meta={meta} test={test} defaultExpanded variant="dialog" />}
       >
         <div className="card-logs">
           {logs.map((log, index) => (
@@ -297,7 +299,7 @@ export function TestCard({
             </section>
           ))}
         </div>
-      </Dialog>
+      </Dialog> : null}
     </article>
   );
 }
