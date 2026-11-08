@@ -131,7 +131,7 @@ describe('bisect report App rendering', () => {
 
     const html = renderApp(data);
 
-    expect(html).toContain('card--missing-artifacts');
+    expect(html).toContain('class="missing-artifacts__toggle" aria-expanded="false"');
     expect(cardMarkup(html, 'Product page')).toBe('');
   });
 
@@ -176,7 +176,7 @@ describe('bisect report App rendering', () => {
     expect(cardMarkup(html, 'Homepage')).not.toBe('');
     expect(cardMarkup(html, 'Product page')).not.toBe('');
     expect(cardMarkup(html, 'Unrelated page')).not.toBe('');
-    expect(html).not.toContain('card--missing-artifacts');
+    expect(html).not.toContain('missing-artifacts__toggle');
   });
 
   it('preserves skipped-only persisted cards in bisect reports', () => {
@@ -195,7 +195,7 @@ describe('bisect report App rendering', () => {
     const html = renderApp(data);
 
     expect(cardMarkup(html, 'Product page')).not.toBe('');
-    expect(html).not.toContain('card--missing-artifacts');
+    expect(html).not.toContain('missing-artifacts__toggle');
     expect(html).not.toContain('1 skipped: fixture skip');
     expect(html).not.toContain('skipped tests grouped by reason');
   });
