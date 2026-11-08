@@ -92,7 +92,6 @@ WORKDIR ${APP_PATH}
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} package.json yarn.lock .yarnrc.yml ./
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} .yarn/releases ./.yarn/releases
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} .yarn/plugins ./.yarn/plugins
-COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages/shaka-accessibility/package.json ./packages/shaka-accessibility/
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages/shaka-bundle-size/package.json ./packages/shaka-bundle-size/
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages/shaka-shared/package.json ./packages/shaka-shared/
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages/shaka-perf/package.json packages/shaka-perf/npm-shrinkwrap.json packages/shaka-perf/binding.gyp ./packages/shaka-perf/
