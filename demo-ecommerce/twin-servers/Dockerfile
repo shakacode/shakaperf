@@ -87,16 +87,15 @@ RUN bundle install && \
 RUN bundle exec bootsnap precompile --gemfile
 
 WORKDIR ${APP_PATH}
-# Copy only Yarn configuration, workspace metadata and install inputs. Keep this
-# list in sync with package.json#workspaces when adding a workspace.
+# Copy only Yarn configuration, workspace metadata and install inputs.
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} package.json yarn.lock .yarnrc.yml ./
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} .yarn/releases ./.yarn/releases
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} .yarn/plugins ./.yarn/plugins
-COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages/shaka-bundle-size/package.json ./packages/shaka-bundle-size/
-COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages/shaka-shared/package.json ./packages/shaka-shared/
-COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages/shaka-perf/package.json packages/shaka-perf/npm-shrinkwrap.json packages/shaka-perf/binding.gyp ./packages/shaka-perf/
+# Match package.json's packages/* workspaces without listing each one. --parents
+# preserves their paths; a plain wildcard COPY would flatten the package.json files.
+COPY --parents --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages/*/package.json demo-ecommerce/package.json ./
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages/shaka-perf/npm-shrinkwrap.json packages/shaka-perf/binding.gyp ./packages/shaka-perf/
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages/shaka-perf/native ./packages/shaka-perf/native
-COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} demo-ecommerce/package.json ./demo-ecommerce/
 
 # .yarnrc.yml registers the sync-npm-shrinkwrap plugin, whose afterAllInstalled
 # hook runs this directory's script on every install — including the one below.
