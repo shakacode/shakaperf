@@ -73,6 +73,19 @@ describe('visual preview metadata', () => {
       } else {
         expect(experiment.y).toBeGreaterThan(control.y);
       }
+      const targetsBox = (await metadata.locator('.card__targets').boundingBox())!;
+      const overridesBox = (await metadata.locator('.ui-dialog__meta').boundingBox())!;
+      const controlsBox = (await metadata.locator('.card__metadata-controls').boundingBox())!;
+      expect(overridesBox.y).toBeGreaterThanOrEqual(targetsBox.y + targetsBox.height);
+      expect(controlsBox.y).toBeGreaterThanOrEqual(overridesBox.y + overridesBox.height);
+      if (width >= 1050) {
+        const summary = metadata.locator('summary').first();
+        const label = (await summary.locator(':scope > span').first().boundingBox())!;
+        const source = (await summary.locator('.card__path').boundingBox())!;
+        const logs = (await dialog.locator('.card__actions').getByRole('button', { name: 'logs', exact: true }).boundingBox())!;
+        expect(Math.abs(label.y - source.y)).toBeLessThan(3);
+        expect(Math.abs(label.y - logs.y)).toBeLessThan(3);
+      }
       // The modal reuses the latest test metadata and source shown on the card.
       expect(await metadata.locator('.card__targets a').allTextContents()).toEqual([
         'http://new-control.example/', 'http://new-experiment.example/',

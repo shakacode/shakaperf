@@ -239,9 +239,7 @@ export function TestCard({
           </div>
         </details>
 
-        <div className="card__metadata-row">
-          <TestMetadata meta={meta} test={test} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} />
-          <div className="card__actions">
+        <TestMetadata meta={meta} test={test} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} actions={<>
             <RunDetails outcomes={test.outcomes} />
             {logs.length > 0 ? (
               <button
@@ -253,15 +251,16 @@ export function TestCard({
                 logs
               </button>
             ) : null}
-          </div>
-        </div>
+        </>} />
 
         {reviewed ? null : (
           <div className="card__body">
             <StageArtifactProvider
               test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}
               renderMetadata={(fields) => (
-                <TestMetadata meta={meta} test={test} defaultExpanded>
+                <TestMetadata meta={meta} test={test} defaultExpanded variant="dialog" actions={logs.length > 0 ? (
+                  <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button>
+                ) : null}>
                   {fields}
                 </TestMetadata>
               )}
