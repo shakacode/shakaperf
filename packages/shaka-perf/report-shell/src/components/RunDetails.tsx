@@ -7,7 +7,6 @@
 
 import { useRef, useState } from 'react';
 import type { ReportOutcome } from '../types';
-import { Dialog } from '../../../src/pipeline/stage-report-components';
 import type { LoadedRunMetadata } from '../../../src/pipeline/run-metadata';
 
 export function savedRunDetails(outcomes: readonly ReportOutcome[]) {
@@ -75,10 +74,6 @@ function groupValues<T, V>(items: readonly T[], select: (item: T) => V) {
   return [...groups.values()];
 }
 
-function timestamp(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.valueOf()) ? value : date.toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC');
-}
 
 function unique(values: string[]) { return [...new Set(values)]; }
 
@@ -121,73 +116,4 @@ export function RunCommits({ outcomes, side }: { outcomes: readonly ReportOutcom
     </div>;
   });
   return <div className={side ? 'card__target-commits' : 'run-details__commits'}>{rows}</div>;
-}
-
-const NETWORK_LABELS: Record<string, string> = {
-  rttMs: 'ms RTT', requestLatencyMs: 'ms latency', throughputKbps: 'kbps',
-  downloadThroughputKbps: 'kbps down', uploadThroughputKbps: 'kbps up',
-};
-
-export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutcome[] }) {
-  const entries = savedRunDetails(outcomes).flatMap(([, items]) => items);
-  const runs = unique(entries.map(({ metadata }) => metadata.runId));
-  const targets = entries.flatMap((entry) => entry.metadata.targets.map((target) => ({ entry, target })));
-  const sampling = groupValues(entries.filter(({ stage, metadata }) => stage === 'perf' && metadata.numberOfMeasurements !== undefined), ({ metadata }) => ({
-    count: metadata.numberOfMeasurements!, perSide: metadata.targets.length > 1,
-  }));
-  const settings = groupValues(entries.flatMap((entry) => (entry.metadata.throttling ?? []).filter((setting) => setting.engine === 'Lighthouse').map((setting) => ({ entry, setting }))), ({ setting }) => ({
-    engine: setting.engine, method: setting.method, cpu: setting.method === 'provided' ? undefined : setting.cpuSlowdownMultiplier,
-    network: Object.entries(setting.network).sort(([a], [b]) => a.localeCompare(b)),
-  }));
-  const scope = (items: Entry[]) => <Scope items={items} entries={entries} runs={runs} />;
-  return <div className="run-details">
-    {sampling.length ? <section className="run-details__section">
-      <h3>Sampling</h3>
-      <div className="run-details__settings">
-        {sampling.map(({ value, items }) => <div className="run-details__setting" key={`samples-${value.count}-${value.perSide}`}>
-          <strong>{value.count} LH {value.count === 1 ? 'sample' : 'samples'}{value.perSide ? ' per side' : ''}</strong>
-          {scope(items)}
-        </div>)}
-      </div>
-    </section> : null}
-    {settings.length ? <section className="run-details__section">
-      <h3>Throttling</h3>
-      <div className="run-details__settings">{settings.map(({ value, items }, index) => <div className="run-details__setting" key={index}>
-        <div className="run-details__setting-head"><strong>{value.engine}</strong>{unique(items.map(({ setting }) => setting.side ?? '')).filter(Boolean).length === 1 && unique(targets.map(({ target }) => target.side)).length > 1 ? <span>{items[0]!.setting.side}</span> : null}{value.cpu !== undefined ? <span>{value.cpu}× CPU</span> : null}<span>{value.method}</span></div>
-        <div className="run-details__network">{value.network.length ? value.network.map(([key, amount]) => <span key={key}>{amount.toLocaleString('en-US')} {NETWORK_LABELS[key] ?? key}</span>) : <span>No network emulation</span>}</div>
-        {scope(items.map(({ entry }) => entry))}
-      </div>)}</div>
-    </section> : null}
-    <section className="run-details__section">
-      <h3>{runs.length === 1 ? 'Run' : 'Runs'}</h3>
-      {runs.map((runId, index) => {
-        const items = entries.filter(({ metadata }) => metadata.runId === runId);
-        const rows = groupValues(items, ({ stage, metadata }) => ({
-          stage, measured: timestamp(metadata.measuredAt), command: metadata.command, categories: [...metadata.categories].sort(),
-          targets: metadata.targets, throttling: metadata.throttling,
-          numberOfMeasurements: metadata.numberOfMeasurements, compareRetries: metadata.compareRetries,
-          compareAttempts: metadata.compareAttempts,
-          taskRetries: metadata.taskRetries, taskRetryLimit: metadata.taskRetryLimit,
-        }));
-        const showTime = rows.some(({ value }) => value.measured !== timestamp(runId));
-        return <details className="run-details__run" key={runId}>
-          <summary><span>{runs.length > 1 ? `Run ${index + 1}` : `${items.length} ${items.length === 1 ? 'Result' : 'Results'}`}</span><time title={runId}>{timestamp(runId)}</time></summary>
-          <div className="run-details__table-wrap"><table><thead><tr><th>Result</th><th>Viewport</th>{showTime ? <th>Measured</th> : null}</tr></thead><tbody>
-            {rows.map(({ value, items }, rowIndex) => <tr key={rowIndex}><td>{value.stage}</td><td>{items.map(({ metadata }) => <span key={metadata.viewport.label} title={metadata.measuredAt}>{metadata.viewport.label} </span>)}</td>{showTime ? <td title={items.map(({ metadata }) => metadata.measuredAt).join(' / ')}>{value.measured === timestamp(runId) ? '—' : value.measured}</td> : null}</tr>)}
-          </tbody></table></div>
-        </details>;
-      })}
-    </section>
-  </div>;
-}
-
-export function RunDetails({ outcomes }: { outcomes: readonly ReportOutcome[] }) {
-  const [open, setOpen] = useState(false);
-  if (!outcomes.some((outcome) => outcome.runMetadata)) return null;
-  return <>
-    <button type="button" className="card__run-details-button" aria-haspopup="dialog" onClick={() => setOpen(true)}>Metadata details</button>
-    {open ? <Dialog open variant="compact" onClose={() => setOpen(false)} title={<span className="ui-dialog__title-text">Metadata details</span>}>
-      <RunDetailsContent outcomes={outcomes} />
-    </Dialog> : null}
-  </>;
 }
