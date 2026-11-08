@@ -78,40 +78,49 @@ WORKDIR $APP_PATH
 
 USER ${NON_ROOT_USER}
 
-# Copy monorepo root files for yarn workspace resolution
-COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} package.json yarn.lock .yarnrc.yml ./
-COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} .yarn ./.yarn
-
-# .yarnrc.yml registers the sync-npm-shrinkwrap plugin, whose afterAllInstalled
-# hook runs this directory's script on every install — including the one below.
-COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} security-checks ./security-checks
-
-# Copy workspace packages (dependencies for demo-ecommerce)
-COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages ./packages
-
-# Copy demo-ecommerce app
-COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} demo-ecommerce ./demo-ecommerce
-
-# Install all JavaScript dependencies (monorepo-aware)
-# This generates .pnp.cjs and .pnp.loader.mjs files (not committed to git)
-RUN yarn install --immutable
-
-# Now work inside demo-ecommerce for Ruby operations
+# Install gems before any JavaScript inputs or application source. JavaScript
+# dependency changes must not invalidate bundle install or gem precompilation.
 WORKDIR ${APP_PATH}/demo-ecommerce
-
-# Install application gems
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} demo-ecommerce/Gemfile demo-ecommerce/Gemfile.lock ./
 RUN bundle install && \
     rm -rf /home/${NON_ROOT_USER}/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git
+RUN bundle exec bootsnap precompile --gemfile
 
-# Copy the rest of the application
-COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} demo-ecommerce ./
+WORKDIR ${APP_PATH}
+# Copy only Yarn configuration, workspace metadata and install inputs.
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} package.json yarn.lock .yarnrc.yml ./
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} .yarn/releases ./.yarn/releases
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} .yarn/plugins ./.yarn/plugins
+# Match package.json's packages/* workspaces without listing each one. --parents
+# preserves their paths; a plain wildcard COPY would flatten the package.json files.
+COPY --parents --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages/*/package.json demo-ecommerce/package.json ./
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages/shaka-perf/npm-shrinkwrap.json packages/shaka-perf/binding.gyp ./packages/shaka-perf/
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages/shaka-perf/native ./packages/shaka-perf/native
 
-# Precompile bootsnap code for faster boot times
-RUN bundle exec bootsnap precompile --gemfile app/ lib/
+# .yarnrc.yml registers the sync-npm-shrinkwrap plugin, whose afterAllInstalled
+# hook runs this directory's script on every install — including the one below.
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} security-checks/sync-npm-shrinkwrap.mjs ./security-checks/
+
+# Install all JavaScript dependencies (monorepo-aware)
+# This generates .pnp.cjs and .pnp.loader.mjs files (not committed to git)
+RUN yarn install --immutable && \
+    yarn workspace shaka-perf build-native
+
+# Copy application source once, after both dependency installs. Host-generated
+# assets and install state are excluded by Dockerfile.dockerignore.
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} demo-ecommerce ./demo-ecommerce
+WORKDIR ${APP_PATH}/demo-ecommerce
+
+# Only application Ruby code remains; gems were precompiled in the cached layer.
+RUN bundle exec bootsnap precompile app/ lib/
 
 # Precompile assets (webpack + sprockets)
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
+
+# Bake the existing SQLite setup into each isolated image. The configured
+# startup tasks are idempotent and can still prepare/seed the restored volume.
+RUN mkdir -p log tmp/pids tmp/cache storage && \
+    ./bin/rails db:prepare && ./bin/rails db:seed
 
 EXPOSE 3000
 
