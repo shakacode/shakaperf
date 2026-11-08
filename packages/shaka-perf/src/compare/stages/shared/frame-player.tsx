@@ -21,7 +21,7 @@ import {
   type SideBySideFrames,
   type SideBySideInteraction,
 } from '../../../bench/core/side-by-side-frames';
-import { Dialog, TestMeta, useStageArtifactTest } from '../../../pipeline/stage-report-components';
+import { ArtifactDialogTitle, ArtifactMetadata, Dialog } from '../../../pipeline/stage-report-components';
 
 const SPEEDS = [0.1, 0.25, 0.5, 1, 2, 3, 5, 10] as const;
 const CHANGED_PIXEL_THRESHOLD = 8;
@@ -170,9 +170,8 @@ function formatSeconds(ms: number): string {
   return `${(ms / 1000).toFixed(2)}s`;
 }
 
-export function FramePlayerButton({ href }: { href: string }) {
+export function FramePlayerButton({ href, viewportLabel }: { href: string; viewportLabel: string }) {
   const [open, setOpen] = useState(false);
-  const test = useStageArtifactTest();
   return (
     <>
       <button type="button" onClick={() => setOpen(true)}>play frames</button>
@@ -181,8 +180,8 @@ export function FramePlayerButton({ href }: { href: string }) {
           open={open}
           onClose={() => setOpen(false)}
           variant="wide"
-          title={<span className="ui-dialog__title-text">frames side by side</span>}
-          meta={test ? <TestMeta test={test} /> : null}
+          title={<ArtifactDialogTitle title={`${viewportLabel} frames side by side`} />}
+          meta={<ArtifactMetadata />}
         >
           <FramePlayer href={href} />
         </Dialog>

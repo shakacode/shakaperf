@@ -9,6 +9,7 @@ import type { StageRenderEntry } from '../../../stage/stage';
 import type { PerfArtifact, PerfMetric, PerfMetricGroup } from '../perf';
 import {
   DetailedArtifactDialog,
+  ArtifactScope,
   StageArtifact,
   StageArtifactTitle,
   ReportHeading,
@@ -41,6 +42,7 @@ export function PerfArtifactView({
   const perfs = measurements
     .map((entry) => ({
       perf: entry.measurement,
+      entry,
       viewportLabel: entry.viewport.label,
       latestRun: entry.latestRun,
     }))
@@ -57,12 +59,13 @@ export function PerfArtifactView({
       <StageArtifactTitle verbatim title={title} />
       <div className="stage-stack">
         {rows.map((row, index) => (
-          <PerfViewportBlock
-            key={`${row.viewportLabel}-${index}`}
-            perf={row.perf}
-            viewportLabel={row.viewportLabel}
-            latestRun={row.latestRun}
-          />
+          <ArtifactScope key={`${row.viewportLabel}-${index}`} outcome={row.entry.outcome}>
+            <PerfViewportBlock
+              perf={row.perf}
+              viewportLabel={row.viewportLabel}
+              latestRun={row.latestRun}
+            />
+          </ArtifactScope>
         ))}
       </div>
     </StageArtifact>
@@ -120,13 +123,14 @@ function PerfBody({
               variant="preview"
               href={perf.timelineHref}
               label="timeline"
+              title={`${viewportLabel} timeline`}
             >
               {timelinePreview}
             </DetailedArtifactDialog>
           ) : timelinePreview}
         </div>
       ) : null}
-      <ArtifactLinks perf={perf} />
+      <ArtifactLinks perf={perf} viewportLabel={viewportLabel} />
     </>
   );
 }
@@ -192,7 +196,7 @@ function MetricRow({ metric }: { metric: PerfMetric }) {
   );
 }
 
-function ArtifactLinks({ perf }: { perf: PerfArtifact }) {
+function ArtifactLinks({ perf, viewportLabel }: { perf: PerfArtifact; viewportLabel: string }) {
   const links = [
     perf.benchReportHref ? ['bench report', perf.benchReportHref] : null,
     perf.controlLighthouseHref ? ['control lh', perf.controlLighthouseHref] : null,
@@ -204,9 +208,9 @@ function ArtifactLinks({ perf }: { perf: PerfArtifact }) {
   return (
     <FullReportOnly>
       <div className="artifact-links">
-        {perf.framesHref ? <FramePlayerButton href={perf.framesHref} /> : null}
+        {perf.framesHref ? <FramePlayerButton href={perf.framesHref} viewportLabel={viewportLabel} /> : null}
         {links.map(([label, href]) => (
-          <DetailedArtifactDialog key={`${label}-${href}`} href={href} label={label}>
+          <DetailedArtifactDialog key={`${label}-${href}`} href={href} label={label} title={`${viewportLabel} ${label}`}>
             {label}
           </DetailedArtifactDialog>
         ))}
