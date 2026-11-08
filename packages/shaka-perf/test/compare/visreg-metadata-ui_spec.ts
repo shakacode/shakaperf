@@ -26,7 +26,7 @@ function fixture() {
     ...saved,
     stage: 'visreg',
     recoveredAfterRetries: true,
-    runMetadata: { ...saved.runMetadata!, taskRetries: 1, taskRetryLimit: 2 },
+    runMetadata: { ...saved.runMetadata!, throttling: [], taskRetries: 1, taskRetryLimit: 2 },
     measurement: [{
       selector: 'document', controlImage: image, experimentImage: image,
       diffImage: null, misMatchPercentage: 0, savedByRetries: true,

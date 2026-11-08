@@ -9,6 +9,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
 import { RunDetails } from './RunDetails';
 import { TestMetadata } from './TestMetadata';
+import { MeasurementSettings } from './MeasurementSettings';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
 import { AnsiLog, firstElapsedSeconds } from './AnsiLog';
@@ -263,6 +264,7 @@ export function TestCard({
                 return <TestMetadata meta={meta} test={scopedTest} defaultExpanded variant="dialog" actions={logs.length > 0 ? (
                   <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button>
                 ) : null}>
+                  <MeasurementSettings outcomes={scopedTest.outcomes} />
                   {fields}
                 </TestMetadata>;
               }}
