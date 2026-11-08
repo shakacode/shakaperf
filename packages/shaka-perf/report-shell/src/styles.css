@@ -3191,10 +3191,8 @@ input {
 .card__targets { gap: 16px; }
 .card__targets > div { align-items: start; gap: 8px; }
 .card__targets dd { display: grid; gap: 8px; }
+.card__targets dd > a { justify-self: start; max-width: 100%; }
 .card__target-commits { display: grid; gap: 8px; }
-.card__targets .run-details__commit summary,
-.card__targets .run-details__commit-heading { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
-.card__targets .run-details__commit code { justify-self: start; }
 .card__targets .run-details__commit summary { position: relative; padding-right: 18px; }
 .card__targets .run-details__commit summary::after { position: absolute; right: 0; top: 0; }
 .card__metadata-controls { display: flex; gap: 16px; overflow-x: auto; align-items: center; }
@@ -3205,8 +3203,6 @@ input {
   .card__targets { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
   .card__targets > div { grid-template-columns: minmax(0, 1fr); }
   .card__targets > div:only-child { grid-column: 1 / -1; }
-  .card__targets .run-details__commit summary,
-  .card__targets .run-details__commit-heading { display: flex; gap: 10px; }
 }
 .run-details__command--compact { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 4px; }
 .run-details__command--compact textarea { flex: 1; min-width: 0; width: auto; min-height: 30px; padding: 5px 7px; line-height: 18px; }
