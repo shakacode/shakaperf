@@ -39,6 +39,31 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
   });
   afterEach(async () => page.close());
 
+  it('uses one collapsed-by-default content area with keyboard disclosures', async () => {
+    const metadata = page.locator('[data-report-test-id="homepage"] .card__metadata');
+    await metadata.locator('summary').first().click();
+    const buttons = metadata.locator('.card__metadata-controls button');
+    expect(await buttons.count()).toBe(4);
+    const positions = await buttons.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().y));
+    expect(new Set(positions).size).toBe(1);
+    expect(await buttons.evaluateAll((nodes) => nodes.every((node) => node.getAttribute('aria-expanded') === 'false'))).toBe(true);
+    const command = metadata.getByRole('button', { name: 'command', exact: true });
+    await command.press('Enter');
+    expect(await metadata.getByText('Latest command', { exact: true }).isVisible()).toBe(true);
+    const panelId = await command.getAttribute('aria-controls');
+    expect(panelId).toBeTruthy();
+    for (const name of ['test source', 'troubleshoot', 'artifact paths']) {
+      const button = metadata.getByRole('button', { name, exact: true });
+      expect(await button.getAttribute('aria-controls')).toBe(panelId);
+      await button.press('Space');
+      expect(await metadata.locator('.card__metadata-controls button[aria-expanded="true"]').count()).toBe(1);
+      expect(await metadata.getByLabel('Latest command').count()).toBe(0);
+    }
+    await metadata.getByRole('button', { name: 'artifact paths', exact: true }).press('Enter');
+    expect(await metadata.locator('.card__metadata-controls button[aria-expanded="true"]').count()).toBe(0);
+    expect(await metadata.locator('.card__metadata-panel').isVisible()).toBe(false);
+  });
+
   it('hides metadata by default and keeps nested source, paths and the modal usable', async () => {
     const card = page.locator('[data-report-test-id="homepage"]');
     const metadata = card.locator('.card__metadata');
@@ -50,7 +75,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     expect(await card.locator('.card__path').isVisible()).toBe(true);
     expect(await card.getByLabel('URLs', { exact: true }).isVisible()).toBe(true);
     expect(await metadata.getByText('1e04e038', { exact: true }).count()).toBe(pipeline === 'compare' ? 2 : 1);
-    expect(await metadata.getByLabel('Commits', { exact: true }).locator('dt').allTextContents()).toEqual(pipeline === 'compare' ? ['control', 'experiment'] : ['experiment']);
+    expect(await metadata.locator('.card__targets dt').allTextContents()).toEqual(pipeline === 'compare' ? ['control', 'experiment'] : ['url']);
     const source = metadata.getByRole('button', { name: 'test source' });
     expect(await source.getAttribute('aria-expanded')).toBe('false');
     await source.click();
@@ -62,6 +87,53 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     expect(await page.getByRole('dialog').isVisible()).toBe(true);
     expect(await page.getByRole('dialog').getByRole('heading', { name: 'Applications' }).isVisible()).toBe(true);
     expect(await metadata.evaluate((el) => el.getBoundingClientRect().right <= window.innerWidth && Array.from(el.querySelectorAll('*')).every((child) => child.getBoundingClientRect().right <= window.innerWidth))).toBe(true);
+  });
+
+  it.each([1440, 1050, 390])('groups target details by card width at %i px', async (width) => {
+    await page.setViewportSize({ width, height: 1100 });
+    const card = page.locator('[data-report-test-id="homepage"]');
+    const metadata = card.locator('.card__metadata');
+    await metadata.locator('summary').first().click();
+    const rows = metadata.locator('.card__targets > div');
+    const verifyLayout = async () => {
+      const wide = (await card.boundingBox())!.width >= 900;
+      const label = (await rows.first().locator('dt').boundingBox())!;
+      const value = (await rows.first().locator('dd').boundingBox())!;
+      if (wide) {
+        expect(value.y).toBeGreaterThan(label.y);
+        expect(Math.abs(value.x - label.x)).toBeLessThan(1);
+        if (pipeline === 'compare') {
+          const second = (await rows.nth(1).boundingBox())!;
+          expect(second.x).toBeGreaterThan(value.x);
+          expect(Math.abs(second.y - label.y)).toBeLessThan(1);
+        }
+      } else {
+        expect(value.x).toBeGreaterThan(label.x);
+        expect(Math.abs(value.y - label.y)).toBeLessThan(1);
+      }
+      expect(await metadata.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    };
+    await verifyLayout();
+    // Exercise both layouts in the same viewport: the container controls the choice.
+    await card.evaluate((el) => { (el.parentElement as HTMLElement).style.gridTemplateColumns = 'minmax(0, 1fr)'; });
+    await verifyLayout();
+  });
+
+  it('preserves saved commit variants, their scopes, and expandable messages', async () => {
+    const old = data.tests[0]!.outcomes[0]!.runMetadata!.targets[0]!;
+    old.commit = { ...old.commit!, sha: 'abcdef1234567890', message: 'Earlier subject\n\nEarlier body' };
+    await page.reload();
+    const metadata = page.locator('[data-report-test-id="homepage"] .card__metadata');
+    await metadata.locator('summary').first().click();
+    const target = metadata.locator('.card__targets > div').first();
+    expect(await target.getByText('abcdef12', { exact: true }).count()).toBe(1);
+    expect(await target.getByText('1e04e038', { exact: true }).count()).toBe(1);
+    expect(await target.locator('.run-details__scope').first().textContent()).toContain('Run 1');
+    await target.locator('.run-details__commit summary').press('Enter');
+    expect(await target.getByText('Earlier body', { exact: true }).isVisible()).toBe(true);
+    await metadata.getByRole('button', { name: 'command', exact: true }).click();
+    await metadata.getByRole('button', { name: 'test source', exact: true }).click();
+    expect(await target.getByText('Earlier body', { exact: true }).isVisible()).toBe(true);
   });
 
   it.each([1280, 390])('collapses all cards from a title and preserves nested state at %i px', async (width) => {
@@ -117,6 +189,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     });
     const metadata = page.locator('[data-report-test-id="homepage"] .card__metadata');
     await metadata.locator('summary').first().click();
+    await metadata.getByRole('button', { name: 'command', exact: true }).click();
     expect(await metadata.getByLabel('Latest command').inputValue()).toBe(latest.command);
     await metadata.getByRole('button', { name: 'Copy command' }).click();
     await page.waitForFunction(() => document.body.dataset.copied !== undefined);
@@ -134,6 +207,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     });
     const metadata = page.locator('[data-report-test-id="homepage"] .card__metadata');
     await metadata.locator('summary').first().click();
+    await metadata.getByRole('button', { name: 'command', exact: true }).click();
     await metadata.getByRole('button', { name: 'Copy command' }).click();
     const field = metadata.getByLabel('Latest command');
     await page.waitForFunction(() => document.activeElement?.tagName === 'TEXTAREA');

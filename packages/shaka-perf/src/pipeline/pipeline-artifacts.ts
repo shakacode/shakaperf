@@ -73,8 +73,8 @@ export function renderPipelineHeaderUrls(meta: ReportMeta): ReactNode {
   return pipelineForReport(meta.pipelineName, meta.pipelineConfig).report.renderHeaderUrls(meta);
 }
 
-export function renderPipelineTestCardUrls(meta: ReportMeta, test: TestResult): ReactNode {
-  return pipelineForReport(meta.pipelineName, meta.pipelineConfig).report.renderTestCardUrls(test);
+export function renderPipelineTestCardUrls(meta: ReportMeta, test: TestResult, details?: Parameters<Pipeline['report']['renderTestCardUrls']>[1]): ReactNode {
+  return pipelineForReport(meta.pipelineName, meta.pipelineConfig).report.renderTestCardUrls(test, details);
 }
 
 export function renderPipelineDialogMetaUrls(test: StageArtifactTestMeta): ReactNode {

@@ -103,30 +103,25 @@ function CommitDetails({ commit }: { commit: Pick<NonNullable<LoadedRunMetadata[
   </details>;
 }
 
-export function RunCommits({ outcomes, compact = false }: { outcomes: readonly ReportOutcome[]; compact?: boolean }) {
+export function RunCommits({ outcomes, side }: { outcomes: readonly ReportOutcome[]; side?: 'control' | 'experiment' }) {
   const entries = savedRunDetails(outcomes).flatMap(([, items]) => items);
   const runs = unique(entries.map(({ metadata }) => metadata.runId));
   const targets = entries.flatMap((entry) => entry.metadata.targets.map((target) => ({ entry, target })));
   const commits = groupValues(targets, ({ target }) => ({
     commit: target.commit ? { sha: target.commit.sha, message: target.commit.message } : null,
-    side: compact ? target.side : null,
+    side: side ? target.side : null,
   }));
-  const rows = commits.map(({ value: { commit, side }, items }, index) => {
+  const rows = commits.filter(({ value }) => !side || value.side === side).map(({ value: { commit }, items }, index) => {
     const content = <>
       {commit ? <CommitDetails commit={commit} /> : <p className="run-details__unavailable">Commit unavailable</p>}
       <Scope items={items.map(({ entry }) => entry)} entries={entries} runs={runs} />
     </>;
-    return compact ? <div key={index}>
-      <dt>{side}</dt>
-      <dd>{content}</dd>
-    </div> : <div key={index}>
-      <div className="run-details__label">{unique(items.map(({ target }) => target.side)).join(' / ')}</div>
+    return <div key={index}>
+      {side ? null : <div className="run-details__label">{unique(items.map(({ target }) => target.side)).join(' / ')}</div>}
       {content}
     </div>;
   });
-  return compact
-    ? <dl className="card__urls" aria-label="Commits">{rows}</dl>
-    : <div className="run-details__commits">{rows}</div>;
+  return <div className={side ? 'card__target-commits' : 'run-details__commits'}>{rows}</div>;
 }
 
 const NETWORK_LABELS: Record<string, string> = {
