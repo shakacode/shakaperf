@@ -67,11 +67,11 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
         else setLocalExpanded((previous) => !previous);
       }}>Metadata</summary>
       <div className="card__metadata-content">
-        <div>
-          <div className="card__path">{test.filePath}</div>
-          <div className="card__measured-at" title="mtime of the freshest per-test artifact on disk">
-            updated {formatMeasuredAt(test.measuredAt)}
-          </div>
+        <div className="card__metadata-provenance">
+          <span className="card__path" title={test.filePath}>{test.filePath}</span>
+          <span className="card__measured-at" title="mtime of the freshest per-test artifact on disk">
+            <span aria-hidden="true">· </span>updated {formatMeasuredAt(test.measuredAt)}
+          </span>
         </div>
         {children}
         <dl className="card__urls card__targets" aria-label="URLs">
