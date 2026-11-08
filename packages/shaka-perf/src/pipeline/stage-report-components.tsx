@@ -24,6 +24,20 @@ export interface StageArtifactTestMeta {
 }
 
 const StageArtifactContext = createContext<StageArtifactTestMeta | null>(null);
+type ArtifactMetadataRenderer = (extra: ReactNode) => ReactNode;
+const ArtifactMetadataContext = createContext<ArtifactMetadataRenderer | null>(null);
+
+/** Wrap stage-specific fields in the shell's shared metadata disclosure. */
+export function ArtifactMetadata({ children }: { children: ReactNode }) {
+  const renderMetadata = useContext(ArtifactMetadataContext);
+  if (renderMetadata) return renderMetadata(children);
+  return (
+    <details className="card__disclosure card__metadata" open>
+      <summary>Metadata</summary>
+      <div className="card__metadata-content">{children}</div>
+    </details>
+  );
+}
 
 // Whole-test warnings and bisect reports suppress repeated viewport warnings,
 // without changing the freshness metadata supplied to stage renderers.
@@ -161,13 +175,15 @@ export function useStageArtifactTest(): StageArtifactTestMeta | null {
 export function StageArtifactProvider({
   children,
   test,
+  renderMetadata,
 }: {
   children: ReactNode;
   test: StageArtifactTestMeta;
+  renderMetadata: ArtifactMetadataRenderer;
 }) {
   return (
     <StageArtifactContext.Provider value={test}>
-      {children}
+      <ArtifactMetadataContext.Provider value={renderMetadata}>{children}</ArtifactMetadataContext.Provider>
     </StageArtifactContext.Provider>
   );
 }
@@ -209,6 +225,7 @@ export function DetailedArtifactDialog({
   children,
   className,
   extra,
+  meta,
   href,
   label,
   variant,
@@ -224,6 +241,7 @@ export function DetailedArtifactDialog({
    */
   className?: string;
   extra?: ReactNode;
+  meta?: ReactNode;
   href: string;
   label: string;
   variant?: 'preview';
@@ -248,7 +266,7 @@ export function DetailedArtifactDialog({
           open={open}
           onClose={() => setOpen(false)}
           title={<span className="ui-dialog__title-text">{label}</span>}
-          meta={test ? <TestMeta test={test} extra={extra} /> : null}
+          meta={meta ?? (test ? <TestMeta test={test} extra={extra} /> : null)}
         >
           {body ?? (image ? <ImageViewport><img src={href} alt={label} /></ImageViewport> : <iframe className="artifact-dialog__frame" src={href} title={label} />)}
         </Dialog>

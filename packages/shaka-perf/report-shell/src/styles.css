@@ -2935,6 +2935,14 @@ input {
   max-height: 24%;
   overflow: auto;
 }
+.ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata) {
+  max-height: 50%;
+}
+@media (max-height: 600px) {
+  .ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata) {
+    max-height: 24%;
+  }
+}
 .ui-dialog--image .ui-dialog__body {
   overflow: hidden;
 }
@@ -3188,8 +3196,13 @@ input {
 .card__disclosure { border-bottom: 1px solid var(--border); font-size: 11px; }
 .card__disclosure > summary { padding: 9px 20px; cursor: pointer; color: var(--fg-muted); }
 .card__disclosure > summary:hover { color: var(--fg); background: var(--bg-hover); }
+.card__metadata { container-type: inline-size; }
 .card__metadata-content { display: grid; gap: 10px; min-width: 0; padding: 0 20px 14px; }
 .card__metadata-content > * { min-width: 0; }
+.card__metadata-content .ui-dialog__meta { padding: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.card__metadata-content .ui-dialog__meta dd { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.ui-dialog__meta .visreg-meta__retries { flex-wrap: nowrap; }
+.card__metadata-content .ui-dialog__meta .visreg-meta__retries dd { flex: 0 1 auto; white-space: nowrap; }
 .card__metadata .card__urls { padding: 0; margin: 0; border: 0; }
 .card__metadata .run-details__commit code { font-size: 10px; line-height: 1; }
 .card__metadata .card__code { margin-top: 4px; }
