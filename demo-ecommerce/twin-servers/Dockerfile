@@ -119,6 +119,11 @@ RUN bundle exec bootsnap precompile app/ lib/
 # Precompile assets (webpack + sprockets)
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
 
+# Bake the existing SQLite setup into each isolated image. The configured
+# startup tasks are idempotent and can still prepare/seed the restored volume.
+RUN mkdir -p log tmp/pids tmp/cache storage && \
+    ./bin/rails db:prepare && ./bin/rails db:seed
+
 EXPOSE 3000
 
 # For twin-servers A/B testing: CMD and ENTRYPOINT are removed
