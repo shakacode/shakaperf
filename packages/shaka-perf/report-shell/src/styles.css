@@ -1762,8 +1762,8 @@ input {
   gap: 8px;
 }
 
-.artifact-links a,
-.artifact-links button {
+.artifact-links > a,
+.artifact-links > button {
   appearance: none;
   font-size: 10px;
   font-family: inherit;
@@ -1776,8 +1776,8 @@ input {
   cursor: pointer;
 }
 
-.artifact-links a:hover,
-.artifact-links button:hover {
+.artifact-links > a:hover,
+.artifact-links > button:hover {
   background: var(--border);
   color: #fff;
 }
@@ -3216,6 +3216,7 @@ input {
 }
 .card__metadata-content { display: grid; gap: 10px; min-width: 0; padding: 0 20px 14px; }
 .card__metadata-content > * { min-width: 0; }
+.measurement-settings__sample { margin: 0; color: var(--fg-muted); font-size: 11px; }
 .card__metadata-provenance { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
 @container (max-width: 899px) {
   .card__metadata-provenance { flex-wrap: wrap; }
