@@ -8,6 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { ResolvedConfig } from '../types';
+import { withProjectBuildxOperation } from '../helpers/buildx-lifecycle';
 import { requireCommand, confirm, exec, runInParallel } from '../helpers/shell';
 import {
   getGitSha,
@@ -33,6 +34,8 @@ import {
 export type BuildTarget = 'control' | 'experiment';
 
 export interface BuildOptions {
+  /** Session owners stop the builder when the menu/bisect session ends. */
+  keepBuilderRunning?: boolean;
   verbose?: boolean;
   /** Build only a single target (control or experiment). If not specified, builds both. */
   target?: BuildTarget;
@@ -87,7 +90,7 @@ async function buildServer(
   serverType: 'control' | 'experiment',
   config: ResolvedConfig,
   builderName: string,
-  options: { verbose?: boolean; noCache?: boolean } = {},
+  options: { verbose?: boolean; noCache?: boolean; signal?: AbortSignal } = {},
 ): Promise<void> {
   const { cmd, cwd } = buildDockerCmd(serverType, config, builderName, options.noCache);
 
@@ -102,7 +105,7 @@ async function buildServer(
     console.log(`  Git SHA: ${getGitSha(cwd)}`);
   }
 
-  const result = await exec('bash', ['-c', `cd '${cwd.replace(/'/g, "'\\''")}' && ${cmd}`]);
+  const result = await exec('bash', ['-c', `cd '${cwd.replace(/'/g, "'\\''")}' && ${cmd}`], { signal: options.signal });
   if (result.code !== 0) {
     throw new Error(`Docker build failed for ${serverType}`);
   }
@@ -110,13 +113,14 @@ async function buildServer(
   console.log(`Finished building ${serverType}`);
 }
 
-async function buildInParallel(config: ResolvedConfig, builderName: string, noCache?: boolean): Promise<void> {
+async function buildInParallel(config: ResolvedConfig, builderName: string, noCache?: boolean, signal?: AbortSignal): Promise<void> {
   const experiment = buildDockerCmd('experiment', config, builderName, noCache);
   const control = buildDockerCmd('control', config, builderName, noCache);
 
   await runInParallel(
     `cd '${experiment.cwd}' && ${experiment.cmd}`,
     `cd '${control.cwd}' && ${control.cmd}`,
+    { signal },
   );
 }
 
@@ -214,54 +218,56 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
   if (buildingControl) requireSyncedServerRebuild(config, 'control');
   if (buildingExperiment) requireSyncedServerRebuild(config, 'experiment');
 
-  const builderName = await ensureProjectBuildxBuilder(config);
-  console.log(`Using project Buildx builder: ${builderName}`);
-  console.log('');
+  await withProjectBuildxOperation(config, interrupted => interrupted || !options.keepBuilderRunning, async (signal) => {
+    const builderName = await ensureProjectBuildxBuilder(config);
+    console.log(`Using project Buildx builder: ${builderName}`);
+    console.log('');
 
-  if (target) {
-    console.log(`Building ${target} Docker image...`);
-    console.log('');
-    await buildServer(target, config, builderName, { verbose, noCache });
-    clearSyncedServerCommit(config, target);
-    invalidateImageCreated(config.images[target]);
-    recordBuildAttempt(config.volumes[target]);
-    recordBuildManifest(config, target);
-  } else {
-    console.log('Building both Docker images in parallel...');
-    console.log('');
-    await buildInParallel(config, builderName, noCache);
-    clearSyncedServerCommit(config, 'control');
-    clearSyncedServerCommit(config, 'experiment');
-    invalidateImageCreated(config.images.experiment);
-    invalidateImageCreated(config.images.control);
-    recordBuildAttempt(config.volumes.experiment);
-    recordBuildAttempt(config.volumes.control);
-    recordBuildManifest(config, 'experiment');
-    recordBuildManifest(config, 'control');
-  }
+    if (target) {
+      console.log(`Building ${target} Docker image...`);
+      console.log('');
+      await buildServer(target, config, builderName, { verbose, noCache, signal });
+      clearSyncedServerCommit(config, target);
+      invalidateImageCreated(config.images[target]);
+      recordBuildAttempt(config.volumes[target]);
+      recordBuildManifest(config, target);
+    } else {
+      console.log('Building both Docker images in parallel...');
+      console.log('');
+      await buildInParallel(config, builderName, noCache, signal);
+      clearSyncedServerCommit(config, 'control');
+      clearSyncedServerCommit(config, 'experiment');
+      invalidateImageCreated(config.images.experiment);
+      invalidateImageCreated(config.images.control);
+      recordBuildAttempt(config.volumes.experiment);
+      recordBuildAttempt(config.volumes.control);
+      recordBuildManifest(config, 'experiment');
+      recordBuildManifest(config, 'control');
+    }
 
-  console.log('');
-  printSuccess('Docker image(s) built successfully!');
-  console.log('');
-  console.log('Images created:');
-  if (buildingExperiment) {
-    console.log(`  - ${config.images.experiment} (current branch: ${getGitBranch(dockerBuildDirForSide(config, 'experiment'))})`);
-  }
-  if (buildingControl) {
-    console.log(`  - ${config.images.control} (baseline branch: ${getGitBranch(dockerBuildDirForSide(config, 'control'))})`);
-  }
-  console.log('');
-  console.log('Bind-mount directories:');
-  if (buildingControl) {
-    console.log(`  - Control: ${config.volumes.control}`);
-  }
-  if (buildingExperiment) {
-    console.log(`  - Experiment: ${config.volumes.experiment}`);
-  }
-  console.log('');
-  if (buildingBoth) {
-    console.log('Next steps:');
-    console.log('  yarn shaka-perf servers start-containers');
     console.log('');
-  }
+    printSuccess('Docker image(s) built successfully!');
+    console.log('');
+    console.log('Images created:');
+    if (buildingExperiment) {
+      console.log(`  - ${config.images.experiment} (current branch: ${getGitBranch(dockerBuildDirForSide(config, 'experiment'))})`);
+    }
+    if (buildingControl) {
+      console.log(`  - ${config.images.control} (baseline branch: ${getGitBranch(dockerBuildDirForSide(config, 'control'))})`);
+    }
+    console.log('');
+    console.log('Bind-mount directories:');
+    if (buildingControl) {
+      console.log(`  - Control: ${config.volumes.control}`);
+    }
+    if (buildingExperiment) {
+      console.log(`  - Experiment: ${config.volumes.experiment}`);
+    }
+    console.log('');
+    if (buildingBoth) {
+      console.log('Next steps:');
+      console.log('  yarn shaka-perf servers start-containers');
+      console.log('');
+    }
+  });
 }

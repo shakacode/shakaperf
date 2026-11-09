@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { cancelProjectBuildxOperations } from '../helpers/buildx-lifecycle';
 import { pruneBuildCache } from '../commands/prune-cache';
 import * as shell from '../helpers/shell';
 import type { ResolvedConfig } from '../types';
@@ -33,7 +34,7 @@ describe('pruneBuildCache', () => {
 
   it('prunes all cache from only the project builder', async () => {
     mockExec
-      .mockResolvedValueOnce({ stdout: 'Driver: docker-container\n', stderr: '', code: 0 })
+      .mockResolvedValueOnce({ stdout: 'Driver: docker-container\nStatus: running\n', stderr: '', code: 0 })
       .mockResolvedValueOnce({ stdout: '', stderr: '', code: 0 })
       .mockResolvedValueOnce({ stdout: 'Total: 12GB', stderr: '', code: 0 });
 
@@ -47,13 +48,50 @@ describe('pruneBuildCache', () => {
       2,
       'docker',
       ['buildx', 'inspect', '--bootstrap', 'shaka-perf-code--shaka--shop'],
-      { silent: true },
+      expect.objectContaining({ silent: true }),
     );
     expect(mockExec).toHaveBeenNthCalledWith(
       3,
       'docker',
       ['buildx', 'prune', '--builder', 'shaka-perf-code--shaka--shop', '--all', '--force'],
+      expect.objectContaining({ signal: expect.anything() }),
     );
+  });
+
+  it('stops a builder that pruning started, including after prune failure', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation();
+    for (const code of [0, 1]) {
+      mockExec.mockReset();
+      mockExec
+        .mockResolvedValueOnce({ stdout: 'Driver: docker-container\nStatus: stopped\n', stderr: '', code: 0 })
+        .mockResolvedValueOnce({ stdout: '', stderr: '', code: 0 })
+        .mockResolvedValueOnce({ stdout: '', stderr: 'prune failed', code })
+        .mockResolvedValueOnce({ stdout: 'Driver: docker-container\n', stderr: '', code: 0 })
+        .mockResolvedValueOnce({ stdout: '', stderr: '', code: 0 });
+      if (code) await expect(pruneBuildCache(config)).rejects.toThrow(/Failed to prune/);
+      else await pruneBuildCache(config);
+      expect(mockExec).toHaveBeenLastCalledWith('docker', ['buildx', 'stop', 'shaka-perf-code--shaka--shop'], { silent: true });
+    }
+    warn.mockRestore();
+  });
+
+  it('preserves an already-running builder when pruning is cancelled', async () => {
+    let ready!: () => void;
+    const entered = new Promise<void>(resolve => { ready = resolve; });
+    mockExec.mockReset()
+      .mockResolvedValueOnce({ stdout: 'Driver: docker-container\nStatus: running\n', stderr: '', code: 0 })
+      .mockResolvedValueOnce({ stdout: '', stderr: '', code: 0 })
+      .mockImplementationOnce(async (_command, _args, options) => {
+        ready();
+        await new Promise<void>((_, reject) => options!.signal!.addEventListener('abort', () => reject(new Error('prune cancelled'))));
+        return { stdout: '', stderr: '', code: 0 };
+      });
+    const operation = pruneBuildCache(config);
+    const rejected = expect(operation).rejects.toThrow('prune cancelled');
+    await entered;
+    cancelProjectBuildxOperations(config);
+    await rejected;
+    expect(mockExec).toHaveBeenCalledTimes(3);
   });
 
   it('does nothing when the project builder does not exist', async () => {
@@ -66,7 +104,7 @@ describe('pruneBuildCache', () => {
 
   it('also removes existing control and experiment images when requested', async () => {
     mockExec
-      .mockResolvedValueOnce({ stdout: 'Driver: docker-container\n', stderr: '', code: 0 })
+      .mockResolvedValueOnce({ stdout: 'Driver: docker-container\nStatus: running\n', stderr: '', code: 0 })
       .mockResolvedValueOnce({ stdout: '', stderr: '', code: 0 })
       .mockResolvedValueOnce({ stdout: 'Total: 12GB', stderr: '', code: 0 })
       .mockResolvedValueOnce({ stdout: '[]', stderr: '', code: 0 })
@@ -143,7 +181,7 @@ describe('pruneBuildCache', () => {
 
   it('fails when the project builder prune fails', async () => {
     mockExec
-      .mockResolvedValueOnce({ stdout: 'Driver: docker-container\n', stderr: '', code: 0 })
+      .mockResolvedValueOnce({ stdout: 'Driver: docker-container\nStatus: running\n', stderr: '', code: 0 })
       .mockResolvedValueOnce({ stdout: '', stderr: '', code: 0 })
       .mockResolvedValueOnce({ stdout: '', stderr: 'failed', code: 1 });
 

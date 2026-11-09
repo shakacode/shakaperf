@@ -394,6 +394,7 @@ describe('build command', () => {
       getGroupId: jest.fn(() => '1000'),
       getUsername: jest.fn(() => 'testuser'),
       ensureProjectBuildxBuilder: jest.fn(async () => 'shaka-perf-test-slug'),
+      stopProjectBuildxBuilder: jest.fn().mockResolvedValue(undefined),
     }));
 
     // Mock shell helpers
@@ -423,6 +424,33 @@ describe('build command', () => {
 
     return { mockExec, mockConfirm };
   }
+
+  it('stops the project builder after a standalone build', async () => {
+    setupBuildMocks();
+    const { build } = require('../commands/build');
+    const { stopProjectBuildxBuilder } = require('../helpers/docker');
+    await build(createMockConfig(tmpDir), { target: 'experiment' });
+    expect(stopProjectBuildxBuilder).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the builder available for menu and bisect callers', async () => {
+    setupBuildMocks();
+    const { build } = require('../commands/build');
+    const { stopProjectBuildxBuilder } = require('../helpers/docker');
+    await build(createMockConfig(tmpDir), { target: 'experiment', keepBuilderRunning: true });
+    expect(stopProjectBuildxBuilder).not.toHaveBeenCalled();
+  });
+
+  it('preserves the original standalone build failure when cleanup also fails', async () => {
+    const { mockExec } = setupBuildMocks();
+    const { build } = require('../commands/build');
+    const { stopProjectBuildxBuilder } = require('../helpers/docker');
+    stopProjectBuildxBuilder.mockRejectedValueOnce(new Error('cleanup failed'));
+    mockExec.mockResolvedValue({ code: 1, stdout: '', stderr: 'build failed' });
+    await expect(build(createMockConfig(tmpDir), { target: 'experiment' })).rejects.toThrow('Docker build failed for experiment');
+    expect(stopProjectBuildxBuilder).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('cleanup failed'));
+  });
 
   it('clones into the repo root, not controlDir subdirectory', async () => {
     const { mockExec, mockConfirm } = setupBuildMocks();
