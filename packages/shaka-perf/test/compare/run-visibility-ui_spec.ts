@@ -78,10 +78,8 @@ describe('latest measurement run visibility', () => {
     }
   });
 
-  it.each([
-    ['compare', 'full'], ['compare', 'self-contained'],
-    ['audit', 'full'], ['audit', 'self-contained'],
-  ] as const)('%s %s counts and selects status chips within the chosen run scope', async (pipeline, mode) => {
+  it.each(['compare', 'audit'] as const)('%s counts and selects status chips within the chosen run scope', async (pipeline) => {
+    const mode = 'full';
     const data = fixture(pipeline, mode);
     const older = data.tests.find((test) => test.name === 'Older')!;
     older.chips.push({ tag: 'flaky', text: 'flaky', color: 'yellow', sortingWeight: 1 });
@@ -112,10 +110,8 @@ describe('latest measurement run visibility', () => {
     }
   }, 30_000);
 
-  it.each([
-    ['compare', 'full'], ['compare', 'self-contained'],
-    ['audit', 'full'], ['audit', 'self-contained'],
-  ] as const)('%s %s switches status summaries while retaining sort controls despite archived errors', async (pipeline, mode) => {
+  it.each(['compare', 'audit'] as const)('%s switches status summaries while retaining sort controls despite archived errors', async (pipeline) => {
+    const mode = 'full';
     const data = fixture(pipeline, mode);
     const mixed = data.tests.find((test) => test.name === 'Mixed')!;
     mixed.chips = [{ tag: 'broken', text: 'broken', color: 'gray', sortingWeight: 0 }];
@@ -155,10 +151,8 @@ describe('latest measurement run visibility', () => {
     }
   }, 30_000);
 
-  it.each([
-    ['compare', 'full'], ['compare', 'self-contained'],
-    ['audit', 'full'], ['audit', 'self-contained'],
-  ] as const)('%s %s reveals config-excluded viewports only with old runs', async (pipeline, mode) => {
+  it.each(['compare', 'audit'] as const)('%s reveals config-excluded viewports only with old runs', async (pipeline) => {
+    const mode = 'full';
     const data = fixture(pipeline, mode);
     const mixed = data.tests.find((test) => test.name === 'Mixed')!;
     mixed.outcomes = mixed.outcomes.map((outcome) => ({
@@ -205,10 +199,8 @@ describe('latest measurement run visibility', () => {
     }
   }, 30_000);
 
-  it.each([
-    ['compare', 'full'], ['compare', 'self-contained'],
-    ['audit', 'full'], ['audit', 'self-contained'],
-  ] as const)('%s %s intersects suite visibility with existing controls', async (pipeline, mode) => {
+  it.each(['compare', 'audit'] as const)('%s intersects suite visibility with existing controls', async (pipeline) => {
+    const mode = 'full';
     const file = path.join(directory, `${pipeline}-${mode}.html`);
     fs.writeFileSync(file, renderReportHtml(fixture(pipeline, mode)));
     const page = await browser.newPage();

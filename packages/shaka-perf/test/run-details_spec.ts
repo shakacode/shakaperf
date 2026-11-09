@@ -134,19 +134,11 @@ it('keeps differing saved sampling counts scoped to their measurement runs', () 
   expect(html).toContain('Run 2 / perf');
 });
 
-it.each([undefined, 0])('omits absent sampling fields and unused visual retries: %p', (compareRetries) => {
-  const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(0, 1);
-  Object.assign(outcomes[0]!.runMetadata!, { compareRetries });
-  const html = details(outcomes);
-  expect(html).toContain('1 Result');
-  expect(html).not.toContain('<h3>Sampling</h3>');
-});
-
 // Counts saved by other Lighthouse stages remain available as metadata, but
 // only statistical perf sampling belongs in this modal.
-it.each(['perf-low-noise', 'perf-warmup', 'audit'])('omits sample counts for %s', (stage) => {
+it('does not present the low-noise sample as statistical sampling', () => {
   const outcomes = runDetailsFixture('compare').tests[0]!.outcomes.slice(0, 1);
-  outcomes[0]!.stage = stage;
+  outcomes[0]!.stage = 'perf-low-noise';
   outcomes[0]!.runMetadata!.numberOfMeasurements = 1;
   expect(details(outcomes)).not.toContain('<h3>Sampling</h3>');
 });

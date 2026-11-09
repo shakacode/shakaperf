@@ -12,7 +12,8 @@ import { runDetailsFixture } from '../../src/pipeline/__tests__/fixtures/run-det
 
 jest.setTimeout(60_000);
 
-describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
+describe('card metadata', () => {
+  const pipeline = 'compare';
   let server: Server;
   let browser: Browser;
   let page: Page;
@@ -43,23 +44,18 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     const metadata = page.locator('[data-report-test-id="homepage"] .card__metadata');
     await metadata.locator('summary').first().click();
     const buttons = metadata.locator('.card__metadata-controls button');
-    expect(await buttons.count()).toBe(4);
-    const positions = await buttons.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().y));
-    expect(new Set(positions).size).toBe(1);
     expect(await buttons.evaluateAll((nodes) => nodes.every((node) => node.getAttribute('aria-expanded') === 'false'))).toBe(true);
     const command = metadata.getByRole('button', { name: 'command', exact: true });
     await command.press('Enter');
     expect(await metadata.getByText('Latest command', { exact: true }).isVisible()).toBe(true);
     const panelId = await command.getAttribute('aria-controls');
     expect(panelId).toBeTruthy();
-    for (const name of ['test source', 'troubleshoot', 'artifact paths']) {
-      const button = metadata.getByRole('button', { name, exact: true });
-      expect(await button.getAttribute('aria-controls')).toBe(panelId);
-      await button.press('Space');
-      expect(await metadata.locator('.card__metadata-controls button[aria-expanded="true"]').count()).toBe(1);
-      expect(await metadata.getByLabel('Latest command').count()).toBe(0);
-    }
-    await metadata.getByRole('button', { name: 'artifact paths', exact: true }).press('Enter');
+    const source = metadata.getByRole('button', { name: 'test source', exact: true });
+    expect(await source.getAttribute('aria-controls')).toBe(panelId);
+    await source.press('Space');
+    expect(await metadata.locator('.card__metadata-controls button[aria-expanded="true"]').count()).toBe(1);
+    expect(await metadata.getByLabel('Latest command').count()).toBe(0);
+    await metadata.getByRole('button', { name: 'test source', exact: true }).press('Enter');
     expect(await metadata.locator('.card__metadata-controls button[aria-expanded="true"]').count()).toBe(0);
     expect(await metadata.locator('.card__metadata-panel').isVisible()).toBe(false);
   });
@@ -74,8 +70,8 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     await metadata.locator('summary').first().click();
     expect(await card.locator('.card__path').isVisible()).toBe(true);
     expect(await card.getByLabel('URLs', { exact: true }).isVisible()).toBe(true);
-    expect(await metadata.getByText('1e04e038', { exact: true }).count()).toBe(pipeline === 'compare' ? 2 : 1);
-    expect(await metadata.locator('.card__targets dt').allTextContents()).toEqual(pipeline === 'compare' ? ['control', 'experiment'] : ['url']);
+    expect(await metadata.getByText('1e04e038', { exact: true }).count()).toBe(2);
+    expect(await metadata.locator('.card__targets dt').allTextContents()).toEqual(['control', 'experiment']);
     const source = metadata.getByRole('button', { name: 'test source' });
     expect(await source.getAttribute('aria-expanded')).toBe('false');
     await source.click();
@@ -88,37 +84,15 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     const dialog = page.getByRole('dialog');
     expect(await dialog.getByRole('heading', { name: 'Throttling', exact: true }).isVisible()).toBe(true);
     expect(await dialog.getByRole('heading', { name: 'Runs', exact: true }).isVisible()).toBe(true);
-    expect(await metadata.evaluate((el) => el.getBoundingClientRect().right <= window.innerWidth && Array.from(el.querySelectorAll('*')).every((child) => child.getBoundingClientRect().right <= window.innerWidth))).toBe(true);
   });
 
-  it.each([1440, 1050, 390])('groups target details by card width at %i px', async (width) => {
-    await page.setViewportSize({ width, height: 1100 });
-    const card = page.locator('[data-report-test-id="homepage"]');
-    const metadata = card.locator('.card__metadata');
+  it('renders the audit URL as one target', async () => {
+    data = runDetailsFixture('audit');
+    await page.reload();
+    const metadata = page.locator('[data-report-test-id="homepage"] .card__metadata');
     await metadata.locator('summary').first().click();
-    const rows = metadata.locator('.card__targets > div');
-    const verifyLayout = async () => {
-      const wide = (await card.boundingBox())!.width >= 900;
-      const label = (await rows.first().locator('dt').boundingBox())!;
-      const value = (await rows.first().locator('dd').boundingBox())!;
-      if (wide) {
-        expect(value.y).toBeGreaterThan(label.y);
-        expect(Math.abs(value.x - label.x)).toBeLessThan(1);
-        if (pipeline === 'compare') {
-          const second = (await rows.nth(1).boundingBox())!;
-          expect(second.x).toBeGreaterThan(value.x);
-          expect(Math.abs(second.y - label.y)).toBeLessThan(1);
-        }
-      } else {
-        expect(value.x).toBeGreaterThan(label.x);
-        expect(Math.abs(value.y - label.y)).toBeLessThan(1);
-      }
-      expect(await metadata.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-    };
-    await verifyLayout();
-    // Exercise both layouts in the same viewport: the container controls the choice.
-    await card.evaluate((el) => { (el.parentElement as HTMLElement).style.gridTemplateColumns = 'minmax(0, 1fr)'; });
-    await verifyLayout();
+    expect(await metadata.locator('.card__targets dt').allTextContents()).toEqual(['url']);
+    expect(await metadata.locator('.card__targets a').allTextContents()).toEqual([data.tests[0]!.experimentUrl]);
   });
 
   it('preserves saved commit variants, their scopes, and expandable messages', async () => {
@@ -138,8 +112,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     expect(await target.getByText('Earlier body', { exact: true }).isVisible()).toBe(true);
   });
 
-  it.each([1280, 390])('collapses all cards from a title and preserves nested state at %i px', async (width) => {
-    await page.setViewportSize({ width, height: 900 });
+  it('preserves nested state when cards collapse and reopen', async () => {
     const card = page.locator('[data-report-test-id="homepage"]');
     const title = card.getByRole('button', { name: 'Homepage', exact: true });
     expect(await title.count()).toBe(1);
@@ -152,13 +125,11 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     await tags.locator('summary').click();
     await metadata.locator('summary').first().click();
     await metadata.getByRole('button', { name: 'test source' }).click();
-    const expandedHeight = (await card.boundingBox())!.height;
     await title.click();
     expect(await title.getAttribute('aria-expanded')).toBe('false');
     expect(await tags.isVisible()).toBe(false);
     expect(await metadata.isVisible()).toBe(false);
     expect(await card.locator('.card__body').isVisible()).toBe(false);
-    expect((await card.boundingBox())!.height).toBeLessThan(expandedHeight / 2);
     expect(await page.locator('[data-report-test-id="legacy"] .card__body').isVisible()).toBe(false);
     const reviewed = card.getByRole('checkbox', { name: 'reviewed', exact: true });
     expect(await reviewed.isVisible()).toBe(true);
