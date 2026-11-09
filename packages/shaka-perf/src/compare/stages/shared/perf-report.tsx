@@ -254,7 +254,7 @@ function significantMetrics(perf: PerfArtifact): PerfMetric[] {
 interface PerfRow {
   latestRun: boolean;
   perf: PerfArtifact;
-  viewport: StageRenderEntry<PerfArtifact>['viewport'];
+  viewport: PerfReportEntry['viewport'];
   settings: ReactNode;
 }
 
