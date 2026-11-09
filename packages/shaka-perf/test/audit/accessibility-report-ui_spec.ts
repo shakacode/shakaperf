@@ -5,7 +5,6 @@
  * License in LICENSE.md.
  */
 
-import { stageIds } from '../../src/stage/stage-ids';
 import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
