@@ -13,6 +13,7 @@ import { serversDefault } from '../commands/servers-default';
 import { build } from '../commands/build';
 import { startContainers } from '../commands/start-containers';
 import { stopContainers } from '../commands/stop-containers';
+import { stopProjectBuildxBuilderSafely } from '../helpers/buildx-lifecycle';
 import { runServersMenu } from '../commands/servers-menu';
 import { dockerImageExists, getImageCreatedAt, containersRunning } from '../helpers/docker';
 import { invalidateImageCreated } from '../helpers/rebuild-check';
@@ -27,6 +28,7 @@ jest.mock('../commands/build', () => ({
 }));
 jest.mock('../commands/start-containers');
 jest.mock('../commands/stop-containers');
+jest.mock('../helpers/buildx-lifecycle');
 jest.mock('../commands/servers-menu');
 jest.mock('../helpers/docker');
 jest.mock('../helpers/shell');
@@ -82,10 +84,52 @@ describe('servers startup with a missing source checkout and an existing image',
     expect(confirm).toHaveBeenCalledTimes(1);
     expect(confirm).toHaveBeenCalledWith('Clone now? Declining will continue using the existing control image without cloning.');
     expect(exec).toHaveBeenCalledWith('git', ['clone', 'https://example.com/app.git', config.controlDir]);
-    expect(build).toHaveBeenCalledWith(config, { target: 'control' });
+    expect(build).toHaveBeenCalledWith(config, { target: 'control', keepBuilderRunning: true });
     expect(startContainers).toHaveBeenCalledTimes(1);
     expect(runServersMenu).toHaveBeenCalledTimes(1);
+    expect(stopProjectBuildxBuilderSafely).toHaveBeenCalledWith(config);
     expect(jest.mocked(exec).mock.invocationCallOrder[0]).toBeLessThan(jest.mocked(stopContainers).mock.invocationCallOrder[0]);
+  });
+
+  it('cleans up the session builder if menu startup fails', async () => {
+    fs.mkdirSync(config.controlDir);
+    fs.writeFileSync(path.join(config.experimentDir, 'Dockerfile'), 'FROM scratch\n');
+    fs.writeFileSync(path.join(config.controlDir, 'Dockerfile'), 'FROM scratch\n');
+    jest.mocked(runServersMenu).mockRejectedValueOnce(new Error('menu failed'));
+    await expect(serversDefault(config)).rejects.toThrow('menu failed');
+    expect(stopProjectBuildxBuilderSafely).toHaveBeenCalledWith(config);
+  });
+
+  it('awaits delegated server teardown before exiting on a signal', async () => {
+    fs.mkdirSync(config.controlDir);
+    fs.writeFileSync(path.join(config.experimentDir, 'Dockerfile'), 'FROM scratch\n');
+    fs.writeFileSync(path.join(config.controlDir, 'Dockerfile'), 'FROM scratch\n');
+    let mounted!: () => void;
+    let finishMenu!: () => void;
+    let finishCleanup!: () => void;
+    const ready = new Promise<void>(resolve => { mounted = resolve; });
+    const menuDone = new Promise<void>(resolve => { finishMenu = resolve; });
+    const cleanup = new Promise<void>(resolve => { finishCleanup = resolve; });
+    const stop = jest.fn(() => cleanup);
+    jest.mocked(runServersMenu).mockImplementationOnce(async (_config, options) => {
+      options!.onShutdownReady!(stop);
+      mounted();
+      await menuDone;
+    });
+    const oldListeners = process.listeners('SIGINT');
+    const exit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    const session = serversDefault(config);
+    await ready;
+    const handler = process.listeners('SIGINT').find(listener => !oldListeners.includes(listener))!;
+    handler('SIGINT');
+    await new Promise(resolve => setImmediate(resolve));
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(exit).not.toHaveBeenCalled();
+    finishCleanup();
+    await new Promise(resolve => setImmediate(resolve));
+    expect(exit).toHaveBeenCalledWith(130);
+    finishMenu();
+    await session;
   });
 
   it('clones at the repository root when the build context is nested', async () => {
@@ -157,7 +201,7 @@ describe('servers startup with a missing source checkout and an existing image',
 
     expect(confirm).toHaveBeenCalledTimes(1);
     expect(exec).toHaveBeenCalledWith('git', ['clone', 'https://example.com/app.git', path.dirname(config.controlDir)]);
-    expect(build).toHaveBeenCalledWith(config, { target: 'control' });
+    expect(build).toHaveBeenCalledWith(config, { target: 'control', keepBuilderRunning: true });
   });
 
   it('continues with the existing image when the single clone prompt is declined', async () => {
@@ -178,7 +222,7 @@ describe('servers startup with a missing source checkout and an existing image',
     fs.writeFileSync(path.join(config.experimentDir, 'app.ts'), 'changed');
     await serversDefault(config);
 
-    expect(build).toHaveBeenCalledWith(config, { target: 'experiment' });
+    expect(build).toHaveBeenCalledWith(config, { target: 'experiment', keepBuilderRunning: true });
     expect(confirm).toHaveBeenCalledTimes(1);
   });
 
@@ -187,7 +231,7 @@ describe('servers startup with a missing source checkout and an existing image',
     fs.writeFileSync(path.join(config.experimentDir, 'app.ts'), 'changed');
     await serversDefault(config);
 
-    expect(build).toHaveBeenCalledWith(config, { target: undefined });
+    expect(build).toHaveBeenCalledWith(config, { target: undefined, keepBuilderRunning: true });
   });
 
   it('does not prompt when both source directories exist', async () => {
@@ -205,7 +249,7 @@ describe('servers startup with a missing source checkout and an existing image',
 
     expect(confirm).toHaveBeenCalledTimes(1);
     expect(confirm).toHaveBeenCalledWith('Clone now? Declining will stop the build.');
-    expect(build).toHaveBeenCalledWith(config, { target: 'control' });
+    expect(build).toHaveBeenCalledWith(config, { target: 'control', keepBuilderRunning: true });
   });
 
   it('requires confirmation even when the clone remote is unavailable', async () => {
@@ -223,7 +267,7 @@ describe('servers startup with a missing source checkout and an existing image',
     jest.mocked(confirm).mockResolvedValueOnce(false);
     await serversDefault(config);
 
-    expect(build).toHaveBeenCalledWith(config, { target: 'experiment' });
+    expect(build).toHaveBeenCalledWith(config, { target: 'experiment', keepBuilderRunning: true });
   });
 
   it('starts stopped containers after image reuse is confirmed', async () => {

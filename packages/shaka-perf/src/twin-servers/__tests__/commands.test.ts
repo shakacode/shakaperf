@@ -798,3 +798,35 @@ describe('checkout command', () => {
     exitSpy.mockRestore();
   });
 });
+
+describe('overmind teardown ownership', () => {
+  it('makes repeated stop calls await the same complete teardown', async () => {
+    jest.resetModules();
+    let finish!: () => void;
+    const pending = new Promise<void>(resolve => { finish = resolve; });
+    const dockerExec = jest.fn().mockResolvedValue({ code: 0, stdout: '', stderr: '' })
+      .mockImplementationOnce(async () => { await pending; return { code: 0, stdout: '', stderr: '' }; });
+    jest.doMock('../helpers/docker', () => ({ dockerComposeExec: dockerExec }));
+    jest.doMock('../helpers/shell', () => ({ requireCommand: jest.fn() }));
+    const { spawnOvermind } = require('../commands/start-servers');
+    const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'overmind-stop-'));
+    const config = createMockConfig(dir);
+    fs.writeFileSync(config.procfile, 'fixture: sleep 1\n');
+    try {
+      const handle = spawnOvermind(config, { stdio: 'pipe' });
+      const first = handle.stop();
+      const second = handle.stop();
+      expect(second).toBe(first);
+      let completed = false;
+      void second.then(() => { completed = true; });
+      await new Promise(resolve => setTimeout(resolve, 30));
+      expect(completed).toBe(false);
+      finish();
+      await Promise.all([first, second]);
+      expect(dockerExec).toHaveBeenCalledTimes(2);
+    } finally {
+      finish();
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
