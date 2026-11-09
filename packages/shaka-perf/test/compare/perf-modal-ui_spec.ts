@@ -96,8 +96,10 @@ describe('performance modal metadata', () => {
         const metadata = dialog.locator('.card__metadata');
         const settings = metadata.locator('.measurement-settings');
         expect(await settings.locator('dt').allTextContents()).toEqual(['number of measurements', 'throttling']);
-        expect(await settings.locator('dd').first().innerText()).toBe('7 per side');
-        expect(await metadata.getByText('1 sample shown here', { exact: true }).count()).toBe(example.sample ? 1 : 0);
+        expect(await settings.locator('dd').first().innerText()).toBe(example.sample ? '7 per side (1 sample below)' : '7 per side');
+        const sample = metadata.locator('.measurement-settings__sample');
+        expect(await sample.count()).toBe(example.sample ? 1 : 0);
+        if (example.sample) expect(await sample.evaluate(el => el.parentElement?.tagName)).toBe('DD');
         expect(await settings.innerText()).toContain(example.cpu);
         expect(await settings.innerText()).not.toContain('13 per side');
         const targetsBox = (await metadata.locator('.card__targets').boundingBox())!;
@@ -131,7 +133,7 @@ describe('performance modal metadata', () => {
       const lowNoise = page.locator('[data-stage="perf-low-noise"] [aria-label="desktop performance"]');
       await lowNoise.getByRole('button', { name: 'control lh', exact: true }).click();
       const metadata = page.getByRole('dialog').locator('.card__metadata');
-      expect(await metadata.innerText()).toContain('1 sample shown here');
+      expect(await metadata.innerText()).toContain('1 sample below');
       expect(await metadata.innerText()).not.toContain('7 per side');
       expect(await metadata.innerText()).not.toContain('1 per side');
     } finally {

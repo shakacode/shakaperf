@@ -51,12 +51,13 @@ export function MeasurementSettings({ outcomes, countOutcomes = outcomes, sample
     perSide: saved.targets.length > 1,
   }]));
   const settings = groupThrottling(metadata.flatMap((saved) => saved.throttling ?? []));
+  const sample = sampleCount === 1 ? '1 sample below' : null;
 
   if (counts.length === 0 && settings.length === 0 && sampleCount !== 1) return null;
   return <><dl className="ui-dialog__meta measurement-settings">
     {counts.map(({ count, perSide }) => <div key={`count-${count}-${perSide}`}>
       <dt>number of measurements</dt>
-      <dd>{count}{perSide ? ' per side' : ''}</dd>
+      <dd>{count}{perSide ? ' per side' : ''}{sample ? <span className="measurement-settings__sample"> ({sample})</span> : null}</dd>
     </div>)}
     {settings.map(({ setting, sides }) => <div key={JSON.stringify(setting)}>
       <dt>throttling{settings.length > 1 && sides.size > 0 ? ` · ${[...sides].join(' / ')}` : ''}</dt>
@@ -68,5 +69,5 @@ export function MeasurementSettings({ outcomes, countOutcomes = outcomes, sample
           `${amount.toLocaleString('en-US')} ${NETWORK_UNITS[key] ?? key}`)),
       ].join(' · ')}</dd>
     </div>)}
-  </dl>{sampleCount === 1 ? <p className="measurement-settings__sample">1 sample shown here</p> : null}</>;
+  </dl>{counts.length === 0 && sample ? <p className="measurement-settings__sample">{sample}</p> : null}</>;
 }
