@@ -9,7 +9,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
 import { RunDetails } from './RunDetails';
 import { TestMetadata } from './TestMetadata';
-import { MeasurementSettings } from './MeasurementSettings';
+import { MeasurementSettings } from '../../../src/pipeline/measurement-settings';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
 import { AnsiLog, firstElapsedSeconds } from './AnsiLog';
@@ -258,13 +258,13 @@ export function TestCard({
           <div className="card__body">
             <StageArtifactProvider
               test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}
-              renderMetadata={(fields, outcome) => {
+              renderMetadata={(fields, outcome, settings) => {
                 const selected = test.outcomes.find((candidate) => candidate === outcome);
                 const scopedTest = { ...test, outcomes: selected ? [selected] : [] };
                 return <TestMetadata meta={meta} test={scopedTest} defaultExpanded variant="dialog" actions={logs.length > 0 ? (
                   <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button>
                 ) : null}>
-                  <MeasurementSettings outcomes={scopedTest.outcomes} />
+                  {settings === undefined ? <MeasurementSettings outcomes={scopedTest.outcomes} /> : settings}
                   {fields}
                 </TestMetadata>;
               }}

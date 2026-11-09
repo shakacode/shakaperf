@@ -7,7 +7,7 @@
 
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { MeasurementSettings } from '../../report-shell/src/components/MeasurementSettings';
+import { MeasurementSettings } from '../../src/pipeline/measurement-settings';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import type { ReportOutcome } from '../../src/pipeline/report';
 

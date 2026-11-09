@@ -15,6 +15,7 @@ describe('PerfEngineStage self-contained report stripping', () => {
       label: 'Perf',
       description: 'Perf',
       artifactTitle: 'Perf',
+      measurementCountStage: 'perf',
       config: {} as never,
       machineReadableSummary: () => ({}),
     });

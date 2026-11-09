@@ -5,8 +5,8 @@
  * License in LICENSE.md.
  */
 
-import type { ReportOutcome } from '../types';
-import type { MeasurementThrottling } from '../../../src/pipeline/run-metadata';
+import type { Outcome } from './outcome';
+import type { MeasurementThrottling } from './run-metadata';
 
 const NETWORK_UNITS: Record<string, string> = {
   rttMs: 'ms RTT',
@@ -39,16 +39,21 @@ function groupThrottling(settings: readonly MeasurementThrottling[]) {
 }
 
 /** Display measured settings, never values inferred from today's report config. */
-export function MeasurementSettings({ outcomes }: { outcomes: readonly ReportOutcome[] }) {
+export function MeasurementSettings({ outcomes, countOutcomes = outcomes, sampleCount }: {
+  outcomes: readonly Outcome[];
+  countOutcomes?: readonly Outcome[];
+  sampleCount?: number;
+}) {
   const metadata = outcomes.flatMap((outcome) => outcome.runMetadata ? [outcome.runMetadata] : []);
-  const counts = distinct(metadata.flatMap((saved) => saved.numberOfMeasurements === undefined ? [] : [{
+  const countMetadata = countOutcomes.flatMap((outcome) => outcome.runMetadata ? [outcome.runMetadata] : []);
+  const counts = distinct(countMetadata.flatMap((saved) => saved.numberOfMeasurements === undefined ? [] : [{
     count: saved.numberOfMeasurements,
     perSide: saved.targets.length > 1,
   }]));
   const settings = groupThrottling(metadata.flatMap((saved) => saved.throttling ?? []));
 
-  if (counts.length === 0 && settings.length === 0) return null;
-  return <dl className="ui-dialog__meta measurement-settings">
+  if (counts.length === 0 && settings.length === 0 && sampleCount !== 1) return null;
+  return <><dl className="ui-dialog__meta measurement-settings">
     {counts.map(({ count, perSide }) => <div key={`count-${count}-${perSide}`}>
       <dt>number of measurements</dt>
       <dd>{count}{perSide ? ' per side' : ''}</dd>
@@ -63,5 +68,5 @@ export function MeasurementSettings({ outcomes }: { outcomes: readonly ReportOut
           `${amount.toLocaleString('en-US')} ${NETWORK_UNITS[key] ?? key}`)),
       ].join(' · ')}</dd>
     </div>)}
-  </dl>;
+  </dl>{sampleCount === 1 ? <p className="measurement-settings__sample">1 sample shown here</p> : null}</>;
 }

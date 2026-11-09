@@ -73,6 +73,7 @@ export function createTroubleshootPipeline(config: AbTestsConfig) {
       description: 'Load the page under Lighthouse and leave its browser open.',
       label: 'Performance',
       artifactTitle: 'Performance',
+      measurementCountStage: 'perf',
       config: {
         regressionThreshold: config.perf.regressionThreshold,
         pValueThreshold: config.perf.pValueThreshold,

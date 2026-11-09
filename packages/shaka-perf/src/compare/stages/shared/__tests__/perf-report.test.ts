@@ -36,6 +36,7 @@ describe('PerfArtifactView', () => {
   it('labels each viewport metric group and no-difference note clearly', () => {
     const html = renderToStaticMarkup(createElement(PerfArtifactView, {
       title: 'Performance',
+      measurementCountStage: 'perf',
       measurements: [
         {
           latestRun: true,
@@ -64,6 +65,7 @@ describe('PerfArtifactView', () => {
     const previewHref = 'data:image/avif;base64,cHJldmlldw==';
     const html = renderToStaticMarkup(createElement(PerfArtifactView, {
       title: 'Performance',
+      measurementCountStage: 'perf',
       measurements: [{
         latestRun: true,
         measurement: { timelinePreviewHref: previewHref },

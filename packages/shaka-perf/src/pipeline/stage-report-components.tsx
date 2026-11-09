@@ -11,6 +11,7 @@ import { ReportHeading, type ReportHeadingProps } from './report-heading';
 import { ImageSizeContext, ImageViewport } from './image-viewport';
 import { renderPipelineDialogMetaUrls } from './pipeline-artifacts';
 import type { Outcome } from './outcome';
+import type { ReportOutcome } from './report';
 
 export { ReportHeading } from './report-heading';
 
@@ -22,16 +23,17 @@ export interface StageArtifactTestMeta {
   readonly experimentUrl: string;
   readonly pipelineName?: string;
   readonly pipelineConfig?: unknown;
+  readonly outcomes?: readonly ReportOutcome[];
 }
 
 const StageArtifactContext = createContext<StageArtifactTestMeta | null>(null);
-type ArtifactMetadataRenderer = (extra: ReactNode, outcome?: Outcome) => ReactNode;
+type ArtifactMetadataRenderer = (extra: ReactNode, outcome?: Outcome, settings?: ReactNode) => ReactNode;
 const ArtifactMetadataContext = createContext<ArtifactMetadataRenderer | null>(null);
-const ArtifactOutcomeContext = createContext<Outcome | undefined>(undefined);
+const ArtifactOutcomeContext = createContext<{ outcome?: Outcome; settings?: ReactNode }>({});
 
 /** Bind metadata to the result that produced this artifact, including legacy results. */
-export function ArtifactScope({ outcome, children }: { outcome?: Outcome; children: ReactNode }) {
-  return <ArtifactOutcomeContext.Provider value={outcome}>{children}</ArtifactOutcomeContext.Provider>;
+export function ArtifactScope({ outcome, settings, children }: { outcome?: Outcome; settings?: ReactNode; children: ReactNode }) {
+  return <ArtifactOutcomeContext.Provider value={{ outcome, settings }}>{children}</ArtifactOutcomeContext.Provider>;
 }
 
 export function ArtifactDialogTitle({ title }: { title: ReactNode }) {
@@ -42,13 +44,13 @@ export function ArtifactDialogTitle({ title }: { title: ReactNode }) {
 /** Wrap stage-specific fields in the shell's shared metadata disclosure. */
 export function ArtifactMetadata({ children }: { children?: ReactNode }) {
   const renderMetadata = useContext(ArtifactMetadataContext);
-  const outcome = useContext(ArtifactOutcomeContext);
+  const { outcome, settings } = useContext(ArtifactOutcomeContext);
   const test = useContext(StageArtifactContext);
-  if (renderMetadata) return renderMetadata(children, outcome);
+  if (renderMetadata) return renderMetadata(children, outcome, settings);
   return (
     <details className="card__disclosure card__metadata" open>
       <summary>Metadata</summary>
-      <div className="card__metadata-content">{test ? <TestMeta test={test} /> : null}{children}</div>
+      <div className="card__metadata-content">{test ? <TestMeta test={test} /> : null}{settings}{children}</div>
     </details>
   );
 }

@@ -34,6 +34,8 @@ export interface PerfEngineStageOptions<M> {
   label: string;
   /** Human-readable heading shown above this stage's artifacts in the report. */
   artifactTitle: string;
+  /** Stage whose saved count explains the statistical performance result. */
+  measurementCountStage: StageName;
   config: PerfStageConfig;
   applies?(
     test: AbTestDefinition,
@@ -85,6 +87,7 @@ export class PerfEngineStage<M> implements Stage<M> {
     return createElement(PerfArtifactView, {
       measurements: measurements as readonly StageRenderEntry<PerfArtifact>[],
       title: this.options.artifactTitle,
+      measurementCountStage: this.options.measurementCountStage,
     });
   }
 

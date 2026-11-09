@@ -16,7 +16,7 @@ jest.setTimeout(60_000);
 
 const image = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160"><rect width="240" height="160" fill="white"/></svg>');
 
-function fixture() {
+function fixture(staleStatistical = false) {
   const data = runDetailsFixture('compare');
   const test = data.tests[0]!;
   const saved = test.outcomes[0]!;
@@ -28,7 +28,8 @@ function fixture() {
   const lowNoise: ReportOutcome = {
     ...saved,
     stage: 'perf-low-noise',
-    measurement: { metrics: [], timelineHref: '/timeline.html', timelinePreviewHref: image, framesHref: '/frames.js' },
+    measurement: { metrics: [], timelineHref: '/timeline.html', timelinePreviewHref: image, framesHref: '/frames.js',
+      controlLighthouseHref: '/lh.html', diffHrefs: [{ label: 'profile diff', href: '/profile.html' }] },
     runMetadata: { ...saved.runMetadata!, numberOfMeasurements: 1,
       throttling: [{ engine: 'Lighthouse', method: 'devtools', cpuSlowdownMultiplier: 2,
         network: { requestLatencyMs: 90 } }] },
@@ -38,6 +39,7 @@ function fixture() {
     viewport: PHONE_VIEWPORT,
     runMetadata: { ...statistical.runMetadata!, viewport: PHONE_VIEWPORT, numberOfMeasurements: 13 },
   };
+  if (staleStatistical) statistical.runMetadata!.runId = '2026-10-19T00:00:00Z';
   test.outcomes = [statistical, lowNoise, phone];
   data.tests = [test];
   return data;
@@ -50,6 +52,7 @@ describe('performance modal metadata', () => {
 
   beforeAll(async () => {
     const html = renderReportHtml(fixture());
+    const stale = renderReportHtml(fixture(true));
     const frames = renderSideBySideFramesScript({
       control: [{ timeMs: 0, src: image }], experiment: [{ timeMs: 0, src: image }],
       interactions: { control: [], experiment: [] },
@@ -60,7 +63,7 @@ describe('performance modal metadata', () => {
         response.end(frames);
       } else {
         response.setHeader('Content-Type', 'text/html');
-        response.end(request.url === '/' ? html : '<p>Saved performance artifact</p>');
+        response.end(request.url === '/' ? html : request.url === '/stale' ? stale : '<p>Saved performance artifact</p>');
       }
     });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -80,9 +83,11 @@ describe('performance modal metadata', () => {
       const statistical = page.locator('[data-stage="perf"] [aria-label="desktop performance"]');
       const lowNoise = page.locator('[data-stage="perf-low-noise"] [aria-label="desktop performance"]');
       const cases = [
-        { opener: statistical.getByRole('button', { name: 'bench report', exact: true }), title: 'desktop bench report · Homepage', count: '7 per side', cpu: '4× CPU' },
-        { opener: lowNoise.getByRole('button', { name: 'timeline', exact: true }), title: 'desktop timeline · Homepage', count: '1 per side', cpu: '2× CPU' },
-        { opener: lowNoise.getByRole('button', { name: 'play frames', exact: true }), title: 'desktop frames side by side · Homepage', count: '1 per side', cpu: '2× CPU' },
+        { opener: statistical.getByRole('button', { name: 'bench report', exact: true }), title: 'desktop bench report · Homepage', cpu: '4× CPU', sample: false },
+        { opener: lowNoise.getByRole('button', { name: 'timeline', exact: true }), title: 'desktop timeline · Homepage', cpu: '2× CPU', sample: true },
+        { opener: lowNoise.getByRole('button', { name: 'play frames', exact: true }), title: 'desktop frames side by side · Homepage', cpu: '2× CPU', sample: true },
+        { opener: lowNoise.getByRole('button', { name: 'control lh', exact: true }), title: 'desktop control lh · Homepage', cpu: '2× CPU', sample: true },
+        { opener: lowNoise.getByRole('button', { name: 'profile diff', exact: true }), title: 'desktop profile diff · Homepage', cpu: '2× CPU', sample: true },
       ];
       for (const example of cases) {
         await example.opener.click();
@@ -91,7 +96,8 @@ describe('performance modal metadata', () => {
         const metadata = dialog.locator('.card__metadata');
         const settings = metadata.locator('.measurement-settings');
         expect(await settings.locator('dt').allTextContents()).toEqual(['number of measurements', 'throttling']);
-        expect(await settings.locator('dd').first().innerText()).toBe(example.count);
+        expect(await settings.locator('dd').first().innerText()).toBe('7 per side');
+        expect(await metadata.getByText('1 sample shown here', { exact: true }).count()).toBe(example.sample ? 1 : 0);
         expect(await settings.innerText()).toContain(example.cpu);
         expect(await settings.innerText()).not.toContain('13 per side');
         const targetsBox = (await metadata.locator('.card__targets').boundingBox())!;
@@ -100,6 +106,12 @@ describe('performance modal metadata', () => {
         expect(settingsBox.y).toBeGreaterThanOrEqual(targetsBox.y + targetsBox.height);
         expect(controlsBox.y).toBeGreaterThanOrEqual(settingsBox.y + settingsBox.height);
         expect(await metadata.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+        expect(await metadata.locator('.card__targets a').first().evaluate((el) => ({
+          border: getComputedStyle(el).borderTopWidth,
+          transform: getComputedStyle(el).textTransform,
+        }))).toEqual({ border: '0px', transform: 'none' });
+        expect(await metadata.getByRole('button', { name: 'command', exact: true }).evaluate((el) =>
+          getComputedStyle(el).borderTopWidth)).toBe('0px');
         if (example.title.includes('frames side by side')) {
           await dialog.locator('.frame-player').waitFor();
         }
@@ -107,6 +119,21 @@ describe('performance modal metadata', () => {
       }
       await page.getByRole('button', { name: 'logs', exact: true }).click();
       expect(await page.getByRole('dialog').locator('.measurement-settings').count()).toBe(0);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('does not substitute an unrelated run or the artifact count for missing statistical metadata', async () => {
+    const page = await browser.newPage();
+    try {
+      await page.goto(`${url}/stale`);
+      const lowNoise = page.locator('[data-stage="perf-low-noise"] [aria-label="desktop performance"]');
+      await lowNoise.getByRole('button', { name: 'control lh', exact: true }).click();
+      const metadata = page.getByRole('dialog').locator('.card__metadata');
+      expect(await metadata.innerText()).toContain('1 sample shown here');
+      expect(await metadata.innerText()).not.toContain('7 per side');
+      expect(await metadata.innerText()).not.toContain('1 per side');
     } finally {
       await page.close();
     }

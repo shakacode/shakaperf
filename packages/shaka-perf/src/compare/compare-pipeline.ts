@@ -129,6 +129,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
       description: 'Warm pages before statistical Lighthouse sampling.',
       label: 'Perf warmup',
       artifactTitle: 'Perf warmup',
+      measurementCountStage: 'perf-warmup',
       config: {
         ...perfBaseConfig,
         numberOfMeasurements: 1,
@@ -147,6 +148,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
       description: 'Run statistical Lighthouse sampling and classify perf changes.',
       label: 'Performance',
       artifactTitle: 'Performance',
+      measurementCountStage: 'perf',
       config: {
         ...perfBaseConfig,
         numberOfMeasurements: input.perfNumberOfMeasurements,
@@ -168,6 +170,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
       description: 'Capture final serial low-noise Lighthouse reports and traces.',
       label: 'Low-noise perf',
       artifactTitle: 'Low-noise perf comparison (results are random!)',
+      measurementCountStage: 'perf',
       config: {
         ...perfBaseConfig,
         numberOfMeasurements: 1,
