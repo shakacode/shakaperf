@@ -63,7 +63,7 @@ export function PerfArtifactView({
         {rows.map((row, index) => {
           const model = row.entry.settings;
           const settings = <MeasurementSettings settings={model} />;
-          const hasSettings = model.counts.length > 0 || model.throttling.length > 0 || model.sampleCount === 1;
+          const hasSettings = model.counts.length > 0 || model.throttling !== undefined || model.sampleCount === 1;
           return <ArtifactScope key={`${row.viewportLabel}-${index}`} outcome={row.entry.outcome} settings={settings}>
             <PerfViewportBlock
               perf={row.perf}
