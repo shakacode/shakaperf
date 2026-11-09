@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { useId, useState, type ReactNode } from 'react';
 import type { PerfReportEntry } from '../perf/report-model';
 import type { PerfArtifact, PerfMetric, PerfMetricGroup } from '../perf';
 import {
@@ -59,29 +60,50 @@ export function PerfArtifactView({
     <StageArtifact>
       <StageArtifactTitle verbatim title={title} />
       <div className="stage-stack">
-        {rows.map((row, index) => (
-          <ArtifactScope key={`${row.viewportLabel}-${index}`} outcome={row.entry.outcome} settings={
-            <MeasurementSettings settings={row.entry.settings} />
-          }>
+        {rows.map((row, index) => {
+          const model = row.entry.settings;
+          const settings = <MeasurementSettings settings={model} />;
+          const hasSettings = model.counts.length > 0 || model.throttling.length > 0 || model.sampleCount === 1;
+          return <ArtifactScope key={`${row.viewportLabel}-${index}`} outcome={row.entry.outcome} settings={settings}>
             <PerfViewportBlock
               perf={row.perf}
-              viewportLabel={row.viewportLabel}
+              viewport={row.entry.viewport}
               latestRun={row.latestRun}
+              settings={hasSettings ? settings : null}
             />
-          </ArtifactScope>
-        ))}
+          </ArtifactScope>;
+        })}
       </div>
     </StageArtifact>
   );
 }
 
-function PerfViewportBlock({ perf, viewportLabel, latestRun }: PerfRow) {
+function PerfViewportBlock({ perf, viewport, latestRun, settings }: PerfRow) {
+  const viewportLabel = viewport.label;
   const section = useReportSection();
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsId = useId();
   const hasSignificantMetrics = significantMetrics(perf).length > 0;
   const hasNoDifference = hasNoDifferenceMetrics(perf);
   return (
     <section className="stage-stack__viewport perf-viewport" aria-label={`${viewportLabel} performance`}>
-      <ReportSection sectionKey={`${section ?? "perf"}:viewport:${viewportLabel}`} title={`${viewportLabel} performance`} badge={<OldRunChip latestRun={latestRun} />} nested>
+      <ReportSection
+        sectionKey={`${section ?? "perf"}:viewport:${viewportLabel}`}
+        title={`${viewportLabel} performance`}
+        badge={<>
+          {showSettings ? <span className="perf-viewport__dimensions">{viewport.width} × {viewport.height}</span> : null}
+          <OldRunChip latestRun={latestRun} />
+        </>}
+        actions={settings ? <button
+          type="button"
+          className="perf-run-settings-toggle"
+          aria-expanded={showSettings}
+          aria-controls={settingsId}
+          onClick={() => setShowSettings((previous) => !previous)}
+        >{showSettings ? 'hide run settings' : 'show run settings'}</button> : null}
+        nested
+      >
+      {settings ? <div id={settingsId} className="perf-run-settings" hidden={!showSettings}>{settings}</div> : null}
 
       <PerfBody
         perf={perf}
@@ -229,7 +251,8 @@ function significantMetrics(perf: PerfArtifact): PerfMetric[] {
 interface PerfRow {
   latestRun: boolean;
   perf: PerfArtifact;
-  viewportLabel: string;
+  viewport: StageRenderEntry<PerfArtifact>['viewport'];
+  settings: ReactNode;
 }
 
 function NoDifferenceNote({ viewportLabel }: { viewportLabel: string }) {
