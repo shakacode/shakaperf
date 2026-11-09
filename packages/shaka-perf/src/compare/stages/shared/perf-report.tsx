@@ -103,7 +103,7 @@ function PerfViewportBlock({ perf, viewport, latestRun, settings }: PerfRow) {
           aria-expanded={settingsVisible}
           aria-controls={settingsId}
           onClick={() => setShowSettings((previous) => !previous)}
-        >{showSettings ? 'hide run settings' : 'show run settings'}</button> : null}
+        >{showSettings ? 'hide metadata' : 'show metadata'}</button> : null}
         nested
       >
       {settings ? <div id={settingsId} className="perf-run-settings" hidden={!settingsVisible}>{settings}</div> : null}
