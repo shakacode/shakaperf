@@ -7,6 +7,7 @@
 
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { buildMeasurementSettings } from '../../src/pipeline/measurement-settings-model';
 import { MeasurementSettings } from '../../src/pipeline/measurement-settings';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import type { ReportOutcome } from '../../src/pipeline/report';
@@ -27,7 +28,7 @@ function savedOutcome(singleTarget = false): ReportOutcome {
 }
 
 function render(outcomes: readonly ReportOutcome[]) {
-  return renderToStaticMarkup(createElement(MeasurementSettings, { outcomes }));
+  return renderToStaticMarkup(createElement(MeasurementSettings, { settings: buildMeasurementSettings(outcomes) }));
 }
 
 it.each(['perf', 'perf-low-noise', 'audit'])('shows saved measurement counts for %s', (stage) => {

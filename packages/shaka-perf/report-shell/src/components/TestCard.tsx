@@ -9,6 +9,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
 import { RunDetails } from './RunDetails';
 import { TestMetadata } from './TestMetadata';
+import { buildMeasurementSettings } from '../../../src/pipeline/measurement-settings-model';
 import { MeasurementSettings } from '../../../src/pipeline/measurement-settings';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
@@ -264,7 +265,7 @@ export function TestCard({
                 return <TestMetadata meta={meta} test={scopedTest} defaultExpanded variant="dialog" actions={logs.length > 0 ? (
                   <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button>
                 ) : null}>
-                  {settings === undefined ? <MeasurementSettings outcomes={scopedTest.outcomes} /> : settings}
+                  {settings === undefined ? <MeasurementSettings settings={buildMeasurementSettings(scopedTest.outcomes)} /> : settings}
                   {fields}
                 </TestMetadata>;
               }}
@@ -274,6 +275,7 @@ export function TestCard({
                   key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
                   meta={meta}
                   outcomes={outcomes}
+                  testOutcomes={test.outcomes}
                   latestRunId={latestRunId}
                   showRunChips={showViewportRunChips && mixedRuns}
                 />

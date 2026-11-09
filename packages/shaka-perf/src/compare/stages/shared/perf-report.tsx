@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import type { StageRenderEntry } from '../../../stage/stage';
+import type { PerfReportEntry } from '../perf/report-model';
 import type { PerfArtifact, PerfMetric, PerfMetricGroup } from '../perf';
 import {
   DetailedArtifactDialog,
@@ -15,11 +15,8 @@ import {
   ReportHeading,
   OldRunChip,
   StageNote,
-  useStageArtifactTest,
 } from '../../../pipeline/stage-report-components';
 import { MeasurementSettings } from '../../../pipeline/measurement-settings';
-import type { Outcome } from '../../../pipeline/outcome';
-import type { ReportOutcome } from '../../../pipeline/report';
 import { FullReportOnly } from '../../../pipeline/report-mode';
 import { FramePlayerButton } from './frame-player';
 import { ReportSection, useReportSection } from '../../../pipeline/report-section';
@@ -39,13 +36,10 @@ export function formatPValue(p: number): string {
 export function PerfArtifactView({
   measurements,
   title,
-  measurementCountStage,
 }: {
-  measurements: readonly StageRenderEntry<PerfArtifact>[];
+  measurements: readonly PerfReportEntry[];
   title: string;
-  measurementCountStage: string;
 }) {
-  const test = useStageArtifactTest();
   const perfs = measurements
     .map((entry) => ({
       perf: entry.measurement,
@@ -67,11 +61,7 @@ export function PerfArtifactView({
       <div className="stage-stack">
         {rows.map((row, index) => (
           <ArtifactScope key={`${row.viewportLabel}-${index}`} outcome={row.entry.outcome} settings={
-            <MeasurementSettings
-              outcomes={row.entry.outcome ? [row.entry.outcome] : []}
-              countOutcomes={measurementCountsForArtifact(row.entry, measurementCountStage, test?.outcomes ?? [])}
-              sampleCount={row.entry.outcome?.runMetadata?.numberOfMeasurements}
-            />
+            <MeasurementSettings settings={row.entry.settings} />
           }>
             <PerfViewportBlock
               perf={row.perf}
@@ -83,21 +73,6 @@ export function PerfArtifactView({
       </div>
     </StageArtifact>
   );
-}
-
-/** Join only the saved statistical result for this artifact's run and viewport. */
-function measurementCountsForArtifact(
-  entry: StageRenderEntry<PerfArtifact>,
-  stage: string,
-  outcomes: readonly ReportOutcome[],
-): readonly Outcome[] {
-  if (entry.outcome?.stage === stage) return [entry.outcome];
-  const runId = entry.outcome?.runMetadata?.runId ?? entry.outcome?.runId;
-  return outcomes.filter((outcome) => outcome.stage === stage &&
-    outcome.viewport.label === entry.viewport.label &&
-    outcome.viewport.width === entry.viewport.width &&
-    outcome.viewport.height === entry.viewport.height &&
-    (outcome.runMetadata?.runId ?? outcome.runId) === runId);
 }
 
 function PerfViewportBlock({ perf, viewportLabel, latestRun }: PerfRow) {

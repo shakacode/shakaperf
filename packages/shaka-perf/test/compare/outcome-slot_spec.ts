@@ -27,6 +27,7 @@ function renderFailureMedia(media: string): string {
   return renderToStaticMarkup(createElement(OutcomeSlot, {
     meta: META,
     outcomes: [outcome],
+    testOutcomes: [outcome],
   }));
 }
 

@@ -11,7 +11,6 @@ import { ReportHeading, type ReportHeadingProps } from './report-heading';
 import { ImageSizeContext, ImageViewport } from './image-viewport';
 import { renderPipelineDialogMetaUrls } from './pipeline-artifacts';
 import type { Outcome } from './outcome';
-import type { ReportOutcome } from './report';
 
 export { ReportHeading } from './report-heading';
 
@@ -23,7 +22,6 @@ export interface StageArtifactTestMeta {
   readonly experimentUrl: string;
   readonly pipelineName?: string;
   readonly pipelineConfig?: unknown;
-  readonly outcomes?: readonly ReportOutcome[];
 }
 
 const StageArtifactContext = createContext<StageArtifactTestMeta | null>(null);

@@ -6,6 +6,7 @@
  */
 
 import chalk from 'chalk';
+import type { StageReportContext } from './stage-report-model';
 import { type AbTestDefinition } from 'shaka-shared';
 import type { ReactNode } from 'react';
 import type { Viewport } from '../config';
@@ -243,20 +244,22 @@ function assertRegisteredPool(
 function renderStageArtifact<S extends Stage>(
   stage: S,
   measurements: readonly StageRenderEntry<StageMeasurement<S>>[],
+  context: StageReportContext,
 ): ReactNode {
-  return stage.renderArtifacts(measurements);
+  return stage.renderArtifacts(measurements, context);
 }
 
 export function renderPipelineStageArtifacts(
   pipeline: Pipeline,
   name: StageName,
   measurements: readonly StageRenderEntry[],
+  context: StageReportContext = { outcomes: [] },
 ): ReactNode {
   const stage = pipeline.stages.find((candidate) => candidate.name === name);
   if (!stage) {
     throw new Error(`Unknown stage "${name}". Valid: ${stageNames(pipeline).join(', ')}`);
   }
-  return renderStageArtifact(stage, measurements);
+  return renderStageArtifact(stage, measurements, context);
 }
 
 export function stageNames(pipeline: Pipeline): StageName[] {

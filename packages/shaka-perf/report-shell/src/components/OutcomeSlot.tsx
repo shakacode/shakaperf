@@ -92,6 +92,7 @@ export function stageSection(
   meta: ReportMeta,
   outcomes: readonly ReportOutcome[],
   latestRunId?: string | null,
+  testOutcomes: readonly ReportOutcome[] = outcomes,
 ): { errorOutcomes: ReportOutcome[]; artifact: ReactNode; badge: ReactNode } | null {
   const first = outcomes[0];
   if (!first) return null;
@@ -108,7 +109,7 @@ export function stageSection(
       }]
   ));
   const artifact = measurements.length > 0
-    ? renderPersistedStageArtifacts(meta.pipelineName, meta.pipelineConfig, first.stage, measurements)
+    ? renderPersistedStageArtifacts(meta.pipelineName, meta.pipelineConfig, first.stage, measurements, { outcomes: testOutcomes })
     : null;
 
   if (errorOutcomes.length === 0 && artifact == null) return null;
@@ -119,16 +120,18 @@ export function stageSection(
 export function OutcomeSlot({
   meta,
   outcomes,
+  testOutcomes,
   latestRunId,
   showRunChips,
 }: {
   meta: ReportMeta;
   outcomes: readonly ReportOutcome[];
+  testOutcomes: readonly ReportOutcome[];
   latestRunId?: string | null;
   showRunChips?: boolean;
 }) {
   const first = outcomes[0];
-  const section = stageSection(meta, outcomes, latestRunId);
+  const section = stageSection(meta, outcomes, latestRunId, testOutcomes);
   if (!first || !section) return null;
   const { errorOutcomes, artifact, badge } = section;
   const title = pipelineStagesForReport(meta.pipelineName, meta.pipelineConfig)

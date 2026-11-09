@@ -20,6 +20,8 @@ import type {
 } from '../../../stage/stage';
 import type { WorkerPool } from '../../../pipeline/worker-pool';
 import type { PerfArtifact } from '../perf';
+import { buildPerfReportEntries } from './report-model';
+import type { StageReportContext } from '../../../pipeline/stage-report-model';
 import { PerfArtifactView } from '../shared/perf-report';
 
 export interface PerfStageConfig extends Omit<PerfConfig, 'viewports'> {
@@ -83,11 +85,14 @@ export class PerfEngineStage<M> implements Stage<M> {
     return runPerfEngineStage(ctx, pool, this.options.config) as Promise<M>;
   }
 
-  renderArtifacts(measurements: readonly StageRenderEntry<M>[]) {
+  renderArtifacts(measurements: readonly StageRenderEntry<M>[], context: StageReportContext) {
     return createElement(PerfArtifactView, {
-      measurements: measurements as readonly StageRenderEntry<PerfArtifact>[],
+      measurements: buildPerfReportEntries(
+        measurements as readonly StageRenderEntry<PerfArtifact>[],
+        this.options.measurementCountStage,
+        context,
+      ),
       title: this.options.artifactTitle,
-      measurementCountStage: this.options.measurementCountStage,
     });
   }
 

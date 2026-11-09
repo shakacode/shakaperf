@@ -70,7 +70,7 @@ describe('latest measurement run visibility', () => {
       expect(render).toHaveBeenLastCalledWith('compare', {}, 'accessibility', [
         { measurement: { runId: LATEST }, outcome: outcomes[0], viewport: DESKTOP_VIEWPORT, latestRun: true },
         { measurement: { runId: OLD }, outcome: outcomes[1], viewport: DESKTOP_VIEWPORT, latestRun: false },
-      ]);
+      ], { outcomes });
       stageSection(data.meta, outcomes, null);
       expect(render.mock.calls.at(-1)?.[3].map((entry) => entry.latestRun)).toEqual([true, true]);
     } finally {

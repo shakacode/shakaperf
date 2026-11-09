@@ -9,6 +9,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
 import type { PerfArtifact } from '../../perf';
+import { buildPerfReportEntries } from '../../perf/report-model';
 import { PerfArtifactView } from '../perf-report';
 
 function perfWithMetrics(metrics: PerfArtifact['metrics']): PerfArtifact {
@@ -36,8 +37,7 @@ describe('PerfArtifactView', () => {
   it('labels each viewport metric group and no-difference note clearly', () => {
     const html = renderToStaticMarkup(createElement(PerfArtifactView, {
       title: 'Performance',
-      measurementCountStage: 'perf',
-      measurements: [
+      measurements: buildPerfReportEntries([
         {
           latestRun: true,
           measurement: perfWithMetrics([metric('LCP', 'vitals'), metric('js', 'diagnostics')]),
@@ -48,7 +48,7 @@ describe('PerfArtifactView', () => {
           measurement: perfWithMetrics([{ ...metric('FCP', 'vitals'), direction: 'none' }]),
           viewport: DESKTOP_VIEWPORT,
         },
-      ],
+      ], 'perf', { outcomes: [] }),
     }));
 
     expect(html).toContain('aria-label="phone performance"');
@@ -65,12 +65,11 @@ describe('PerfArtifactView', () => {
     const previewHref = 'data:image/avif;base64,cHJldmlldw==';
     const html = renderToStaticMarkup(createElement(PerfArtifactView, {
       title: 'Performance',
-      measurementCountStage: 'perf',
-      measurements: [{
+      measurements: buildPerfReportEntries([{
         latestRun: true,
         measurement: { timelinePreviewHref: previewHref },
         viewport: DESKTOP_VIEWPORT,
-      }],
+      }], 'perf', { outcomes: [] }),
     }));
 
     expect(html).toContain('aria-label="desktop performance"');

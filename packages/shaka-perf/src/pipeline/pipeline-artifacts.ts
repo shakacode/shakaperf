@@ -6,6 +6,7 @@
  */
 
 import type { ReactNode } from 'react';
+import type { StageReportContext } from './stage-report-model';
 import { createAuditPipeline, type AuditPipelineConfig } from '../audit/pipeline';
 import { createComparePipeline, type ComparePipelineConfig } from '../compare/compare-pipeline';
 import type { StageCategory, StageName, StageRenderEntry } from '../stage/stage';
@@ -55,8 +56,9 @@ export function renderPersistedStageArtifacts(
   config: unknown,
   name: StageName,
   measurements: readonly StageRenderEntry[],
+  context: StageReportContext = { outcomes: [] },
 ): ReactNode {
-  return renderPipelineStageArtifacts(pipelineForReport(pipelineName, config), name, measurements);
+  return renderPipelineStageArtifacts(pipelineForReport(pipelineName, config), name, measurements, context);
 }
 
 export function renderPersistedStageHeadingBadge(

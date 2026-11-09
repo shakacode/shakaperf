@@ -6,6 +6,7 @@
  */
 
 import type { ReactNode } from 'react';
+import type { StageReportContext } from '../pipeline/stage-report-model';
 import type { RaceCancellation } from 'race-cancellation';
 import type { AbTestDefinition, TestType } from 'shaka-shared';
 import type { AbTestsConfig, Viewport } from '../config';
@@ -160,7 +161,7 @@ export interface Stage<M = unknown> {
    * may be longer/different); this is the short chip label.
    */
   readonly label: string;
-  renderArtifacts(measurements: readonly StageRenderEntry<M>[]): ReactNode;
+  renderArtifacts(measurements: readonly StageRenderEntry<M>[], context: StageReportContext): ReactNode;
   /** Badge for the main section heading, when the stage displays one result. */
   renderHeadingBadge?(measurements: readonly StageRenderEntry<M>[]): ReactNode;
   readonly category: StageCategory;
