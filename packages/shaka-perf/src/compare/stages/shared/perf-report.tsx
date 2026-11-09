@@ -20,7 +20,7 @@ import {
 import { MeasurementSettings } from '../../../pipeline/measurement-settings';
 import { FullReportOnly } from '../../../pipeline/report-mode';
 import { FramePlayerButton } from './frame-player';
-import { ReportSection, useReportSection } from '../../../pipeline/report-section';
+import { ReportSection, useReportSection, useReportSectionExpanded } from '../../../pipeline/report-section';
 
 const GROUPS: PerfMetricGroup[] = ['vitals', 'diagnostics'];
 
@@ -81,29 +81,32 @@ export function PerfArtifactView({
 function PerfViewportBlock({ perf, viewport, latestRun, settings }: PerfRow) {
   const viewportLabel = viewport.label;
   const section = useReportSection();
+  const sectionKey = `${section ?? 'perf'}:viewport:${viewportLabel}`;
+  const expanded = useReportSectionExpanded(sectionKey);
   const [showSettings, setShowSettings] = useState(false);
+  const settingsVisible = showSettings && expanded;
   const settingsId = useId();
   const hasSignificantMetrics = significantMetrics(perf).length > 0;
   const hasNoDifference = hasNoDifferenceMetrics(perf);
   return (
     <section className="stage-stack__viewport perf-viewport" aria-label={`${viewportLabel} performance`}>
       <ReportSection
-        sectionKey={`${section ?? "perf"}:viewport:${viewportLabel}`}
+        sectionKey={sectionKey}
         title={`${viewportLabel} performance`}
         badge={<>
-          {showSettings ? <span className="perf-viewport__dimensions">{viewport.width} × {viewport.height}</span> : null}
+          {settingsVisible ? <span className="perf-viewport__dimensions">{viewport.width} × {viewport.height}</span> : null}
           <OldRunChip latestRun={latestRun} />
         </>}
-        actions={settings ? <button
+        actions={settings && expanded ? <button
           type="button"
           className="perf-run-settings-toggle"
-          aria-expanded={showSettings}
+          aria-expanded={settingsVisible}
           aria-controls={settingsId}
           onClick={() => setShowSettings((previous) => !previous)}
         >{showSettings ? 'hide run settings' : 'show run settings'}</button> : null}
         nested
       >
-      {settings ? <div id={settingsId} className="perf-run-settings" hidden={!showSettings}>{settings}</div> : null}
+      {settings ? <div id={settingsId} className="perf-run-settings" hidden={!settingsVisible}>{settings}</div> : null}
 
       <PerfBody
         perf={perf}
