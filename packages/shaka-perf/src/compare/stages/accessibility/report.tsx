@@ -9,6 +9,7 @@ import { ImageViewport } from '../../../pipeline/image-viewport';
 import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { FullReportOnly } from '../../../pipeline/report-mode';
 import type { StageRenderEntry } from '../../../stage/stage';
+import type { Viewport } from '../../../config';
 import {
   ArtifactScope,
   DetailedArtifactDialog,
@@ -521,7 +522,7 @@ export function AccessibilityCompareArtifactView({
             <div className="stage-stack__viewport">
               <AccessibilityCompareViewport
                 result={entry.measurement}
-                viewportLabel={entry.viewport.label}
+                viewport={entry.viewport}
                 latestRun={entry.latestRun}
               />
             </div>
@@ -534,13 +535,14 @@ export function AccessibilityCompareArtifactView({
 
 function AccessibilityCompareViewport({
   result,
-  viewportLabel,
+  viewport,
   latestRun,
 }: {
   result: AccessibilityCompareResult;
-  viewportLabel: string;
+  viewport: Viewport;
   latestRun: boolean;
 }) {
+  const viewportLabel = viewport.label;
   return (
     <div className="stage-section">
       <ReportHeading className="stage-section__head" level={5} title={viewportLabel} badge={<OldRunChip latestRun={latestRun} />} />
@@ -567,7 +569,7 @@ function AccessibilityCompareViewport({
               className="a11y-compare-card__inspect"
               href={result.comparisonArtifactHref ?? '#'}
               label={`${viewportLabel} accessibility comparison`}
-              extra={<CompareDialogMeta result={result} viewportLabel={viewportLabel} />}
+              extra={<CompareDialogMeta result={result} viewport={viewport} />}
               body={<CompareFindingsDialog result={result} viewportLabel={viewportLabel} />}
             >
               inspect
@@ -587,17 +589,13 @@ function AccessibilityCompareViewport({
 
 function CompareDialogMeta({
   result,
-  viewportLabel,
+  viewport,
 }: {
   result: AccessibilityCompareResult;
-  viewportLabel: string;
+  viewport: Viewport;
 }) {
   return (
     <>
-      <div>
-        <dt>viewport</dt>
-        <dd>{viewportLabel}</dd>
-      </div>
       <div>
         <dt>new</dt>
         <dd>{result.summary.new}</dd>
@@ -613,6 +611,10 @@ function CompareDialogMeta({
       <div>
         <dt>unchanged</dt>
         <dd>{result.summary.unchanged}</dd>
+      </div>
+      <div>
+        <dt>viewport</dt>
+        <dd>{viewport.label} {viewport.width} × {viewport.height}</dd>
       </div>
     </>
   );

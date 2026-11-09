@@ -52,10 +52,6 @@ export function AccessibilityDialogMeta({
   return (
     <>
       <div>
-        <dt>viewport</dt>
-        <dd>{scan.viewportLabel}</dd>
-      </div>
-      <div>
         <dt>issues</dt>
         <dd>{scan.violations.length} rules · {nodeCount} nodes</dd>
       </div>
@@ -67,6 +63,10 @@ export function AccessibilityDialogMeta({
         <dt>scanned URL</dt>
         <dd className="ui-dialog__meta-break">{scan.url}</dd>
       </div> : null}
+      <div>
+        <dt>viewport</dt>
+        <dd>{scan.viewportLabel}{scan.viewport ? <> {scan.viewport.width} × {scan.viewport.height}</> : null}</dd>
+      </div>
     </>
   );
 }

@@ -14,6 +14,7 @@ import type { AccessibilityResult } from '../../src/audit/stages/accessibility/t
 import { renderReportHtml, type ReportData, type ReportOutcome } from '../../src/pipeline/report';
 import { runDetailsFixture } from '../../src/pipeline/__tests__/fixtures/run-details';
 import { imageModalFixture, TALL_IMAGE } from './image-modal-fixture';
+import { PHONE_VIEWPORT } from 'shaka-shared';
 
 jest.setTimeout(60_000);
 
@@ -99,6 +100,28 @@ describe('artifact modal measurement context', () => {
     expect(html).toContain(scan.url);
   });
 
+  it.each([1440, 1050, 390])('packs accessibility counts and puts saved viewport dimensions last at %i px', async (width) => {
+    data = fixture(cases[0]);
+    data.tests[0]!.outcomes[0]!.viewport = PHONE_VIEWPORT;
+    const page = await browser.newPage({ viewport: { width, height: 1100 } });
+    try {
+      await page.goto(url);
+      await page.locator('.a11y-compare-card__inspect').click();
+      const metadata = page.getByRole('dialog').locator('.card__metadata');
+      const summary = metadata.locator('.ui-dialog__meta').last();
+      expect(await summary.locator('dt').allTextContents()).toEqual(['new', 'fixed', 'changed', 'unchanged', 'viewport']);
+      expect(await summary.locator('dd').last().innerText()).toBe(`phone ${PHONE_VIEWPORT.width} × ${PHONE_VIEWPORT.height}`);
+      const fields = summary.locator(':scope > div');
+      const first = (await fields.nth(0).boundingBox())!;
+      const second = (await fields.nth(1).boundingBox())!;
+      expect(Math.abs(first.y - second.y)).toBeLessThan(1);
+      expect(second.x).toBeGreaterThan(first.x);
+      expect(await metadata.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+      const wide = await metadata.evaluate(el => el.clientWidth >= 900);
+      expect(await metadata.locator('.card__metadata-separator').isVisible()).toBe(wide);
+    } finally { await page.close(); }
+  });
+
   it.each(cases)('shows selected $pipeline $title context', async example => {
     data = fixture(example);
     const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
@@ -122,6 +145,9 @@ describe('artifact modal measurement context', () => {
       if (example.opener === '.a11y-thumb-button') {
         // The shared target block owns URL provenance; stage fields do not repeat it.
         expect(await metadata.locator('.ui-dialog__meta dt').allTextContents()).not.toContain('scanned URL');
+        const fields = metadata.locator('.ui-dialog__meta').last();
+        expect(await fields.locator('dt').last().textContent()).toBe('viewport');
+        expect(await fields.locator('dd').last().innerText()).toBe('mobile-tall 1280 × 800');
       }
     } finally { await page.close(); }
   });
