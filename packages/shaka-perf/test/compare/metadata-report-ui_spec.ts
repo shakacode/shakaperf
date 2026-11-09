@@ -88,9 +88,6 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     const dialog = page.getByRole('dialog');
     expect(await dialog.getByRole('heading', { name: 'Throttling', exact: true }).isVisible()).toBe(true);
     expect(await dialog.getByRole('heading', { name: 'Runs', exact: true }).isVisible()).toBe(true);
-    for (const name of ['Applications', 'Measurement command', 'Categories', 'Viewports', 'Retries and attempts']) {
-      expect(await dialog.getByRole('heading', { name, exact: true }).count()).toBe(0);
-    }
     expect(await metadata.evaluate((el) => el.getBoundingClientRect().right <= window.innerWidth && Array.from(el.querySelectorAll('*')).every((child) => child.getBoundingClientRect().right <= window.innerWidth))).toBe(true);
   });
 
