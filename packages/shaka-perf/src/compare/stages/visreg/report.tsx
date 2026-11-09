@@ -8,7 +8,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { VisregArtifact, VisregResult } from '../visreg';
-import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, ReportHeading, OldRunChip, StageNote, ArtifactMetadata } from '../../../pipeline/stage-report-components';
+import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, ReportHeading, OldRunChip, StageNote, ArtifactMetadata, ArtifactScope } from '../../../pipeline/stage-report-components';
 import { ImageViewport } from '../../../pipeline/image-viewport';
 import { Scrubber } from './scrubber';
 
@@ -40,7 +40,9 @@ export function VisregArtifactView({
       <div className="artifact-stack">
         <div className="artifact-grid">
           {rows.map((row, index) => (
-            <VisregCard key={`${row.artifact.selector}-${row.viewportLabel}-${index}`} row={row} />
+            <ArtifactScope key={`${row.artifact.selector}-${row.viewportLabel}-${index}`} outcome={row.entry.outcome}>
+              <VisregCard row={row} />
+            </ArtifactScope>
           ))}
         </div>
       </div>
@@ -75,6 +77,7 @@ function VisregCard({ row }: { row: VisregRow }) {
         className="artifact-card__media-button"
         href={artifact.diffImage}
         label={`${viewportLabel} ${artifact.selector}`}
+        title={`visual regressions ${viewportLabel} > ${artifact.selector}`}
         meta={<VisregMeta row={row} />}
         body={<VisregDialogImages row={artifact} diffImage={artifact.diffImage} />}
       >
@@ -89,6 +92,7 @@ function VisregCard({ row }: { row: VisregRow }) {
         className="artifact-card__media-button"
         href={artifact.controlImage}
         label={`${viewportLabel} ${artifact.selector}`}
+        title={`visual regressions ${viewportLabel} > ${artifact.selector}`}
         meta={<VisregMeta row={row} />}
         body={<VisregDialogImages row={artifact} />}
       >

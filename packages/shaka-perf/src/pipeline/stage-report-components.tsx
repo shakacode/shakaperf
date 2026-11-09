@@ -10,6 +10,7 @@ import { useReportSection } from './report-section';
 import { ReportHeading, type ReportHeadingProps } from './report-heading';
 import { ImageSizeContext, ImageViewport } from './image-viewport';
 import { renderPipelineDialogMetaUrls } from './pipeline-artifacts';
+import type { Outcome } from './outcome';
 
 export { ReportHeading } from './report-heading';
 
@@ -24,17 +25,30 @@ export interface StageArtifactTestMeta {
 }
 
 const StageArtifactContext = createContext<StageArtifactTestMeta | null>(null);
-type ArtifactMetadataRenderer = (extra: ReactNode) => ReactNode;
+type ArtifactMetadataRenderer = (extra: ReactNode, outcome?: Outcome) => ReactNode;
 const ArtifactMetadataContext = createContext<ArtifactMetadataRenderer | null>(null);
+const ArtifactOutcomeContext = createContext<Outcome | undefined>(undefined);
+
+/** Bind metadata to the result that produced this artifact, including legacy results. */
+export function ArtifactScope({ outcome, children }: { outcome?: Outcome; children: ReactNode }) {
+  return <ArtifactOutcomeContext.Provider value={outcome}>{children}</ArtifactOutcomeContext.Provider>;
+}
+
+export function ArtifactDialogTitle({ title }: { title: ReactNode }) {
+  const test = useContext(StageArtifactContext);
+  return <span className="ui-dialog__title-text">{title}{test ? <> · {test.name}</> : null}</span>;
+}
 
 /** Wrap stage-specific fields in the shell's shared metadata disclosure. */
-export function ArtifactMetadata({ children }: { children: ReactNode }) {
+export function ArtifactMetadata({ children }: { children?: ReactNode }) {
   const renderMetadata = useContext(ArtifactMetadataContext);
-  if (renderMetadata) return renderMetadata(children);
+  const outcome = useContext(ArtifactOutcomeContext);
+  const test = useContext(StageArtifactContext);
+  if (renderMetadata) return renderMetadata(children, outcome);
   return (
     <details className="card__disclosure card__metadata" open>
       <summary>Metadata</summary>
-      <div className="card__metadata-content">{children}</div>
+      <div className="card__metadata-content">{test ? <TestMeta test={test} /> : null}{children}</div>
     </details>
   );
 }
@@ -228,6 +242,7 @@ export function DetailedArtifactDialog({
   meta,
   href,
   label,
+  title = label,
   variant,
   image = false,
 }: {
@@ -244,11 +259,11 @@ export function DetailedArtifactDialog({
   meta?: ReactNode;
   href: string;
   label: string;
+  title?: ReactNode;
   variant?: 'preview';
   image?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const test = useContext(StageArtifactContext);
   return (
     <>
       {variant === 'preview' ? (
@@ -265,8 +280,8 @@ export function DetailedArtifactDialog({
           image={image}
           open={open}
           onClose={() => setOpen(false)}
-          title={<span className="ui-dialog__title-text">{label}</span>}
-          meta={meta ?? (test ? <TestMeta test={test} extra={extra} /> : null)}
+          title={<ArtifactDialogTitle title={title} />}
+          meta={meta ?? <ArtifactMetadata>{extra ? <dl className="ui-dialog__meta">{extra}</dl> : null}</ArtifactMetadata>}
         >
           {body ?? (image ? <ImageViewport><img src={href} alt={label} /></ImageViewport> : <iframe className="artifact-dialog__frame" src={href} title={label} />)}
         </Dialog>
