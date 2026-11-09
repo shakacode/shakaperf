@@ -3346,8 +3346,7 @@ input {
   cursor: pointer;
 }
 .perf-run-settings-toggle:hover { color: var(--fg); background: transparent; }
-.perf-run-settings { padding-block: 0 12px; }
-.perf-run-settings .measurement-settings { padding: 0; }
+.perf-run-settings .measurement-settings { padding: 0; grid-template-columns: minmax(0, 1fr); }
 .perf-run-settings .measurement-settings dd { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 .perf-run-settings .measurement-settings__sample { margin-top: 8px; }
 .perf-viewport__dimensions { color: var(--fg-muted); font-size: 11px; font-weight: 400; white-space: nowrap; }

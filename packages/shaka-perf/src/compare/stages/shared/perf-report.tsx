@@ -69,7 +69,7 @@ export function PerfArtifactView({
               perf={row.perf}
               viewport={row.entry.viewport}
               latestRun={row.latestRun}
-              settings={hasSettings ? settings : null}
+              settings={hasSettings ? <MeasurementSettings settings={model} variant="inline" /> : null}
             />
           </ArtifactScope>;
         })}
