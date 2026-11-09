@@ -36,7 +36,7 @@ it('joins the saved count while preserving the artifact sample and throttling', 
   const settings = project(artifact, [statistical, outcome('another-stage', 13)]);
   expect(settings.counts).toEqual([{ count: 10, perSide: true }]);
   expect(settings.sampleCount).toBe(1);
-  expect(settings.throttling.map(({ setting }) => setting.method)).toEqual(['devtools']);
+  expect(settings.throttling?.method).toBe('devtools');
 });
 
 it.each(['label', 'width', 'height', 'formFactor', 'deviceScaleFactor', 'userAgent'] as const)(

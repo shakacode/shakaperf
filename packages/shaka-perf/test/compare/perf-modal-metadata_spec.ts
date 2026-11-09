@@ -87,29 +87,6 @@ it('labels one-target measurements without a per-side qualifier', () => {
   expect(render([outcome])).not.toContain('per side');
 });
 
-it('identifies each side when saved throttling settings differ', () => {
-  const outcome = savedOutcome();
-  outcome.runMetadata!.throttling = [
-    { engine: 'Lighthouse', method: 'simulate', side: 'control', cpuSlowdownMultiplier: 4,
-      network: { rttMs: 150 } },
-    { engine: 'Lighthouse', method: 'simulate', side: 'experiment', cpuSlowdownMultiplier: 7,
-      network: { rttMs: 90 } },
-  ];
-  const html = render([outcome]);
-  expect(html).toContain('<dt>throttling · control</dt>');
-  expect(html).toContain('<dt>throttling · experiment</dt>');
-  expect(html).toContain('4× CPU · 150 ms RTT');
-  expect(html).toContain('7× CPU · 90 ms RTT');
-});
-
-it('keeps unlabelled historical audit settings unlabelled', () => {
-  const outcome = savedOutcome(true);
-  outcome.runMetadata!.throttling!.push({ engine: 'Lighthouse', method: 'provided', network: {} });
-  const html = render([outcome]);
-  expect(html.match(/<dt>throttling<\/dt>/g)).toHaveLength(2);
-  expect(html).not.toContain('throttling ·');
-});
-
 it('does not claim emulated CPU or network settings for provided throttling', () => {
   const outcome = savedOutcome(true);
   outcome.runMetadata!.throttling = [{ engine: 'Lighthouse', method: 'provided',

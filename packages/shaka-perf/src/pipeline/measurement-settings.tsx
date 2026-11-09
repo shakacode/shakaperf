@@ -17,17 +17,17 @@ const NETWORK_UNITS: Record<string, string> = {
 
 /** Present a resolved snapshot of measured settings. */
 export function MeasurementSettings({ settings: model }: { settings: MeasurementSettingsModel }) {
-  const { counts, throttling: settings, sampleCount } = model;
+  const { counts, throttling: setting, sampleCount } = model;
   const sample = sampleCount === 1 ? '1 sample below' : null;
 
-  if (counts.length === 0 && settings.length === 0 && sampleCount !== 1) return null;
+  if (counts.length === 0 && !setting && sampleCount !== 1) return null;
   return <><dl className="ui-dialog__meta measurement-settings">
     {counts.map(({ count, perSide }) => <div key={`count-${count}-${perSide}`}>
       <dt>number of measurements</dt>
       <dd>{count}{perSide ? ' per side' : ''}{sample ? <span className="measurement-settings__sample"> ({sample})</span> : null}</dd>
     </div>)}
-    {settings.map(({ setting, sides }) => <div key={JSON.stringify(setting)}>
-      <dt>throttling{settings.length > 1 && sides.size > 0 ? ` · ${[...sides].join(' / ')}` : ''}</dt>
+    {setting ? <div>
+      <dt>throttling</dt>
       <dd>{[
         setting.engine,
         setting.method,
@@ -35,6 +35,6 @@ export function MeasurementSettings({ settings: model }: { settings: Measurement
         ...(Object.keys(setting.network).length === 0 ? ['No network emulation'] : Object.entries(setting.network).map(([key, amount]) =>
           `${amount.toLocaleString('en-US')} ${NETWORK_UNITS[key] ?? key}`)),
       ].join(' · ')}</dd>
-    </div>)}
+    </div> : null}
   </dl>{counts.length === 0 && sample ? <p className="measurement-settings__sample">{sample}</p> : null}</>;
 }

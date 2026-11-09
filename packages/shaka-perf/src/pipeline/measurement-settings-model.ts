@@ -12,27 +12,9 @@ function distinct<T>(values: T[]): T[] {
   return [...new Map(values.map((value) => [JSON.stringify(value), value])).values()];
 }
 
-function groupThrottling(settings: readonly MeasurementThrottling[]) {
-  const groups = new Map<string, { setting: MeasurementThrottling; sides: Set<string> }>();
-  for (const saved of settings) {
-    if (saved.engine !== 'Lighthouse') continue;
-    const setting = {
-      engine: saved.engine,
-      method: saved.method,
-      cpuSlowdownMultiplier: saved.method === 'provided' ? undefined : saved.cpuSlowdownMultiplier,
-      network: Object.fromEntries(Object.entries(saved.network).sort(([a], [b]) => a.localeCompare(b))),
-    };
-    const key = JSON.stringify(setting);
-    const group = groups.get(key) ?? { setting, sides: new Set<string>() };
-    if (saved.side) group.sides.add(saved.side);
-    groups.set(key, group);
-  }
-  return [...groups.values()];
-}
-
 export interface MeasurementSettingsModel {
   readonly counts: readonly { count: number; perSide: boolean }[];
-  readonly throttling: ReturnType<typeof groupThrottling>;
+  readonly throttling?: Omit<MeasurementThrottling, 'side'>;
   readonly sampleCount?: number;
 }
 
@@ -44,12 +26,21 @@ export function buildMeasurementSettings(
 ): MeasurementSettingsModel {
   const metadata = outcomes.flatMap((outcome) => outcome.runMetadata ? [outcome.runMetadata] : []);
   const countMetadata = countOutcomes.flatMap((outcome) => outcome.runMetadata ? [outcome.runMetadata] : []);
+  // The runner rejects mismatched control/experiment settings. One saved
+  // configuration describes this artifact; side-specific report rows are invalid.
+  const throttling = metadata.flatMap((saved) => saved.throttling ?? [])
+    .find((setting) => setting.engine === 'Lighthouse');
   return {
     counts: distinct(countMetadata.flatMap((saved) => saved.numberOfMeasurements === undefined ? [] : [{
       count: saved.numberOfMeasurements,
       perSide: saved.targets.length > 1,
     }])),
-    throttling: groupThrottling(metadata.flatMap((saved) => saved.throttling ?? [])),
+    throttling: throttling ? {
+      engine: throttling.engine,
+      method: throttling.method,
+      cpuSlowdownMultiplier: throttling.method === 'provided' ? undefined : throttling.cpuSlowdownMultiplier,
+      network: throttling.network,
+    } : undefined,
     sampleCount,
   };
 }
