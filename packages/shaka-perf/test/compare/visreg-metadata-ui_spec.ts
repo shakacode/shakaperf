@@ -18,6 +18,7 @@ function fixture() {
   const data = runDetailsFixture('compare');
   const test = data.tests[0]!;
   const saved = test.outcomes[0]!;
+  test.filePath = `ab-tests/${'nested-long-test-directory/'.repeat(8)}carousel.abtest.ts`;
   test.controlUrl = 'http://new-control.example/';
   test.experimentUrl = 'http://new-experiment.example/';
   test.outcomes = [{
@@ -64,6 +65,7 @@ describe('visual preview metadata', () => {
       await preview.getByRole('button').click();
       const dialog = page.getByRole('dialog');
       const metadata = dialog.locator('.card__metadata');
+      expect(await metadata.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
       const targets = metadata.locator('.card__targets > div');
       const control = (await targets.nth(0).boundingBox())!;
       const experiment = (await targets.nth(1).boundingBox())!;
@@ -72,6 +74,19 @@ describe('visual preview metadata', () => {
         expect(experiment.x).toBeGreaterThan(control.x + control.width);
       } else {
         expect(experiment.y).toBeGreaterThan(control.y);
+      }
+      const targetsBox = (await metadata.locator('.card__targets').boundingBox())!;
+      const overridesBox = (await metadata.locator('.ui-dialog__meta').boundingBox())!;
+      const controlsBox = (await metadata.locator('.card__metadata-controls').boundingBox())!;
+      expect(overridesBox.y).toBeGreaterThanOrEqual(targetsBox.y + targetsBox.height);
+      expect(controlsBox.y).toBeGreaterThanOrEqual(overridesBox.y + overridesBox.height);
+      if (width >= 1050) {
+        const summary = metadata.locator('summary').first();
+        const label = (await summary.locator(':scope > span').first().boundingBox())!;
+        const source = (await summary.locator('.card__path').boundingBox())!;
+        const logs = (await dialog.locator('.card__actions').getByRole('button', { name: 'logs', exact: true }).boundingBox())!;
+        expect(Math.abs(label.y - source.y)).toBeLessThan(3);
+        expect(Math.abs(label.y - logs.y)).toBeLessThan(3);
       }
       // The modal reuses the latest test metadata and source shown on the card.
       expect(await metadata.locator('.card__targets a').allTextContents()).toEqual([
