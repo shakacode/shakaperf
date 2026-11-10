@@ -88,7 +88,7 @@ describe('current rendered image measurement in Chromium', () => {
         <picture>
           <source media="(min-width: 2000px)" srcset="https://example.test/wide.png">
           <img id="photo" src="https://example.test/fallback.png"
-            srcset="https://example.test/one.png 1x, https://example.test/two.png 2x"
+            srcset="https://example.test/one.png 1x, https://example.test/two.png#display 2x"
             style="width:${300.5 + (boxSizing === 'border-box' ? 40 : 0)}px;height:${300.25 + (boxSizing === 'border-box' ? 40 : 0)}px;box-sizing:${boxSizing};padding:8px;border:12px solid;object-fit:cover">
         </picture>
       `);
@@ -96,7 +96,7 @@ describe('current rendered image measurement in Chromium', () => {
       const measurements = await page.evaluate(collectImageResolutionMeasurements, ['https://example.test/two.png']);
       expect(measurements).toHaveLength(1);
       expect(measurements[0]).toMatchObject({
-        src: 'https://example.test/two.png', sourceWidth: 400, sourceHeight: 200,
+        src: 'https://example.test/two.png#display', sourceWidth: 400, sourceHeight: 200,
         naturalWidth: 200, naturalHeight: 100, boxWidth: 300.5, boxHeight: 300.25, devicePixelRatio: 2,
       });
       expect(evaluateImageResolution(measurements, config).undersized).toBe(1);
@@ -153,6 +153,49 @@ describe('current rendered image measurement in Chromium', () => {
       const measurements = await page.evaluate(collectImageResolutionMeasurements, []);
       expect(evaluateImageResolution(measurements, config)).toMatchObject({ unknown: 1, undersized: 0 });
       expect(measurements[0]!.reason).toContain('changed');
+    } finally { await page.close(); }
+  });
+
+  it('excludes fully clipped images but evaluates partially clipped images at their full painted size', async () => {
+    const page = await browser.newPage();
+    const source = `data:image/png;base64,${png.toString('base64')}`;
+    try {
+      await page.setContent(`
+        <style>img { width:300px;height:300px;object-fit:cover } .box { position:absolute;left:30px;top:30px }</style>
+        <div class="box" style="height:0;overflow:hidden;border:20px solid"><img id="fully-clipped" src="${source}"></div>
+        <div class="box" style="width:0;overflow-x:clip"><img id="clipped-x" src="${source}"></div>
+        <div class="box" style="height:25px;padding-top:15px;border:10px solid;overflow:hidden"><img id="partial" src="${source}"></div>
+        <div class="box" id="clipped-host"><img id="slotted-clipped" src="${source}"></div>
+      `);
+      await page.evaluate(() => {
+        document.querySelector('#clipped-host')!.attachShadow({ mode: 'open' }).innerHTML =
+          '<div style="height:0;overflow:hidden"><slot></slot></div>';
+      });
+      const measurements = await page.evaluate(collectImageResolutionMeasurements, []);
+      expect(measurements.map(image => image.label)).toEqual(['img#partial']);
+      const result = evaluateImageResolution(measurements, config);
+      expect(result).toMatchObject({ undersized: 1, unknown: 0 });
+      expect(result.images[0]).toMatchObject({ paintedWidth: 600, paintedHeight: 300, requiredWidth: 600, requiredHeight: 300 });
+    } finally { await page.close(); }
+  });
+
+  it('keeps visible images when body overflow applies to the viewport or fixed positioning escapes a clip', async () => {
+    const page = await browser.newPage();
+    const source = `data:image/png;base64,${png.toString('base64')}`;
+    try {
+      await page.setContent(`
+        <style>body { height:0;overflow:hidden;margin:0 }</style>
+        <img id="body-visible" src="${source}" style="position:absolute;left:20px;top:20px;width:300px;height:300px">
+        <div style="height:0;width:0;overflow:hidden">
+          <img id="fixed-visible" src="${source}" style="position:fixed;left:350px;top:20px;width:40px;height:20px">
+        </div>
+      `);
+      expect(await page.evaluate(() => [
+        document.elementFromPoint(30, 30)?.id, document.elementFromPoint(360, 30)?.id,
+      ])).toEqual(['body-visible', 'fixed-visible']);
+      const measurements = await page.evaluate(collectImageResolutionMeasurements, []);
+      expect(measurements.map(image => image.label)).toEqual(['img#body-visible', 'img#fixed-visible']);
+      expect(evaluateImageResolution(measurements, config).unknown).toBe(0);
     } finally { await page.close(); }
   });
 });

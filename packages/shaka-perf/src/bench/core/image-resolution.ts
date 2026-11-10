@@ -86,7 +86,7 @@ export async function collectImageResolutionMeasurements(rasterUrls: string[]): 
     const src = element.currentSrc;
     if (!element.complete || !src || !element.naturalWidth || !element.naturalHeight) {
       reason = 'Image is not loaded.';
-    } else if (!rasterSources.has(src) && !/^data:image\/(?:png|jpeg|webp|gif|avif|bmp|x-icon|vnd\.microsoft\.icon)(?:;|,)/i.test(src)) {
+    } else if (!rasterSources.has(src.split('#', 1)[0]!) && !/^data:image\/(?:png|jpeg|webp|gif|avif|bmp|x-icon|vnd\.microsoft\.icon)(?:;|,)/i.test(src)) {
       reason = 'Image is vector or its raster format is unknown.';
     }
     return {
@@ -99,11 +99,37 @@ export async function collectImageResolutionMeasurements(rasterUrls: string[]): 
 
   // Freeze the page's current selection and layout before any asynchronous bitmap reads.
   const snapshots = elements.map(element => ({ element, measurement: snapshot(element) }));
+  const candidates = snapshots.filter(({ measurement }) => measurement !== undefined);
+  if (candidates.length === 0) return [];
+  // Let the browser account for ancestor clipping, including root overflow and positioned images.
+  // Intersection only decides visibility: a partially clipped image still needs its full painted size.
+  const intersections = await new Promise<Map<Element, boolean>>(resolve => {
+    const visible = new Map<Element, boolean>();
+    const observer = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        visible.set(entry.target, entry.intersectionRect.width > 0 && entry.intersectionRect.height > 0);
+      }
+      if (visible.size === candidates.length) finish();
+    });
+    const finish = () => { clearTimeout(timer); observer.disconnect(); resolve(visible); };
+    const timer = setTimeout(finish, Math.max(0, deadline - performance.now()));
+    for (const { element } of candidates) observer.observe(element);
+  });
   const results: ImageResolutionMeasurement[] = [];
   for (const { element, measurement } of snapshots) {
     if (!measurement) continue;
+    const changed = JSON.stringify(snapshot(element)) !== JSON.stringify(measurement);
+    if (!changed && intersections.get(element) === false) continue;
     results.push(measurement);
+    if (changed) {
+      measurement.reason = 'Image selection or layout changed during measurement.';
+      continue;
+    }
     if (measurement.reason) continue;
+    if (!intersections.has(element)) {
+      measurement.reason = 'Image visibility could not be measured before the time limit.';
+      continue;
+    }
     const remaining = deadline - performance.now();
     if (remaining <= 0) {
       measurement.reason = 'Image measurement time limit reached.';
@@ -111,10 +137,6 @@ export async function collectImageResolutionMeasurements(rasterUrls: string[]): 
     }
     if (measurement.naturalWidth * measurement.naturalHeight > 40_000_000) {
       measurement.reason = 'Image exceeds the bitmap measurement size limit.';
-      continue;
-    }
-    if (JSON.stringify(snapshot(element)) !== JSON.stringify(measurement)) {
-      measurement.reason = 'Image selection or layout changed during measurement.';
       continue;
     }
     try {

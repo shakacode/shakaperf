@@ -29,21 +29,36 @@ export function imageResolutionLighthouseConfig(
   class ImageResolutionGatherer extends Gatherer {
     meta: LH.Gatherer.GathererMeta = { supportedModes: ['navigation'] };
     private rasterUrls = new Set<string>();
+    private redirects = new Map<string, Set<string>>();
     private result?: ImageResolutionResult;
-    private onResponse = ({ response }: LH.Crdp.Network.ResponseReceivedEvent) => {
-      if (/^image\/(?:png|jpeg|webp|gif|avif|bmp|x-icon|vnd\.microsoft\.icon|apng)$/i.test(response.mimeType)) {
-        this.rasterUrls.add(response.url);
-      } else {
-        this.rasterUrls.delete(response.url);
+    private onRequest = ({ requestId, request, redirectResponse }: LH.Crdp.Network.RequestWillBeSentEvent) => {
+      if (!redirectResponse) return;
+      const urls = this.redirects.get(requestId) ?? new Set<string>();
+      urls.add(redirectResponse.url);
+      urls.add(request.url);
+      this.redirects.set(requestId, urls);
+    };
+    private onResponse = ({ requestId, response }: LH.Crdp.Network.ResponseReceivedEvent) => {
+      // currentSrc retains the requested URL, even when the bitmap came through redirects.
+      const urls = this.redirects.get(requestId) ?? new Set<string>();
+      urls.add(response.url);
+      const raster = /^image\/(?:png|jpeg|webp|gif|avif|bmp|x-icon|vnd\.microsoft\.icon|apng)$/i.test(response.mimeType);
+      for (const url of urls) {
+        if (raster) this.rasterUrls.add(url);
+        else this.rasterUrls.delete(url);
       }
+      this.redirects.delete(requestId);
     };
 
     startInstrumentation({ driver }: LH.Gatherer.Context): void {
+      driver.defaultSession.on('Network.requestWillBeSent', this.onRequest);
       driver.defaultSession.on('Network.responseReceived', this.onResponse);
     }
 
     async stopInstrumentation({ driver }: LH.Gatherer.Context): Promise<void> {
+      driver.defaultSession.off('Network.requestWillBeSent', this.onRequest);
       driver.defaultSession.off('Network.responseReceived', this.onResponse);
+      this.redirects.clear();
       // This phase follows the end of tracing and precedes gatherers that alter the page.
       const measurements = await driver.executionContext.evaluate(collectImageResolutionMeasurements, {
         args: [[...this.rasterUrls]], useIsolation: true,
@@ -79,18 +94,14 @@ export function imageResolutionLighthouseConfig(
         notApplicable: result.images.length === 0,
         displayValue: `${result.undersized} undersized, ${result.oversized} oversized, ${result.unknown} unknown`,
         details: Audit.makeTableDetails([
-          { key: 'url', valueType: 'url', label: 'Image' },
-          { key: 'element', valueType: 'text', label: 'Element' },
-          { key: 'fit', valueType: 'text', label: 'Object fit' },
-          { key: 'actual', valueType: 'text', label: 'Source pixels' },
-          { key: 'required', valueType: 'text', label: 'Required pixels' },
-          { key: 'status', valueType: 'text', label: 'Result' },
-          { key: 'reason', valueType: 'text', label: 'Details' },
+          { key: 'url', valueType: 'url', label: 'Image', subItemsHeading: { key: 'resolution', valueType: 'text' } },
         ], result.images.filter(image => image.status !== 'sufficient').map(image => ({
-          url: image.src, element: image.label, fit: image.fit,
-          actual: size(image.sourceWidth, image.sourceHeight),
-          required: size(image.requiredWidth, image.requiredHeight),
-          status: image.status, reason: image.reason ?? `${image.ratio!.toFixed(2)}× required resolution`,
+          url: image.src,
+          subItems: { type: 'subitems', items: [
+            { resolution: `${image.label} · ${image.status} · object-fit: ${image.fit}` },
+            { resolution: `Source: ${size(image.sourceWidth, image.sourceHeight)} px; required: ${size(image.requiredWidth, image.requiredHeight)} px` },
+            { resolution: image.reason ?? `${image.ratio!.toFixed(2)}× required resolution` },
+          ] },
         }))),
       };
     }
