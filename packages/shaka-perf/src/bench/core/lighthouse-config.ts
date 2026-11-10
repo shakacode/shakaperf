@@ -25,6 +25,7 @@ import type { Viewport } from 'shaka-shared';
 import { userAgentForViewport } from '../../browser-user-agent';
 import type { PlaywrightOptions } from '../../config';
 import type { WindowPlacement } from '../../troubleshoot/window-placement';
+import type { ImageResolutionConfig, ImageResolutionResult } from './image-resolution';
 
 export type LighthouseConfig = Flags;
 
@@ -178,6 +179,8 @@ export interface LighthouseBenchmarkOptions {
    * setup cannot accidentally fall back to default mobile settings.
    */
   lhConfig: LighthouseConfig;
+  /** Audit-only image check; compare measurements leave it unset. */
+  imageResolution?: ImageResolutionConfig;
   resultsFolder?: string;
   markers?: Marker[];
   /**
@@ -247,6 +250,7 @@ export interface PhaseSample {
 }
 
 export interface NavigationSample {
+  imageResolution?: ImageResolutionResult;
   measurementThrottling?: import('../../pipeline/run-metadata').MeasurementThrottling;
   duration: number;
   phases: PhaseSample[];

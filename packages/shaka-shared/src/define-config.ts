@@ -131,6 +131,12 @@ export interface PerfConfigInput {
 }
 
 export interface AuditConfigInput {
+  /** Source pixels / (painted CSS pixels × current screen pixel density). */
+  imageResolution?: {
+    minRatio?: number;
+    maxRatio?: number;
+    failOnUndersized?: boolean;
+  };
   viewports?: [string, ...string[]];
   // Raw Lighthouse flags (see `PerfConfigInput.lighthouseConfig`).
   lighthouseConfig?: Record<string, unknown>;

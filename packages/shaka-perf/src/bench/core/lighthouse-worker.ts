@@ -46,6 +46,7 @@ import {
   type PhaseSample,
 } from './lighthouse-config';
 import { runLighthouse, accessibilityScoreFromLhr } from './run-lighthouse';
+import type { ImageResolutionResult } from './image-resolution';
 import { SHAKA_PERF_ANNOTATION_PREFIX } from './timeline-comparison';
 import { settleAfterTest } from '../../pipeline/settle-after-test';
 import { importPatchedLighthouse } from './patched-lighthouse';
@@ -305,7 +306,7 @@ class LighthouseWorkerSampler {
     }
 
     const markers = testDef.markers ?? msg.options.markers;
-    const { phases, accessibilityScore, measurementThrottling } = await this.runLighthouseWithPlaywright(
+    const { phases, accessibilityScore, measurementThrottling, imageResolution } = await this.runLighthouseWithPlaywright(
       testDef,
       msg.options,
       msg.targetUrl,
@@ -314,7 +315,7 @@ class LighthouseWorkerSampler {
       `sample-${sampleIndex}`,
       saveArtifacts,
     );
-    return { ...makeNavigationSample(phases, accessibilityScore), measurementThrottling };
+    return { ...makeNavigationSample(phases, accessibilityScore), measurementThrottling, ...(imageResolution ? { imageResolution } : {}) };
   }
 
   private async runLighthouseWithPlaywright(
@@ -325,7 +326,7 @@ class LighthouseWorkerSampler {
     markers: LighthouseBenchmarkOptions['markers'],
     sampleLabel: string,
     saveArtifacts: boolean,
-  ): Promise<{ phases: PhaseSample[]; accessibilityScore: number | null; measurementThrottling: import('../../pipeline/run-metadata').MeasurementThrottling | undefined }> {
+  ): Promise<{ phases: PhaseSample[]; accessibilityScore: number | null; measurementThrottling: import('../../pipeline/run-metadata').MeasurementThrottling | undefined; imageResolution?: ImageResolutionResult }> {
     const browser = await chromium.connectOverCDP(`http://localhost:${this.chrome!.port}`);
     let livePage: Page | null = null;
     const resultsFolder = options.resultsFolder ?? './tracerbench-results';
@@ -424,6 +425,7 @@ class LighthouseWorkerSampler {
         resultsFolder,
         saveArtifacts,
         canStopTracking,
+        options.imageResolution,
       );
 
       const page = await this.waitForPage(context, url);
@@ -536,7 +538,11 @@ class LighthouseWorkerSampler {
       // Off `phases` so perf metrics stay byte-identical (null on compare).
       const accessibilityScore = accessibilityScoreFromLhr(runnerResult.lhr);
 
-      return { phases, accessibilityScore, measurementThrottling: lighthouseThrottling(runnerResult.lhr.configSettings) };
+      const imageResolution = runnerResult.artifacts.ShakaImageResolution;
+      if (options.imageResolution && (!imageResolution || imageResolution instanceof Error)) {
+        throw new Error('Lighthouse could not collect image resolution measurements.');
+      }
+      return { phases, accessibilityScore, measurementThrottling: lighthouseThrottling(runnerResult.lhr.configSettings), imageResolution };
     } catch (err) {
       if (err instanceof Error && err.message.startsWith('[shaka-perf screencast]')) throw err;
       // STOP cuts the recording at the throw (on failure LH's measuring boundary

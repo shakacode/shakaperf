@@ -35,6 +35,39 @@ function baseConfig(extra: Record<string, unknown> = {}) {
 const withBrowserConsole = (browserConsole: unknown) =>
   baseConfig({ shared: { browserConsole } });
 
+describe('audit image resolution config', () => {
+  it('defaults to reporting images outside the configured resolution range', () => {
+    expect(buildAbTestsConfig(baseConfig()).audit.imageResolution).toEqual({
+      minRatio: 0.9,
+      maxRatio: 2,
+      failOnUndersized: false,
+    });
+  });
+
+  it('merges per-test thresholds without losing the project failure policy', () => {
+    const config = buildAbTestsConfig(baseConfig({
+      audit: { imageResolution: { minRatio: 0.95, maxRatio: 3, failOnUndersized: true } },
+    }));
+    const effective = applyPerTestConfigOverrides(config, {
+      name: 'Product', startingPath: '/', file: null, line: null, testTypes: null,
+      testFn: async () => {},
+      config: { audit: { imageResolution: { minRatio: 1 } } },
+    });
+    expect(effective.audit.imageResolution).toEqual({
+      minRatio: 1,
+      maxRatio: 3,
+      failOnUndersized: true,
+    });
+  });
+
+  it.each([
+    { minRatio: 0 }, { minRatio: -1 }, { minRatio: 1.1 },
+    { maxRatio: 0.9 }, { maxRatio: Infinity }, { minRatio: NaN },
+  ])('rejects invalid thresholds: %j', (imageResolution) => {
+    expect(() => buildAbTestsConfig(baseConfig({ audit: { imageResolution } }))).toThrow();
+  });
+});
+
 describe('accessibility config', () => {
   it('defaults accessibility to desktop and phone axe checks', () => {
     const config = buildAbTestsConfig(baseConfig());

@@ -5,7 +5,9 @@
  * License in LICENSE.md.
  */
 
-import type { RunnerResult } from 'lighthouse';
+import type { Flags, RunnerResult } from 'lighthouse';
+import type { ImageResolutionConfig } from '../image-resolution';
+import { imageResolutionLighthouseConfig, IMAGE_RESOLUTION_CATEGORY } from '../image-resolution-lighthouse';
 
 import { ensureLighthousePatchRegistered } from './register-patch';
 
@@ -67,6 +69,7 @@ export interface RunPatchedLighthouseOptions {
    * of the LHR.
    */
   canStopTracking?: Promise<void>;
+  imageResolution?: ImageResolutionConfig;
 }
 
 /**
@@ -90,15 +93,20 @@ export interface RunPatchedLighthouseOptions {
 export async function runPatchedLighthouse(
   url: string,
   settings: unknown,
-  { canStopTracking = Promise.resolve() }: RunPatchedLighthouseOptions = {},
+  { canStopTracking = Promise.resolve(), imageResolution }: RunPatchedLighthouseOptions = {},
 ): Promise<RunnerResult> {
   const g = globalThis as Record<string, unknown>;
   const hadPrevious = HOLD_GATHER_FLAG in g;
   const previous = g[HOLD_GATHER_FLAG];
   g[HOLD_GATHER_FLAG] = canStopTracking;
   try {
-    const lighthouse = (await importPatchedLighthouse()).default;
-    const result = (await lighthouse(url, settings as never)) as RunnerResult;
+    const module = await importPatchedLighthouse();
+    const flags = settings as Flags;
+    const config = imageResolution ? imageResolutionLighthouseConfig(module, imageResolution) : undefined;
+    const effectiveFlags = imageResolution && flags.onlyCategories
+      ? { ...flags, onlyCategories: [...new Set([...flags.onlyCategories, IMAGE_RESOLUTION_CATEGORY])] }
+      : flags;
+    const result = (await module.default(url, effectiveFlags, config)) as RunnerResult;
     return result;
   } finally {
     if (hadPrevious) {

@@ -13,6 +13,7 @@ import { withAbTestsConfigPath } from '../effective-config';
 import { findAbTestsConfig, loadAbTestsConfig } from '../config-loader';
 import { buildAbTestsConfig, resolvePlaywrightOptions } from '../config';
 import { runPipeline } from '../pipeline/runner';
+import { resolveStageSelection } from '../pipeline/pipeline';
 import { selectedViewportFilter, VIEWPORT_OPTION_DESCRIPTION } from '../pipeline/viewport-selection';
 import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../pipeline/burn';
 import {
@@ -61,6 +62,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
       'Regex/substring to filter tests by name (comma-separated for multiple), OR a path to a single .abtest.ts/.abtest.js file',
     )
     .option('--viewport <label>', VIEWPORT_OPTION_DESCRIPTION)
+    .option('--fail-on-undersized-images', 'Exit with failure when an image has fewer pixels than audit.imageResolution.minRatio allows. Requires the audit stage.', false)
     .option('--report-only', 'Re-render the HTML report from existing audit-results/ stage outcomes without re-running engines. Complements --skip-report for sharded CI assembly.', false)
     .option('--skip-report', 'Run the audit engine but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
     .option('--keep-old-results', 'Do not wipe audit-results/ before running. Engines still overwrite the files they produce, but unrelated artifacts from a prior run survive instead of being cleared.', false)
@@ -89,6 +91,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
         const pipeline = createAuditPipeline({
           parallelism: config.shared.parallelism,
           lighthouseConfig: config.audit.lighthouseConfig,
+          failOnUndersizedImages: opts.failOnUndersizedImages === true,
           accessibility: {
             tags: config.accessibility.tags,
             disableRules: config.accessibility.disableRules,
@@ -102,6 +105,18 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
           },
         });
         const restartFromStage = opts.restartFromStage;
+        // --categories always carries its default; only a typed value conflicts with --stages.
+        const selection = {
+          categories: opts.stages != null && this.getOptionValueSource('categories') === 'default'
+            ? undefined
+            : opts.categories,
+          skipStages: opts.skipStages,
+          stages: opts.stages,
+          restartFromStage,
+        };
+        if (opts.failOnUndersizedImages && !resolveStageSelection(pipeline, selection).stageNames.includes('audit')) {
+          throw new Error('--fail-on-undersized-images requires the audit stage; include it in the selected stages.');
+        }
         const result = await runPipeline(pipeline, {
           config,
           viewportsFilter: opts.reportOnly ? undefined : viewportsFilter,
@@ -110,13 +125,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
           experimentURL: url,
           testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
           filter: opts.filter ?? config.shared.filter,
-          // --categories always carries its default; only a typed value conflicts with --stages.
-          categories: opts.stages != null && this.getOptionValueSource('categories') === 'default'
-            ? undefined
-            : opts.categories,
-          skipStages: opts.skipStages,
-          stages: opts.stages,
-          restartFromStage,
+          ...selection,
           reportOnly: opts.reportOnly === true,
           skipReport: opts.skipReport === true,
           keepOldResults: opts.keepOldResults === true,
