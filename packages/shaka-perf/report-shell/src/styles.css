@@ -3207,7 +3207,7 @@ input {
 .card__metadata .card__urls { padding: 0; margin: 0; border: 0; }
 .card__metadata .run-details__commit code { font-size: 10px; line-height: 1; }
 .card__metadata .card__code { margin-top: 4px; }
-.card__targets { gap: 16px; }
+.card__targets { gap: 16px; align-items: start; }
 .card__targets > div { align-items: start; gap: 8px; }
 .card__targets dd { display: grid; gap: 8px; }
 .card__targets dd > a { justify-self: start; max-width: 100%; }
