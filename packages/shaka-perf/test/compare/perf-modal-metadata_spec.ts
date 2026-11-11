@@ -55,3 +55,8 @@ it('labels differing saved settings by measured side', () => {
   expect(fields['throttling · control']).toContain('4× CPU');
   expect(fields['throttling · experiment']).toContain('2× CPU');
 });
+
+it('labels a saved single sample without reading another stage', () => {
+  expect(performanceMetadataFields({ numberOfMeasurements: 1, measurementSideCount: 2 }))
+    .toMatchObject({ 'number of measurements': '1 per side', 'artifact samples': '1 sample below' });
+});
