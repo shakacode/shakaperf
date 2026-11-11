@@ -43,12 +43,12 @@ describe('reusable compare results', () => {
     test.experimentPathOverride = '/experiment-path';
     const resultsRoot = path.join(cwd, 'compare-results');
     const store = new ArtifactStore(resultsRoot);
-    store.writeOutcome(test, DESKTOP_VIEWPORT.label, { executionDetails: { recoveredAfterRetries: false },
+    store.writeOutcome(test, DESKTOP_VIEWPORT.label, { executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'ok',
       stage: 'visreg',
       measurement: [{ diffImage: 'diff.png' }],
     });
-    store.writeOutcome(test, DESKTOP_VIEWPORT.label, { executionDetails: { recoveredAfterRetries: false },
+    store.writeOutcome(test, DESKTOP_VIEWPORT.label, { executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'ok',
       stage: 'accessibility',
       measurement: { findings: [{ ruleId: 'button-name', status: 'new' }] },

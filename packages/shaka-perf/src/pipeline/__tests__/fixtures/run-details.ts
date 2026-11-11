@@ -29,7 +29,7 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
   const metadata = (runId: string): LoadedRunMetadata => ({
     testSourcePath: null,
     command: `shaka-perf ${pipelineName} --filter 'Homepage' --categories ${audit ? 'audit,accessibility' : 'perf,accessibility'}`,
-    runId, measuredAt: runId, stages: [stage, 'accessibility'], categories: [audit ? 'audit' : 'perf', 'accessibility'],
+    measuredAt: runId, stages: [stage, 'accessibility'], categories: [audit ? 'audit' : 'perf', 'accessibility'],
     viewport: DESKTOP_VIEWPORT,
     targets: (audit ? ['experiment'] as const : ['control', 'experiment'] as const).map((side) => ({
       side, url: 'http://127.0.0.1:3910/',
@@ -45,9 +45,9 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
     measuredAt: Date.parse(secondRun), runId: secondRun,
     viewportArtifactPaths: [{ viewport: 'desktop', path: `results/${id}-desktop` }],
     outcomes: [
-      { executionDetails: { recoveredAfterRetries: false }, kind: 'ok', stage, measurement, viewport: DESKTOP_VIEWPORT, logs: '<0.1s> Measurement completed', ...(withMetadata ? { runMetadata: metadata(firstRun) } : {}) },
-      { executionDetails: { recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' }, viewport: DESKTOP_VIEWPORT, ...(withMetadata ? { runMetadata: { ...metadata(secondRun), throttling: [] } } : {}) },
-      { executionDetails: { recoveredAfterRetries: false }, kind: 'ok', stage, measurement, viewport: PHONE_VIEWPORT },
+      { executionDetails: { runId: firstRun, recoveredAfterRetries: false }, kind: 'ok', stage, measurement, viewport: DESKTOP_VIEWPORT, logs: '<0.1s> Measurement completed', ...(withMetadata ? { runMetadata: metadata(firstRun) } : {}) },
+      { executionDetails: { runId: secondRun, recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' }, viewport: DESKTOP_VIEWPORT, ...(withMetadata ? { runMetadata: { ...metadata(secondRun), throttling: [] } } : {}) },
+      { executionDetails: { runId: secondRun, recoveredAfterRetries: false }, kind: 'ok', stage, measurement, viewport: PHONE_VIEWPORT },
     ] as ReportOutcome[],
   });
   const data: ReportData = {
