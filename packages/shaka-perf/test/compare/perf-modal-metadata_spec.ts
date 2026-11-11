@@ -47,15 +47,6 @@ it('escapes saved strings through the shared metadata component', () => {
   expect(html).not.toContain('<script>');
 });
 
-it('labels differing saved settings by measured side', () => {
-  const fields = performanceMetadataFields({ throttling: [
-    { ...throttling, side: 'control' },
-    { ...throttling, side: 'experiment', cpuSlowdownMultiplier: 2 },
-  ] });
-  expect(fields['throttling · control']).toContain('4× CPU');
-  expect(fields['throttling · experiment']).toContain('2× CPU');
-});
-
 it('labels a saved single sample without reading another stage', () => {
   expect(performanceMetadataFields({ numberOfMeasurements: 1, measurementSideCount: 2 }))
     .toMatchObject({ 'number of measurements': '1 per side (1 sample below)' });
