@@ -20,7 +20,7 @@ export function VisregArtifactView({
   const rows = measurements
     .flatMap((entry) => entry.measurement.map((artifact) => ({
       artifact,
-      viewportLabel: entry.viewport.label,
+      viewportLabel: entry.executionDetails.viewport.label,
       latestRun: entry.latestRun,
     })))
     .sort((a, b) => a.artifact.selector.localeCompare(b.artifact.selector) || a.viewportLabel.localeCompare(b.viewportLabel));

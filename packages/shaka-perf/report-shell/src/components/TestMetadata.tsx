@@ -42,7 +42,7 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
   const expanded = sharedExpanded ?? localExpanded;
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const panelId = useId();
-  const viewports = [...new Set(test.outcomes.map((outcome) => outcome.viewport.label))];
+  const viewports = [...new Set(test.outcomes.map((outcome) => outcome.executionDetails.viewport.label))];
   const troubleshoot = pipelineTroubleshootCommands(meta, test.name, viewports);
   // Outcome order follows stages/viewports, not measurement chronology.
   const latest = test.outcomes.flatMap((outcome) => outcome.runMetadata ? [outcome.runMetadata] : [])

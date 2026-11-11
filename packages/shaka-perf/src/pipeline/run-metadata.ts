@@ -7,7 +7,6 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { Viewport } from '../config';
 import type { LighthouseConfig } from '../bench/core/lighthouse-config';
 import { readContainerCommit, SERVER_COMMIT_LABEL } from '../twin-servers/helpers/server-commit';
 
@@ -34,7 +33,6 @@ export interface RunMetadata {
   measuredAt: string;
   stages: string[];
   categories: string[];
-  viewport: Viewport;
   targets: MeasurementTarget[];
   throttling?: MeasurementThrottling[];
   /** Effective Lighthouse samples requested per measured side. */

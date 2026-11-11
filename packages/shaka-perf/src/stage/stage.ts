@@ -142,7 +142,6 @@ export interface StageRenderEntry<M = unknown> {
   readonly measurement: M;
   /** Framework-owned execution facts, scoped to this measurement. */
   readonly executionDetails: ExecutionDetails;
-  readonly viewport: Viewport;
   /** Whether this measurement belongs to the report's latest run. */
   readonly latestRun: boolean;
 }

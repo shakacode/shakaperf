@@ -30,7 +30,7 @@ function logsForTest(test: TestResult, visibleStages: ReadonlySet<string>): LogE
   const logs: LogEntry[] = [];
   for (const outcome of test.outcomes) {
     if (!visibleStages.has(outcome.stage)) continue;
-    const titleSuffix = ` · ${outcome.viewport.label}`;
+    const titleSuffix = ` · ${outcome.executionDetails.viewport.label}`;
     if (outcome.logs) {
       const sortKey = firstElapsedSeconds(outcome.logs);
       logs.push({
@@ -72,9 +72,9 @@ function outcomeGroups(test: TestResult, visibleStages: ReadonlySet<string>): Re
 export function reviewedKey(meta: ReportMeta, test: TestResult): string {
   const outcomes = test.outcomes.map((outcome) => JSON.stringify([
     outcome.stage,
-    outcome.viewport.label,
-    outcome.viewport.width,
-    outcome.viewport.height,
+    outcome.executionDetails.viewport.label,
+    outcome.executionDetails.viewport.width,
+    outcome.executionDetails.viewport.height,
     outcome.executionDetails.runId ?? test.runId ?? test.measuredAt ?? meta.generatedAt,
   ])).sort();
   return `shaka-perf:reviewed:v2:${JSON.stringify([

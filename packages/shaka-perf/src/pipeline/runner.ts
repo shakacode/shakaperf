@@ -1109,7 +1109,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     progress.error += 1;
     persistStageOutcome(store, unit, logger, {
       kind: 'error',
-      executionDetails: { runId, testSourcePath: unit.testSourcePath, recoveredAfterRetries: false },
+      executionDetails: { runId, viewport: unit.viewport, testSourcePath: unit.testSourcePath, recoveredAfterRetries: false },
       stage: stage.name,
       error: errorInfo(err),
     });
@@ -1122,7 +1122,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const reason = !viewportApplies
       ? `${unit.viewport.label} not in ${stage.category}.viewports`
       : `${stage.name} does not apply to ${unit.viewport.label}`;
-    persistStageOutcome(store, unit, logger, skippedOutcome(stage.name, reason, runId));
+    persistStageOutcome(store, unit, logger, skippedOutcome(stage.name, reason, runId, unit.viewport));
     progress.skipped += 1;
     renderSticky();
     return;
@@ -1213,7 +1213,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       // Measuring units have their source artifact written before stages execute.
       metadata = {
         command: run.command, measuredAt: new Date().toISOString(),
-        stages: run.stages, categories: run.categories, viewport: unit.viewport,
+        stages: run.stages, categories: run.categories,
         targets: await Promise.all(run.sides.map(async (side) => {
           const url = side === 'control' ? ctx.controlURL : ctx.experimentURL;
           return { side, url, commit: await measuredCommit(url) };
@@ -1245,7 +1245,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       kind: 'ok',
       stage: stage.name,
       measurement,
-      executionDetails: { runId, testSourcePath: unit.testSourcePath, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
+      executionDetails: { runId, viewport: unit.viewport, testSourcePath: unit.testSourcePath, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
     };
   } catch (err) {
     // Walk the cause chain, don't instanceof: a stage that throws from inside a
@@ -1254,7 +1254,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const failure = findFailureArtifacts(err);
     outcome = {
       kind: 'error',
-      executionDetails: { runId, testSourcePath: unit.testSourcePath, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
+      executionDetails: { runId, viewport: unit.viewport, testSourcePath: unit.testSourcePath, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
       stage: stage.name,
       error: errorInfo(err),
       ...(failure ? { failure } : {}),
@@ -1322,7 +1322,7 @@ function persistCliSkippedStageOutcomes(
     for (const { stage, reason } of skippedStages) {
       for (const viewport of viewports) {
         if (viewportsFilter && !viewportsFilter.includes(viewport.label)) continue;
-        store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason, runId));
+        store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason, runId, viewport));
       }
     }
   }
@@ -1598,8 +1598,8 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
     if (pa !== pb) return pb - pa;
     return (sa?.index ?? Number.MAX_SAFE_INTEGER) - (sb?.index ?? Number.MAX_SAFE_INTEGER);
   });
-  const outcomes = viewportOutcomes.map(({ outcome, viewport, outsideCurrentConfig }) => ({
-    ...outcome, viewport, ...(outsideCurrentConfig ? { outsideCurrentConfig: true } : {}),
+  const outcomes = viewportOutcomes.map(({ outcome, outsideCurrentConfig }) => ({
+    ...outcome, ...(outsideCurrentConfig ? { outsideCurrentConfig: true } : {}),
   }));
   const hasError = outcomes.some((outcome) => outcome.kind === 'error');
   const chipResults = chipResultsForOutcomes(pipeline, outcomes);
@@ -1649,7 +1649,7 @@ function chipResultsForOutcomes(
     const entries = results[outcome.stage] ?? (results[outcome.stage] = []);
     entries.push({
       stage: outcome.stage,
-      viewport: outcome.viewport,
+
       measurement: successfulOutcome.measurement,
       outcome: successfulOutcome,
     });
@@ -1702,8 +1702,8 @@ function savedTestSource(outcomes: readonly Outcome[], store: ArtifactStore): st
   return null;
 }
 
-function skippedOutcome(stage: StageName, reason: string, runId: string): Outcome {
-  return { kind: 'skipped', stage, reason, executionDetails: { runId, testSourcePath: null, recoveredAfterRetries: false } };
+function skippedOutcome(stage: StageName, reason: string, runId: string, viewport: Viewport): Outcome {
+  return { kind: 'skipped', stage, reason, executionDetails: { runId, viewport, testSourcePath: null, recoveredAfterRetries: false } };
 }
 
 function persistSkippedOutcomesForStages(
@@ -1719,7 +1719,7 @@ function persistSkippedOutcomesForStages(
     for (const viewport of viewportsForCategory(config, stage.category)) {
       if (viewportsFilter && !viewportsFilter.includes(viewport.label)) continue;
       if (store.readOutcome(test, viewport.label, stage.name)) continue;
-      store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason, runId));
+      store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason, runId, viewport));
     }
   }
 }
@@ -1735,7 +1735,7 @@ function freshestArtifactMtime(
   let freshest = 0;
   for (const outcome of outcomes) {
     if (outcome.kind === 'skipped') continue;
-    const unit = unitIdForTest(test, outcome.viewport.label);
+    const unit = unitIdForTest(test, outcome.executionDetails.viewport.label);
     try {
       const mtime = fs.statSync(path.join(resultsRoot, unit, `${outcome.stage}.json`)).mtimeMs;
       if (mtime > freshest) freshest = mtime;
