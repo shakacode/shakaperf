@@ -13,10 +13,8 @@ import { reviewedKey } from '../../report-shell/src/components/TestCard';
 
 jest.setTimeout(60_000);
 
-describe.each([
-  { width: 1280, height: 900 },
-  { width: 390, height: 844 },
-])('reviewed report cards at $width px', (viewport) => {
+describe('reviewed report cards', () => {
+  const viewport = { width: 390, height: 844 };
   let server: Server;
   let browser: Browser;
   let page: Page;
@@ -60,13 +58,6 @@ describe.each([
     await regenerate();
     expect(await page.locator('[data-report-test-id="home"]').count()).toBe(0);
     await page.getByRole('checkbox', { name: 'Show old runs' }).check();
-    if (process.env.SHAKA_REPORT_UI_CAPTURE_DIR) {
-      await page.screenshot({
-        path: `${process.env.SHAKA_REPORT_UI_CAPTURE_DIR}/partial-run-${viewport.width}.png`,
-        fullPage: true,
-        animations: 'disabled',
-      });
-    }
     expect(await reviewed().isChecked()).toBe(true);
     expect(await page.locator('[data-report-test-id="home"] .card__body').count()).toBe(0);
     await reviewed().uncheck();

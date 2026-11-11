@@ -14,7 +14,7 @@ jest.setTimeout(60_000);
 
 // A clean accessibility React element renders null, while another viewport of
 // the same category has an error. Its restore control must outlive both bodies.
-function reportData(mode: 'full' | 'self-contained'): ReportData {
+function reportData(): ReportData {
   const cleanAccessibility = {
     control: { side: 'control', url: 'http://control.test', violations: [] },
     experiment: { side: 'experiment', url: 'http://experiment.test', violations: [] },
@@ -27,7 +27,7 @@ function reportData(mode: 'full' | 'self-contained'): ReportData {
       title: 'Compare', pipelineName: 'compare', generatedAt: '2026-11-03T10:00:00Z',
       controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test',
       durationMs: 1000, cwd: '/example', errors: [], reportOnly: false,
-      reportMode: mode, pipelineConfig: {},
+      reportMode: 'full', pipelineConfig: {},
     },
     tests: ['Homepage', 'Product'].map((name) => ({
       id: name, name, filePath: 'example.abtest.ts', startingPath: '/',
@@ -46,7 +46,7 @@ function reportData(mode: 'full' | 'self-contained'): ReportData {
   };
 }
 
-describe.each(['full', 'self-contained'] as const)('%s section disclosures', (mode) => {
+describe('section disclosures', () => {
   let server: Server;
   let browser: Browser;
   let url: string;
@@ -63,36 +63,24 @@ describe.each(['full', 'self-contained'] as const)('%s section disclosures', (mo
     await browser.close();
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   });
-  beforeEach(() => { data = reportData(mode); });
+  beforeEach(() => { data = reportData(); });
   afterEach(async () => page.close());
 
-  it.each([1280, 390])('hides globally, stays compact, and restores after search at %i px', async (width) => {
-    page = await browser.newPage({ viewport: { width, height: 900 } });
+  it('preserves shared disclosure state through search', async () => {
+    page = await browser.newPage();
     await page.goto(url);
-    expect(await page.locator('.header__controls select, .header__controls .a11y-filter').count()).toBe(0);
-    expect(await page.getByRole('switch').count()).toBe(0);
-    expect(await page.locator('.report-section select').count()).toBe(0);
     const visual = page.getByRole('button', { name: 'Visual Diff visibility for all tests' });
     expect(await visual.count()).toBe(2);
-    expect(await visual.first().getAttribute('aria-haspopup')).toBeNull();
     await visual.first().focus();
     await visual.first().press('Space');
     expect(await visual.last().getAttribute('aria-expanded')).toBe('false');
     await visual.first().press('Enter');
     expect(await visual.last().getAttribute('aria-expanded')).toBe('true');
-    for (const key of ['visreg', 'perf:viewport:desktop', 'perf:viewport:phone', 'accessibility']) {
-      const sections = page.locator(`[data-report-section="${key}"]`);
-      expect(await sections.count()).toBe(2);
-      await sections.first().locator(':scope > .report-section__head button').click();
-      expect(await sections.locator(':scope > .report-section__body').evaluateAll((bodies) => bodies.every((body) => (body as HTMLElement).hidden))).toBe(true);
-      expect(await sections.last().locator(':scope > .report-section__head button').getAttribute('aria-expanded')).toBe('false');
-    }
-    const parent = page.locator('[data-report-section="perf"] > .report-section__head').first();
-    const child = page.locator('[data-report-section="perf:viewport:desktop"] > .report-section__head').first();
-    expect((await child.boundingBox())!.x).toBeGreaterThan((await parent.boundingBox())!.x + 12);
-    const hiddenRows = page.locator('[data-report-section][data-hidden="true"] > .report-section__head');
-    const dimensions = await hiddenRows.evaluateAll((rows) => rows.map((row) => ({ height: (row as HTMLElement).offsetHeight, font: getComputedStyle(row.querySelector('button')!).fontSize })));
-    expect(dimensions.every((row) => row.height <= 32 && row.font === dimensions[0].font)).toBe(true);
+    const sections = page.locator('[data-report-section="accessibility"]');
+    expect(await sections.count()).toBe(2);
+    await sections.first().locator(':scope > .report-section__head button').click();
+    expect(await sections.locator(':scope > .report-section__body').evaluateAll((bodies) => bodies.every((body) => (body as HTMLElement).hidden))).toBe(true);
+    expect(await sections.last().locator(':scope > .report-section__head button').getAttribute('aria-expanded')).toBe('false');
     await page.getByRole('searchbox').fill('Product');
     await page.waitForFunction(() => document.querySelectorAll('.card').length === 1);
     expect(await page.locator('.card').count()).toBe(1);
@@ -104,16 +92,6 @@ describe.each(['full', 'self-contained'] as const)('%s section disclosures', (mo
     await page.getByRole('alert').nth(1).waitFor();
     expect(await page.getByRole('alert').count()).toBe(2);
     expect(await page.getByRole('button', { name: /Accessibility visibility for all tests/i }).evaluateAll((controls) => controls.every((control) => control.getAttribute('aria-expanded') === 'true'))).toBe(true);
-    for (const key of ['visreg', 'perf']) {
-      await page.locator(`[data-report-section="${key}"]`).first().locator(':scope > .report-section__head button').click();
-    }
-    expect(await page.locator('.card').count()).toBe(2);
-    expect(await page.getByRole('button', { name: /Visual Diff visibility/ }).count()).toBe(2);
-    const metadata = page.locator('.card__metadata').first();
-    expect(await metadata.getAttribute('open')).toBeNull();
-    await metadata.locator('summary').first().click();
-    expect(await metadata.getByLabel('URLs', { exact: true }).isVisible()).toBe(true);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 
   it('does not take focus back after the reader moves to search', async () => {

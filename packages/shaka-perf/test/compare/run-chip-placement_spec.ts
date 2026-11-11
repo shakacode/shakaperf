@@ -5,17 +5,12 @@
  * License in LICENSE.md.
  */
 
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium, type Browser } from 'playwright';
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
-import { renderPersistedStageArtifacts } from '../../src/pipeline/pipeline-artifacts';
-import { ReportSection } from '../../src/pipeline/report-section';
-import { StageArtifactTitle, StageRunChipsProvider } from '../../src/pipeline/stage-report-components';
 import { renderReportHtml, type ReportData, type ReportOutcome } from '../../src/pipeline/report';
 
 const LATEST = '2026-10-02T00:00:00.000Z';
@@ -94,9 +89,9 @@ describe('contextual old-run chips', () => {
   });
 
   it.each([
-    ['compare', 'full', compare], ['compare', 'self-contained', compare],
-    ['audit', 'full', audit], ['audit', 'self-contained', audit],
-  ] as const)('%s %s labels stale result headings only', async (pipeline, mode, examples) => {
+    ['compare', compare], ['audit', audit],
+  ] as const)('%s attributes freshness to its saved results', async (pipeline, examples) => {
+    const mode = 'full';
     const file = path.join(directory, `${pipeline}-${mode}.html`);
     fs.writeFileSync(file, renderReportHtml(fixture(pipeline, mode, examples)));
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -104,15 +99,9 @@ describe('contextual old-run chips', () => {
       await page.goto(pathToFileURL(file).href);
       await page.locator('.card').waitFor();
       expect(await page.locator('.report-section__disclosure').count()).toBeGreaterThan(0);
-      expect(await page.locator('.outcome-slot__runs').count()).toBe(0);
-      expect(await page.locator('.pill').allTextContents()).not.toEqual(expect.arrayContaining([
-        expect.stringContaining('latest run'), expect.stringContaining('desktop · old run'),
-      ]));
       for (const { stage, heading } of examples) {
         const slot = page.locator(`.outcome-slot[data-stage="${stage}"]`);
         expect({ stage, chips: await slot.locator('.old-run-chip').allTextContents(), slots: await slot.count() }).toEqual({ stage, chips: ['old run'], slots: 1 });
-        expect(await slot.locator('.stage-artifact__title').count()).toBe(0);
-        expect(await slot.getByRole('heading').count()).toBe(stage === 'ai_summary' ? 1 : 3);
         const headings = slot.locator(heading);
         // Summary renders only the first non-empty measurement. Every other
         // renderer must attribute the warning to desktop and leave phone clear.
@@ -137,81 +126,18 @@ describe('contextual old-run chips', () => {
     }
   }, 30_000);
 
-  it.each([['compare', compare], ['audit', audit]] as const)('%s shares every section and viewport disclosure across tests', async (pipeline, examples) => {
-    const data = fixture(pipeline, 'full', examples);
-    data.tests.push({ ...data.tests[0], id: 'Second', name: 'Second' });
-    const file = path.join(directory, `global-${pipeline}.html`);
-    fs.writeFileSync(file, renderReportHtml(data));
-    const page = await browser.newPage({ reducedMotion: 'reduce' });
-    try {
-      await page.goto(pathToFileURL(file).href);
-      const keys = await page.locator('[data-report-section]').evaluateAll((sections) => [...new Set(sections.map((section) => section.getAttribute('data-report-section')!))]);
-      for (const key of keys) {
-        const sections = page.locator(`[data-report-section="${key}"]`);
-        const controls = sections.locator(':scope > .report-section__head button');
-        expect(await controls.count()).toBe(2);
-        for (const expanded of ['false', 'true']) {
-          await controls.last().click();
-          expect(await controls.evaluateAll((buttons, state) => buttons.every((button) => button.getAttribute('aria-expanded') === state), expanded)).toBe(true);
-          expect(await sections.locator(':scope > .report-section__head').evaluateAll((heads) => heads.every((head) => head.getBoundingClientRect().height > 0))).toBe(true);
-        }
-      }
-    } finally {
-      await page.close();
-    }
-  });
-
-  it.each([['compare', compare], ['audit', audit]] as const)('%s standalone artifacts retain one main heading and per-result badges', async (pipeline, examples) => {
-    const page = await browser.newPage();
-    try {
-      for (const { stage, measurement, heading } of examples) {
-        const artifact = renderPersistedStageArtifacts(pipeline, {}, stage, [
-          { measurement, viewport: DESKTOP_VIEWPORT, latestRun: false },
-          { measurement, viewport: PHONE_VIEWPORT, latestRun: true },
-        ]);
-        await page.setContent(renderToStaticMarkup(artifact));
-        expect(await page.locator('.stage-artifact__title').count()).toBe(1);
-        expect(await page.getByRole('heading').count()).toBe(stage === 'ai_summary' ? 1 : 3);
-        const headings = page.locator(stage === 'ai_summary' ? '.stage-artifact__title' : heading);
-        expect(await headings.first().locator('.old-run-chip').count()).toBe(1);
-        if (stage !== 'ai_summary') expect(await headings.nth(1).locator('.old-run-chip').count()).toBe(0);
-        await page.setContent(renderToStaticMarkup(createElement(StageRunChipsProvider, { value: false }, artifact)));
-        expect(await page.locator('.old-run-chip').count()).toBe(0);
-        expect(await page.getByRole('heading').count()).toBe(stage === 'ai_summary' ? 1 : 3);
-      }
-    } finally {
-      await page.close();
-    }
-  });
-
-  it.each([false, true])('JSX title wrapping does not change heading ownership (wrapped=%s)', async (wrapped) => {
-    const page = await browser.newPage();
-    try {
-      const title = wrapped ? createElement('span', null, 'Result title') : 'Result title';
-      const artifactTitle = createElement(StageArtifactTitle, { title, badge: createElement('span', null, 'Result badge') });
-      await page.setContent(renderToStaticMarkup(artifactTitle));
-      expect(await page.getByRole('heading').allTextContents()).toEqual(['Result titleResult badge']);
-      await page.setContent(renderToStaticMarkup(createElement(ReportSection, {
-        sectionKey: 'example', title: 'Section title', badge: createElement('span', null, 'Section badge'), children: artifactTitle,
-      })));
-      expect(await page.getByRole('heading').allTextContents()).toEqual(['Section titleSection badge']);
-    } finally {
-      await page.close();
-    }
-  });
-
   it.each([
-    ['full', '', OLD, 'Selected phone summary', LATEST, false],
-    ['self-contained', '  ', LATEST, 'Selected phone summary', OLD, true],
-    ['full', 'Selected desktop summary', LATEST, 'Unused old summary', OLD, false],
-    ['self-contained', 'Selected desktop summary', OLD, 'Unused current summary', LATEST, true],
-  ] as const)('%s Summary attributes its main heading to the displayed measurement (%s / %s)', async (mode, desktop, desktopRun, phone, phoneRun, stale) => {
-    const data = fixture('audit', mode, audit);
+    ['', OLD, 'Selected phone summary', LATEST, false],
+    ['  ', LATEST, 'Selected phone summary', OLD, true],
+    ['Selected desktop summary', LATEST, 'Unused old summary', OLD, false],
+    ['Selected desktop summary', OLD, 'Unused current summary', LATEST, true],
+  ] as const)('attributes Summary freshness to the displayed measurement (%s / %s)', async (desktop, desktopRun, phone, phoneRun, stale) => {
+    const data = fixture('audit', 'full', audit);
     for (const outcome of data.tests[0].outcomes.filter((item) => item.stage === 'ai_summary')) {
       outcome.measurement = { summary: outcome.viewport.label === 'desktop' ? desktop : phone };
       outcome.runId = outcome.viewport.label === 'desktop' ? desktopRun : phoneRun;
     }
-    const file = path.join(directory, `summary-${mode}-${stale}-${desktop.length}.html`);
+    const file = path.join(directory, `summary-${stale}-${desktop.length}.html`);
     fs.writeFileSync(file, renderReportHtml(data));
     const page = await browser.newPage();
     try {

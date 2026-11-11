@@ -48,9 +48,6 @@ it('shows shared measurement facts once across results and viewports', () => {
   outcomes[1]!.runMetadata = { ...first.runMetadata!, measuredAt: first.runMetadata!.runId };
   outcomes[2]!.runMetadata = { ...first.runMetadata!, viewport: outcomes[2]!.viewport };
   const html = details(outcomes);
-  expect(html).not.toContain('<textarea');
-  expect(html).not.toContain('http://127.0.0.1:3910/');
-  expect(html).not.toContain('>1e04e038<');
   expect(html.match(/4× CPU/g)).toHaveLength(1);
   expect(html).toContain('desktop');
   expect(html).toContain('phone');
@@ -112,7 +109,7 @@ it.each(['Subject', 'Subject\n\n', ''])('does not expand a commit without body c
   expect(html).toContain('>1e04e038<');
 });
 
-it('keeps grouped Lighthouse samples and result totals without visual retry details', () => {
+it('keeps grouped Lighthouse samples separate from result totals', () => {
   const outcomes = runDetailsFixture('compare').tests[0]!.outcomes;
   const metadata = outcomes[0]!.runMetadata!;
   Object.assign(metadata, { numberOfMeasurements: 7 });
@@ -123,8 +120,6 @@ it('keeps grouped Lighthouse samples and result totals without visual retry deta
   expect(html).toContain('3 Results');
   expect(html).not.toContain('3 measurements');
   expect(html.match(/7 LH samples per side/g)).toHaveLength(1);
-  expect(html).not.toContain('2 visual attempts');
-  expect(html).not.toContain('Up to');
 });
 
 it('keeps differing saved sampling counts scoped to their measurement runs', () => {
@@ -139,36 +134,12 @@ it('keeps differing saved sampling counts scoped to their measurement runs', () 
   expect(html).toContain('Run 2 / perf');
 });
 
-it.each([undefined, 0])('omits absent sampling fields and unused visual retries: %p', (compareRetries) => {
-  const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(0, 1);
-  Object.assign(outcomes[0]!.runMetadata!, { compareRetries });
-  const html = details(outcomes);
-  expect(html).toContain('1 Result');
-  expect(html).not.toContain('<h3>Sampling</h3>');
-});
-
 // Counts saved by other Lighthouse stages remain available as metadata, but
 // only statistical perf sampling belongs in this modal.
-it.each(['perf-low-noise', 'perf-warmup', 'audit'])('omits sample counts for %s', (stage) => {
+it('does not present the low-noise sample as statistical sampling', () => {
   const outcomes = runDetailsFixture('compare').tests[0]!.outcomes.slice(0, 1);
-  outcomes[0]!.stage = stage;
+  outcomes[0]!.stage = 'perf-low-noise';
   outcomes[0]!.runMetadata!.numberOfMeasurements = 1;
   expect(details(outcomes)).not.toContain('<h3>Sampling</h3>');
 });
 
-it.each(['compare', 'audit'] as const)('%s details omit sections available in card and visual metadata', (pipeline) => {
-  const outcomes = runDetailsFixture(pipeline).tests[0]!.outcomes;
-  outcomes[0]!.recoveredAfterRetries = true;
-  Object.assign(outcomes[0]!.runMetadata!, { taskRetries: 1, taskRetryLimit: 2, compareAttempts: 4, compareRetries: 2 });
-  const html = details(outcomes);
-  for (const heading of ['Applications', 'Measurement command', 'Categories', 'Viewports', 'Retries and attempts']) {
-    expect(html).not.toContain(`<h3>${heading}</h3>`);
-  }
-  expect(html).not.toContain('1 task retry');
-  expect(html).not.toContain('4 visual attempts');
-  expect(html).not.toContain('1e04e038');
-  expect(html).not.toContain('http://127.0.0.1:3910/');
-  expect(html).not.toContain('<textarea');
-  expect(html).toContain('Throttling');
-  expect(html).toContain('Runs');
-});

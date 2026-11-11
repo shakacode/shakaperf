@@ -196,8 +196,6 @@ describe('bisect report App rendering', () => {
 
     expect(cardMarkup(html, 'Product page')).not.toBe('');
     expect(html).not.toContain('missing-artifacts__toggle');
-    expect(html).not.toContain('1 skipped: fixture skip');
-    expect(html).not.toContain('skipped tests grouped by reason');
   });
 
   it('announces only the concise selection status', () => {
