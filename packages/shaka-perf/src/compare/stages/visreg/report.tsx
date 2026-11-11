@@ -75,6 +75,7 @@ function VisregCard({ row }: { row: VisregRow }) {
         className="artifact-card__media-button"
         href={artifact.diffImage}
         label={`${viewportLabel} ${artifact.selector}`}
+        title={`visual regressions ${viewportLabel} > ${artifact.selector}`}
         fields={visualComparisonFields(row)}
         executionDetails={row.entry.executionDetails}
         body={<VisregDialogImages row={artifact} diffImage={artifact.diffImage} />}
@@ -90,6 +91,7 @@ function VisregCard({ row }: { row: VisregRow }) {
         className="artifact-card__media-button"
         href={artifact.controlImage}
         label={`${viewportLabel} ${artifact.selector}`}
+        title={`visual regressions ${viewportLabel} > ${artifact.selector}`}
         fields={visualComparisonFields(row)}
         executionDetails={row.entry.executionDetails}
         body={<VisregDialogImages row={artifact} />}

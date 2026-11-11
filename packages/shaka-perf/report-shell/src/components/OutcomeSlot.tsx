@@ -64,6 +64,7 @@ function OutcomeError({ outcome, latestRun }: { outcome: ReportOutcome; latestRu
             image
             href={media}
             label="failure screenshot"
+            title={`${outcome.executionDetails.viewport.label} ${outcome.stage} failure screenshot`}
           >
             <ScreenshotPreview src={media} alt="failure screenshot" />
           </DetailedArtifactDialog>
