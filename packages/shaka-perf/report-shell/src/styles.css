@@ -1762,8 +1762,8 @@ input {
   gap: 8px;
 }
 
-.artifact-links a,
-.artifact-links button {
+.artifact-links > a,
+.artifact-links > button {
   appearance: none;
   font-size: 10px;
   font-family: inherit;
@@ -1776,8 +1776,8 @@ input {
   cursor: pointer;
 }
 
-.artifact-links a:hover,
-.artifact-links button:hover {
+.artifact-links > a:hover,
+.artifact-links > button:hover {
   background: var(--border);
   color: #fff;
 }
