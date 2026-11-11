@@ -53,6 +53,9 @@ export function performanceMetadataFields(
     }
     fields['number of measurements'] = countLabel;
   }
+  if (executionDetails.numberOfMeasurements === 1) {
+    fields['artifact samples'] = '1 sample below';
+  }
 
   const sidesByDescription = new Map<string, Set<string>>();
   for (const setting of executionDetails.throttling ?? []) {
