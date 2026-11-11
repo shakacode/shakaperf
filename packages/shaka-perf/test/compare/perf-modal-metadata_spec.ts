@@ -8,6 +8,8 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { performanceMetadataFields } from '../../src/compare/stages/perf/metadata-fields';
+import { runDetailsFixture } from '../../src/pipeline/__tests__/fixtures/run-details';
+import { reportDataForMode } from '../../src/pipeline/report';
 import { ArtifactMetadataFields } from '../../src/pipeline/stage-report-components';
 
 const throttling = { engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 4,
@@ -50,4 +52,15 @@ it('escapes saved strings through the shared metadata component', () => {
 it('labels a saved single sample without reading another stage', () => {
   expect(performanceMetadataFields({ numberOfMeasurements: 1, measurementSideCount: 2 }))
     .toMatchObject({ 'number of measurements': '1 per side (1 sample below)' });
+});
+
+it.each(['full', 'self-contained'] as const)('preserves selected execution settings without mutating input in %s reports', mode => {
+  const data = runDetailsFixture('compare');
+  const outcome = data.tests[0]!.outcomes[0]!;
+  outcome.executionDetails = { ...outcome.executionDetails, numberOfMeasurements: 7, measurementSideCount: 2,
+    throttling: [{ ...throttling, method: 'saved-settings.json' }] };
+  const before = JSON.stringify(data);
+  const rendered = reportDataForMode(data, mode, [], '/unused', { 'saved-settings.json': 'data:application/json;base64,e30=' });
+  expect(rendered.tests[0]!.outcomes[0]!.executionDetails).toEqual(outcome.executionDetails);
+  expect(JSON.stringify(data)).toBe(before);
 });

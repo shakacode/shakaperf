@@ -48,7 +48,6 @@ describe('performance modal metadata', () => {
   let url: string;
 
   beforeAll(async () => {
-    const html = renderReportHtml(fixture());
     const frames = renderSideBySideFramesScript({
       control: [{ timeMs: 0, src: image }], experiment: [{ timeMs: 0, src: image }],
       interactions: { control: [], experiment: [] },
@@ -59,7 +58,14 @@ describe('performance modal metadata', () => {
         response.end(frames);
       } else {
         response.setHeader('Content-Type', 'text/html');
-        response.end(request.url === '/' ? html : '<p>Saved performance artifact</p>');
+        const requestUrl = new URL(request.url!, 'http://localhost');
+        const data = fixture();
+        if (requestUrl.searchParams.has('missing')) {
+          const selected = data.tests[0]!.outcomes[1]!;
+          selected.executionDetails = { ...selected.executionDetails, numberOfMeasurements: undefined,
+            runId: '2026-01-01T00:00:00Z', throttling: undefined, measurementSideCount: undefined };
+        }
+        response.end(requestUrl.pathname === '/' ? renderReportHtml(data) : '<p>Saved performance artifact</p>');
       }
     });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -110,4 +116,16 @@ describe('performance modal metadata', () => {
       await page.close();
     }
   });
+  it('omits missing older execution settings without borrowing from newer stages or viewports', async () => {
+    const page = await browser.newPage();
+    try {
+      await page.goto(`${url}?missing=1`);
+      await page.locator('[data-stage="perf-low-noise"]').getByRole('button', { name: 'timeline', exact: true }).click();
+      const labels = await page.getByRole('dialog').locator('dt').allTextContents();
+      expect(labels).not.toContain('number of measurements');
+      expect(labels).not.toContain('throttling');
+      expect(await page.getByRole('dialog').innerText()).not.toContain('1 sample below');
+    } finally { await page.close(); }
+  });
+
 });

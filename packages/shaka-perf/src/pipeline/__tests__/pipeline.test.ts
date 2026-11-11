@@ -599,6 +599,8 @@ describe('runPipeline', () => {
       const perf = second.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.kind === 'ok')!;
       expect(perf.runMetadata?.command).toContain('--restart-from-stage perf');
       expect(perf.executionDetails.numberOfMeasurements).toBe(7);
+      expect(perf.executionDetails.measurementSideCount).toBe(2);
+      expect(perf.runMetadata).not.toHaveProperty('numberOfMeasurements');
       expect(perf.runMetadata).not.toHaveProperty('compareRetries');
       expect(perf.executionDetails.runId).not.toBe(before.executionDetails.runId);
       jest.mocked(measuredCommit).mockClear();
@@ -639,6 +641,8 @@ describe('runPipeline', () => {
     const outcome = result.testResults[0]!.outcomes.find((o) => o.kind === 'ok')!;
     expect(outcome.runMetadata?.targets).toEqual([{ side: 'experiment', url: 'https://user:password@deployment.test/cart?token=secret', commit: null }]);
     expect(outcome.executionDetails.throttling).toEqual([{ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } }]);
+    expect(outcome.executionDetails.measurementSideCount).toBe(1);
+    expect(outcome.runMetadata).not.toHaveProperty('throttling');
     expect(outcome.runMetadata).not.toHaveProperty('viewport');
     expect(outcome.executionDetails.viewport.width).toBeGreaterThan(0);
   });
