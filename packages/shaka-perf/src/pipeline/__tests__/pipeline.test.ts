@@ -321,8 +321,8 @@ describe('runPipeline', () => {
     expect(result.testResults[0]!.outcomes.every((outcome) => !outcome.runMetadata)).toBe(true);
     for (const outcome of result.testResults[0]!.outcomes) {
       expect(outcome.executionDetails).toEqual(outcome.kind === 'skipped'
-        ? { runId: expect.any(String), recoveredAfterRetries: false }
-        : { runId: expect.any(String), taskRetries: 0, taskRetryLimit: 0, recoveredAfterRetries: false });
+        ? { runId: expect.any(String), testSourcePath: null, recoveredAfterRetries: false }
+        : { runId: expect.any(String), testSourcePath: null, taskRetries: 0, taskRetryLimit: 0, recoveredAfterRetries: false });
     }
     if (mode === 'derived') expect(run).toHaveBeenCalled();
     else expect(run).not.toHaveBeenCalled();
@@ -391,14 +391,14 @@ describe('runPipeline', () => {
       for (const outcome of measured) {
         expect(outcome.kind).toBe(failed ? 'error' : 'ok');
         const metadata = store.readOutcome(test, outcome.viewport.label, 'visreg')?.runMetadata;
-        expect(metadata?.testSourcePath).toBeTruthy();
-        expect(store.readTextArtifact(metadata!.testSourcePath!)).toBe(source);
+        expect(outcome.executionDetails.testSourcePath).toBeTruthy();
+        expect(store.readTextArtifact(outcome.executionDetails.testSourcePath!)).toBe(source);
       }
       for (const deleted of [false, true]) {
         if (deleted) fs.unlinkSync(file);
         const report = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
         expect(report.testResults[0]!.code).toBe(source);
-        expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'visreg')?.runMetadata?.testSourcePath).toBeTruthy();
+        expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'visreg')?.executionDetails.testSourcePath).toBeTruthy();
       }
     } finally {
       fs.rmSync(cwd, { recursive: true, force: true });
@@ -423,15 +423,15 @@ describe('runPipeline', () => {
       const outcomes = second.testResults[0]!.outcomes;
       expect(outcomes.find((o) => o.stage === 'visreg')?.runMetadata).toEqual(original.runMetadata);
       const store = new ArtifactStore(second.resultsRoot);
-      const originalPath = original.runMetadata!.testSourcePath!;
-      const changedPath = outcomes.find((o) => o.stage === 'perf')!.runMetadata!.testSourcePath!;
+      const originalPath = original.executionDetails.testSourcePath!;
+      const changedPath = outcomes.find((o) => o.stage === 'perf')!.executionDetails.testSourcePath!;
       expect(changedPath).not.toBe(originalPath);
       expect(store.readTextArtifact(originalPath)).toBe(source);
       expect(store.readTextArtifact(changedPath)).toBe(changed);
       for (const viewport of new Set(outcomes.map((o) => o.viewport.label))) {
         expect(fs.readdirSync(store.artifactsDirForViewport(test, viewport))).toHaveLength(2);
         const measuredPaths = new Set(outcomes.filter((o) => o.viewport.label === viewport && o.stage !== 'visreg')
-          .map((o) => o.runMetadata?.testSourcePath).filter(Boolean));
+          .map((o) => o.executionDetails.testSourcePath).filter(Boolean));
         expect(measuredPaths.size).toBe(1);
       }
       expect(second.testResults[0]!.code).toBe(changed);
@@ -449,7 +449,7 @@ describe('runPipeline', () => {
       expect(retained.testResults[0]!.code).toBe(changed);
       for (const outcome of outcomes) {
         if (outcome.runMetadata && outcome.executionDetails.runId !== original.executionDetails.runId) {
-          fs.rmSync(path.join(second.resultsRoot, outcome.runMetadata.testSourcePath!), { force: true });
+          fs.rmSync(path.join(second.resultsRoot, outcome.executionDetails.testSourcePath!), { force: true });
         }
       }
       const missing = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
@@ -483,7 +483,7 @@ describe('runPipeline', () => {
     expect(measured.length).toBeGreaterThan(0);
     for (const outcome of measured) {
       expect(outcome.kind).toBe(exhausted ? 'error' : 'ok');
-      expect(outcome.executionDetails).toEqual({ runId: expect.any(String), taskRetries: 1, taskRetryLimit: 1, recoveredAfterRetries: !exhausted });
+      expect(outcome.executionDetails).toEqual({ runId: expect.any(String), testSourcePath: derived ? null : expect.any(String), taskRetries: 1, taskRetryLimit: 1, recoveredAfterRetries: !exhausted });
       if (derived) expect(outcome.runMetadata).toBeUndefined();
     }
   });
@@ -633,7 +633,7 @@ describe('runPipeline', () => {
       // A saved sibling failure belongs in the report, but must not fail a
       // later measurement that selected only the successful homepage.
       const store = new ArtifactStore(path.join(cwd, 'test-results'));
-      store.writeOutcome(sibling, 'desktop', { executionDetails: { runId: full.testResults[1]!.runId!, recoveredAfterRetries: false },
+      store.writeOutcome(sibling, 'desktop', { executionDetails: { testSourcePath: null, runId: full.testResults[1]!.runId!, recoveredAfterRetries: false },
         kind: 'error', stage: 'visreg',
         error: { message: 'Older saved failure' },
       });
@@ -693,7 +693,7 @@ describe('runPipeline', () => {
       const newerArchive = await run('desktop', { config: mixedConfig, reportOnly: true, skipReport: false });
       expect(newerArchive.testResults[0]!.currentConfig!.measuredAt).toBe(scoped.testResults[0]!.currentConfig!.measuredAt);
       expect(newerArchive.testResults[0]!.measuredAt).toBe(fs.statSync(file).mtimeMs);
-      store.writeOutcome(frozenTest, 'phone', { executionDetails: { runId: phone.testResults[0]!.runId!, recoveredAfterRetries: false }, kind: 'error', stage: 'visreg',
+      store.writeOutcome(frozenTest, 'phone', { executionDetails: { testSourcePath: null, runId: phone.testResults[0]!.runId!, recoveredAfterRetries: false }, kind: 'error', stage: 'visreg',
          error: { message: 'Archived phone error' } });
       const contents = fs.readFileSync(file, 'utf8');
       const mtime = fs.statSync(file).mtimeMs;
@@ -925,7 +925,7 @@ describe('pre-run wipe', () => {
 
   function seedOutcome(viewportLabel: string, stage: string) {
     const store = new ArtifactStore(path.join(cwd, 'test-results'));
-    store.writeOutcome(narrowedTest, viewportLabel, { executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage, measurement: {} });
+    store.writeOutcome(narrowedTest, viewportLabel, { executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage, measurement: {} });
     return path.join(store.unitDirForViewport(narrowedTest, viewportLabel), `${stage}.json`);
   }
 
@@ -971,7 +971,7 @@ describe('pre-run wipe', () => {
     // run's best-of-N match and pass on stale pixels. Deleting the outcome is
     // not enough — the artifacts/ subtree must go with it.
     const store = new ArtifactStore(path.join(cwd, 'test-results'));
-    store.writeOutcome(narrowedTest, 'tablet', { executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
+    store.writeOutcome(narrowedTest, 'tablet', { executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'error', stage: 'visreg', error: 'stale from previous run',
     } as never);
     const unitDir = store.unitDirForViewport(narrowedTest, 'tablet');

@@ -68,8 +68,8 @@ describe('reportDataForMode', () => {
     const testSourcePath = await scope.writeFile('test-source.ts', source);
     const data = {
       meta: { reportMode: 'full' },
-      tests: [{ name: 'Checkout', code: source, outcomes: [{ executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
-        kind: 'ok', stage: 'visreg', runMetadata: { testSourcePath },
+      tests: [{ name: 'Checkout', code: source, outcomes: [{ executionDetails: { testSourcePath, runId: 'fixture-run', recoveredAfterRetries: false },
+        kind: 'ok', stage: 'visreg',
       }] }],
     } as unknown as ReportData;
     const dictionary = await buildSelfContainedArtifactDictionary(data, [], resultsRoot);
@@ -77,7 +77,8 @@ describe('reportDataForMode', () => {
     for (const mode of ['full', 'self-contained'] as const) {
       const projected = reportDataForMode(data, mode, [], resultsRoot, dictionary);
       expect(projected.tests[0]!.code).toBe(source);
-      expect(projected.tests[0]!.outcomes[0]!.runMetadata).toEqual({ testSourcePath });
+      expect(projected.tests[0]!.outcomes[0]!.executionDetails.testSourcePath).toEqual(testSourcePath);
+      expect(projected.tests[0]!.outcomes[0]!.executionDetails).toBe(data.tests[0]!.outcomes[0]!.executionDetails);
       expect(JSON.stringify(projected).split(source)).toHaveLength(2);
     }
   });
@@ -97,7 +98,7 @@ describe('reportDataForMode', () => {
       meta: { reportMode: 'full' },
       tests: [{
         name: 'Checkout',
-        outcomes: [{ executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
+        outcomes: [{ executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'error',
           stage: 'visreg',
           viewport: { label: 'tablet' },
@@ -167,7 +168,7 @@ describe('reportDataForMode', () => {
       meta: { reportMode: 'self-contained' },
       tests: [{
         name: 'Checkout',
-        outcomes: [{ executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
+        outcomes: [{ executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok',
           stage: 'accessibility',
           viewport: { label: 'tablet' },
@@ -258,7 +259,7 @@ describe('reportDataForMode', () => {
         durationMs: 1,
         measuredAt: null,
         runId: null,
-        outcomes: [{ executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
+        outcomes: [{ executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok',
           stage: 'visreg',
           viewport: {

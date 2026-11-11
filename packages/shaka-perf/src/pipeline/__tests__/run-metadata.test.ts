@@ -46,7 +46,7 @@ describe('source artifacts at the persistence boundary', () => {
     testFn: async () => {},
   };
   const source = "abTest('Homepage', {}, async () => {});";
-  const metadata: Omit<RunMetadata, 'testSourcePath'> = {
+  const metadata: RunMetadata = {
     command: 'shaka-perf compare', measuredAt: '2026-11-04T10:00:00Z',
     stages: ['visreg'], categories: ['visreg'], viewport: DESKTOP_VIEWPORT, targets: [],
   };
@@ -62,9 +62,10 @@ describe('source artifacts at the persistence boundary', () => {
     expect(store.writeTestSource(test, 'desktop', source)).toBe(testSourcePath);
     expect(fs.statSync(file).mtimeMs).toBe(mtime);
     for (const stage of ['visreg', 'perf'] as const) {
-      store.writeOutcome(test, 'desktop', { executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage, runMetadata: { ...metadata, testSourcePath } });
+      store.writeOutcome(test, 'desktop', { executionDetails: { testSourcePath, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage, runMetadata: metadata });
       const saved = JSON.parse(fs.readFileSync(path.join(store.unitDirForViewport(test, 'desktop'), `${stage}.json`), 'utf8'));
-      expect(saved.runMetadata).toMatchObject({ testSourcePath });
+      expect(saved.executionDetails).toMatchObject({ testSourcePath });
+      expect(saved.runMetadata).not.toHaveProperty('testSourcePath');
     }
     expect(store.readTextArtifact(testSourcePath)).toBe(source);
     expect(fs.readdirSync(store.artifactsDirForViewport(test, 'desktop'))).toEqual([path.basename(testSourcePath)]);
@@ -77,10 +78,10 @@ describe('source artifacts at the persistence boundary', () => {
 
   it('keeps measured outcomes readable when their source artifact is missing', () => {
     const testSourcePath = store.writeTestSource(test, 'desktop', source);
-    store.writeOutcome(test, 'desktop', { executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg', runMetadata: { ...metadata, testSourcePath } });
+    store.writeOutcome(test, 'desktop', { executionDetails: { testSourcePath, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg', runMetadata: metadata });
     fs.unlinkSync(path.join(dir, testSourcePath));
     expect(store.readOutcome(test, 'desktop', 'visreg')?.kind).toBe('ok');
-    expect(store.readOutcome(test, 'desktop', 'visreg')?.runMetadata?.testSourcePath).toBe(testSourcePath);
+    expect(store.readOutcome(test, 'desktop', 'visreg')?.executionDetails.testSourcePath).toBe(testSourcePath);
     expect(store.readTextArtifact(testSourcePath)).toBeUndefined();
   });
 

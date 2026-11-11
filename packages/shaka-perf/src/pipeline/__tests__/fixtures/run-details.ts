@@ -12,7 +12,7 @@ import type { ReportData as PipelineReportData } from '../../report';
 import type { BisectReportModel } from '../../../compare/bisect/report-model';
 type ReportData = PipelineReportData & { bisect?: BisectReportModel };
 import type { ReportOutcome, TestResult } from '../../report';
-import type { LoadedRunMetadata } from '../../run-metadata';
+import type { RunMetadata } from '../../run-metadata';
 
 const firstRun = '2026-10-20T20:54:53.891Z';
 const secondRun = '2026-10-20T21:00:50.722Z';
@@ -26,8 +26,7 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
     controlDisplay: '1.8 s', experimentDisplay: '2.1 s', deltaDisplay: '+300 ms', percentDisplay: '+16.7%', deltaPercent: 16.7,
     pValue: 0.0078, direction: 'regression',
   }] };
-  const metadata = (runId: string): LoadedRunMetadata => ({
-    testSourcePath: null,
+  const metadata = (runId: string): RunMetadata => ({
     command: `shaka-perf ${pipelineName} --filter 'Homepage' --categories ${audit ? 'audit,accessibility' : 'perf,accessibility'}`,
     measuredAt: runId, stages: [stage, 'accessibility'], categories: [audit ? 'audit' : 'perf', 'accessibility'],
     viewport: DESKTOP_VIEWPORT,
@@ -45,9 +44,9 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
     measuredAt: Date.parse(secondRun), runId: secondRun,
     viewportArtifactPaths: [{ viewport: 'desktop', path: `results/${id}-desktop` }],
     outcomes: [
-      { executionDetails: { runId: firstRun, recoveredAfterRetries: false }, kind: 'ok', stage, measurement, viewport: DESKTOP_VIEWPORT, logs: '<0.1s> Measurement completed', ...(withMetadata ? { runMetadata: metadata(firstRun) } : {}) },
-      { executionDetails: { runId: secondRun, recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' }, viewport: DESKTOP_VIEWPORT, ...(withMetadata ? { runMetadata: { ...metadata(secondRun), throttling: [] } } : {}) },
-      { executionDetails: { runId: secondRun, recoveredAfterRetries: false }, kind: 'ok', stage, measurement, viewport: PHONE_VIEWPORT },
+      { executionDetails: { testSourcePath: null, runId: firstRun, recoveredAfterRetries: false }, kind: 'ok', stage, measurement, viewport: DESKTOP_VIEWPORT, logs: '<0.1s> Measurement completed', ...(withMetadata ? { runMetadata: metadata(firstRun) } : {}) },
+      { executionDetails: { testSourcePath: null, runId: secondRun, recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' }, viewport: DESKTOP_VIEWPORT, ...(withMetadata ? { runMetadata: { ...metadata(secondRun), throttling: [] } } : {}) },
+      { executionDetails: { testSourcePath: null, runId: secondRun, recoveredAfterRetries: false }, kind: 'ok', stage, measurement, viewport: PHONE_VIEWPORT },
     ] as ReportOutcome[],
   });
   const data: ReportData = {
