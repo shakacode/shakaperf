@@ -2952,12 +2952,12 @@ input {
   max-height: 24%;
   overflow: auto;
 }
-.ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata) {
+.ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata-row) {
   max-height: 50%;
 }
 /* Keep room for image annotations and controls on short windows. */
 @media (max-height: 700px) {
-  .ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata) {
+  .ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata-row) {
     max-height: 24%;
   }
 }
@@ -3198,10 +3198,32 @@ input {
 .card__disclosure > summary { padding: 9px 20px; cursor: pointer; color: var(--fg-muted); }
 .card__disclosure > summary:hover { color: var(--fg); background: var(--bg-hover); }
 .card__metadata { container-type: inline-size; }
+.card__metadata > summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px; }
+.card__metadata > summary::-webkit-details-marker { display: none; }
+.card__metadata > summary::before { content: '▸'; }
+.card__metadata[open] > summary::before { content: '▾'; }
 .card__metadata[open] > summary { padding-bottom: 3px; }
+.card__metadata-row { position: relative; }
+.card__metadata-row:has(> .card__actions) .card__metadata > summary { margin-right: 210px; padding-right: 0; }
+.card__metadata-row--dialog:has(> .card__actions) .card__metadata > summary { margin-right: 65px; }
+.card__actions { position: absolute; top: 9px; right: 20px; display: flex; align-items: baseline; gap: 14px; }
+.card__metadata--dialog > summary .card__metadata-provenance { flex: 1 1 100%; order: 1; }
+@container (min-width: 900px) {
+  .card__metadata--dialog > summary { flex-wrap: nowrap; }
+  .card__metadata--dialog > summary .card__metadata-provenance { flex: 1; order: 0; margin-left: 10px; }
+}
 .card__metadata-content { display: grid; gap: 10px; min-width: 0; padding: 0 20px 14px; }
 .card__metadata-content > * { min-width: 0; }
-.card__metadata-provenance { display: flex; align-items: baseline; gap: 7px; }
+.card__metadata-provenance { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+@container (max-width: 899px) {
+  .card__metadata-provenance { flex-wrap: wrap; }
+  .card__metadata-provenance .card__path {
+    max-width: 100%;
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: anywhere;
+  }
+}
 .card__metadata-content .ui-dialog__meta { padding: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 .card__metadata-content .ui-dialog__meta dd { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 .card__metadata .card__urls { padding: 0; margin: 0; border: 0; }
@@ -3301,15 +3323,5 @@ input {
 }
 .card__tag-list .pill { max-width: 100%; }
 
-.card__metadata-row { position: relative; }
-.card__metadata-row .card__metadata > summary { margin-right: 210px; padding-right: 0; }
-.card__actions {
-  position: absolute;
-  top: 9px;
-  right: 20px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
 
 .perf-timeline-preview { margin-block: 12px; }
