@@ -122,6 +122,10 @@ export async function runAuditStage(
     viewport: ctx.viewport,
     resultsFolder: artifactsDir,
     lhConfig,
+    imageResolution: {
+      ...ctx.config.audit.imageResolution,
+      failOnUndersized: config.failOnUndersizedImages || ctx.config.audit.imageResolution.failOnUndersized,
+    },
     saveArtifacts: true,
     captureAuditArtifacts: true,
     targetUrl: ctx.experimentURL,
@@ -185,11 +189,12 @@ export async function runAuditStage(
 
   const metrics = sample.phases.map(auditMetricForPhase);
   printAuditLevels(ctx, metrics);
-  return readAuditArtifact({
+  const result = await readAuditArtifact({
     artifacts: ctx.artifacts,
     metrics,
     title: `${ctx.test.name} · ${ctx.viewport.label}`,
   });
+  return { ...result, imageResolution: sample.imageResolution };
 }
 
 function auditMetricForPhase(phase: PhaseSample): AuditMetric {

@@ -8,9 +8,9 @@
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { PerfLighthouseConfig } from '../../../bench/core/lighthouse-config';
-import type { Viewport } from '../../../config';
+import type { ImageResolutionResult } from '../../../bench/core/image-resolution';
 import {
-  emptyMachineReadableSummary,
+  type JsonValue,
   type Stage,
   type StageName,
   type StageRenderEntry,
@@ -21,6 +21,7 @@ import { AuditArtifactView } from './report';
 
 export interface AuditStageConfig {
   readonly lighthouseConfig?: PerfLighthouseConfig | undefined;
+  readonly failOnUndersizedImages?: boolean | undefined;
 }
 
 export type AuditMetricGroup = 'vitals' | 'diagnostics';
@@ -37,6 +38,7 @@ export interface AuditMetric {
 
 export interface AuditResult {
   metrics: AuditMetric[];
+  imageResolution?: ImageResolutionResult;
   lighthouseHref?: string;
   lighthouseThumbHref?: string;
   /** The one-sided halves of compare's "profile diff" / "network diff". */
@@ -73,5 +75,17 @@ export class AuditStage implements Stage<AuditResult> {
     return createElement(AuditArtifactView, { measurements });
   }
 
-  machineReadableSummary = emptyMachineReadableSummary;
+  machineReadableSummary(measurement: AuditResult): JsonValue {
+    const resolution = measurement.imageResolution;
+    if (!resolution) return {};
+    return {
+      imageResolution: {
+        undersized: resolution.undersized,
+        oversized: resolution.oversized,
+        unknown: resolution.unknown,
+        failOnUndersized: this.config.failOnUndersizedImages === true || resolution.failOnUndersized,
+        images: resolution.images.map((image) => ({ ...image })),
+      },
+    };
+  }
 }

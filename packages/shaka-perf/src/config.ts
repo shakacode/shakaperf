@@ -308,6 +308,12 @@ export const AuditConfigSchema = z
     lighthouseConfig: z
       .record(z.unknown())
       .optional() as z.ZodType<PerfLighthouseConfig | undefined>,
+    // Source pixels / painted CSS pixels / current devicePixelRatio.
+    imageResolution: z.object({
+      minRatio: z.number().finite().positive().max(1).default(0.9),
+      maxRatio: z.number().finite().min(1).default(2),
+      failOnUndersized: z.boolean().default(false),
+    }).strict().default({}),
     // Pre-dedupe hard cap on raw screencast frames for the annotated timeline.
     // A long/slow page can emit thousands of frames; deduping them all can blow
     // the per-task timeout, so the raw stream is evenly downsampled to this cap

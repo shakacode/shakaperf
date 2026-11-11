@@ -14,6 +14,7 @@ import { extractLcpRawTraceTimestamp, extractTestAnnotationMarks } from './extra
 import { saveNetworkActivity, analyzeNetworkResources } from './network-activity';
 import { countMainThreadTasks } from './main-thread-tasks';
 import { runPatchedLighthouse } from './patched-lighthouse';
+import type { ImageResolutionConfig } from './image-resolution';
 import { summarizePerformanceProfile } from './summarize-performance-profile';
 import type { Group } from '../../pipeline/log-prefix-format';
 
@@ -33,11 +34,12 @@ export async function runLighthouse(
   resultsFolder: string,
   saveArtifacts: boolean = true,
   canStopTracking: Promise<void> = Promise.resolve(),
+  imageResolution?: ImageResolutionConfig,
 ): Promise<{ phases: PhaseSample[], runnerResult: RunnerResult }> {
   // Lighthouse's own `maxWaitForLoad` caps wait-for-fully-loaded, and
   // `withRaceTimeout` in the sampling worker pool kills hung runs at the
   // runner level. No third backstop here — one knob per level.
-  const runnerResult = await runPatchedLighthouse(url, lhSettings, { canStopTracking });
+  const runnerResult = await runPatchedLighthouse(url, lhSettings, { canStopTracking, imageResolution });
 
   // FIRST, before anything touches the artifacts. A runtimeError means Lighthouse
   // produced no Trace, so every artifact reader below would throw

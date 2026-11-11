@@ -44,6 +44,7 @@ export const auditPipelineMetadata = {
 export interface AuditPipelineConfig {
   readonly parallelism: number;
   readonly lighthouseConfig?: PerfLighthouseConfig;
+  readonly failOnUndersizedImages?: boolean;
   readonly accessibility: AccessibilityStageConfig;
   readonly agentReadiness: AgentReadinessStageConfig;
 }
@@ -65,6 +66,7 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     const workerPool = pipeline.registerWorkerPool(input.parallelism);
     pipeline.runStage(workerPool, new AuditStage({
       lighthouseConfig: input.lighthouseConfig,
+      failOnUndersizedImages: input.failOnUndersizedImages,
     }));
     pipeline.runStage(workerPool, new AccessibilityStage(input.accessibility));
     // A second lens beside accessibility: how legible the page is to AI agents /
@@ -93,11 +95,13 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
         const indexed = perTest.map((entry) => ({
           test: entry.test,
           metrics: collectMetrics(entry.results.audit ?? []),
+          imageResults: entry.results.audit ?? [],
           accessibilityResults: entry.results.accessibility ?? [],
         }));
 
-        for (const { test, metrics, accessibilityResults } of indexed) {
+        for (const { test, metrics, imageResults, accessibilityResults } of indexed) {
           const accessibility = accessibilityChips(accessibilityResults);
+          const images = imageResolutionChips(imageResults, input.failOnUndersizedImages === true);
           if (metrics.length === 0) {
             const chips: ChipDescriptor[] = [{
               tag: 'no audit',
@@ -107,12 +111,13 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
               tagHiddenByDefault: true,
               affectsCardOrder: false,
             }];
-            chips.push(...accessibility);
+            chips.push(...accessibility, ...images);
             out.set(test, chips);
             continue;
           }
           const chips: ChipDescriptor[] = [
             ...accessibility,
+            ...images,
             ...needsImprovementChips(metrics),
             interactionsChip(metrics),
           ];
@@ -187,6 +192,33 @@ function accessibilityChips(entries: ChipStageResults<AccessibilityResult>): Chi
     color: shouldFail ? 'red' : 'purple',
     sortingWeight: shouldFail ? 1 : 35,
   }];
+}
+
+function imageResolutionChips(entries: ChipStageResults<AuditResult>, forceFailure: boolean): ChipDescriptor[] {
+  const results = entries.flatMap((entry) => entry.measurement.imageResolution ?? []);
+  const undersized = results.reduce((total, result) => total + result.undersized, 0);
+  const oversized = results.reduce((total, result) => total + result.oversized, 0);
+  const shouldFail = results.some((result) => result.undersized > 0 && (forceFailure || result.failOnUndersized));
+  const chips: ChipDescriptor[] = [];
+  if (undersized > 0) chips.push({
+    tag: shouldFail ? 'undersized images' : 'image resolution finding',
+    text: `${undersized} undersized image${undersized === 1 ? '' : 's'}`,
+    color: shouldFail ? 'red' : 'purple',
+    sortingWeight: shouldFail ? 1 : 35,
+  });
+  if (oversized > 0) chips.push({
+    tag: 'oversized images',
+    text: `${oversized} oversized image${oversized === 1 ? '' : 's'}`,
+    color: 'purple',
+    sortingWeight: 35,
+  });
+  if (forceFailure && (entries.length === 0 || entries.some((entry) => !entry.measurement.imageResolution))) chips.push({
+    tag: 'image resolution unavailable',
+    text: 'image measurements missing — rerun audit',
+    color: 'red',
+    sortingWeight: 1,
+  });
+  return chips;
 }
 
 // Emits one chip per test summarizing its overall vitals health. The
