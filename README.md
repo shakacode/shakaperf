@@ -108,7 +108,7 @@ use skill `/deploy shaka-perf shaka-shared`
 ## Free & Pro
 [![License: ShakaStack License](https://img.shields.io/badge/license-ShakaStack%20License-blue.svg)](./LICENSE.md)
 
-The proposed [ShakaStack License for ShakaPerf](./LICENSE.md) is pending counsel review and is not in force. Reading, studying, and a 45 day evaluation are free. Ongoing ShakaPerf work on private code, including CI, PR checks, coding agent workflows, and manual runs, needs ShakaStack Pro after evaluation in any environment unless a Free Use applies.
+The approved [ShakaStack License for ShakaPerf](./LICENSE.md) starts with release 0.8.0. Reading, studying, and a 45 day evaluation are free. Ongoing ShakaPerf work on private code, including CI, PR checks, coding agent workflows, and manual runs, needs ShakaStack Pro after evaluation in any environment unless a Free Use applies.
 
 Free Use includes organizations that answer yes to all three questions for the whole organization, including affiliates: fewer than 10 people, under US $1M revenue in the last twelve months, and under US $1M raised ever. Charities, educational institutions, hospitals, and qualifying public open source work also have free permissions under the license.
 

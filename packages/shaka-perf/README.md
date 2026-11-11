@@ -57,7 +57,7 @@ yarn shaka-perf servers start-servers
 
 ## Free & Pro
 
-The proposed [ShakaStack License for ShakaPerf](../../LICENSE.md) is pending counsel review and is not in force. Reading, studying, and a 45 day evaluation are free. Ongoing use on private code, including CI, PR checks, coding agent workflows, and manual runs, needs ShakaStack Pro after evaluation in any environment unless a Free Use applies.
+The approved [ShakaStack License for ShakaPerf](../../LICENSE.md) starts with release 0.8.0. Reading, studying, and a 45 day evaluation are free. Ongoing use on private code, including CI, PR checks, coding agent workflows, and manual runs, needs ShakaStack Pro after evaluation in any environment unless a Free Use applies.
 
 Free Use includes organizations that answer yes to all three questions across their affiliates: fewer than 10 people, under US $1M revenue in the last twelve months, and under US $1M raised ever. Charities, educational institutions, hospitals, and qualifying public open source work also have free permissions under the license.
 

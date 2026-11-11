@@ -40,10 +40,15 @@ function runGuard(license, version, packageVersion = version) {
   }
 }
 
-const approved = source
-  .replace(/^\*\*Status:.*\n(?:.*\n)*?\n/m, '')
-  .replace(/\s*\[COUNSEL-\d+\]/g, '');
-const withStatus = source.replace(/\s*\[COUNSEL-\d+\]/g, '');
+const approved = source;
+const withMarker = approved.replace(
+  '# The ShakaStack License\n',
+  '# The ShakaStack License\n\n[COUNSEL-1]\n',
+);
+const withStatus = approved.replace(
+  '# The ShakaStack License\n',
+  '# The ShakaStack License\n\n**Status: proposed text, pending counsel review. Not in force.**\n',
+);
 const withNotice = approved.replace(
   '# The ShakaStack License\n',
   '# The ShakaStack License\n\n**Notice: pending counsel review. Not in force.**\n',
@@ -57,8 +62,8 @@ const withCounselStatus = approved.replace(
   '# The ShakaStack License\n\n**Counsel status: legal signoff required.**\n',
 );
 
-test('rejects proposed license text', () => {
-  const result = runGuard(source, '0.8.0');
+test('rejects a counsel marker', () => {
+  const result = runGuard(withMarker, '0.8.0');
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /counsel|status/i);
 });

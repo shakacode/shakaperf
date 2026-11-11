@@ -1,12 +1,7 @@
 # The ShakaStack License
 
 The ShakaStack License, version 1.0, applied to ShakaPerf. An
-application of ShakaCode Trust-Based Commercial Licensing. [COUNSEL-11]
-
-**Status: proposed text, pending counsel review. Not in force.** The
-`[COUNSEL-n]` markers are open points listed in `license/COUNSEL.md` at
-https://github.com/shakacode/commercial-licensing. This notice and the
-markers are removed before this text ships in any release.
+application of ShakaCode Trust-Based Commercial Licensing.
 
 Copyright (c) 2026 ShakaCode LLC, a Hawaii limited liability
 company ("ShakaCode").
@@ -126,13 +121,13 @@ Section A4(b) did not exist. It does not restart with a new version, person,
 installation, application, repository, package, or affiliate, and time
 already used to evaluate the Product under earlier terms counts toward it. A
 use that is free without Section A4(b), including use by a Small
-Organization, does not start it. [COUNSEL-7]
+Organization, does not start it.
 
 **"ShakaStack Pro"** means the paid subscription that ShakaCode sells under
 that name at https://pro.reactonrails.com/ or at a successor address
 ShakaCode publishes, or that ShakaCode provides under an invoice, order
 form, GitHub Sponsors tier, or other channel that ShakaCode designates in
-writing as ShakaStack Pro. [COUNSEL-1]
+writing as ShakaStack Pro.
 
 **"Included Product"** means React on Rails Pro (including the
 react-on-rails-rsc package), ShakaPerf, Inertia Rails SSR Cache, and any
@@ -148,7 +143,7 @@ appreciated but are not Subscriptions and grant no right to Covered Use.
 **"Version line"** means the releases of the Software that share the same
 major and minor version numbers (for example, every 17.3.x release). This
 definition applies to releases first governed by this text. It does not
-define or reinterpret the phrase in an earlier license. [COUNSEL-2]
+define or reinterpret the phrase in an earlier license.
 
 ## A3. Copyright grant
 
@@ -156,7 +151,7 @@ ShakaCode grants you a non-exclusive, worldwide, royalty-free license to
 use, copy, modify, and create derivative works of the Software, in each
 case only as allowed by these terms and within the limits stated in
 Section B5. You may share copies with contractors and service providers
-working for your organization, who must observe these terms. [COUNSEL-14]
+working for your organization, who must observe these terms.
 
 ## A4. Free uses
 
@@ -171,9 +166,8 @@ c. education and training of people, tutorials, demonstrations, and
    academic research, in each case not directed at developing or operating
    your organization's own products or services, and not including
    training or operating machine-learning models or automated agents;
-   [COUNSEL-15]
 d. personal and hobby projects of an individual, not carried out for any
-   organization's work; [COUNSEL-15]
+   organization's work;
 e. developing, testing, operating, and supporting a public open-source
    project distributed under a license approved by the Open Source
    Initiative, where the Software runs as part of, or on, that project's
@@ -193,7 +187,7 @@ Covered Use requires a Subscription unless the organization it serves (see
 Client work below) is a Small Organization, a Charity, an Educational
 Institution, or a Hospital, or a grace period in Section A6 or A8 applies. A
 Free Use needs no Subscription. The examples of Covered Use in Section B2 do
-not override a Free Use, and a Free Use covers only what it states. [COUNSEL-8]
+not override a Free Use, and a Free Use covers only what it states.
 
 **Client work.** If you use the Software to build, run, test, measure, or
 otherwise deliver work for a client, the use is attributed to the
@@ -212,7 +206,6 @@ within it, and every application, environment, repository, pipeline,
 server, developer, and automated agent of it, with no per-seat,
 per-application, per-repository, or per-run charge, and with no limit
 based on headcount, revenue, capital raised, or any other measure of size.
-[COUNSEL-13]
 
 **Included Products.** A Subscription covers Covered Use of every Included
 Product. React on Rails Pro, ShakaPerf, and Inertia Rails SSR Cache stay
@@ -221,7 +214,7 @@ has an active Subscription, including after renewal. ShakaCode may add a
 product by publishing a written designation that names it and the date it
 joins. An addition never removes an Included Product, changes the terms
 delivered with a release, or adds a fee during a service period already paid
-for. [COUNSEL-3]
+for.
 
 **Existing subscriptions.** A React on Rails Pro subscription, a GitHub
 Sponsors tier or other purchase that ShakaCode designated as a subscription
@@ -229,7 +222,7 @@ to an Included Product, or any other paid subscription to an Included
 Product, that ShakaCode sold before this version was published is a
 ShakaStack Pro subscription under these terms for as long as it remains
 active, at no additional charge and without any limit based on organization
-size. [COUNSEL-4]
+size.
 
 **Keys and labels.** A license key, a registration, or a license status
 label is not a Subscription and does not prove one, and a free key does not
@@ -243,7 +236,7 @@ size limit in an order or in a published plan description. Additional rights
 and services that an order expressly grants remain in effect. While a
 Subscription is active, ShakaCode provides software updates and reasonable
 support through its published channels; no response or resolution times
-are guaranteed unless an order or separate agreement says so. [COUNSEL-16]
+are guaranteed unless an order or separate agreement says so.
 
 **Lapse.** If a required Subscription expires or is terminated, your
 Covered Use remains licensed for 30 days while you renew or wind down, and
@@ -268,7 +261,7 @@ hosted offering merely because that application uses the Software. A
 contractor doing work for an identified client under Section A5 is not, by
 that work alone, offering a prohibited service. Selling other organizations
 access to the Software's analysis, rendering, or cache functionality does
-require a separate agreement, even when they are your customers. [COUNSEL-9]
+require a separate agreement, even when they are your customers.
 
 ## A8. Trust, self-certification, and true-up
 
@@ -291,7 +284,6 @@ and no back payment is owed for the good-faith period. If your
 organization made Covered Use requiring a Subscription without a good-faith
 basis for treating it as free, ShakaCode may require payment of the
 applicable subscription fees for the period of that use, up to 24 months.
-[COUNSEL-10]
 
 You must not misrepresent your organization, its size or status, or your
 license status, whether in a registration, in the Software's configuration,
@@ -342,7 +334,7 @@ Sections A6 and A8 and any Free Use.
 
 If you submit feedback, suggestions, or improvements to ShakaCode, you
 grant ShakaCode a worldwide, royalty-free, irrevocable license to use and
-incorporate them. [COUNSEL-15]
+incorporate them.
 
 ## A14. Disclaimer and limitation of liability
 
@@ -353,7 +345,7 @@ LAW, SHAKACODE WILL NOT BE LIABLE FOR ANY INDIRECT, SPECIAL, INCIDENTAL,
 OR CONSEQUENTIAL DAMAGES ARISING FROM OR RELATED TO THE SOFTWARE OR THESE
 TERMS, AND SHAKACODE'S TOTAL LIABILITY WILL NOT EXCEED THE AMOUNTS YOU
 PAID SHAKACODE FOR THE SOFTWARE IN THE TWELVE MONTHS BEFORE THE CLAIM
-AROSE. [COUNSEL-17]
+AROSE.
 
 ## A15. Assignment, governing law, and miscellaneous
 
@@ -366,7 +358,7 @@ jurisdiction and venue in the state and federal courts located in
 Honolulu, Hawaii. If a provision of these terms is unenforceable, the
 remainder stays in effect. These terms, the applicable order, and any
 express separate agreement are the entire agreement about the Software.
-Section A6 determines their precedence. [COUNSEL-17]
+Section A6 determines their precedence.
 
 ## A16. The common terms and the Product Schedule
 
@@ -377,7 +369,7 @@ ShakaStack product, even when the products are installed, run, or
 purchased together, and even when one product is used to build, test, or
 measure an application that uses another. Each ShakaStack product ships
 its own complete license file, and that file alone decides which uses of
-that product are free. [COUNSEL-5]
+that product are free.
 
 If Part A and Part B conflict, Part B controls for the Product. Part B
 cannot remove the free uses in Section A4(a), (c), (d), or (e), the free
@@ -438,7 +430,7 @@ ShakaPerf free. Whether a use of ShakaPerf is free is decided only by
 Section A4 and Section B3 of this file, never by the environment rule of
 another ShakaStack product's license (Section A16). A person's use of the
 Software on an organization's code or for an organization's work is use by
-that organization, not a personal project under Section A4(d). [COUNSEL-6]
+that organization, not a personal project under Section A4(d).
 
 Section B3(a) covers only the generation of a qualifying public report. It
 does not exempt ongoing work on private code, or any other Covered Use,
