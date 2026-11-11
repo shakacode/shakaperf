@@ -99,6 +99,7 @@ export function stageSection(
       ? []
       : [{
         measurement: outcome.measurement,
+        executionDetails: outcome.executionDetails,
         viewport: outcome.viewport,
         latestRun: latestRunId == null || outcome.runId === latestRunId,
       }]

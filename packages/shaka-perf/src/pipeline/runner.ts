@@ -834,7 +834,7 @@ async function runConfiguredPipelineWithSelection(
     return testPartials.map((p) => {
       // Cross-cutting, runner-owned chip (not a pipeline concern): any stage task
       // that crashed/timed out and recovered on a retry makes the test flaky.
-      const recovered = p.partialResult.outcomes.some((o) => o.recoveredAfterRetries);
+      const recovered = p.partialResult.outcomes.some((o) => o.executionDetails.recoveredAfterRetries);
       const flaky = recovered ? [flakyChip()] : [];
       if (p.hasError) {
         const chips = [brokenChip(), ...flaky];
@@ -1106,6 +1106,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     progress.error += 1;
     persistStageOutcome(store, unit, logger, {
       kind: 'error',
+      executionDetails: { recoveredAfterRetries: false },
       stage: stage.name,
       error: errorInfo(err),
     });
@@ -1180,6 +1181,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   // stage-wide aggregate). If the task ultimately succeeds with this > 0, a
   // retry recovered it from a crash/timeout → "flaky (recovered after retries)".
   let failedAttempts = 0;
+  let taskRetries = 0;
   const taskProgressSink: WorkerTaskProgressSink & { readonly stageName: string } = {
     stageName: stage.name,
     onTaskSubmitted() {
@@ -1198,7 +1200,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       failedAttempts += 1;
     },
     onTaskRetry() {
-      if (metadata) metadata.taskRetries = (metadata.taskRetries ?? 0) + 1;
+      taskRetries += 1;
     },
   };
   const taskLimits = runtimePool.taskLimits(ctx.config);
@@ -1210,7 +1212,6 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
         command: run.command, runId: run.runId, measuredAt: new Date().toISOString(),
         testSourcePath: unit.testSourcePath!,
         stages: run.stages, categories: run.categories, viewport: unit.viewport,
-        taskRetries: 0, taskRetryLimit: taskLimits.retries,
         targets: await Promise.all(run.sides.map(async (side) => {
           const url = side === 'control' ? ctx.controlURL : ctx.experimentURL;
           return { side, url, commit: await measuredCommit(url) };
@@ -1242,7 +1243,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       kind: 'ok',
       stage: stage.name,
       measurement,
-      ...(failedAttempts > 0 ? { recoveredAfterRetries: true } : {}),
+      executionDetails: { taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
     };
   } catch (err) {
     // Walk the cause chain, don't instanceof: a stage that throws from inside a
@@ -1251,6 +1252,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const failure = findFailureArtifacts(err);
     outcome = {
       kind: 'error',
+      executionDetails: { taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
       stage: stage.name,
       error: errorInfo(err),
       ...(failure ? { failure } : {}),
@@ -1324,7 +1326,7 @@ function persistCliSkippedStageOutcomes(
 }
 
 function leanPriorOutcome(outcome: Outcome): Outcome {
-  const lean: Outcome = { kind: outcome.kind, stage: outcome.stage };
+  const lean: Outcome = { kind: outcome.kind, stage: outcome.stage, executionDetails: outcome.executionDetails };
   if (outcome.runId !== undefined) lean.runId = outcome.runId;
   return lean;
 }
@@ -1698,7 +1700,7 @@ function savedTestSource(outcomes: readonly Outcome[], store: ArtifactStore): st
 }
 
 function skippedOutcome(stage: StageName, reason: string): RecordedOutcome {
-  return { kind: 'skipped', stage, reason };
+  return { kind: 'skipped', stage, reason, executionDetails: { recoveredAfterRetries: false } };
 }
 
 function persistSkippedOutcomesForStages(

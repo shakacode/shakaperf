@@ -9,6 +9,7 @@ import { useRef, useState } from 'react';
 import type { ReportOutcome } from '../types';
 import { Dialog } from '../../../src/pipeline/stage-report-components';
 import { TooltipLabel } from '../../../src/pipeline/report-tooltip';
+import type { ExecutionDetails } from '../../../src/pipeline/outcome';
 import type { LoadedRunMetadata } from '../../../src/pipeline/run-metadata';
 
 export function savedRunDetails(outcomes: readonly ReportOutcome[]) {
@@ -17,7 +18,7 @@ export function savedRunDetails(outcomes: readonly ReportOutcome[]) {
     if (!outcome.runMetadata) continue;
     const label = outcome.viewport.label;
     const entries = groups.get(label) ?? [];
-    entries.push({ stage: outcome.stage, metadata: outcome.runMetadata, recoveredAfterRetries: outcome.recoveredAfterRetries });
+    entries.push({ stage: outcome.stage, metadata: outcome.runMetadata, executionDetails: outcome.executionDetails });
     groups.set(label, entries);
   }
   return [...groups];
@@ -62,7 +63,7 @@ export function MeasurementCommand({ command, compact = false, autoSize = false,
   );
 }
 
-type Entry = { stage: string; metadata: LoadedRunMetadata; recoveredAfterRetries?: boolean };
+type Entry = { stage: string; metadata: LoadedRunMetadata; executionDetails: ExecutionDetails };
 
 function groupValues<T, V>(items: readonly T[], select: (item: T) => V) {
   const groups = new Map<string, { value: V; items: T[] }>();
@@ -140,7 +141,7 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
     count: metadata.numberOfMeasurements!, perSide: metadata.targets.length > 1,
   }));
   const comparisons = groupValues(entries.filter(({ metadata }) => (metadata.compareAttempts ?? 0) > 1), ({ metadata }) => ({ count: metadata.compareAttempts!, limit: metadata.compareRetries }));
-  const errorRetries = groupValues(entries.filter(({ metadata, recoveredAfterRetries }) => (metadata.taskRetries ?? 0) > 0 || (metadata.taskRetries === undefined && recoveredAfterRetries)), ({ metadata }) => ({ count: metadata.taskRetries, limit: metadata.taskRetryLimit }));
+  const errorRetries = groupValues(entries.filter(({ executionDetails }) => (executionDetails.taskRetries ?? 0) > 0 || (executionDetails.taskRetries === undefined && executionDetails.recoveredAfterRetries)), ({ executionDetails }) => ({ count: executionDetails.taskRetries, limit: executionDetails.taskRetryLimit }));
   const settings = groupValues(entries.flatMap((entry) => (entry.metadata.throttling ?? []).filter((setting) => setting.engine === 'Lighthouse').map((setting) => ({ entry, setting }))), ({ setting }) => ({
     engine: setting.engine, method: setting.method, cpu: setting.method === 'provided' ? undefined : setting.cpuSlowdownMultiplier,
     network: Object.entries(setting.network).sort(([a], [b]) => a.localeCompare(b)),
@@ -212,12 +213,12 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
       <h3>{runs.length === 1 ? 'Run' : 'Runs'}</h3>
       {runs.map((runId, index) => {
         const items = entries.filter(({ metadata }) => metadata.runId === runId);
-        const rows = groupValues(items, ({ stage, metadata }) => ({
+        const rows = groupValues(items, ({ stage, metadata, executionDetails }) => ({
           stage, measured: timestamp(metadata.measuredAt), command: metadata.command, categories: [...metadata.categories].sort(),
           targets: metadata.targets, throttling: metadata.throttling,
           numberOfMeasurements: metadata.numberOfMeasurements, compareRetries: metadata.compareRetries,
           compareAttempts: metadata.compareAttempts,
-          taskRetries: metadata.taskRetries, taskRetryLimit: metadata.taskRetryLimit,
+          executionDetails,
         }));
         const showTime = rows.some(({ value }) => value.measured !== timestamp(runId));
         return <details className="run-details__run" key={runId}>
