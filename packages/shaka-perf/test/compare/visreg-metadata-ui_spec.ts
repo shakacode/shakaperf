@@ -24,6 +24,7 @@ function fixture() {
   const data = runDetailsFixture('compare');
   const test = data.tests[0]!;
   const saved = test.outcomes[0]!;
+  test.filePath = `ab-tests/${'nested-long-test-directory/'.repeat(8)}carousel.abtest.ts`;
   test.controlUrl = 'http://new-control.example/';
   test.experimentUrl = 'http://new-experiment.example/';
   test.outcomes = [{
@@ -88,6 +89,7 @@ describe('visual preview metadata', () => {
       await preview.getByRole('button').click();
       const dialog = page.getByRole('dialog');
       const metadata = dialog.locator('.card__metadata');
+      expect(await metadata.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
       const targets = metadata.locator('.card__targets > div');
       const control = (await targets.nth(0).boundingBox())!;
       const experiment = (await targets.nth(1).boundingBox())!;
@@ -96,6 +98,20 @@ describe('visual preview metadata', () => {
         expect(experiment.x).toBeGreaterThan(control.x + control.width);
       } else {
         expect(experiment.y).toBeGreaterThan(control.y);
+      }
+      const targetsBox = (await metadata.locator('.card__targets').boundingBox())!;
+      const firstFieldsBox = (await metadata.locator('.ui-dialog__meta').first().boundingBox())!;
+      const overridesBox = (await metadata.locator('.ui-dialog__meta').last().boundingBox())!;
+      const controlsBox = (await metadata.locator('.card__metadata-controls').boundingBox())!;
+      expect(firstFieldsBox.y).toBeGreaterThanOrEqual(targetsBox.y + targetsBox.height);
+      expect(controlsBox.y).toBeGreaterThanOrEqual(overridesBox.y + overridesBox.height);
+      if (width >= 1050) {
+        const summary = metadata.locator('summary').first();
+        const label = (await summary.locator(':scope > span').first().boundingBox())!;
+        const source = (await summary.locator('.card__path').boundingBox())!;
+        const logs = (await dialog.locator('.card__actions').getByRole('button', { name: 'logs', exact: true }).boundingBox())!;
+        expect(Math.abs(label.y - source.y)).toBeLessThan(3);
+        expect(Math.abs(label.y - logs.y)).toBeLessThan(3);
       }
       // Test-level URLs remain shared; source is scoped to this execution.
       expect(await metadata.locator('.card__targets a').allTextContents()).toEqual([
@@ -109,7 +125,7 @@ describe('visual preview metadata', () => {
       expect(await metadata.locator('.card__code').textContent()).toContain("abTest('Homepage'");
       expect(await metadata.locator('dl > div').filter({ has: page.locator('dt', { hasText: 'visual comparisons' }) }).locator('dd').textContent()).toBe('2/3 · matched on retry');
       expect(await metadata.locator('dl > div').filter({ has: page.locator('dt', { hasText: 'error retries' }) }).locator('dd').textContent()).toBe('1/2 · recovered');
-      await metadata.getByRole('button', { name: 'logs', exact: true }).click();
+      await dialog.locator('.card__actions').getByRole('button', { name: 'logs', exact: true }).click();
       const logs = page.getByRole('dialog', { name: 'measurement logs' });
       await logs.waitFor();
       expect(await logs.locator('.card-logs').textContent()).toContain('Measurement completed');
