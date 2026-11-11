@@ -7,7 +7,7 @@
 
 import { useId, useState, type ReactNode } from 'react';
 import type { ExecutionDetails } from '../../../src/pipeline/outcome';
-import { ExecutionSource } from './ExecutionSource';
+import { ExecutionDetailsSource } from './ExecutionDetailsSource';
 import type { ReportMeta, TestResult } from '../types';
 import { MeasurementCommand, RunCommits } from './RunDetails';
 import { pipelineTroubleshootCommands, renderPipelineTestCardUrls } from '../../../src/pipeline/pipeline-artifacts';
@@ -57,7 +57,7 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
       <div className="run-details__label">Latest command</div>
       <MeasurementCommand key={latest.command} command={latest.command} compact />
     </> : null },
-    { id: 'source', label: 'test source', content: <ExecutionSource outcomes={test.outcomes} executionDetails={executionDetails} /> },
+    { id: 'source', label: 'test source', content: <ExecutionDetailsSource outcomes={test.outcomes} executionDetails={executionDetails} /> },
     { id: 'troubleshoot', label: 'troubleshoot', content: troubleshoot.length ? <pre className="card__code">{troubleshoot.join('\n')}</pre> : null },
     { id: 'artifacts', label: 'artifact paths', content: test.viewportArtifactPaths?.length ? <pre className="card__code">{test.viewportArtifactPaths.map(({ viewport, path }) => `${viewport}: ${path}`).join('\n')}</pre> : null },
   ].filter((section) => section.content !== null);
