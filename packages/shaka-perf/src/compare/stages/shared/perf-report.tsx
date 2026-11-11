@@ -157,6 +157,7 @@ function MetricsTable({ group, metrics }: { group: PerfMetricGroup; metrics: rea
   return (
     <div className="stage-section">
       <ReportHeading className="stage-section__head" level={6} title={group} />
+      <div className="stage-table-scroll" role="region" aria-label={`${group} performance metrics`} tabIndex={0}>
       <table className="stage-table">
         <thead>
           <tr>
@@ -174,6 +175,7 @@ function MetricsTable({ group, metrics }: { group: PerfMetricGroup; metrics: rea
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

@@ -1401,7 +1401,7 @@ input {
 }
 
 .card__body {
-  padding: 16px 20px;
+  padding: 16px 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2113,6 +2113,9 @@ input {
 }
 
 @media (max-width: 760px) {
+  .stage-table th { padding: 6px 4px; }
+  .stage-table td { padding: 6px 6px; }
+  .stage-table-scroll { overflow-x: auto; }
   /* Phone layout for every report this shell renders — compare, bisect, audit.
      Reclaim the wide gutters, stack the header controls, and collapse the
      page-level grids to one column so nothing is pushed past the viewport edge.
@@ -3298,7 +3301,7 @@ input {
 }
 .report-section__body[hidden] { display: none; }
 .report-section--nested {
-  margin-inline-start: 8px;
+  margin-inline-start: 3px;
   padding-inline-start: 12px;
   border-inline-start: 1px solid var(--border-strong);
   min-width: 0;
