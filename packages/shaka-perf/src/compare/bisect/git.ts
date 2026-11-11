@@ -170,7 +170,11 @@ export class ExactCheckout {
 }
 
 async function git(repoDir: string, args: string[]): Promise<string> {
-  const result = await exec('git', args, { cwd: repoDir, silent: true });
+  const result = await exec('git', args, {
+    cwd: repoDir,
+    silent: true,
+    env: args[0] === 'bisect' ? { ...process.env, LC_ALL: 'C' } : undefined,
+  });
   if (result.code !== 0) {
     const detail = result.stderr.trim() || result.stdout.trim() || `exit code ${result.code}`;
     throw new Error(`git ${args[0]} failed in ${repoDir}: ${detail}`);
@@ -178,14 +182,18 @@ async function git(repoDir: string, args: string[]): Promise<string> {
   return result.stdout.trim();
 }
 
-const FIRST_BAD_PATTERN = /^([0-9a-f]{40,64}) is the first bad commit$/m;
+const FIRST_BAD_PATTERN = /^([0-9a-f]{40,64}) is the first .+ commit$/m;
+
+export function parseNativeBisectCompletion(output: string): string | null {
+  return output.match(FIRST_BAD_PATTERN)?.[1] ?? null;
+}
 
 async function nativeBisectStep(
   repoDir: string,
   output: string,
   noCheckout = false,
 ): Promise<NativeBisectStep> {
-  const firstBadSha = output.match(FIRST_BAD_PATTERN)?.[1] ?? null;
+  const firstBadSha = parseNativeBisectCompletion(output);
   if (firstBadSha) {
     return { candidateSha: null, firstBadSha, complete: true, output };
   }

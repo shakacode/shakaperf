@@ -39,6 +39,7 @@ yarn-error.log*
 
 # Test coverage
 coverage/
+packages/shaka-perf/src/pipeline/__tests__/tmp-report-discovery-*/
 
 # Playwright
 test-results/
