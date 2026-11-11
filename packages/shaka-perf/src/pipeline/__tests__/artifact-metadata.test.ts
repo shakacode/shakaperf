@@ -5,10 +5,12 @@
  * License in LICENSE.md.
  */
 
-import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ArtifactMetadataFields, RecoveryBadges } from '../stage-report-components';
+import { visualComparisonFields } from '../../compare/stages/visreg/report';
+import { DESKTOP_VIEWPORT } from 'shaka-shared';
+import type { VisregArtifact } from '../../compare/stages/visreg';
 
 it('escapes values and keeps stage fields separate from execution details', () => {
   const html = renderToStaticMarkup(createElement(ArtifactMetadataFields, {
@@ -40,3 +42,19 @@ it.each([
   expect(html.includes('>unstable<')).toBe(labels.some(label => label === 'unstable'));
 });
 
+it('formats selector counts without borrowing execution counts', () => {
+  const artifact: VisregArtifact = {
+    selector: '#checkout', controlImage: '', experimentImage: '', diffImage: null,
+    misMatchPercentage: 0, diffPixels: 0, threshold: 0, diffBbox: null, savedByRetries: false,
+    compareAttempts: 1, compareRetries: 4,
+  };
+  const fields = (value: VisregArtifact) => visualComparisonFields({
+    artifact: value, viewportLabel: DESKTOP_VIEWPORT.label,
+    entry: { measurement: [value],  latestRun: true,
+      executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', taskRetries: 3, taskRetryLimit: 5, recoveredAfterRetries: true } },
+  });
+  expect(fields(artifact)['visual comparisons']).toBeUndefined();
+  expect(fields({ ...artifact, compareAttempts: 3, savedByRetries: true })['visual comparisons']).toBe('3/5 · matched on retry');
+  expect(fields({ ...artifact, compareAttempts: undefined, savedByRetries: true })['visual comparisons']).toContain('count unavailable');
+  expect(fields({ ...artifact, compareAttempts: undefined })['visual comparisons']).toBeUndefined();
+});
