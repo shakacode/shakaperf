@@ -450,14 +450,14 @@ function reportTest(
     startingPath: `/${fileStem}`,
     controlUrl: `http://control.test/${fileStem}`,
     experimentUrl: `http://experiment.test/${fileStem}`,
-    code: null,
+
     chips: [],
     sorts: [],
     durationMs: 1_000,
     measuredAt: null,
     runId: null,
     outcomes: stages.map((stage) => stage === 'visreg' && id === 'homepage-card'
-      ? ({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+      ? ({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok' as const,
         stage,
         measurement: [{
@@ -473,7 +473,7 @@ function reportTest(
         }],
 
       })
-      : ({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+      : ({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'error' as const,
         stage,
         error: { message: `${stage} fixture outcome` },

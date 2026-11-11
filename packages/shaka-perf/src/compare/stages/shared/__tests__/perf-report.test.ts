@@ -38,12 +38,12 @@ describe('PerfArtifactView', () => {
       title: 'Performance',
       measurements: [
         {
-          executionDetails: { viewport: PHONE_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
+          executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
           measurement: perfWithMetrics([metric('LCP', 'vitals'), metric('js', 'diagnostics')]),
 
         },
         {
-          executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
+          executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
           measurement: perfWithMetrics([{ ...metric('FCP', 'vitals'), direction: 'none' }]),
 
         },
@@ -65,7 +65,7 @@ describe('PerfArtifactView', () => {
     const html = renderToStaticMarkup(createElement(PerfArtifactView, {
       title: 'Performance',
       measurements: [{
-        executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
+        executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
         measurement: { timelinePreviewHref: previewHref },
 
       }],

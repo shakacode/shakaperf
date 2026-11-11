@@ -23,18 +23,18 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained'): R
   const card = (id: string, runId: string, mixed = false): TestResult => ({
     id, name: id, filePath: 'suite.abtest.ts', startingPath: '/',
     controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test',
-    code: null, durationMs: 0, measuredAt: 0, runId,
+     durationMs: 0, measuredAt: 0, runId,
     chips: [{ tag: id === 'Older' ? 'broken' : 'passed', text: id === 'Older' ? 'broken' : 'passed', color: 'gray', sortingWeight: 0 }],
     sorts: [], viewportArtifactPaths: [],
     outcomes: [
-      { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: runId, recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility',
+      { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: runId, recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility',
         error: { message: 'Saved result' } },
-      ...(id === 'Older' ? [{ executionDetails: { viewport: PHONE_VIEWPORT, testSourcePath: null, runId: '2026-09-30T00:00:00.000Z', recoveredAfterRetries: false }, kind: 'error' as const, stage: 'accessibility' as const,
+      ...(id === 'Older' ? [{ executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref: null, runId: '2026-09-30T00:00:00.000Z', recoveredAfterRetries: false }, kind: 'error' as const, stage: 'accessibility' as const,
 
         error: { message: 'Another old run' } }] : []),
-      ...(mixed ? [{ executionDetails: { viewport: PHONE_VIEWPORT, testSourcePath: null, runId: OLD, recoveredAfterRetries: false }, kind: 'error' as const, stage: 'accessibility' as const,
+      ...(mixed ? [{ executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref: null, runId: OLD, recoveredAfterRetries: false }, kind: 'error' as const, stage: 'accessibility' as const,
          error: { message: 'Older phone result' } },
-        { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: OLD, recoveredAfterRetries: false }, kind: 'error' as const, stage: pipelineName === 'audit' ? 'audit' as const : 'visreg' as const,
+        { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: OLD, recoveredAfterRetries: false }, kind: 'error' as const, stage: pipelineName === 'audit' ? 'audit' as const : 'visreg' as const,
             error: { message: 'Older stage result' } }] : []),
     ],
   });
@@ -61,7 +61,7 @@ describe('latest measurement run visibility', () => {
   it('passes per-measurement provenance and run freshness to stage renderers', () => {
     const render = jest.spyOn(pipelineArtifacts, 'renderPersistedStageArtifacts').mockReturnValue('artifact');
     const data = fixture('compare', 'full');
-    const outcomes = [LATEST, OLD].map((runId) => ({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: runId, recoveredAfterRetries: false },
+    const outcomes = [LATEST, OLD].map((runId) => ({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: runId, recoveredAfterRetries: false },
       kind: 'ok' as const, stage: 'accessibility' as const,
        measurement: { runId },
     }));

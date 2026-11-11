@@ -71,11 +71,11 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained', ex
       generatedAt: LATEST, controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test',
       cwd: '/tmp/chip-placement', errors: [], durationMs: 0, reportOnly: true },
     tests: [{ id: 'Mixed', name: 'Mixed', filePath: 'suite.abtest.ts', startingPath: '/',
-      controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test', code: null,
+      controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test',
       durationMs: 0, measuredAt: 0, runId: LATEST, chips: [], sorts: [], viewportArtifactPaths: [],
       outcomes: examples.flatMap(({ stage, measurement }) => [
-        { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: OLD, recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement,   },
-        { executionDetails: { viewport: PHONE_VIEWPORT, testSourcePath: null, runId: LATEST, recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement,   },
+        { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: OLD, recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement,   },
+        { executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref: null, runId: LATEST, recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement,   },
       ]),
     }],
   };
@@ -166,8 +166,8 @@ describe('contextual old-run chips', () => {
     try {
       for (const { stage, measurement, heading } of examples) {
         const artifact = renderPersistedStageArtifacts(pipeline, {}, stage, [
-          { measurement,  executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: false },
-          { measurement,  executionDetails: { viewport: PHONE_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true },
+          { measurement,  executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: false },
+          { measurement,  executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true },
         ]);
         await page.setContent(renderToStaticMarkup(artifact));
         expect(await page.locator('.stage-artifact__title').count()).toBe(1);

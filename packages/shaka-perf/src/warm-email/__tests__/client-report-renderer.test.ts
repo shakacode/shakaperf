@@ -526,7 +526,7 @@ function writePerfResultsForPages(
     }, null, 2)}\n`);
     if (page.agent) {
       const url = `http://localhost${page.startingPath || '/'}`;
-      fs.writeFileSync(path.join(dir, page.id, 'agent-readiness.json'), `${JSON.stringify({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+      fs.writeFileSync(path.join(dir, page.id, 'agent-readiness.json'), `${JSON.stringify({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok',
         stage: 'agent-readiness',
         measurement: agentReadinessFixture(url, page.agent),
@@ -534,7 +534,7 @@ function writePerfResultsForPages(
     }
     if (page.a11y) {
       const url = `http://localhost${page.startingPath || '/'}`;
-      fs.writeFileSync(path.join(dir, page.id, 'accessibility.json'), `${JSON.stringify({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+      fs.writeFileSync(path.join(dir, page.id, 'accessibility.json'), `${JSON.stringify({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok',
         stage: 'accessibility',
         measurement: accessibilityResultFixture(url, page.a11y),

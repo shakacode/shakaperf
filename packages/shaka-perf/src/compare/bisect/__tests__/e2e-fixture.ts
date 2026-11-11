@@ -423,7 +423,7 @@ function regressionResult(
   return {
     ...baseResult(first.testFile, first.testName),
     outcomes: [
-      ...(visualTargets.length === 0 ? [] : [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+      ...(visualTargets.length === 0 ? [] : [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok' as const,
         stage: 'visreg',
 
@@ -439,7 +439,7 @@ function regressionResult(
           savedByRetries: false,
         })),
       }]),
-      ...(perfTargets.length === 0 ? [] : [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+      ...(perfTargets.length === 0 ? [] : [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok' as const,
         stage: 'perf',
 
@@ -460,7 +460,7 @@ function regressionResult(
           })),
         },
       }]),
-      ...(accessibilityTargets.length === 0 ? [] : [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+      ...(accessibilityTargets.length === 0 ? [] : [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok' as const,
         stage: 'accessibility',
 
@@ -531,7 +531,7 @@ function baseResult(testFile: string, testName: string): TestResult {
     startingPath: '/',
     controlUrl: 'http://control.test/',
     experimentUrl: 'http://experiment.test/',
-    code: null,
+
     chips: [],
     sorts: [],
     durationMs: 0,
@@ -545,7 +545,7 @@ function baseResult(testFile: string, testName: string): TestResult {
 function visregResult(regressionDetected: boolean): TestResult {
   return {
     ...baseResult('tests/homepage.abtest.ts', 'Homepage'),
-    outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+    outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'ok',
       stage: 'visreg',
 

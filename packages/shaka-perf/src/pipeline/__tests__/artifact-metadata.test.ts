@@ -15,7 +15,7 @@ import type { VisregArtifact } from '../../compare/stages/visreg';
 it('escapes values and keeps stage fields separate from execution details', () => {
   const html = renderToStaticMarkup(createElement(ArtifactMetadataFields, {
     fields: { '<selector>': '<script>alert(1)</script>', 'error retries': 'stage value' },
-    executionDetails: { runId: 'fixture-run', testSourcePath: null, viewport: DESKTOP_VIEWPORT, taskRetries: 2, taskRetryLimit: 3, recoveredAfterRetries: true },
+    executionDetails: { runId: 'fixture-run', testSourceHref: null, viewport: DESKTOP_VIEWPORT, taskRetries: 2, taskRetryLimit: 3, recoveredAfterRetries: true },
   }));
   expect(html).toContain('&lt;selector&gt;');
   expect(html).toContain('&lt;script&gt;');
@@ -26,10 +26,10 @@ it('escapes values and keeps stage fields separate from execution details', () =
 
 it('omits unused execution rows and preserves unknown recovery counts', () => {
   expect(renderToStaticMarkup(createElement(ArtifactMetadataFields, {
-    executionDetails: { runId: 'fixture-run', testSourcePath: null, viewport: DESKTOP_VIEWPORT, recoveredAfterRetries: false, taskRetries: 0 },
+    executionDetails: { runId: 'fixture-run', testSourceHref: null, viewport: DESKTOP_VIEWPORT, recoveredAfterRetries: false, taskRetries: 0 },
   }))).toBe('');
   expect(renderToStaticMarkup(createElement(ArtifactMetadataFields, {
-    executionDetails: { runId: 'fixture-run', testSourcePath: null, viewport: DESKTOP_VIEWPORT, recoveredAfterRetries: true },
+    executionDetails: { runId: 'fixture-run', testSourceHref: null, viewport: DESKTOP_VIEWPORT, recoveredAfterRetries: true },
   }))).toContain('?/? · recovered');
 });
 
@@ -51,7 +51,7 @@ it('formats selector counts without borrowing execution counts', () => {
   const fields = (value: VisregArtifact) => visualComparisonFields({
     artifact: value, viewportLabel: DESKTOP_VIEWPORT.label,
     entry: { measurement: [value],  latestRun: true,
-      executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', taskRetries: 3, taskRetryLimit: 5, recoveredAfterRetries: true } },
+      executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', taskRetries: 3, taskRetryLimit: 5, recoveredAfterRetries: true } },
   });
   expect(fields(artifact)['visual comparisons']).toBeUndefined();
   expect(fields({ ...artifact, compareAttempts: 3, savedByRetries: true })['visual comparisons']).toBe('3/5 · matched on retry');
