@@ -44,6 +44,10 @@ const approved = source
   .replace(/^\*\*Status:.*\n(?:.*\n)*?\n/m, '')
   .replace(/\s*\[COUNSEL-\d+\]/g, '');
 const withStatus = source.replace(/\s*\[COUNSEL-\d+\]/g, '');
+const withNotice = approved.replace(
+  '# The ShakaStack License\n',
+  '# The ShakaStack License\n\n**Notice: pending counsel review. Not in force.**\n',
+);
 
 test('rejects proposed license text', () => {
   const result = runGuard(source, '0.8.0');
@@ -53,6 +57,12 @@ test('rejects proposed license text', () => {
 
 test('rejects a status notice without counsel markers', () => {
   const result = runGuard(withStatus, '0.8.0');
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /status notice/i);
+});
+
+test('rejects a pending counsel notice with another label', () => {
+  const result = runGuard(withNotice, '0.8.0');
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /status notice/i);
 });
