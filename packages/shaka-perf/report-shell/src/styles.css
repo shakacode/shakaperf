@@ -1275,23 +1275,21 @@ input {
 .card[data-collapsed="true"] .card__head { border-bottom: none; }
 
 .card__path {
+  min-width: 0;
   font-size: 11px;
   color: var(--fg-muted);
-  margin-top: 4px;
-  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Freshness line under the test path: "updated 2d 5h ago". Muted and a bit
-   dimmer than the path so it reads as supplementary metadata — useful for
-   spotting stale measurements in a report assembled from multiple shards
-   that ran at different times. */
+/* Keep freshness visible beside the path, including in narrow cards. */
 .card__measured-at {
-  font-size: 10px;
+  flex-shrink: 0;
+  font-size: 11px;
   color: var(--fg-muted);
   opacity: 0.7;
-  margin-top: 2px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .missing-artifacts__toggle { padding: 4px 0; border: 0; background: transparent; color: var(--fg-muted); font-size: 11px; text-transform: none; letter-spacing: 0; white-space: nowrap; }
@@ -3200,8 +3198,10 @@ input {
 .card__disclosure > summary { padding: 9px 20px; cursor: pointer; color: var(--fg-muted); }
 .card__disclosure > summary:hover { color: var(--fg); background: var(--bg-hover); }
 .card__metadata { container-type: inline-size; }
+.card__metadata[open] > summary { padding-bottom: 3px; }
 .card__metadata-content { display: grid; gap: 10px; min-width: 0; padding: 0 20px 14px; }
 .card__metadata-content > * { min-width: 0; }
+.card__metadata-provenance { display: flex; align-items: baseline; gap: 7px; }
 .card__metadata-content .ui-dialog__meta { padding: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 .card__metadata-content .ui-dialog__meta dd { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 .card__metadata .card__urls { padding: 0; margin: 0; border: 0; }
