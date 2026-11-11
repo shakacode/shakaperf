@@ -51,10 +51,10 @@ export function performanceMetadataFields(
     if (sampling.measurementSideCount !== undefined && sampling.measurementSideCount > 1) {
       countLabel += ' per side';
     }
+    if (executionDetails.numberOfMeasurements === 1) {
+      countLabel += ' (1 sample below)';
+    }
     fields['number of measurements'] = countLabel;
-  }
-  if (executionDetails.numberOfMeasurements === 1) {
-    fields['artifact samples'] = '1 sample below';
   }
 
   const sidesByDescription = new Map<string, Set<string>>();
