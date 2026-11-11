@@ -14,7 +14,7 @@ const throttling = { engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultip
   network: { rttMs: 150, throughputKbps: 1638.4 } };
 
 it.each([1, 7])('renders saved count %s as plain shared metadata', numberOfMeasurements => {
-  const fields = performanceMetadataFields({ numberOfMeasurements, perSide: true, throttling: [throttling] });
+  const fields = performanceMetadataFields({ numberOfMeasurements, measurementSideCount: 2, throttling: [throttling] });
   expect(fields['number of measurements']).toBe(`${numberOfMeasurements} per side`);
   expect(fields.throttling).toContain('4× CPU');
   expect(fields.throttling).toContain('150 ms RTT');
