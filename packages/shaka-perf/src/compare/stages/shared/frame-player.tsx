@@ -171,7 +171,11 @@ function formatSeconds(ms: number): string {
   return `${(ms / 1000).toFixed(2)}s`;
 }
 
-export function FramePlayerButton({ href, executionDetails }: { href: string; executionDetails: ExecutionDetails }) {
+export function FramePlayerButton({ href, executionDetails, fields }: {
+  href: string;
+  executionDetails: ExecutionDetails;
+  fields?: Readonly<Record<string, string>>;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -182,7 +186,7 @@ export function FramePlayerButton({ href, executionDetails }: { href: string; ex
           onClose={() => setOpen(false)}
           variant="wide"
           title={<ArtifactDialogTitle title={`${executionDetails.viewport.label} frames side by side`} />}
-          meta={<ArtifactMetadata executionDetails={executionDetails} />}
+          meta={<ArtifactMetadata fields={fields} executionDetails={executionDetails} />}
         >
           <FramePlayer href={href} />
         </Dialog>

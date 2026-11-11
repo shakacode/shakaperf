@@ -17,6 +17,7 @@ import {
   StageNote,
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
+import { performanceMetadataFields } from '../perf/metadata-fields';
 import { FramePlayerButton } from './frame-player';
 import { ReportSection, useReportSection } from '../../../pipeline/report-section';
 
@@ -105,6 +106,7 @@ function PerfBody({
   hasSignificantMetrics: boolean;
   viewportLabel: string;
 }) {
+  const fields = performanceMetadataFields(executionDetails);
   const timelinePreview = perf.timelinePreviewHref ? (
     <img
       src={perf.timelinePreviewHref}
@@ -122,7 +124,9 @@ function PerfBody({
       {timelinePreview ? (
         <div className="perf-timeline-preview">
           {perf.timelineHref ? (
-            <DetailedArtifactDialog executionDetails={executionDetails}
+            <DetailedArtifactDialog
+              fields={fields}
+              executionDetails={executionDetails}
               variant="preview"
               href={perf.timelineHref}
               label="timeline"
@@ -200,6 +204,7 @@ function MetricRow({ metric }: { metric: PerfMetric }) {
 }
 
 function ArtifactLinks({ perf, executionDetails }: { perf: PerfArtifact; executionDetails: ExecutionDetails }) {
+  const fields = performanceMetadataFields(executionDetails);
   const links = [
     perf.benchReportHref ? ['bench report', perf.benchReportHref] : null,
     perf.controlLighthouseHref ? ['control lh', perf.controlLighthouseHref] : null,
@@ -211,9 +216,18 @@ function ArtifactLinks({ perf, executionDetails }: { perf: PerfArtifact; executi
   return (
     <FullReportOnly>
       <div className="artifact-links">
-        {perf.framesHref ? <FramePlayerButton executionDetails={executionDetails} href={perf.framesHref} /> : null}
+        {perf.framesHref ? (
+          <FramePlayerButton fields={fields} executionDetails={executionDetails} href={perf.framesHref} />
+        ) : null}
         {links.map(([label, href]) => (
-          <DetailedArtifactDialog executionDetails={executionDetails} key={`${label}-${href}`} href={href} label={label} title={`${executionDetails.viewport.label} ${label}`}>
+          <DetailedArtifactDialog
+            fields={fields}
+            executionDetails={executionDetails}
+            key={`${label}-${href}`}
+            href={href}
+            label={label}
+            title={`${executionDetails.viewport.label} ${label}`}
+          >
             {label}
           </DetailedArtifactDialog>
         ))}

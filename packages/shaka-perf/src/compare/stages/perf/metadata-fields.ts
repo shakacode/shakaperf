@@ -5,7 +5,8 @@
  * License in LICENSE.md.
  */
 
-import type { MeasurementThrottling, RunMetadata } from '../../../pipeline/run-metadata';
+import type { MeasurementThrottling } from '../../../pipeline/run-metadata';
+import type { ExecutionDetails } from '../../../pipeline/outcome';
 
 const NETWORK_UNITS: Record<string, string> = {
   rttMs: 'ms RTT',
@@ -38,22 +39,23 @@ function formatThrottling(setting: MeasurementThrottling): string {
 
 /** Performance chooses domain values; shared components render the strings. */
 export function performanceMetadataFields(
-  settings?: Pick<RunMetadata, 'numberOfMeasurements' | 'throttling'> & { perSide?: boolean },
+  executionDetails?: Pick<ExecutionDetails,
+    'numberOfMeasurements' | 'throttling' | 'measurementSideCount'>,
 ): Record<string, string> {
   const fields: Record<string, string> = {};
-  if (!settings) return fields;
+  if (!executionDetails) return fields;
 
-  const sampling = settings;
+  const sampling = executionDetails;
   if (sampling.numberOfMeasurements !== undefined) {
     let countLabel = String(sampling.numberOfMeasurements);
-    if (sampling.perSide) {
+    if (sampling.measurementSideCount !== undefined && sampling.measurementSideCount > 1) {
       countLabel += ' per side';
     }
     fields['number of measurements'] = countLabel;
   }
 
   const sidesByDescription = new Map<string, Set<string>>();
-  for (const setting of settings.throttling ?? []) {
+  for (const setting of executionDetails.throttling ?? []) {
     if (setting.engine !== 'Lighthouse') continue;
     const description = formatThrottling(setting);
     const sides = sidesByDescription.get(description) ?? new Set<string>();
