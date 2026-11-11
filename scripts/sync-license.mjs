@@ -1,8 +1,7 @@
 /*
  * Copyright (c) 2026 ShakaCode LLC.
  *
- * This file is part of ShakaPerf. Use is governed by The ShakaPerf
- * License in LICENSE.md.
+ * This file is part of ShakaPerf. Use is governed by the license in LICENSE.md.
  */
 
 // Copies the canonical repo-root LICENSE.md into the package being packed.
@@ -16,13 +15,20 @@
 // `yarn npm publish` (Yarn does not run npm's `prepublishOnly`). Yarn sets the
 // cwd to the workspace directory, which is where the copy lands.
 
-import { copyFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { copyFileSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = join(repoRoot, 'LICENSE.md');
 const target = resolve(process.cwd(), 'LICENSE.md');
+const lock = JSON.parse(readFileSync(join(repoRoot, 'license.lock.json'), 'utf8'));
+const digest = createHash('sha256').update(readFileSync(source)).digest('hex');
+
+if (digest !== lock.sha256) {
+  throw new Error('LICENSE.md does not match license.lock.json');
+}
 
 copyFileSync(source, target);
 

@@ -31,6 +31,12 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Publishing $PACKAGE_NAME version $VERSION"
 
+      - name: Check license release
+        env:
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+        run: node scripts/check-license-release.mjs "$PACKAGE_NAME" "$PACKAGE_VERSION"
+
       - name: Check published install hooks before install
         run: node security-checks/check-install-scripts.mjs
 

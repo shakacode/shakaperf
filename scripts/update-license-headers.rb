@@ -2,8 +2,7 @@
 # frozen_string_literal: true
 # Copyright (c) 2026 ShakaCode LLC.
 #
-# This file is part of ShakaPerf. Use is governed by The ShakaPerf
-# License in LICENSE.md.
+# This file is part of ShakaPerf. Use is governed by the license in LICENSE.md.
 
 require "open3"
 require "optparse"
@@ -11,13 +10,15 @@ require "optparse"
 # Substring that identifies the header. Kept short so reflowing the sentence
 # across lines does not make an existing header look missing.
 HEADER_MARKER = "This file is part of ShakaPerf."
+OLD_SPDX = "LicenseRef-ShakaPerf-1.0"
+CURRENT_SPDX = "LicenseRef-ShakaStack-1.0-ShakaPerf"
+CURRENT_HEADER = "This file is part of ShakaPerf. Use is governed by the license in LICENSE.md."
 
 BLOCK_HEADER = <<~HEADER
   /*
    * Copyright (c) 2026 ShakaCode LLC.
    *
-   * This file is part of ShakaPerf. Use is governed by The ShakaPerf
-   * License in LICENSE.md.
+   * This file is part of ShakaPerf. Use is governed by the license in LICENSE.md.
    */
 
 HEADER
@@ -35,7 +36,8 @@ HEADERS = {
 
 SKIP_PATTERNS = [
   %r{\A\.claude/},
-  %r{\A\.yarn/},
+  %r{\A\.yarn/(?:releases|sdks)/},
+  %r{\Ademo-ecommerce/},
   %r{\Aintegration-tests/snapshots/},
   # Vendored MIT-licensed source; preserve its upstream file-level notice.
   %r{\Apackages/shaka-perf/src/bench/cli/static/chartjs-2\.9\.3-chart\.min\.js\z},
@@ -118,6 +120,22 @@ def has_license_header?(contents)
   header_body = header_body.sub(/\A\n/, "")
   leading_comment = header_body.match(/\A\/\*.*?\*\//m)&.[](0)
 
+  return false unless leading_comment&.include?(CURRENT_HEADER)
+  return true unless leading_comment.include?("SPDX-License-Identifier:")
+
+  leading_comment.include?(CURRENT_SPDX)
+end
+
+def update_header(contents, header)
+  return insert_header(contents, header) unless has_license_marker?(contents)
+
+  contents.sub(OLD_SPDX, CURRENT_SPDX)
+          .sub(/This file is part of ShakaPerf\. Use is governed by (?:The|the) Shaka(?:Perf|Stack)\n \* License in LICENSE\.md\./, CURRENT_HEADER)
+end
+
+def has_license_marker?(contents)
+  header_body = contents.byteslice(header_insert_offset(contents)..) || ""
+  leading_comment = header_body.match(/\A\n?\/\*.*?\*\//m)&.[](0)
   leading_comment&.include?(HEADER_MARKER) || false
 end
 
@@ -147,7 +165,7 @@ if options[:check]
     exit 0
   end
 
-  warn "Missing license headers in #{missing.length} of #{files.length} files:"
+  warn "Missing or outdated license headers in #{missing.length} of #{files.length} files:"
   warn missing.join("\n")
   exit 1
 end
@@ -160,7 +178,7 @@ end
 
 missing.each do |path|
   header = HEADERS.fetch(File.extname(path))
-  File.write(repo_path(path), insert_header(file_contents.fetch(path), header))
+  File.write(repo_path(path), update_header(file_contents.fetch(path), header))
 end
 
 puts "Updated #{missing.length} of #{files.length} selected files"

@@ -17,6 +17,7 @@ are not restricted.
 6. **Keep `shaka-perf` and `shaka-shared` on the same version only when they are published together** — a solo release bumps just that package and lets the versions diverge. Shipping them together again re-aligns them: the one left behind jumps straight to the shared version (e.g. `shaka-shared` 0.2.1 → 0.2.4). **Ship `shaka-shared` together with `shaka-perf`:** the shared package requires a running ShakaPerf version at least as new as its own. ShakaPerf-only releases remain allowed.
 7. **Surface breaking changes in the release.** When the Unreleased section had entries, annotate that package's tag with the list of them so the change is visible at release time, not just in the file (see steps 5–6). The list is mechanical — one line per `###` heading of the stamped section, no rewording, no verbatim body text. Tag a release with no breaking changes as a lightweight tag as before.
 8. **STOP THE DEPLOYMENT if the shrinkwrap refresh moves anything but the released versions.** A tag ships whatever `npm install` re-resolved (step 5c) straight to consumers, unreviewed. Report it and wait for the human — don't commit, don't tag, don't fix it.
+9. **The first release under The ShakaStack License must be a minor release.** A patch of the 0.7 line must keep the license text it shipped with.
 
 ## Steps
 

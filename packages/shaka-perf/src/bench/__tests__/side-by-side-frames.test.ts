@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2026 ShakaCode LLC.
+ *
+ * This file is part of ShakaPerf. Use is governed by the license in LICENSE.md.
+ */
+
 import {
   SIDE_BY_SIDE_FRAMES_GLOBAL,
   buildSideBySideFrames,

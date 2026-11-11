@@ -1,0 +1,14 @@
+{
+  "name": "The ShakaStack License",
+  "version": "1.0",
+  "edition": "shakaperf",
+  "spdx": "LicenseRef-ShakaStack-1.0-ShakaPerf",
+  "sha256": "a0f922f3cbcd2343e663a8880d5ff589227d6227b00acad71b09e0baa700b3de",
+  "source": "https://github.com/shakacode/commercial-licensing/tree/main/license/releases/1.0",
+  "first_versions": {
+    "shaka-perf": "0.8.0",
+    "shaka-shared": "0.8.0",
+    "shaka-bundle-size": "0.1.0",
+    "shaka-accessibility": "0.1.0"
+  }
+}

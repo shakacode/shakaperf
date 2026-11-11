@@ -105,11 +105,13 @@ The `shaka-perf-find-bugs` skill turns twin-servers into a QA rig: agents use th
 
 use skill `/deploy shaka-perf shaka-shared`
 
-## License
-[![License: ShakaPerf License](https://img.shields.io/badge/license-ShakaPerf%20License-blue.svg)](./LICENSE.md) 
+## Free & Pro
+[![License: ShakaStack License](https://img.shields.io/badge/license-ShakaStack%20License-blue.svg)](./LICENSE.md)
 
-TL;DR: free for orgs under 10 people, $1M revenue, and $1M raised, and for charities, schools, and hospitals at any size. Otherwise a [subscription](https://shakaperf.com/pricing).
+The proposed [ShakaStack License for ShakaPerf](./LICENSE.md) is pending counsel review and is not in force. Reading, studying, and a 45 day evaluation are free. Ongoing ShakaPerf work on private code, including CI, PR checks, coding agent workflows, and manual runs, needs ShakaStack Pro after evaluation in any environment unless a Free Use applies.
 
-Registration is free, optional, and encouraged for every organization:
-[shakaperf.com/license](https://shakaperf.com/license). Questions:
-[contact@shakacode.com](mailto:contact@shakacode.com).
+Free Use includes organizations that answer yes to all three questions for the whole organization, including affiliates: fewer than 10 people, under US $1M revenue in the last twelve months, and under US $1M raised ever. Charities, educational institutions, hospitals, and qualifying public open source work also have free permissions under the license.
+
+[ShakaStack Pro](https://pro.reactonrails.com/#shakastack-pro) covers ShakaPerf, React on Rails Pro, and Inertia Rails SSR Cache for the whole organization, with no headcount or revenue limit. The license delivered with each release remains its terms. [Older license texts](https://github.com/shakacode/commercial-licensing/tree/main/license/archive) are archived.
+
+Questions: [contact@shakacode.com](mailto:contact@shakacode.com).

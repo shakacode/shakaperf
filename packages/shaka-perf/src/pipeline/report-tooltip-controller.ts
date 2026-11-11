@@ -1,8 +1,7 @@
 /*
  * Copyright (c) 2026 ShakaCode LLC.
  *
- * This file is part of ShakaPerf. Use is governed by The ShakaPerf
- * License in LICENSE.md.
+ * This file is part of ShakaPerf. Use is governed by the license in LICENSE.md.
  */
 
 // Shared by React reports and the standalone timeline. Keep this function
