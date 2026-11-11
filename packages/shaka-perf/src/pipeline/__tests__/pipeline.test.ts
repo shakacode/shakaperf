@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { DESKTOP_VIEWPORT, PHONE_VIEWPORT, TABLET_VIEWPORT } from 'shaka-shared';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -305,7 +306,8 @@ describe('runPipeline', () => {
     expect(measured.length).toBeGreaterThan(0);
     for (const outcome of measured) {
       expect(outcome.runMetadata?.targets).toHaveLength(2);
-      expect(outcome.runMetadata?.viewport).toEqual(outcome.viewport);
+      expect(outcome.runMetadata).not.toHaveProperty('viewport');
+    expect(outcome.executionDetails.viewport.width).toBeGreaterThan(0);
       expect(outcome.runMetadata).not.toHaveProperty('throttling');
     }
   });
@@ -321,8 +323,8 @@ describe('runPipeline', () => {
     expect(result.testResults[0]!.outcomes.every((outcome) => !outcome.runMetadata)).toBe(true);
     for (const outcome of result.testResults[0]!.outcomes) {
       expect(outcome.executionDetails).toEqual(outcome.kind === 'skipped'
-        ? { runId: expect.any(String), testSourcePath: null, recoveredAfterRetries: false }
-        : { runId: expect.any(String), testSourcePath: null, taskRetries: 0, taskRetryLimit: 0, recoveredAfterRetries: false });
+        ? { runId: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourcePath: null, recoveredAfterRetries: false }
+        : { runId: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourcePath: null, taskRetries: 0, taskRetryLimit: 0, recoveredAfterRetries: false });
     }
     if (mode === 'derived') expect(run).toHaveBeenCalled();
     else expect(run).not.toHaveBeenCalled();
@@ -390,7 +392,7 @@ describe('runPipeline', () => {
       expect(measured.length).toBeGreaterThan(0);
       for (const outcome of measured) {
         expect(outcome.kind).toBe(failed ? 'error' : 'ok');
-        const metadata = store.readOutcome(test, outcome.viewport.label, 'visreg')?.runMetadata;
+        const metadata = store.readOutcome(test, outcome.executionDetails.viewport.label, 'visreg')?.runMetadata;
         expect(outcome.executionDetails.testSourcePath).toBeTruthy();
         expect(store.readTextArtifact(outcome.executionDetails.testSourcePath!)).toBe(source);
       }
@@ -428,9 +430,9 @@ describe('runPipeline', () => {
       expect(changedPath).not.toBe(originalPath);
       expect(store.readTextArtifact(originalPath)).toBe(source);
       expect(store.readTextArtifact(changedPath)).toBe(changed);
-      for (const viewport of new Set(outcomes.map((o) => o.viewport.label))) {
+      for (const viewport of new Set(outcomes.map((o) => o.executionDetails.viewport.label))) {
         expect(fs.readdirSync(store.artifactsDirForViewport(test, viewport))).toHaveLength(2);
-        const measuredPaths = new Set(outcomes.filter((o) => o.viewport.label === viewport && o.stage !== 'visreg')
+        const measuredPaths = new Set(outcomes.filter((o) => o.executionDetails.viewport.label === viewport && o.stage !== 'visreg')
           .map((o) => o.executionDetails.testSourcePath).filter(Boolean));
         expect(measuredPaths.size).toBe(1);
       }
@@ -460,7 +462,7 @@ describe('runPipeline', () => {
       fs.writeFileSync(file, changed);
       await runWithFrozenTest({ cwd, tests: [test], skipReport: true });
       expect(store.readTextArtifact(originalPath)).toBeUndefined();
-      expect(fs.readdirSync(store.artifactsDirForViewport(test, original.viewport.label))).toHaveLength(1);
+      expect(fs.readdirSync(store.artifactsDirForViewport(test, original.executionDetails.viewport.label))).toHaveLength(1);
     } finally {
       clock.mockRestore();
       fs.rmSync(cwd, { recursive: true, force: true });
@@ -483,8 +485,30 @@ describe('runPipeline', () => {
     expect(measured.length).toBeGreaterThan(0);
     for (const outcome of measured) {
       expect(outcome.kind).toBe(exhausted ? 'error' : 'ok');
-      expect(outcome.executionDetails).toEqual({ runId: expect.any(String), testSourcePath: derived ? null : expect.any(String), taskRetries: 1, taskRetryLimit: 1, recoveredAfterRetries: !exhausted });
+      expect(outcome.executionDetails).toEqual({ runId: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourcePath: derived ? null : expect.any(String), taskRetries: 1, taskRetryLimit: 1, recoveredAfterRetries: !exhausted });
       if (derived) expect(outcome.runMetadata).toBeUndefined();
+    }
+  });
+
+  it('keeps the recorded viewport when report configuration changes its dimensions', async () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-recorded-viewport-'));
+    try {
+      const initial = await runWithFrozenTest({ cwd, categories: 'visreg', skipReport: true });
+      const saved = initial.testResults[0]!.outcomes.find(outcome => outcome.kind === 'ok')!;
+      const config = buildAbTestsConfig({ shared: {
+        controlURL: 'http://control.test', experimentURL: 'http://experiment.test',
+        parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
+        browserConsole: { failOn: ['error', 'warn'], allowList: [] }, timeoutMs: 1_000, retries: 0, retryDelay: 0,
+      } });
+      Object.assign(config.shared.viewportDefinitions.find(viewport => viewport.label === saved.executionDetails.viewport.label)!, { width: 777 });
+      const report = await runWithFrozenTest({ cwd, config, reportOnly: true });
+      const retained = report.testResults[0]!.outcomes.find(outcome => outcome.stage === saved.stage
+        && outcome.executionDetails.viewport.label === saved.executionDetails.viewport.label)!;
+      expect(retained.executionDetails).toEqual(saved.executionDetails);
+      expect(retained).not.toHaveProperty('viewport');
+      expect(retained.runMetadata).not.toHaveProperty('viewport');
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
     }
   });
 
@@ -510,7 +534,6 @@ describe('runPipeline', () => {
         command: 'shaka-perf compare --categories visreg',
         compareRetries: 2, compareAttempts: 2,
         stages: ['visreg'], categories: ['visreg'],
-        viewport: before.viewport,
         targets: [
           { side: 'control', url: 'http://control.test/', commit },
           { side: 'experiment', url: 'http://experiment.test/', commit },
@@ -527,7 +550,7 @@ describe('runPipeline', () => {
         return nextRun(ctx, pool);
       };
       const second = await runWithFrozenTest({ cwd, tests: [configuredTest], categories: 'perf', restartFromStage: 'perf', skipReport: true }, nextPipeline);
-      expect(second.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.viewport.label === before.viewport.label)?.runMetadata).toEqual(before.runMetadata);
+      expect(second.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.executionDetails.viewport.label === before.executionDetails.viewport.label)?.runMetadata).toEqual(before.runMetadata);
       const perf = second.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.kind === 'ok')!;
       expect(perf.runMetadata?.command).toContain('--restart-from-stage perf');
       expect(perf.runMetadata?.numberOfMeasurements).toBe(7);
@@ -540,8 +563,8 @@ describe('runPipeline', () => {
       const report = await runWithFrozenTest({ cwd, reportOnly: true, controlURL: 'http://changed.test', experimentURL: 'http://changed-again.test' }, reusedPipeline);
       for (const engine of engines) expect(engine).not.toHaveBeenCalled();
       expect(measuredCommit).not.toHaveBeenCalled();
-      expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.viewport.label === before.viewport.label)?.runMetadata).toEqual(before.runMetadata);
-      expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.viewport.label === perf.viewport.label)?.runMetadata).toEqual(perf.runMetadata);
+      expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.executionDetails.viewport.label === before.executionDetails.viewport.label)?.runMetadata).toEqual(before.runMetadata);
+      expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.executionDetails.viewport.label === perf.executionDetails.viewport.label)?.runMetadata).toEqual(perf.runMetadata);
       clock.mockReturnValue(Date.parse('2026-10-20T12:00:00Z'));
       const replaced = await runWithFrozenTest({ cwd, categories: 'visreg', keepOldResults: true, skipReport: true });
       const latest = replaced.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.kind === 'ok')!;
@@ -571,7 +594,8 @@ describe('runPipeline', () => {
     const outcome = result.testResults[0]!.outcomes.find((o) => o.kind === 'ok')!;
     expect(outcome.runMetadata?.targets).toEqual([{ side: 'experiment', url: 'https://user:password@deployment.test/cart?token=secret', commit: null }]);
     expect(outcome.runMetadata?.throttling).toEqual([{ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } }]);
-    expect(outcome.runMetadata?.viewport).toEqual(outcome.viewport);
+    expect(outcome.runMetadata).not.toHaveProperty('viewport');
+    expect(outcome.executionDetails.viewport.width).toBeGreaterThan(0);
   });
 
   it.each([
@@ -633,7 +657,7 @@ describe('runPipeline', () => {
       // A saved sibling failure belongs in the report, but must not fail a
       // later measurement that selected only the successful homepage.
       const store = new ArtifactStore(path.join(cwd, 'test-results'));
-      store.writeOutcome(sibling, 'desktop', { executionDetails: { testSourcePath: null, runId: full.testResults[1]!.runId!, recoveredAfterRetries: false },
+      store.writeOutcome(sibling, 'desktop', { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: full.testResults[1]!.runId!, recoveredAfterRetries: false },
         kind: 'error', stage: 'visreg',
         error: { message: 'Older saved failure' },
       });
@@ -681,7 +705,7 @@ describe('runPipeline', () => {
       const narrowed = await run('desktop', { reportOnly: true, skipReport: false });
       expect(narrowed.testResults[0]!.measuredAt).toBe(phone.testResults[0]!.measuredAt);
       expect(narrowed.testResults[0]!.currentConfig!.measuredAt).toBeNull();
-      expect(narrowed.testResults[0]!.outcomes.some((o) => o.viewport.label === 'phone' && o.kind === 'ok')).toBe(true);
+      expect(narrowed.testResults[0]!.outcomes.some((o) => o.executionDetails.viewport.label === 'phone' && o.kind === 'ok')).toBe(true);
       const store = new ArtifactStore(path.join(cwd, 'test-results'));
       const file = path.join(store.unitDirForViewport(frozenTest, 'phone'), 'visreg.json');
       // Phone remains in scope for perf, but its archived visreg result must
@@ -693,15 +717,15 @@ describe('runPipeline', () => {
       const newerArchive = await run('desktop', { config: mixedConfig, reportOnly: true, skipReport: false });
       expect(newerArchive.testResults[0]!.currentConfig!.measuredAt).toBe(scoped.testResults[0]!.currentConfig!.measuredAt);
       expect(newerArchive.testResults[0]!.measuredAt).toBe(fs.statSync(file).mtimeMs);
-      store.writeOutcome(frozenTest, 'phone', { executionDetails: { testSourcePath: null, runId: phone.testResults[0]!.runId!, recoveredAfterRetries: false }, kind: 'error', stage: 'visreg',
+      store.writeOutcome(frozenTest, 'phone', { executionDetails: { viewport: PHONE_VIEWPORT, testSourcePath: null, runId: phone.testResults[0]!.runId!, recoveredAfterRetries: false }, kind: 'error', stage: 'visreg',
          error: { message: 'Archived phone error' } });
       const contents = fs.readFileSync(file, 'utf8');
       const mtime = fs.statSync(file).mtimeMs;
       const desktop = await run('desktop', { keepOldResults: true });
       const result = desktop.testResults[0]!;
-      expect(result.outcomes.filter((o) => o.viewport.label === 'phone' && o.kind === 'ok')).toHaveLength(3);
-      expect(result.outcomes.filter((o) => o.viewport.label === 'phone').every((o) => o.outsideCurrentConfig)).toBe(true);
-      expect(result.outcomes.find((o) => o.viewport.label === 'phone')!.executionDetails.runId).toBe(phone.testResults[0]!.runId);
+      expect(result.outcomes.filter((o) => o.executionDetails.viewport.label === 'phone' && o.kind === 'ok')).toHaveLength(3);
+      expect(result.outcomes.filter((o) => o.executionDetails.viewport.label === 'phone').every((o) => o.outsideCurrentConfig)).toBe(true);
+      expect(result.outcomes.find((o) => o.executionDetails.viewport.label === 'phone')!.executionDetails.runId).toBe(phone.testResults[0]!.runId);
       expect(result.runId).not.toBe(phone.testResults[0]!.runId);
       expect(desktop.hasFailures).toBe(false);
       expect(result.chips.map((chip) => chip.tag)).toContain('broken');
@@ -925,7 +949,7 @@ describe('pre-run wipe', () => {
 
   function seedOutcome(viewportLabel: string, stage: string) {
     const store = new ArtifactStore(path.join(cwd, 'test-results'));
-    store.writeOutcome(narrowedTest, viewportLabel, { executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage, measurement: {} });
+    store.writeOutcome(narrowedTest, viewportLabel, { executionDetails: { viewport: [DESKTOP_VIEWPORT, PHONE_VIEWPORT, TABLET_VIEWPORT].find(viewport => viewport.label === viewportLabel)!, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage, measurement: {} });
     return path.join(store.unitDirForViewport(narrowedTest, viewportLabel), `${stage}.json`);
   }
 
@@ -971,7 +995,7 @@ describe('pre-run wipe', () => {
     // run's best-of-N match and pass on stale pixels. Deleting the outcome is
     // not enough — the artifacts/ subtree must go with it.
     const store = new ArtifactStore(path.join(cwd, 'test-results'));
-    store.writeOutcome(narrowedTest, 'tablet', { executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+    store.writeOutcome(narrowedTest, 'tablet', { executionDetails: { viewport: TABLET_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'error', stage: 'visreg', error: 'stale from previous run',
     } as never);
     const unitDir = store.unitDirForViewport(narrowedTest, 'tablet');
@@ -1047,7 +1071,7 @@ describe('unselected categories', () => {
       else process.env.TMPDIR = savedTmpdir;
     }
 
-    const rows = result.testResults[0]!.outcomes.map((outcome) => outcome.viewport.label);
+    const rows = result.testResults[0]!.outcomes.map((outcome) => outcome.executionDetails.viewport.label);
     expect([...new Set(rows)]).toEqual(['phone']);
     const store = new ArtifactStore(path.join(cwd, 'test-results'));
     for (const label of ['desktop', 'tablet']) {

@@ -29,7 +29,6 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
   const metadata = (runId: string): RunMetadata => ({
     command: `shaka-perf ${pipelineName} --filter 'Homepage' --categories ${audit ? 'audit,accessibility' : 'perf,accessibility'}`,
     measuredAt: runId, stages: [stage, 'accessibility'], categories: [audit ? 'audit' : 'perf', 'accessibility'],
-    viewport: DESKTOP_VIEWPORT,
     targets: (audit ? ['experiment'] as const : ['control', 'experiment'] as const).map((side) => ({
       side, url: 'http://127.0.0.1:3910/',
       commit: { sha: '1e04e03852fee4e3257a2084f226189b97f13e2e', message: 'Redact complete credential values before persisting run details [skip ci]', source: 'Git in twin-server source checkout' },
@@ -44,9 +43,9 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
     measuredAt: Date.parse(secondRun), runId: secondRun,
     viewportArtifactPaths: [{ viewport: 'desktop', path: `results/${id}-desktop` }],
     outcomes: [
-      { executionDetails: { testSourcePath: null, runId: firstRun, recoveredAfterRetries: false }, kind: 'ok', stage, measurement, viewport: DESKTOP_VIEWPORT, logs: '<0.1s> Measurement completed', ...(withMetadata ? { runMetadata: metadata(firstRun) } : {}) },
-      { executionDetails: { testSourcePath: null, runId: secondRun, recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' }, viewport: DESKTOP_VIEWPORT, ...(withMetadata ? { runMetadata: { ...metadata(secondRun), throttling: [] } } : {}) },
-      { executionDetails: { testSourcePath: null, runId: secondRun, recoveredAfterRetries: false }, kind: 'ok', stage, measurement, viewport: PHONE_VIEWPORT },
+      { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: firstRun, recoveredAfterRetries: false }, kind: 'ok', stage, measurement,  logs: '<0.1s> Measurement completed', ...(withMetadata ? { runMetadata: metadata(firstRun) } : {}) },
+      { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: secondRun, recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' },  ...(withMetadata ? { runMetadata: { ...metadata(secondRun), throttling: [] } } : {}) },
+      { executionDetails: { viewport: PHONE_VIEWPORT, testSourcePath: null, runId: secondRun, recoveredAfterRetries: false }, kind: 'ok', stage, measurement,  },
     ] as ReportOutcome[],
   });
   const data: ReportData = {

@@ -205,7 +205,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     }
     const card = report().tests.find((test: { name: string }) => test.name === 'Product Detail');
     expect(new Set(card.outcomes.map((outcome: ReportOutcome) => outcome.executionDetails.runId)).size).toBe(2);
-    expect(new Set(card.outcomes.map((outcome: { viewport: { label: string } }) => outcome.viewport.label))).toEqual(new Set(['desktop', 'phone']));
+    expect(new Set(card.outcomes.map((outcome: ReportOutcome) => outcome.executionDetails.viewport.label))).toEqual(new Set(['desktop', 'phone']));
   });
 
   it('does not rewrite unselected viewport skip markers', async () => {
@@ -286,7 +286,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     for (const test of [narrowed, active]) {
       for (const label of ['desktop', 'phone']) {
         mirrorCoverageToNycOutput(coverage, store().resultsRoot, unitIdForTest(test, label));
-        store().writeOutcome(test, label, { executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'code_coverage' });
+        store().writeOutcome(test, label, { executionDetails: { viewport: built.shared.viewportDefinitions.find(viewport => viewport.label === label)!, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'code_coverage' });
       }
     }
     const mirrors = path.join(store().resultsRoot, '.nyc_output');

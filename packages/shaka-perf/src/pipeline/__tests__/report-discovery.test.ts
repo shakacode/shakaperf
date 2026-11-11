@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildAbTestsConfig } from '../../config';
@@ -98,13 +99,13 @@ describe.each(['compare', 'audit'] as const)('%s report discovery', (name) => {
       const [catalog] = await loadTests({ filter: path.join(cwd, 'catalog.abtest.js') });
       const oldRunId = '2026-10-01T00:00:00.000Z';
       const store = new ArtifactStore(path.join(cwd, `${name}-results`));
-      store.writeOutcome(catalog!, 'desktop', { executionDetails: { testSourcePath: null, runId: oldRunId, recoveredAfterRetries: false }, kind: 'ok', stage: stageName, measurement: {} });
+      store.writeOutcome(catalog!, 'desktop', { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: oldRunId, recoveredAfterRetries: false }, kind: 'ok', stage: stageName, measurement: {} });
       store.writeOutcome({
         ...catalog!,
         name: 'Broken sibling',
         file: path.join(cwd, 'broken.abtest.js'),
         line: 1,
-      }, 'desktop', { executionDetails: { testSourcePath: null, runId: oldRunId, recoveredAfterRetries: false },
+      }, 'desktop', { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: oldRunId, recoveredAfterRetries: false },
         kind: 'error', stage: stageName, error: { message: 'Saved failure in the unloadable file' },
       });
       const savedFile = path.join(store.unitDirForViewport(catalog!, 'desktop'), `${stageName}.json`);

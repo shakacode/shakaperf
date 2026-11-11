@@ -19,8 +19,8 @@ export function imageModalFixture(pipeline: 'audit' | 'compare' = 'audit'): Repo
     nodes: [{ target: ['button.checkout'], html: '<button class="checkout"></button>', failureSummary: 'Add an accessible name. '.repeat(40), bounds: { x: 20, y: 2000, width: 350, height: 120 } }],
   };
   const config = { tags: ['wcag2a'], disableRules: [], includeRules: null };
-  const ok = (stage: string, measurement: unknown) => ({ executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage, viewport: DESKTOP_VIEWPORT, measurement }) as ReportOutcome;
-  const error = { executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'error', stage: pipeline === 'audit' ? 'audit' : 'visreg', viewport: DESKTOP_VIEWPORT, error: { message: 'Example navigation failure' }, failure: { media: TALL_IMAGE } } as ReportOutcome;
+  const ok = (stage: string, measurement: unknown) => ({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage,  measurement }) as ReportOutcome;
+  const error = { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'error', stage: pipeline === 'audit' ? 'audit' : 'visreg',  error: { message: 'Example navigation failure' }, failure: { media: TALL_IMAGE } } as ReportOutcome;
   const outcomes = pipeline === 'audit' ? [
     ok('code_coverage', { files: 1, coveredStatements: 2, totalStatements: 3, screenshotHref: TALL_IMAGE }),
     ok('code_coverage', { files: 1, coveredStatements: 2, totalStatements: 3, screenshotHref: WIDE_IMAGE }),

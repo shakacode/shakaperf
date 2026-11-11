@@ -48,7 +48,7 @@ describe('source artifacts at the persistence boundary', () => {
   const source = "abTest('Homepage', {}, async () => {});";
   const metadata: RunMetadata = {
     command: 'shaka-perf compare', measuredAt: '2026-11-04T10:00:00Z',
-    stages: ['visreg'], categories: ['visreg'], viewport: DESKTOP_VIEWPORT, targets: [],
+    stages: ['visreg'], categories: ['visreg'], targets: [],
   };
   let dir: string;
   let store: ArtifactStore;
@@ -62,7 +62,7 @@ describe('source artifacts at the persistence boundary', () => {
     expect(store.writeTestSource(test, 'desktop', source)).toBe(testSourcePath);
     expect(fs.statSync(file).mtimeMs).toBe(mtime);
     for (const stage of ['visreg', 'perf'] as const) {
-      store.writeOutcome(test, 'desktop', { executionDetails: { testSourcePath, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage, runMetadata: metadata });
+      store.writeOutcome(test, 'desktop', { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage, runMetadata: metadata });
       const saved = JSON.parse(fs.readFileSync(path.join(store.unitDirForViewport(test, 'desktop'), `${stage}.json`), 'utf8'));
       expect(saved.executionDetails).toMatchObject({ testSourcePath });
       expect(saved.runMetadata).not.toHaveProperty('testSourcePath');
@@ -78,7 +78,7 @@ describe('source artifacts at the persistence boundary', () => {
 
   it('keeps measured outcomes readable when their source artifact is missing', () => {
     const testSourcePath = store.writeTestSource(test, 'desktop', source);
-    store.writeOutcome(test, 'desktop', { executionDetails: { testSourcePath, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg', runMetadata: metadata });
+    store.writeOutcome(test, 'desktop', { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg', runMetadata: metadata });
     fs.unlinkSync(path.join(dir, testSourcePath));
     expect(store.readOutcome(test, 'desktop', 'visreg')?.kind).toBe('ok');
     expect(store.readOutcome(test, 'desktop', 'visreg')?.executionDetails.testSourcePath).toBe(testSourcePath);

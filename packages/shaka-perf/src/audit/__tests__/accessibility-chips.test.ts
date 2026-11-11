@@ -67,9 +67,9 @@ function chipsFor(result: AccessibilityResult) {
       audit: [],
       accessibility: [{
         stage: 'accessibility',
-        viewport: DESKTOP_VIEWPORT,
+
         measurement: result,
-        outcome: { executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+        outcome: { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok',
           stage: 'accessibility',
           measurement: result,
