@@ -52,7 +52,7 @@ describe('bisect command', () => {
     program.addCommand(bisect);
 
     const help = bisect.helpInformation();
-    expect(help).toContain('Usage: shaka-perf bisect [options] [good-ref] [bad-ref]');
+    expect(help).toContain('Usage: shaka-perf bisect [options] [command] [good-ref] [bad-ref]');
     expect(help).toContain('--config <path>');
     expect(help).toContain('--filter <value>');
     expect(help).toContain('--testPathPattern <regex>');
@@ -60,6 +60,7 @@ describe('bisect command', () => {
     expect(help).toContain('--experimentURL <url>');
     expect(help).toMatch(/Control server URL \(default:\s+"http:\/\/control\.config"\)/);
     expect(help).toMatch(/Experiment server URL \(default:\s+"http:\/\/experiment\.config"\)/);
+    expect(help).toContain('patch [options]');
   });
 
   it('shares measurement option definitions with compare', async () => {

@@ -146,7 +146,7 @@ describe('resumable bisect state', () => {
       prepareCommands: [],
       cleanupCommands: [],
       registeredAt: '2026-07-27T00:00:00.000Z',
-      source: 'config' as const,
+      source: 'manifest' as const,
     };
     const value = session();
     const current = {
@@ -161,6 +161,14 @@ describe('resumable bisect state', () => {
 
     const { appliesToAll: _missingAllFlag, ...legacyRepair } = universalRepair;
     expect(() => parseBisectSession({ ...current, repairs: [legacyRepair] })).toThrow();
+  });
+
+  it('explains how to replace legacy config-based repairs before resuming', () => {
+    const value = session();
+    expect(() => parseBisectSession({
+      ...value,
+      repairs: [{ source: 'config' }],
+    })).toThrow(/Cannot resume bisect.*legacy bisect\.repairs.*patch create <id>/s);
   });
 
   it('fingerprints objects independently of object key order', () => {

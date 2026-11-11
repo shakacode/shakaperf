@@ -125,7 +125,7 @@ const repairCommandSchema = z.object({
 const repairSchema = z.object({
   id: z.string(),
   kind: z.enum(['test-harness', 'build', 'data', 'other']),
-  purpose: z.string(),
+  purpose: z.string().optional(),
   filename: z.string(),
   sha256: z.string(),
   order: z.number().int().nonnegative(),
@@ -134,7 +134,7 @@ const repairSchema = z.object({
   prepareCommands: z.array(repairCommandSchema),
   cleanupCommands: z.array(repairCommandSchema),
   registeredAt: z.string(),
-  source: z.literal('config'),
+  source: z.literal('manifest'),
 }).strict();
 
 const compatibilitySchema = z.object({
@@ -350,7 +350,24 @@ function normalizeCrashedAttempts(session: BisectSession): BisectSession {
 }
 
 export function parseBisectSession(value: unknown): BisectSession {
+  if (hasLegacyConfigRepairs(value)) {
+    throw new Error(
+      'Cannot resume bisect: the saved session uses legacy bisect.repairs state. ' +
+      'Start a fresh bisect after migrating repairs with `shaka-perf bisect patch create <id>`.',
+    );
+  }
   return normalizeCrashedAttempts(sessionSchema.parse(value) as BisectSession);
+}
+
+function hasLegacyConfigRepairs(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const repairs = (value as { repairs?: unknown }).repairs;
+  return Array.isArray(repairs) && repairs.some((repair) => (
+    repair !== null
+    && typeof repair === 'object'
+    && !Array.isArray(repair)
+    && (repair as { source?: unknown }).source === 'config'
+  ));
 }
 
 export function readBisectSession(filePath: string): BisectSession {
