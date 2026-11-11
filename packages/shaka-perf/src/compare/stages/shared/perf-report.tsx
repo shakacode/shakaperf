@@ -126,6 +126,7 @@ function PerfBody({
               variant="preview"
               href={perf.timelineHref}
               label="timeline"
+              title={`${viewportLabel} timeline`}
             >
               {timelinePreview}
             </DetailedArtifactDialog>
@@ -212,7 +213,7 @@ function ArtifactLinks({ perf, executionDetails }: { perf: PerfArtifact; executi
       <div className="artifact-links">
         {perf.framesHref ? <FramePlayerButton executionDetails={executionDetails} href={perf.framesHref} /> : null}
         {links.map(([label, href]) => (
-          <DetailedArtifactDialog executionDetails={executionDetails} key={`${label}-${href}`} href={href} label={label}>
+          <DetailedArtifactDialog executionDetails={executionDetails} key={`${label}-${href}`} href={href} label={label} title={`${executionDetails.viewport.label} ${label}`}>
             {label}
           </DetailedArtifactDialog>
         ))}
