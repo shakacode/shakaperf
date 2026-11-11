@@ -80,8 +80,8 @@ describe('performance modal metadata', () => {
       const lowNoise = page.locator('[data-stage="perf-low-noise"] [aria-label="desktop performance"]');
       const cases = [
         { opener: statistical.getByRole('button', { name: 'bench report', exact: true }), title: 'desktop bench report · Homepage', count: '7 per side', cpu: '4× CPU' },
-        { opener: lowNoise.getByRole('button', { name: 'timeline', exact: true }), title: 'desktop timeline · Homepage', count: '1 per side', cpu: '2× CPU' },
-        { opener: lowNoise.getByRole('button', { name: 'play frames', exact: true }), title: 'desktop frames side by side · Homepage', count: '1 per side', cpu: '2× CPU' },
+        { opener: lowNoise.getByRole('button', { name: 'timeline', exact: true }), title: 'desktop timeline · Homepage', count: '1 per side (1 sample below)', cpu: '2× CPU' },
+        { opener: lowNoise.getByRole('button', { name: 'play frames', exact: true }), title: 'desktop frames side by side · Homepage', count: '1 per side (1 sample below)', cpu: '2× CPU' },
       ];
       for (const example of cases) {
         await example.opener.click();

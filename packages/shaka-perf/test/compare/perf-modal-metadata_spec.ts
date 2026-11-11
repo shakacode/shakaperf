@@ -15,7 +15,7 @@ const throttling = { engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultip
 
 it.each([1, 7])('renders saved count %s as plain shared metadata', numberOfMeasurements => {
   const fields = performanceMetadataFields({ numberOfMeasurements, measurementSideCount: 2, throttling: [throttling] });
-  expect(fields['number of measurements']).toBe(`${numberOfMeasurements} per side`);
+  expect(fields['number of measurements']).toBe(`${numberOfMeasurements} per side${numberOfMeasurements === 1 ? ' (1 sample below)' : ''}`);
   expect(fields.throttling).toContain('4× CPU');
   expect(fields.throttling).toContain('150 ms RTT');
   expect(renderToStaticMarkup(createElement(ArtifactMetadataFields, { fields }))).toContain('<dt>number of measurements</dt>');
@@ -27,7 +27,7 @@ it('does not infer unavailable counts or settings', () => {
 });
 
 it('does not label one-target measurements per side', () => {
-  expect(performanceMetadataFields({ numberOfMeasurements: 1 })['number of measurements']).toBe('1');
+  expect(performanceMetadataFields({ numberOfMeasurements: 1 })['number of measurements']).toBe('1 (1 sample below)');
 });
 
 it('deduplicates equal settings with differently ordered network fields', () => {
@@ -58,5 +58,5 @@ it('labels differing saved settings by measured side', () => {
 
 it('labels a saved single sample without reading another stage', () => {
   expect(performanceMetadataFields({ numberOfMeasurements: 1, measurementSideCount: 2 }))
-    .toMatchObject({ 'number of measurements': '1 per side', 'artifact samples': '1 sample below' });
+    .toMatchObject({ 'number of measurements': '1 per side (1 sample below)' });
 });
