@@ -52,6 +52,10 @@ const withApprovalNotice = approved.replace(
   '# The ShakaStack License\n',
   '# The ShakaStack License\n\n**Notice: proposed text, awaiting counsel approval.**\n',
 );
+const withCounselStatus = approved.replace(
+  '# The ShakaStack License\n',
+  '# The ShakaStack License\n\n**Counsel status: legal signoff required.**\n',
+);
 
 test('rejects proposed license text', () => {
   const result = runGuard(source, '0.8.0');
@@ -73,6 +77,12 @@ test('rejects a pending counsel notice with another label', () => {
 
 test('rejects a proposed notice awaiting counsel approval', () => {
   const result = runGuard(withApprovalNotice, '0.8.0');
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /status notice/i);
+});
+
+test('rejects a counsel status with another heading', () => {
+  const result = runGuard(withCounselStatus, '0.8.0');
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /status notice/i);
 });
