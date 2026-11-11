@@ -3153,9 +3153,6 @@ input {
 .run-details__section { padding: 20px 0; border-bottom: 1px solid var(--border); }
 .run-details__section:last-child { border-bottom: 0; }
 .run-details h3 { margin: 0 0 12px; color: var(--fg-muted); font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; }
-.run-details__applications { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
-.run-details__application h4 { margin: 0 0 4px; font-size: 12px; text-transform: capitalize; }
-.run-details__url { overflow-wrap: anywhere; color: var(--fg-muted); }
 .run-details__commits { display: grid; gap: 12px; margin-top: 16px; }
 .run-details__label { color: var(--fg-muted); font-size: 10px; text-transform: capitalize; }
 .run-details__commit summary, .run-details__commit-heading { display: flex; align-items: baseline; gap: 10px; }
@@ -3173,12 +3170,6 @@ input {
 .run-details__command textarea { resize: vertical; }
 .run-details__command button { margin-top: 8px; padding: 5px 9px; font: inherit; font-size: 10px; background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); cursor: pointer; }
 .run-details__command button:hover { background: var(--bg-hover); }
-.run-details__overview { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; }
-.run-details__tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.run-details__tags span { padding: 2px 7px; border: 1px solid var(--border); background: var(--bg); font-size: 10px; }
-.run-details__viewports { display: grid; gap: 8px; }
-.run-details__viewport strong { display: inline-block; min-width: 66px; font-weight: 500; text-transform: capitalize; }
-.run-details__viewport > span { color: var(--fg-muted); font-size: 10px; }
 .run-details__settings { display: grid; gap: 14px; }
 .run-details__setting-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; }
 .run-details__setting-head strong { font-weight: 500; }
@@ -3201,17 +3192,9 @@ input {
 @media (max-width: 540px) {
   .run-details { padding: 0 16px; }
   .run-details__section { padding: 16px 0; }
-  .run-details__overview { grid-template-columns: 1fr; gap: 16px; }
   .run-details__commit summary { gap: 8px; }
 }
 
-.run-details__command-variant { border: 1px solid var(--border); margin-top: 8px; }
-.run-details__command-variant > summary { display: flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: pointer; list-style: none; }
-.run-details__command-variant > summary::-webkit-details-marker { display: none; }
-.run-details__command-variant > summary::before { content: '+'; color: var(--fg-muted); }
-.run-details__command-variant[open] > summary::before { content: '−'; }
-.run-details__command-variant > summary .run-details__scope { display: block; margin: 0; }
-.run-details__command-variant .run-details__command { padding: 0 12px 12px; }
 
 .card__disclosure { border-bottom: 1px solid var(--border); font-size: 11px; }
 .card__disclosure > summary { padding: 9px 20px; cursor: pointer; color: var(--fg-muted); }
