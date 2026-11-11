@@ -86,7 +86,7 @@ function unique(values: string[]) { return [...new Set(values)]; }
 
 function Scope({ items, entries, runs, always = false }: { items: Entry[]; entries: Entry[]; runs: string[]; always?: boolean }) {
   if (!always && new Set(items).size === entries.length) return null;
-  const scopes = groupValues(items, ({ stage, metadata }) => [metadata.runId, stage]);
+  const scopes = groupValues(items, ({ stage, executionDetails }) => [executionDetails.runId, stage]);
   return <span className="run-details__scope">{scopes.map(({ value: [runId, stage], items }) =>
     `${runs.length > 1 ? `Run ${runs.indexOf(runId!) + 1} / ` : ''}${stage} · ${unique(items.map((item) => item.metadata.viewport.label)).join(', ')}`,
   ).join(' / ')}</span>;
@@ -106,7 +106,7 @@ function CommitDetails({ commit }: { commit: Pick<NonNullable<LoadedRunMetadata[
 
 export function RunCommits({ outcomes, side }: { outcomes: readonly ReportOutcome[]; side?: 'control' | 'experiment' }) {
   const entries = savedRunDetails(outcomes).flatMap(([, items]) => items);
-  const runs = unique(entries.map(({ metadata }) => metadata.runId));
+  const runs = unique(entries.map(({ executionDetails }) => executionDetails.runId));
   const targets = entries.flatMap((entry) => entry.metadata.targets.map((target) => ({ entry, target })));
   const commits = groupValues(targets, ({ target }) => ({
     commit: target.commit ? { sha: target.commit.sha, message: target.commit.message } : null,
@@ -132,7 +132,7 @@ const NETWORK_LABELS: Record<string, string> = {
 
 export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutcome[] }) {
   const entries = savedRunDetails(outcomes).flatMap(([, items]) => items);
-  const runs = unique(entries.map(({ metadata }) => metadata.runId));
+  const runs = unique(entries.map(({ executionDetails }) => executionDetails.runId));
   const targets = entries.flatMap((entry) => entry.metadata.targets.map((target) => ({ entry, target })));
   const commands = groupValues(entries, ({ metadata }) => metadata.command);
   const categories = groupValues(entries, ({ metadata }) => [...metadata.categories].sort());
@@ -212,7 +212,7 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
     <section className="run-details__section">
       <h3>{runs.length === 1 ? 'Run' : 'Runs'}</h3>
       {runs.map((runId, index) => {
-        const items = entries.filter(({ metadata }) => metadata.runId === runId);
+        const items = entries.filter(({ executionDetails }) => executionDetails.runId === runId);
         const rows = groupValues(items, ({ stage, metadata, executionDetails }) => ({
           stage, measured: timestamp(metadata.measuredAt), command: metadata.command, categories: [...metadata.categories].sort(),
           targets: metadata.targets, throttling: metadata.throttling,

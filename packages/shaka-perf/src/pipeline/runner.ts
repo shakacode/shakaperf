@@ -481,7 +481,7 @@ async function runConfiguredPipelineWithSelection(
   const resultsRoot = resultsRootFor(cwd, pipeline);
   const startedAt = Date.now();
   const runId = runtime.reportOnly ? undefined : new Date(startedAt).toISOString();
-  const store = new ArtifactStore(resultsRoot, runId);
+  const store = new ArtifactStore(resultsRoot);
   const categories = categoriesForStages(executableStages);
   const restarting = stageSelection.restartFromStage !== null;
   // Keep the prior run's per-unit artifacts dir on restart: the retained
@@ -757,6 +757,7 @@ async function runConfiguredPipelineWithSelection(
   }
   if (!runtime.reportOnly) {
     persistCliSkippedStageOutcomes(
+      runId!,
       store,
       preservedViewportSelection
         ? testsSelectedForMeasurement.filter((test) => measuredTestIds.has(testIdForTest(test)))
@@ -788,6 +789,7 @@ async function runConfiguredPipelineWithSelection(
         store,
         categories,
         reportedStages,
+        executionRunId: runId,
         reportOnly: runtime.reportOnly === true || !measuredTestIds.has(testIdForTest(test)),
         viewportsFilter: preservedViewportSelection,
         config: runtime.config,
@@ -1085,6 +1087,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     renderSticky,
     testAndViewportId,
   } = opts;
+  const runId = runtime.measurementRun!.runId;
   const logger = new BufferedStageLogger(stage, unit.test, unit.viewport.label);
   const start = Date.now();
 
@@ -1106,7 +1109,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     progress.error += 1;
     persistStageOutcome(store, unit, logger, {
       kind: 'error',
-      executionDetails: { recoveredAfterRetries: false },
+      executionDetails: { runId, recoveredAfterRetries: false },
       stage: stage.name,
       error: errorInfo(err),
     });
@@ -1119,7 +1122,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const reason = !viewportApplies
       ? `${unit.viewport.label} not in ${stage.category}.viewports`
       : `${stage.name} does not apply to ${unit.viewport.label}`;
-    persistStageOutcome(store, unit, logger, skippedOutcome(stage.name, reason));
+    persistStageOutcome(store, unit, logger, skippedOutcome(stage.name, reason, runId));
     progress.skipped += 1;
     renderSticky();
     return;
@@ -1209,7 +1212,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     if (stage.measuresApplication && run) {
       // Measuring units have their source artifact written before stages execute.
       metadata = {
-        command: run.command, runId: run.runId, measuredAt: new Date().toISOString(),
+        command: run.command, measuredAt: new Date().toISOString(),
         testSourcePath: unit.testSourcePath!,
         stages: run.stages, categories: run.categories, viewport: unit.viewport,
         targets: await Promise.all(run.sides.map(async (side) => {
@@ -1243,7 +1246,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       kind: 'ok',
       stage: stage.name,
       measurement,
-      executionDetails: { taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
+      executionDetails: { runId, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
     };
   } catch (err) {
     // Walk the cause chain, don't instanceof: a stage that throws from inside a
@@ -1252,7 +1255,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const failure = findFailureArtifacts(err);
     outcome = {
       kind: 'error',
-      executionDetails: { taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
+      executionDetails: { runId, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
       stage: stage.name,
       error: errorInfo(err),
       ...(failure ? { failure } : {}),
@@ -1303,6 +1306,7 @@ function reportedStagesFor(pipeline: Pipeline, stageSelection: StageSelection): 
 }
 
 function persistCliSkippedStageOutcomes(
+  runId: string,
   store: ArtifactStore,
   tests: AbTestDefinition[],
   stageSelection: StageSelection,
@@ -1319,7 +1323,7 @@ function persistCliSkippedStageOutcomes(
     for (const { stage, reason } of skippedStages) {
       for (const viewport of viewports) {
         if (viewportsFilter && !viewportsFilter.includes(viewport.label)) continue;
-        store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason));
+        store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason, runId));
       }
     }
   }
@@ -1327,7 +1331,6 @@ function persistCliSkippedStageOutcomes(
 
 function leanPriorOutcome(outcome: Outcome): Outcome {
   const lean: Outcome = { kind: outcome.kind, stage: outcome.stage, executionDetails: outcome.executionDetails };
-  if (outcome.runId !== undefined) lean.runId = outcome.runId;
   return lean;
 }
 
@@ -1518,6 +1521,7 @@ function resultBytes(result: Omit<TestResult, 'chips' | 'sorts'> | TestResult): 
 }
 
 interface BuildTestResultOpts {
+  executionRunId: string | undefined;
   test: AbTestDefinition;
   pipeline: Pipeline;
   cwd: string;
@@ -1562,6 +1566,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
       const categoryStages = pipeline.stages.filter((stage) => stage.category === testType);
       if (!testRunsForType(test, testType)) {
         persistSkippedOutcomesForStages(
+          opts.executionRunId!,
           store,
           test,
           categoryStages,
@@ -1680,30 +1685,31 @@ function hasChipTag(test: TestResult, tag: string): boolean {
 function newestRunId(outcomes: readonly Outcome[]): string | null {
   let newest: string | null = null;
   for (const outcome of outcomes) {
-    if (!outcome.runId) continue;
-    if (newest == null || outcome.runId > newest) newest = outcome.runId;
+    if (!outcome.executionDetails.runId) continue;
+    if (newest == null || outcome.executionDetails.runId > newest) newest = outcome.executionDetails.runId;
   }
   return newest;
 }
 
 function savedTestSource(outcomes: readonly Outcome[], store: ArtifactStore): string | null {
-  let newest: Outcome['runMetadata'];
-  for (const { runMetadata } of outcomes) {
-    if (runMetadata && (!newest || runMetadata.runId > newest.runId)) newest = runMetadata;
+  let newest: Outcome | undefined;
+  for (const outcome of outcomes) {
+    if (outcome.runMetadata && (!newest || outcome.executionDetails.runId > newest.executionDetails.runId)) newest = outcome;
   }
   // Legacy results and unavailable snapshots must never borrow today's source
   // or an older run's source. A missing saved artifact also hides the source.
-  if (typeof newest?.testSourcePath === 'string') {
-    return store.readTextArtifact(newest.testSourcePath) ?? null;
+  if (typeof newest?.runMetadata?.testSourcePath === 'string') {
+    return store.readTextArtifact(newest.runMetadata.testSourcePath) ?? null;
   }
   return null;
 }
 
-function skippedOutcome(stage: StageName, reason: string): RecordedOutcome {
-  return { kind: 'skipped', stage, reason, executionDetails: { recoveredAfterRetries: false } };
+function skippedOutcome(stage: StageName, reason: string, runId: string): RecordedOutcome {
+  return { kind: 'skipped', stage, reason, executionDetails: { runId, recoveredAfterRetries: false } };
 }
 
 function persistSkippedOutcomesForStages(
+  runId: string,
   store: ArtifactStore,
   test: AbTestDefinition,
   stages: readonly Stage[],
@@ -1715,7 +1721,7 @@ function persistSkippedOutcomesForStages(
     for (const viewport of viewportsForCategory(config, stage.category)) {
       if (viewportsFilter && !viewportsFilter.includes(viewport.label)) continue;
       if (store.readOutcome(test, viewport.label, stage.name)) continue;
-      store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason));
+      store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason, runId));
     }
   }
 }

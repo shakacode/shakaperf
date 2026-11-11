@@ -24,6 +24,7 @@ export interface ErrorInfo {
 }
 
 export interface ExecutionDetails {
+  readonly runId: string;
   readonly taskRetries?: number;
   readonly taskRetryLimit?: number;
   readonly recoveredAfterRetries: boolean;
@@ -43,7 +44,6 @@ export interface Outcome {
   failure?: StageFailureArtifacts;
   reason?: string;
   logs?: string;
-  runId?: string;
   runMetadata?: LoadedRunMetadata;
 }
 

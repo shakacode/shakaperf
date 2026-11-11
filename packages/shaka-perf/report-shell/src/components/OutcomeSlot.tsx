@@ -101,7 +101,7 @@ export function stageSection(
         measurement: outcome.measurement,
         executionDetails: outcome.executionDetails,
         viewport: outcome.viewport,
-        latestRun: latestRunId == null || outcome.runId === latestRunId,
+        latestRun: latestRunId == null || outcome.executionDetails.runId === latestRunId,
       }]
   ));
   const artifact = measurements.length > 0
@@ -139,7 +139,7 @@ export function OutcomeSlot({
             <OutcomeError
               key={`error-${outcome.viewport.label}-${index}`}
               outcome={outcome}
-              latestRun={latestRunId == null || outcome.runId === latestRunId}
+              latestRun={latestRunId == null || outcome.executionDetails.runId === latestRunId}
             />
           ))}
           {artifact ? <div className="stage-artifact">{artifact}</div> : null}
