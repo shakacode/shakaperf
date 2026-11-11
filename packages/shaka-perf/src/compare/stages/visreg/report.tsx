@@ -5,10 +5,10 @@
  * License in LICENSE.md.
  */
 
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { VisregArtifact, VisregResult } from '../visreg';
-import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, ReportHeading, OldRunChip, StageNote } from '../../../pipeline/stage-report-components';
+import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, ReportHeading, OldRunChip, StageNote, RecoveryBadges } from '../../../pipeline/stage-report-components';
 import { ImageViewport } from '../../../pipeline/image-viewport';
 import { Scrubber } from './scrubber';
 
@@ -95,19 +95,27 @@ function VisregCard({ row }: { row: VisregRow }) {
         body={<VisregDialogImages row={artifact} />}
       >
         <div className="artifact-card__media">
-          <ImageCell kind="no diff" src={artifact.controlImage} />
+          <ImageCell kind="no diff" src={artifact.controlImage}>
+            <RecoveryBadges taskRecovered={row.entry.executionDetails.recoveredAfterRetries} comparisonRecovered={artifact.savedByRetries} />
+          </ImageCell>
         </div>
       </DetailedArtifactDialog>
     </div>
   );
 }
 
-export function visualComparisonFields({ artifact, viewportLabel }: Pick<VisregRow, 'artifact' | 'viewportLabel' | 'entry'>): Readonly<Record<string, string>> {
+export function visualComparisonFields({ artifact, viewportLabel, entry }: Pick<VisregRow, 'artifact' | 'viewportLabel' | 'entry'>): Readonly<Record<string, string>> {
   const fields: Record<string, string> = {
-    viewport: viewportLabel,
+    viewport: `${viewportLabel} ${entry.executionDetails.viewport.width} × ${entry.executionDetails.viewport.height}`,
     selector: artifact.selector,
     mismatch: `${artifact.misMatchPercentage.toFixed(2)}%`,
   };
+  if (artifact.compareAttempts === undefined) {
+    if (artifact.savedByRetries) fields['visual comparisons'] = 'Matched after retrying · comparison count unavailable';
+  } else if (artifact.compareAttempts > 1) {
+    const limit = artifact.compareRetries === undefined ? '?' : artifact.compareRetries + 1;
+    fields['visual comparisons'] = `${artifact.compareAttempts}/${limit}${artifact.savedByRetries ? ' · matched on retry' : ''}`;
+  }
   return fields;
 }
 
@@ -176,12 +184,20 @@ function DialogImage({ kind, src }: { kind: string; src: string }) {
   );
 }
 
-function ImageCell({ kind, src, imgH }: { kind: string; src: string; imgH?: number }) {
+function ImageCell({ kind, src, imgH, children }: {
+  kind: string;
+  src: string;
+  imgH?: number;
+  children?: ReactNode;
+}) {
   const style = imgH == null ? undefined : ({ '--img-h': imgH } as CSSProperties);
   return (
     <div className="artifact-card__image">
       <img src={src} alt={kind} loading="lazy" style={style} />
-      <span className="artifact-card__image-label">{kind}</span>
+      <span className="artifact-card__image-labels">
+        <span className="artifact-card__image-label">{kind}</span>
+        {children}
+      </span>
     </div>
   );
 }
