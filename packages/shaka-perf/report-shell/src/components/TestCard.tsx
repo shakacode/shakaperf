@@ -12,7 +12,7 @@ import { TestMetadata } from './TestMetadata';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
 import { AnsiLog, firstElapsedSeconds } from './AnsiLog';
-import { Dialog, StageArtifactProvider, TestMeta } from '../../../src/pipeline/stage-report-components';
+import { Dialog, ArtifactMetadataFields, StageArtifactProvider, TestMeta } from '../../../src/pipeline/stage-report-components';
 
 interface LogEntry {
   label: string;
@@ -75,7 +75,7 @@ export function reviewedKey(meta: ReportMeta, test: TestResult): string {
     outcome.executionDetails.viewport.label,
     outcome.executionDetails.viewport.width,
     outcome.executionDetails.viewport.height,
-    outcome.executionDetails.runId ?? test.runId ?? test.measuredAt ?? meta.generatedAt,
+    outcome.executionDetails.runId,
   ])).sort();
   return `shaka-perf:reviewed:v2:${JSON.stringify([
     meta.cwd, meta.pipelineName, test.id, outcomes,
@@ -258,7 +258,15 @@ export function TestCard({
 
         {reviewed ? null : (
           <div className="card__body">
-            <StageArtifactProvider test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}>
+            <StageArtifactProvider
+              test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}
+              renderMetadata={(details) => (
+                <TestMetadata meta={meta} test={test} defaultExpanded>
+                  <ArtifactMetadataFields {...details} />
+                  {logs.length > 0 ? <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button> : null}
+                </TestMetadata>
+              )}
+            >
               {groups.map((outcomes, index) => (
                 <OutcomeSlot
                   key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}

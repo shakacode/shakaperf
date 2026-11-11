@@ -6,6 +6,7 @@
  */
 
 import type { StageRenderEntry } from '../../../stage/stage';
+import type { ExecutionDetails } from '../../../pipeline/outcome';
 import type { PerfArtifact, PerfMetric, PerfMetricGroup } from '../perf';
 import {
   DetailedArtifactDialog,
@@ -43,6 +44,7 @@ export function PerfArtifactView({
       perf: entry.measurement,
       viewportLabel: entry.executionDetails.viewport.label,
       latestRun: entry.latestRun,
+      executionDetails: entry.executionDetails,
     }))
     .filter(({ perf }) => hasRenderableData(perf));
   if (perfs.length === 0) return null;
@@ -62,6 +64,7 @@ export function PerfArtifactView({
             perf={row.perf}
             viewportLabel={row.viewportLabel}
             latestRun={row.latestRun}
+            executionDetails={row.executionDetails}
           />
         ))}
       </div>
@@ -69,7 +72,7 @@ export function PerfArtifactView({
   );
 }
 
-function PerfViewportBlock({ perf, viewportLabel, latestRun }: PerfRow) {
+function PerfViewportBlock({ perf, viewportLabel, latestRun, executionDetails }: PerfRow) {
   const section = useReportSection();
   const hasSignificantMetrics = significantMetrics(perf).length > 0;
   const hasNoDifference = hasNoDifferenceMetrics(perf);
@@ -78,6 +81,7 @@ function PerfViewportBlock({ perf, viewportLabel, latestRun }: PerfRow) {
       <ReportSection sectionKey={`${section ?? "perf"}:viewport:${viewportLabel}`} title={`${viewportLabel} performance`} badge={<OldRunChip latestRun={latestRun} />} nested>
 
       <PerfBody
+        executionDetails={executionDetails}
         perf={perf}
         hasNoDifference={hasNoDifference}
         hasSignificantMetrics={hasSignificantMetrics}
@@ -89,12 +93,14 @@ function PerfViewportBlock({ perf, viewportLabel, latestRun }: PerfRow) {
 }
 
 function PerfBody({
+  executionDetails,
   perf,
   hasNoDifference,
   hasSignificantMetrics,
   viewportLabel,
 }: {
   perf: PerfArtifact;
+  executionDetails: ExecutionDetails;
   hasNoDifference: boolean;
   hasSignificantMetrics: boolean;
   viewportLabel: string;
@@ -116,7 +122,7 @@ function PerfBody({
       {timelinePreview ? (
         <div className="perf-timeline-preview">
           {perf.timelineHref ? (
-            <DetailedArtifactDialog
+            <DetailedArtifactDialog executionDetails={executionDetails}
               variant="preview"
               href={perf.timelineHref}
               label="timeline"
@@ -126,7 +132,7 @@ function PerfBody({
           ) : timelinePreview}
         </div>
       ) : null}
-      <ArtifactLinks perf={perf} />
+      <ArtifactLinks perf={perf} executionDetails={executionDetails} />
     </>
   );
 }
@@ -190,7 +196,7 @@ function MetricRow({ metric }: { metric: PerfMetric }) {
   );
 }
 
-function ArtifactLinks({ perf }: { perf: PerfArtifact }) {
+function ArtifactLinks({ perf, executionDetails }: { perf: PerfArtifact; executionDetails: ExecutionDetails }) {
   const links = [
     perf.benchReportHref ? ['bench report', perf.benchReportHref] : null,
     perf.controlLighthouseHref ? ['control lh', perf.controlLighthouseHref] : null,
@@ -202,9 +208,9 @@ function ArtifactLinks({ perf }: { perf: PerfArtifact }) {
   return (
     <FullReportOnly>
       <div className="artifact-links">
-        {perf.framesHref ? <FramePlayerButton href={perf.framesHref} /> : null}
+        {perf.framesHref ? <FramePlayerButton executionDetails={executionDetails} href={perf.framesHref} /> : null}
         {links.map(([label, href]) => (
-          <DetailedArtifactDialog key={`${label}-${href}`} href={href} label={label}>
+          <DetailedArtifactDialog executionDetails={executionDetails} key={`${label}-${href}`} href={href} label={label}>
             {label}
           </DetailedArtifactDialog>
         ))}
@@ -219,6 +225,7 @@ function significantMetrics(perf: PerfArtifact): PerfMetric[] {
 
 interface PerfRow {
   latestRun: boolean;
+  executionDetails: ExecutionDetails;
   perf: PerfArtifact;
   viewportLabel: string;
 }

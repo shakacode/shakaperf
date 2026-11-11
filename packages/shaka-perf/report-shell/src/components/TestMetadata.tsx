@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import type { ReportMeta, TestResult } from '../types';
 import { MeasurementCommand, RunCommits } from './RunDetails';
 import { pipelineTroubleshootCommands, renderPipelineTestCardUrls } from '../../../src/pipeline/pipeline-artifacts';
@@ -32,13 +32,15 @@ function formatMeasuredAt(measuredAt: number | null): string | null {
   return `${pluralize(days, 'day')} ${pluralize(hours, 'hour')} ago`;
 }
 
-export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExpanded }: {
+export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExpanded, defaultExpanded = false, children }: {
   meta: ReportMeta;
   test: TestResult;
   expanded?: boolean;
   onToggleExpanded?: () => void;
+  defaultExpanded?: boolean;
+  children?: ReactNode;
 }) {
-  const [localExpanded, setLocalExpanded] = useState(false);
+  const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
   const expanded = sharedExpanded ?? localExpanded;
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const panelId = useId();
@@ -71,6 +73,7 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
             updated {formatMeasuredAt(test.measuredAt)}
           </div>
         </div>
+        {children}
         <dl className="card__urls card__targets" aria-label="URLs">
           {renderPipelineTestCardUrls(meta, test, (side) => <RunCommits outcomes={test.outcomes} side={side} />)}
         </dl>

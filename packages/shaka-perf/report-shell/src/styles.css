@@ -1333,6 +1333,11 @@ input {
   white-space: pre-line;
 }
 
+.pill .report-tooltip__trigger {
+  text-transform: inherit;
+  letter-spacing: inherit;
+}
+
 .pill__sep {
   text-transform: uppercase;
   white-space: pre;
@@ -1649,10 +1654,17 @@ input {
   display: block;
 }
 
-.artifact-card__image-label {
+.artifact-card__image-labels {
   position: absolute;
   bottom: 4px;
   left: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: calc(100% - 12px);
+}
+
+.artifact-card__image-label {
   font-size: 9px;
   color: var(--fg-muted);
   letter-spacing: 0.1em;
@@ -1678,6 +1690,18 @@ input {
   letter-spacing: 0.14em;
   font-weight: 700;
   text-shadow: none;
+}
+
+.artifact-card--single .artifact-card__image-label--flaky {
+  color: var(--visual_change);
+  background: var(--visual_change-tint);
+  border-color: var(--visual_change);
+}
+
+.artifact-card--single .artifact-card__image-label--unstable {
+  color: var(--error);
+  background: var(--error-tint);
+  border-color: var(--error);
 }
 
 .stage-section {
@@ -2930,6 +2954,15 @@ input {
   max-height: 24%;
   overflow: auto;
 }
+.ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata) {
+  max-height: 50%;
+}
+/* Keep room for image annotations and controls on short windows. */
+@media (max-height: 700px) {
+  .ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata) {
+    max-height: 24%;
+  }
+}
 .ui-dialog--image .ui-dialog__body {
   overflow: hidden;
 }
@@ -3183,8 +3216,11 @@ input {
 .card__disclosure { border-bottom: 1px solid var(--border); font-size: 11px; }
 .card__disclosure > summary { padding: 9px 20px; cursor: pointer; color: var(--fg-muted); }
 .card__disclosure > summary:hover { color: var(--fg); background: var(--bg-hover); }
+.card__metadata { container-type: inline-size; }
 .card__metadata-content { display: grid; gap: 10px; min-width: 0; padding: 0 20px 14px; }
 .card__metadata-content > * { min-width: 0; }
+.card__metadata-content .ui-dialog__meta { padding: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.card__metadata-content .ui-dialog__meta dd { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 .card__metadata .card__urls { padding: 0; margin: 0; border: 0; }
 .card__metadata .run-details__commit code { font-size: 10px; line-height: 1; }
 .card__metadata .card__code { margin-top: 4px; }
