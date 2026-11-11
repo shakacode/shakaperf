@@ -8,6 +8,8 @@
 import type { AbTestDefinition } from 'shaka-shared';
 import type { PerfLighthouseConfig } from '../bench/core/lighthouse-config';
 import type { ChipDescriptor, SortDescriptor } from '../pipeline/report';
+import { retryCountText } from '../pipeline/outcome-chips';
+import { retryUsageTooltip } from '../pipeline/retry-usage-tooltip';
 import {
   createPipeline,
   type ChipStageResults,
@@ -25,9 +27,8 @@ import {
   type AccessibilityCompareSummary,
 } from './stages/accessibility';
 import { PerfEngineStage } from './stages/perf/stage';
-import { createVisregStage, type VisregResult } from './stages/visreg';
+import { createVisregStage, type VisregResult, type VisregArtifact } from './stages/visreg';
 import type { AccessibilityStageConfig } from '../audit/stages/accessibility';
-import { hasSavedByRetries, hasVisualChange, visualChangeCount } from './stages/visreg/selectors';
 import { comparePipelineReport } from './pipeline-report';
 import type { AbTestsConfig } from '../config';
 // From the type-only-imports leaf module, NOT '../config': this file is part
@@ -207,18 +208,10 @@ export function createComparePipeline(input: ComparePipelineConfig) {
               text: metricChipText('regressed', regressedMetrics),
               color: 'red',
               sortingWeight: 10,
-              tooltip: metricChipTooltip('Regressed metrics', regressedMetrics),
             });
           }
-          const visualChanges = totalVisualChanges(results.visreg);
-          if (visualChanges > 0) {
-            chips.push({
-              tag: 'visual change',
-              text: `visual change: ${visualChanges} diff${visualChanges === 1 ? '' : 's'}`,
-              color: 'red',
-              sortingWeight: 10,
-            });
-          }
+          const visualChange = visualChangeChip(results.visreg);
+          if (visualChange) chips.push(visualChange);
           const improvedMetrics = collectPerfMetrics('improvedMetrics', results.perf, results['perf-low-noise']);
           if (improvedMetrics.length > 0) {
             chips.push({
@@ -226,21 +219,10 @@ export function createComparePipeline(input: ComparePipelineConfig) {
               text: metricChipText('improved', improvedMetrics),
               color: 'blue',
               sortingWeight: 30,
-              tooltip: metricChipTooltip('Improved metrics', improvedMetrics),
             });
           }
-          // A visual comparison that initially mismatched but matched on a
-          // later retry — the screenshots are unstable. Ranked with the
-          // regressions so flaky tests surface at the top of the grid.
-          if (entriesHave(results.visreg, hasSavedByRetries)) {
-            chips.push({
-              tag: 'visreg unstable',
-              text: 'visreg unstable (matched after retries)',
-              color: 'red',
-              sortingWeight: 12,
-              tooltip: 'A visual comparison initially mismatched but matched on a later retry — the screenshots are unstable.',
-            });
-          }
+          const unstable = unstableVisregChip(results.visreg);
+          if (unstable) chips.push(unstable);
           out.set(test, chips.length > 0
             ? chips
             : [{
@@ -311,13 +293,6 @@ function collectDiffingPerfMetrics(
     }
   }
   return out;
-}
-
-function entriesHave<M>(
-  entries: ChipStageResults<M>,
-  predicate: (measurement: M) => boolean,
-): boolean {
-  return entries.some((entry) => predicate(entry.measurement));
 }
 
 type PerfMetricListKey = 'regressedMetrics' | 'improvedMetrics';
@@ -482,11 +457,52 @@ function metricChipText(prefix: string, metrics: readonly string[]): string {
   return `${prefix}: ${metrics.join(', ')}`;
 }
 
-function metricChipTooltip(label: string, metrics: readonly string[]): string {
-  return `${label}: ${metrics.join(', ')}`;
+export function visualChangeChip(entries: ChipStageResults<VisregResult>): ChipDescriptor | null {
+  const changed = entries.flatMap(({ measurement, outcome: { executionDetails: { viewport } } }) => measurement
+    .filter((artifact) => artifact.diffImage !== null)
+    .map((artifact) => ({
+      stage: 'Visual comparison',
+      viewport: measurement.length > 1 ? `${viewport.label} · ${artifact.selector}` : viewport.label,
+      count: artifact.compareAttempts,
+      limit: artifact.compareRetries === undefined ? undefined : artifact.compareRetries + 1,
+    })));
+  if (changed.length === 0) return null;
+
+  return {
+    tag: 'visual change',
+    text: `visual change: ${changed.length} diff${changed.length === 1 ? '' : 's'}`,
+    color: 'red',
+    sortingWeight: 10,
+    tooltip: retryUsageTooltip('Screenshots still differ', 'comparisons', changed),
+  };
 }
 
-function totalVisualChanges(entries: ChipStageResults<VisregResult>): number {
-  if (!entriesHave(entries, hasVisualChange)) return 0;
-  return entries.reduce((sum, entry) => sum + visualChangeCount(entry.measurement), 0);
+/** Selectors share capture attempts within a viewport; count those retries once. */
+function recoveredRetryCount(viewports: readonly VisregArtifact[][]): number | undefined {
+  let total = 0;
+  for (const selectors of viewports) {
+    let viewportRetries = 0;
+    for (const artifact of selectors) {
+      const attempts = artifact.compareAttempts;
+      if (attempts === undefined || attempts < 2) return undefined;
+      viewportRetries = Math.max(viewportRetries, attempts - 1);
+    }
+    total += viewportRetries;
+  }
+  return total;
+}
+
+export function unstableVisregChip(entries: ChipStageResults<VisregResult>): ChipDescriptor | null {
+  const recovered = entries
+    .map(({ measurement }) => measurement.filter((artifact) => artifact.savedByRetries))
+    .filter((selectors) => selectors.length > 0);
+  if (recovered.length === 0) return null;
+
+  return {
+    tag: 'visreg unstable',
+    text: `visreg unstable (matched after ${retryCountText(recoveredRetryCount(recovered))})`,
+    color: 'red',
+    sortingWeight: 12,
+    tooltip: 'Screenshots differed initially, then matched on retry.',
+  };
 }
