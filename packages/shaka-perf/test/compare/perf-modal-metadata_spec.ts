@@ -46,3 +46,12 @@ it('escapes saved strings through the shared metadata component', () => {
   expect(html).toContain('&lt;script&gt;unsafe()&lt;/script&gt;');
   expect(html).not.toContain('<script>');
 });
+
+it('labels differing saved settings by measured side', () => {
+  const fields = performanceMetadataFields({ throttling: [
+    { ...throttling, side: 'control' },
+    { ...throttling, side: 'experiment', cpuSlowdownMultiplier: 2 },
+  ] });
+  expect(fields['throttling · control']).toContain('4× CPU');
+  expect(fields['throttling · experiment']).toContain('2× CPU');
+});
