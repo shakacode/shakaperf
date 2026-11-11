@@ -24,7 +24,6 @@ function formatThrottling(setting: MeasurementThrottling): string {
   }
 
   const networkSettings = Object.entries(setting.network);
-  networkSettings.sort(([firstKey], [secondKey]) => firstKey.localeCompare(secondKey));
   if (networkSettings.length === 0) {
     parts.push('No network emulation');
   } else {
@@ -57,22 +56,10 @@ export function performanceMetadataFields(
     fields['number of measurements'] = countLabel;
   }
 
-  const sidesByDescription = new Map<string, Set<string>>();
-  for (const setting of executionDetails.throttling ?? []) {
-    if (setting.engine !== 'Lighthouse') continue;
-    const description = formatThrottling(setting);
-    const sides = sidesByDescription.get(description) ?? new Set<string>();
-    if (setting.side) sides.add(setting.side);
-    sidesByDescription.set(description, sides);
-  }
-
-  for (const [description, sides] of sidesByDescription) {
-    let label = 'throttling';
-    if (sidesByDescription.size > 1 && sides.size > 0) {
-      label += ` · ${[...sides].join(' / ')}`;
-    }
-    const previous = fields[label];
-    fields[label] = previous ? `${previous}; ${description}` : description;
+  // The runner validates that both measured sides use identical settings.
+  const lighthouseSettings = executionDetails.throttling?.find(setting => setting.engine === 'Lighthouse');
+  if (lighthouseSettings) {
+    fields.throttling = formatThrottling(lighthouseSettings);
   }
   return fields;
 }
