@@ -52,14 +52,22 @@ export function performanceMetadataFields(
     fields['number of measurements'] = countLabel;
   }
 
-  const descriptions = new Set<string>();
+  const sidesByDescription = new Map<string, Set<string>>();
   for (const setting of settings.throttling ?? []) {
-    if (setting.engine === 'Lighthouse') {
-      descriptions.add(formatThrottling(setting));
-    }
+    if (setting.engine !== 'Lighthouse') continue;
+    const description = formatThrottling(setting);
+    const sides = sidesByDescription.get(description) ?? new Set<string>();
+    if (setting.side) sides.add(setting.side);
+    sidesByDescription.set(description, sides);
   }
-  if (descriptions.size > 0) {
-    fields.throttling = [...descriptions].join('; ');
+
+  for (const [description, sides] of sidesByDescription) {
+    let label = 'throttling';
+    if (sidesByDescription.size > 1 && sides.size > 0) {
+      label += ` · ${[...sides].join(' / ')}`;
+    }
+    const previous = fields[label];
+    fields[label] = previous ? `${previous}; ${description}` : description;
   }
   return fields;
 }
