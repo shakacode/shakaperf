@@ -155,7 +155,7 @@ function testResult(id: string, runId: string): TestResult {
     controlUrl: 'http://localhost:3000/', experimentUrl: 'http://localhost:3001/',
     code: null, chips: [], sorts: [], durationMs: 1000,
     measuredAt: 1_790_000_000_000, runId, viewportArtifactPaths: [],
-    outcomes: [{
+    outcomes: [{ executionDetails: { recoveredAfterRetries: false },
       kind: 'error', stage: 'visreg', viewport: DESKTOP_VIEWPORT,
       error: { message: 'Screenshot capture failed' }, runId,
     }],

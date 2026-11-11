@@ -169,7 +169,8 @@ it.each([undefined, 1])('does not show a configured retry budget when actual tri
 it('distinguishes error recovery from visual comparisons and scopes both to their viewport', () => {
   const outcomes = runDetailsFixture('compare').tests[0]!.outcomes;
   outcomes[0]!.stage = 'visreg';
-  Object.assign(outcomes[0]!.runMetadata!, { taskRetries: 1, taskRetryLimit: 2, compareAttempts: 4, compareRetries: 2 });
+  outcomes[0]!.executionDetails = { taskRetries: 1, taskRetryLimit: 2, recoveredAfterRetries: false };
+  Object.assign(outcomes[0]!.runMetadata!, { compareAttempts: 4, compareRetries: 2 });
   const html = details(outcomes);
   expect(html).toContain('Error recovery: explanation');
   expect(html).not.toContain('Reruns failed worker tasks');
@@ -181,8 +182,8 @@ it('distinguishes error recovery from visual comparisons and scopes both to thei
 
 it('does not invent error retry counts for older recovered results', () => {
   const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(0, 1);
-  outcomes[0]!.recoveredAfterRetries = true;
+  outcomes[0]!.executionDetails = { recoveredAfterRetries: true };
   expect(details(outcomes)).toContain('Retry count unavailable');
-  Object.assign(outcomes[0]!.runMetadata!, { taskRetries: 0 });
+  outcomes[0]!.executionDetails = { recoveredAfterRetries: true, taskRetries: 0 };
   expect(details(outcomes)).not.toContain('Error recovery');
 });

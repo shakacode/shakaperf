@@ -163,7 +163,7 @@ function writeResults(pages: PageFixture[], siteUrl = 'http://localhost:1'): str
     }, null, 2)}\n`);
     const url = `${siteUrl}${page.startingPath}`;
     if (page.a11y) {
-      fs.writeFileSync(path.join(pageDir, 'accessibility.json'), `${JSON.stringify({
+      fs.writeFileSync(path.join(pageDir, 'accessibility.json'), `${JSON.stringify({ executionDetails: { recoveredAfterRetries: false },
         kind: 'ok', stage: 'accessibility', measurement: a11y(url, page.a11y, page.id),
       }, null, 2)}\n`);
       if (typeof page.a11y.score === 'number') {
@@ -171,7 +171,7 @@ function writeResults(pages: PageFixture[], siteUrl = 'http://localhost:1'): str
       }
     }
     if (page.agent) {
-      fs.writeFileSync(path.join(pageDir, 'agent-readiness.json'), `${JSON.stringify({
+      fs.writeFileSync(path.join(pageDir, 'agent-readiness.json'), `${JSON.stringify({ executionDetails: { recoveredAfterRetries: false },
         kind: 'ok', stage: 'agent-readiness', measurement: agent(url, page.agent),
       }, null, 2)}\n`);
     }

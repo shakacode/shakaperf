@@ -457,7 +457,7 @@ function reportTest(
     measuredAt: null,
     runId: null,
     outcomes: stages.map((stage) => stage === 'visreg' && id === 'homepage-card'
-      ? ({
+      ? ({ executionDetails: { recoveredAfterRetries: false },
         kind: 'ok' as const,
         stage,
         measurement: [{
@@ -473,7 +473,7 @@ function reportTest(
         }],
         viewport: DESKTOP_VIEWPORT,
       })
-      : ({
+      : ({ executionDetails: { recoveredAfterRetries: false },
         kind: 'error' as const,
         stage,
         error: { message: `${stage} fixture outcome` },

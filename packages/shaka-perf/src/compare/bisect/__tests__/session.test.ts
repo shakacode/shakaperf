@@ -93,7 +93,7 @@ function resultWithVisualDiff(diffImage: string | null): TestResult {
     measuredAt: null,
     runId: null,
     viewportArtifactPaths: [],
-    outcomes: [{
+    outcomes: [{ executionDetails: { recoveredAfterRetries: false },
       kind: 'ok',
       stage: 'visreg',
       viewport: DESKTOP_VIEWPORT,
@@ -127,7 +127,7 @@ function resultForTest(
 
 function resultWithVisualDiffAndError(diffImage: string | null): TestResult {
   const result = resultWithVisualDiff(diffImage);
-  result.outcomes.push({
+  result.outcomes.push({ executionDetails: { recoveredAfterRetries: false },
     kind: 'error',
     stage: 'visreg',
     viewport: DESKTOP_VIEWPORT,

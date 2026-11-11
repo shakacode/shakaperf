@@ -27,14 +27,14 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained'): R
     chips: [{ tag: id === 'Older' ? 'broken' : 'passed', text: id === 'Older' ? 'broken' : 'passed', color: 'gray', sortingWeight: 0 }],
     sorts: [], viewportArtifactPaths: [],
     outcomes: [
-      { kind: 'error', stage: 'accessibility', viewport: DESKTOP_VIEWPORT, runId,
+      { executionDetails: { recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility', viewport: DESKTOP_VIEWPORT, runId,
         error: { message: 'Saved result' } },
-      ...(id === 'Older' ? [{ kind: 'error' as const, stage: 'accessibility' as const,
+      ...(id === 'Older' ? [{ executionDetails: { recoveredAfterRetries: false }, kind: 'error' as const, stage: 'accessibility' as const,
         viewport: PHONE_VIEWPORT, runId: '2026-09-30T00:00:00.000Z',
         error: { message: 'Another old run' } }] : []),
-      ...(mixed ? [{ kind: 'error' as const, stage: 'accessibility' as const, viewport: PHONE_VIEWPORT,
+      ...(mixed ? [{ executionDetails: { recoveredAfterRetries: false }, kind: 'error' as const, stage: 'accessibility' as const, viewport: PHONE_VIEWPORT,
         runId: OLD, error: { message: 'Older phone result' } },
-        { kind: 'error' as const, stage: pipelineName === 'audit' ? 'audit' as const : 'visreg' as const,
+        { executionDetails: { recoveredAfterRetries: false }, kind: 'error' as const, stage: pipelineName === 'audit' ? 'audit' as const : 'visreg' as const,
           viewport: DESKTOP_VIEWPORT, runId: OLD, error: { message: 'Older stage result' } }] : []),
     ],
   });
@@ -58,19 +58,21 @@ describe('latest measurement run visibility', () => {
     fs.rmSync(directory, { recursive: true, force: true });
   });
 
-  it('passes per-measurement run freshness to stage renderers', () => {
+  it('passes per-measurement provenance and run freshness to stage renderers', () => {
     const render = jest.spyOn(pipelineArtifacts, 'renderPersistedStageArtifacts').mockReturnValue('artifact');
     const data = fixture('compare', 'full');
-    const outcomes = [LATEST, OLD].map((runId) => ({
+    const outcomes = [LATEST, OLD].map((runId) => ({ executionDetails: { recoveredAfterRetries: false },
       kind: 'ok' as const, stage: 'accessibility' as const, viewport: DESKTOP_VIEWPORT,
       runId, measurement: { runId },
     }));
     try {
       stageSection(data.meta, outcomes, LATEST);
       expect(render).toHaveBeenLastCalledWith('compare', {}, 'accessibility', [
-        { measurement: { runId: LATEST }, viewport: DESKTOP_VIEWPORT, latestRun: true },
-        { measurement: { runId: OLD }, viewport: DESKTOP_VIEWPORT, latestRun: false },
+        { measurement: { runId: LATEST }, executionDetails: { taskRetries: undefined, taskRetryLimit: undefined, recoveredAfterRetries: false }, viewport: DESKTOP_VIEWPORT, latestRun: true },
+        { measurement: { runId: OLD }, executionDetails: { taskRetries: undefined, taskRetryLimit: undefined, recoveredAfterRetries: false }, viewport: DESKTOP_VIEWPORT, latestRun: false },
       ]);
+      const entries = render.mock.calls.at(-1)![3];
+      entries.forEach((entry, index) => expect(entry.executionDetails).toBe(outcomes[index]!.executionDetails));
       stageSection(data.meta, outcomes, null);
       expect(render.mock.calls.at(-1)?.[3].map((entry) => entry.latestRun)).toEqual([true, true]);
     } finally {

@@ -66,7 +66,7 @@ describe('synthesizeSite', () => {
       tests: [{ id: 'home-phone', name: 'Home', startingPath: '/', viewport: { label: 'phone' } }],
     }));
     fs.mkdirSync(path.join(dir, 'home-phone'));
-    fs.writeFileSync(path.join(dir, 'home-phone', 'agent-readiness.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, 'home-phone', 'agent-readiness.json'), JSON.stringify({ executionDetails: { recoveredAfterRetries: false },
       kind: 'ok',
       stage: 'agent-readiness',
       measurement: agentReadinessResult(),
@@ -88,7 +88,7 @@ describe('synthesizeSite', () => {
       tests: [{ id: 'home-phone', name: 'Home', startingPath: '/', viewport: { label: 'phone' } }],
     }));
     fs.mkdirSync(path.join(dir, 'home-phone'));
-    fs.writeFileSync(path.join(dir, 'home-phone', 'agent-readiness.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, 'home-phone', 'agent-readiness.json'), JSON.stringify({ executionDetails: { recoveredAfterRetries: false },
       kind: 'ok',
       stage: 'agent-readiness',
       measurement: agentReadinessResult(signals({ textSample: 'A useful sentence survives synthesis for later consumers.' })),

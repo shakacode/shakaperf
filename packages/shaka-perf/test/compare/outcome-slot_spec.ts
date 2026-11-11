@@ -17,7 +17,7 @@ const META = {
 } as ReportMeta;
 
 function renderFailureMedia(media: string): string {
-  const outcome = {
+  const outcome = { executionDetails: { recoveredAfterRetries: false },
     kind: 'error',
     stage: 'visreg',
     viewport: DESKTOP_VIEWPORT,

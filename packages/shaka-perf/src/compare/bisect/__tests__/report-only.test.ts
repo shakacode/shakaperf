@@ -168,7 +168,7 @@ function savedReport(): BisectReportData {
       durationMs: 0,
       measuredAt: null,
       runId: null,
-      outcomes: [{
+      outcomes: [{ executionDetails: { recoveredAfterRetries: false },
         kind: 'ok',
         stage: 'visreg',
         viewport: DESKTOP_VIEWPORT,
