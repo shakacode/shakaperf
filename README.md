@@ -10,10 +10,10 @@ This is the only benchmarking toolset your web site needs.
 ## High-level architecture diagram
 
 
-ShakaPerf is a chef's kiss toolset for quick performance optimization without the risk of breaking things down!
-Or it can be your AI-driven visual-regression catching pipeline.
+ShakaPerf is a chef's kiss toolset for quick performance optimization or it can be your AI-driven QA Engineer.
 
 <img width="539" height="672" alt="Your web app as a duck with ducklings labeled performance, visual diff, accessibility, bundle size, and a CircleCI puppy" src="./docs/unduck-your-wep-pages.png" />
+Shakaperf is extremely qute and easy to set up.
 
 ## Usage
 
