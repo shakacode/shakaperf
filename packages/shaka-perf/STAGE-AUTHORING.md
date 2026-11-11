@@ -464,10 +464,17 @@ policy in the pipeline chip builder, not stage report components. Do not pass fu
 outcomes or look up another viewport's execution details. Do not infer execution facts from current configuration.
 
 Execution context is owned by the runner: `executionDetails` contains `runId`,
-`testSourcePath`, `viewport`, retry usage, and recovery state. Report entries and
+`testSourceHref`, `viewport`, retry usage, and recovery state. Report entries and
 shared components receive the same object. Do not copy these fields onto outcomes,
 run metadata, or render entries. Source paths are null when no snapshot was captured.
 Visual comparison counts remain measurement data.
 
 Saved outcomes must use the current contract. There is no legacy normalization or
 fallback to another run or the current configuration. Regenerate outdated results.
+
+Source snapshots are referenced by `executionDetails.testSourceHref`; there is no
+card-level source copy. Report packaging embeds source text explicitly in both modes
+so source viewing works from `file://`. Dialogs use their execution's reference;
+cards offer a selector when their executions reference different snapshots.
+Artifact collection and inlining traverse measurements and failure media only.
+Execution context and measurement provenance are never recursively scanned.

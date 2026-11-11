@@ -27,7 +27,7 @@ export interface ErrorInfo {
 export interface ExecutionDetails {
   readonly runId: string;
   readonly viewport: Viewport;
-  readonly testSourcePath: string | null;
+  readonly testSourceHref: string | null;
   readonly taskRetries?: number;
   readonly taskRetryLimit?: number;
   readonly recoveredAfterRetries: boolean;

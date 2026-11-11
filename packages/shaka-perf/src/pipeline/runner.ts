@@ -122,7 +122,7 @@ function resultsRootFor(cwd: string, pipeline: Pipeline): string {
 interface WorkUnit {
   test: AbTestDefinition;
   testSource: string | null;
-  testSourcePath: ArtifactPath | null;
+  testSourceHref: ArtifactPath | null;
   viewport: Viewport;
   priorOutcomes: Map<StageName, Outcome>;
 }
@@ -651,7 +651,7 @@ async function runConfiguredPipelineWithSelection(
     for (const unit of units) {
       fs.mkdirSync(store.artifactsDirForViewport(unit.test, unit.viewport.label), { recursive: true });
       if (unit.testSource !== null) {
-        unit.testSourcePath = store.writeTestSource(unit.test, unit.viewport.label, unit.testSource);
+        unit.testSourceHref = store.writeTestSource(unit.test, unit.viewport.label, unit.testSource);
       }
     }
     // Restart discards the redone stages' prior results before they re-run.
@@ -1109,7 +1109,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     progress.error += 1;
     persistStageOutcome(store, unit, logger, {
       kind: 'error',
-      executionDetails: { runId, viewport: unit.viewport, testSourcePath: unit.testSourcePath, recoveredAfterRetries: false },
+      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, recoveredAfterRetries: false },
       stage: stage.name,
       error: errorInfo(err),
     });
@@ -1245,7 +1245,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       kind: 'ok',
       stage: stage.name,
       measurement,
-      executionDetails: { runId, viewport: unit.viewport, testSourcePath: unit.testSourcePath, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
+      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
     };
   } catch (err) {
     // Walk the cause chain, don't instanceof: a stage that throws from inside a
@@ -1254,7 +1254,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const failure = findFailureArtifacts(err);
     outcome = {
       kind: 'error',
-      executionDetails: { runId, viewport: unit.viewport, testSourcePath: unit.testSourcePath, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
+      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
       stage: stage.name,
       error: errorInfo(err),
       ...(failure ? { failure } : {}),
@@ -1367,7 +1367,7 @@ function expandWorkUnits(
         const outcome = options.store?.readOutcome(test, viewport.label, stage.name);
         if (outcome) priorOutcomes.set(stage.name, leanPriorOutcome(outcome));
       }
-      units.push({ test, testSource, testSourcePath: null, viewport, priorOutcomes });
+      units.push({ test, testSource, testSourceHref: null, viewport, priorOutcomes });
     }
   }
   // Otherwise the run does nothing and exits 0, which reads as success.
@@ -1625,7 +1625,6 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
         test.experimentPathOverride ?? test.startingPath,
         test.config?.shared?.experimentURL ?? experimentURL,
       ),
-      code: savedTestSource(outcomes, store),
       durationMs: 0,
       measuredAt: freshestArtifactMtime(resultsRoot, test, outcomes),
       runId,
@@ -1670,20 +1669,8 @@ function newestRunId(outcomes: readonly Outcome[]): string | null {
   return newest;
 }
 
-function savedTestSource(outcomes: readonly Outcome[], store: ArtifactStore): string | null {
-  let newest: Outcome | undefined;
-  for (const outcome of outcomes) {
-    if (outcome.runMetadata && (!newest || outcome.executionDetails.runId > newest.executionDetails.runId)) newest = outcome;
-  }
-  // Unavailable snapshots must not borrow today's or an older run's source.
-  if (typeof newest?.executionDetails.testSourcePath === 'string') {
-    return store.readTextArtifact(newest.executionDetails.testSourcePath) ?? null;
-  }
-  return null;
-}
-
 function skippedOutcome(stage: StageName, reason: string, runId: string, viewport: Viewport): Outcome {
-  return { kind: 'skipped', stage, reason, executionDetails: { runId, viewport, testSourcePath: null, recoveredAfterRetries: false } };
+  return { kind: 'skipped', stage, reason, executionDetails: { runId, viewport, testSourceHref: null, recoveredAfterRetries: false } };
 }
 
 function persistSkippedOutcomesForStages(
