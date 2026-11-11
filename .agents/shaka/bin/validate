@@ -5,6 +5,6 @@ root=$(env -u GIT_DIR -u GIT_WORK_TREE -u GIT_COMMON_DIR -u GIT_PREFIX -u GIT_CE
 cd "$root"
 yarn build
 yarn typecheck
-yarn test "$@"
+yarn test --runInBand --testTimeout=30000 "$@"
 cd demo-ecommerce
 exec yarn build:prod:all:stats

@@ -10,6 +10,9 @@ build/
 # Vite report-shell build output
 report-shell/dist/
 
+# Temporary report discovery fixtures created during tests
+src/pipeline/__tests__/tmp-report-discovery-*/
+
 compare/config.js
 compare/output/control_screenshot/
 compare/output/experiment_screenshot/
