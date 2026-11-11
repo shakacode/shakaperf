@@ -7,10 +7,13 @@
 
 import type { ResolvedConfig } from '../types';
 import { dockerComposeDown, dockerComposeRunningServices } from '../helpers/docker';
+import { stopProjectBuildxBuilderSafely } from '../helpers/buildx-lifecycle';
 import { printBanner, printSuccess } from '../helpers/ui';
 
 export interface StopContainersOptions {
   verbose?: boolean;
+  /** Internal container recreation keeps the session builder available. */
+  keepBuilderRunning?: boolean;
 }
 
 export async function stopContainers(
@@ -26,6 +29,7 @@ export async function stopContainers(
     console.log('No running containers found; removing volumes...');
   }
   await dockerComposeDown(config);
+  if (!options.keepBuilderRunning) await stopProjectBuildxBuilderSafely(config);
 
   if (runningServices.size > 0) {
     printSuccess('Containers stopped');

@@ -65,6 +65,7 @@ function fakeDependencies(
   overrides: Partial<BisectSessionDependencies> = {},
 ): MockDependencies {
   return {
+    stopBuilder: jest.fn().mockResolvedValue(undefined),
     buildExperiment: jest.fn().mockResolvedValue(undefined),
     recreateExperimentContainer: jest.fn().mockResolvedValue(undefined),
     runExperimentCommand: jest.fn().mockResolvedValue(undefined),
@@ -335,8 +336,20 @@ describe('BisectSessionController lease', () => {
       rebuildCommands: ['yarn build'],
       noCache: false,
     })).rejects.toThrow(/does not match/);
-    expect(() => controller.endSession('competitor')).toThrow(/does not match/);
+    await expect(controller.endSession('competitor')).rejects.toThrow(/does not match/);
     expect(controller.activeSessionId).toBe('owner');
+  });
+
+  it('keeps the builder during reloads and stops it at session end', async () => {
+    const deps = fakeDependencies();
+    const config = fakeConfig();
+    const controller = new BisectSessionController(config, deps);
+    controller.beginSession('owner', process.pid);
+    await controller.reloadExperiment('owner', { mode: 'container', rebuildCommands: [], noCache: false });
+    expect(deps.stopBuilder).not.toHaveBeenCalled();
+    await controller.endSession('owner');
+    expect(deps.stopBuilder).toHaveBeenCalledWith(config);
+    expect(controller.activeSessionId).toBeNull();
   });
 
   it('becomes inactive when its owner process no longer exists', () => {
@@ -345,6 +358,7 @@ describe('BisectSessionController lease', () => {
     controller.beginSession('abandoned', 2_147_483_647);
 
     expect(controller.activeSessionId).toBeNull();
+    expect(deps.stopBuilder).toHaveBeenCalledTimes(1);
   });
 });
 

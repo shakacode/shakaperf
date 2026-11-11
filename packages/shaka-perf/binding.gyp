@@ -2,7 +2,7 @@
   "targets": [
     {
       "target_name": "shaka_perf_socketpair",
-      "sources": ["native/socketpair.cpp"],
+      "sources": ["native/socketpair.cpp", "native/file-lock.cpp"],
       "cflags_cc": ["-std=c++11", "-Wall", "-Wextra", "-Wpedantic"],
       "xcode_settings": {
         "CLANG_CXX_LANGUAGE_STANDARD": "c++11",

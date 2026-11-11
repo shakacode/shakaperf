@@ -9,6 +9,8 @@ import { spawn, execSync, SpawnOptions } from 'child_process';
 import * as readline from 'readline';
 
 export interface ExecOptions {
+  /** Cancel the command and its process group (image builds may spawn descendants). */
+  signal?: AbortSignal;
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   silent?: boolean;
@@ -20,11 +22,20 @@ export function exec(command: string, args: string[], options: ExecOptions = {})
       cwd: options.cwd,
       env: options.env ?? process.env,
       stdio: options.silent ? 'pipe' : 'inherit',
+      ...(options.signal ? { detached: true } : {}),
     };
 
     const child = spawn(command, args, spawnOptions);
     let stdout = '';
     let stderr = '';
+    const abort = () => {
+      try {
+        if (child.pid) process.kill(-child.pid, 'SIGTERM');
+        else child.kill('SIGTERM');
+      } catch { /* The command may already have exited. */ }
+    };
+    options.signal?.addEventListener('abort', abort, { once: true });
+    if (options.signal?.aborted) abort();
 
     if (options.silent && child.stdout && child.stderr) {
       child.stdout.on('data', (data) => { stdout += data.toString(); });
@@ -32,11 +43,13 @@ export function exec(command: string, args: string[], options: ExecOptions = {})
     }
 
     child.on('error', (error) => {
+      options.signal?.removeEventListener('abort', abort);
       resolve({ stdout, stderr: error.message, code: 1 });
     });
 
     child.on('close', (code) => {
-      resolve({ stdout, stderr, code: code ?? 0 });
+      options.signal?.removeEventListener('abort', abort);
+      resolve({ stdout, stderr, code: code ?? (options.signal?.aborted ? 130 : 1) });
     });
   });
 }

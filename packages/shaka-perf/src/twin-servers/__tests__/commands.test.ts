@@ -394,6 +394,7 @@ describe('build command', () => {
       getGroupId: jest.fn(() => '1000'),
       getUsername: jest.fn(() => 'testuser'),
       ensureProjectBuildxBuilder: jest.fn(async () => 'shaka-perf-test-slug'),
+      stopProjectBuildxBuilder: jest.fn().mockResolvedValue(undefined),
     }));
 
     // Mock shell helpers
@@ -423,6 +424,33 @@ describe('build command', () => {
 
     return { mockExec, mockConfirm };
   }
+
+  it('stops the project builder after a standalone build', async () => {
+    setupBuildMocks();
+    const { build } = require('../commands/build');
+    const { stopProjectBuildxBuilder } = require('../helpers/docker');
+    await build(createMockConfig(tmpDir), { target: 'experiment' });
+    expect(stopProjectBuildxBuilder).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the builder available for menu and bisect callers', async () => {
+    setupBuildMocks();
+    const { build } = require('../commands/build');
+    const { stopProjectBuildxBuilder } = require('../helpers/docker');
+    await build(createMockConfig(tmpDir), { target: 'experiment', keepBuilderRunning: true });
+    expect(stopProjectBuildxBuilder).not.toHaveBeenCalled();
+  });
+
+  it('preserves the original standalone build failure when cleanup also fails', async () => {
+    const { mockExec } = setupBuildMocks();
+    const { build } = require('../commands/build');
+    const { stopProjectBuildxBuilder } = require('../helpers/docker');
+    stopProjectBuildxBuilder.mockRejectedValueOnce(new Error('cleanup failed'));
+    mockExec.mockResolvedValue({ code: 1, stdout: '', stderr: 'build failed' });
+    await expect(build(createMockConfig(tmpDir), { target: 'experiment' })).rejects.toThrow('Docker build failed for experiment');
+    expect(stopProjectBuildxBuilder).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('cleanup failed'));
+  });
 
   it('clones into the repo root, not controlDir subdirectory', async () => {
     const { mockExec, mockConfirm } = setupBuildMocks();
@@ -768,5 +796,37 @@ describe('checkout command', () => {
     await expect(checkout(config, 'experiment', 'feature-x', { controlMergeBase: true })).rejects.toThrow('process.exit(1)');
     expect(checkoutBranch).toHaveBeenCalledTimes(1);
     exitSpy.mockRestore();
+  });
+});
+
+describe('overmind teardown ownership', () => {
+  it('makes repeated stop calls await the same complete teardown', async () => {
+    jest.resetModules();
+    let finish!: () => void;
+    const pending = new Promise<void>(resolve => { finish = resolve; });
+    const dockerExec = jest.fn().mockResolvedValue({ code: 0, stdout: '', stderr: '' })
+      .mockImplementationOnce(async () => { await pending; return { code: 0, stdout: '', stderr: '' }; });
+    jest.doMock('../helpers/docker', () => ({ dockerComposeExec: dockerExec }));
+    jest.doMock('../helpers/shell', () => ({ requireCommand: jest.fn() }));
+    const { spawnOvermind } = require('../commands/start-servers');
+    const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'overmind-stop-'));
+    const config = createMockConfig(dir);
+    fs.writeFileSync(config.procfile, 'fixture: sleep 1\n');
+    try {
+      const handle = spawnOvermind(config, { stdio: 'pipe' });
+      const first = handle.stop();
+      const second = handle.stop();
+      expect(second).toBe(first);
+      let completed = false;
+      void second.then(() => { completed = true; });
+      await new Promise(resolve => setTimeout(resolve, 30));
+      expect(completed).toBe(false);
+      finish();
+      await Promise.all([first, second]);
+      expect(dockerExec).toHaveBeenCalledTimes(2);
+    } finally {
+      finish();
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

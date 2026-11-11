@@ -12,6 +12,7 @@ import { containersRunning, dockerImageExists } from '../helpers/docker';
 import { printBanner } from '../helpers/ui';
 import { build, ensureControlCheckout } from './build';
 import { startContainers } from './start-containers';
+import { cancelProjectBuildxOperations, stopProjectBuildxBuilderSafely } from '../helpers/buildx-lifecycle';
 import { stopContainers } from './stop-containers';
 import { runServersMenu, type MenuController } from './servers-menu';
 import { startProxyServer, type ProxyServer } from '../ipc/server';
@@ -30,6 +31,31 @@ export interface ServersOptions {
  * from other terminals discover this server via the manifest and proxy in.
  */
 export async function serversDefault(config: ResolvedConfig, options: ServersOptions = {}): Promise<void> {
+  let stopServers = async (): Promise<void> => {};
+  const onSignal = async (signal: NodeJS.Signals): Promise<void> => {
+    cancelProjectBuildxOperations(config);
+    await stopServers();
+    await stopProjectBuildxBuilderSafely(config);
+    process.exit(signal === 'SIGINT' ? 130 : 143);
+  };
+  const onInt = () => { void onSignal('SIGINT'); };
+  const onTerm = () => { void onSignal('SIGTERM'); };
+  process.once('SIGINT', onInt);
+  process.once('SIGTERM', onTerm);
+  try {
+    await runServersSession(config, options, stop => { stopServers = stop; });
+  } finally {
+    process.removeListener('SIGINT', onInt);
+    process.removeListener('SIGTERM', onTerm);
+    await stopProjectBuildxBuilderSafely(config);
+  }
+}
+
+async function runServersSession(
+  config: ResolvedConfig,
+  options: ServersOptions,
+  onShutdownReady: (stop: () => Promise<void>) => void,
+): Promise<void> {
   printBanner('Twin Servers');
 
   assertBuildDirectory(config, 'experiment');
@@ -60,8 +86,8 @@ export async function serversDefault(config: ResolvedConfig, options: ServersOpt
   if (decision.needs) {
     console.log(`Rebuild needed: ${decision.reason}`);
     console.log('');
-    await stopContainers(config, options);
-    await build(config, { ...options, target: decision.target });
+    await stopContainers(config, { ...options, keepBuilderRunning: true });
+    await build(config, { ...options, target: decision.target, keepBuilderRunning: true });
     await startContainers(config, options);
   } else {
     console.log(decision.reason);
@@ -96,6 +122,7 @@ export async function serversDefault(config: ResolvedConfig, options: ServersOpt
   try {
     await runServersMenu(config, {
       ...options,
+      onShutdownReady,
       onControllerReady: (c) => { controller = c; },
     });
   } finally {

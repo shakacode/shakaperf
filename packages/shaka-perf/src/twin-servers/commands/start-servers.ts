@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stopProjectBuildxBuilderSafely } from '../helpers/buildx-lifecycle';
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn, type ChildProcess, type StdioOptions } from 'child_process';
@@ -16,6 +17,8 @@ import { logServerCommits, prepareSyncedServerCommits } from '../helpers/server-
 
 export interface StartServersOptions {
   verbose?: boolean;
+  /** Internal session owner coordinates signals with server teardown. */
+  onShutdownReady?: (stop: () => Promise<void>) => void;
 }
 
 export interface OvermindHandle {
@@ -109,10 +112,8 @@ export function spawnOvermind(
     },
   });
 
-  let cleanupDone = false;
-  const stop = async (): Promise<void> => {
-    if (cleanupDone) return;
-    cleanupDone = true;
+  let cleanup: Promise<void> | undefined;
+  const teardown = async (): Promise<void> => {
 
     if (!child.killed && child.exitCode === null) {
       child.kill('SIGTERM');
@@ -148,6 +149,11 @@ export function spawnOvermind(
     });
   });
 
+  // Every exit path must await the same teardown, including a stop already underway.
+  const stop = (): Promise<void> => {
+    cleanup ??= teardown();
+    return cleanup;
+  };
   return { child, done, stop };
 }
 
@@ -177,11 +183,16 @@ export async function startServers(
     isExiting = true;
     console.log(`\nReceived ${signal}, cleaning up...`);
     await handle.stop();
+    await stopProjectBuildxBuilderSafely(config);
     process.exit(0);
   };
 
-  process.on('SIGINT', signalHandler);
-  process.on('SIGTERM', signalHandler);
+  if (_options.onShutdownReady) {
+    _options.onShutdownReady(handle.stop);
+  } else {
+    process.on('SIGINT', signalHandler);
+    process.on('SIGTERM', signalHandler);
+  }
 
   try {
     await handle.done;

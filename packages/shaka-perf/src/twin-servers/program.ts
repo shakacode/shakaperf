@@ -82,7 +82,7 @@ function wrapAction(fn: (this: Command, ...args: any[]) => Promise<void>): (...a
       await fn.apply(this, args);
     } catch (error) {
       console.error(colorize(`Error: ${(error as Error).message}`, 'red'));
-      process.exit(1);
+      process.exit(process.exitCode || 1);
     }
   };
 }

@@ -50,7 +50,7 @@ declare module 'ink' {
     cleanup(): void;
     clear(): void;
   }
-  export function render(node: React.ReactElement): RenderInstance;
+  export function render(node: React.ReactElement, options?: { exitOnCtrlC?: boolean }): RenderInstance;
 
   export interface Key {
     upArrow: boolean;

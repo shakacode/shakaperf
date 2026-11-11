@@ -44,6 +44,21 @@ Docker volumes are bind-mounted to host directories, so you can sync changes wit
 yarn shaka-perf servers stop-containers
 ```
 
+Option **8 — Stop containers and exit** and `stop-containers` also stop this
+project's Buildx builder. Cached layers remain available for the next build.
+
+Standalone builds stop their builder on success, failure, or interruption. The
+interactive server session and bisect keep it available between builds, then
+stop it when the session ends. Ctrl+C stops the builder while preserving the
+existing app-container behavior. Cache pruning restores a previously stopped
+builder to stopped and leaves an already-running builder running.
+
+Stopping Buildx does not stop app containers or prevent starting existing images.
+ShakaPerf serializes builds, pruning, and builder shutdown for each project on
+this host, so cleanup waits for another active ShakaPerf build. Other projects
+use separate builders and locks. Automatic builder-cleanup failures emit a warning
+and preserve the operation's result. Direct Docker commands bypass this coordination.
+
 ## Architecture
 
 ### Control vs Experiment
