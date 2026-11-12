@@ -7,6 +7,7 @@
 
 import { createServer, type Server } from 'node:http';
 import { chromium, type Browser } from 'playwright';
+import { PHONE_VIEWPORT } from 'shaka-shared';
 import { renderReportHtml, type ReportData, type ReportOutcome } from '../../src/pipeline/report';
 import { runDetailsFixture } from '../../src/pipeline/__tests__/fixtures/run-details';
 import { imageModalFixture, TALL_IMAGE } from './image-modal-fixture';
@@ -61,6 +62,29 @@ describe('artifact modal measurement context', () => {
   afterAll(async () => {
     await browser?.close();
     await new Promise<void>(resolve => server.close(() => resolve()));
+  });
+
+  it.each([1440, 1050, 390])('packs accessibility counts and puts saved viewport dimensions last at %i px', async (width) => {
+    data = fixture(cases[0]);
+    const selected = data.tests[0]!.outcomes[0]!;
+    selected.executionDetails = { ...selected.executionDetails, viewport: PHONE_VIEWPORT };
+    const page = await browser.newPage({ viewport: { width, height: 1100 } });
+    try {
+      await page.goto(url);
+      await page.locator('.a11y-compare-card__inspect').click();
+      const metadata = page.getByRole('dialog').locator('.card__metadata');
+      const summary = metadata.locator('.ui-dialog__meta').last();
+      expect(await summary.locator('dt').allTextContents()).toEqual(['new', 'fixed', 'changed', 'unchanged', 'viewport']);
+      expect(await summary.locator('dd').last().innerText()).toBe(`phone ${PHONE_VIEWPORT.width} × ${PHONE_VIEWPORT.height}`);
+      const fields = summary.locator(':scope > div');
+      const first = (await fields.nth(0).boundingBox())!;
+      const second = (await fields.nth(1).boundingBox())!;
+      expect(Math.abs(first.y - second.y)).toBeLessThan(1);
+      expect(second.x).toBeGreaterThan(first.x);
+      expect(await metadata.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+      const wide = await metadata.evaluate(el => el.clientWidth >= 900);
+      expect(await metadata.locator('.card__metadata-separator').isVisible()).toBe(wide);
+    } finally { await page.close(); }
   });
 
   it.each(cases)('shows selected $pipeline $title context', async example => {
