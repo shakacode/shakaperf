@@ -53,6 +53,14 @@ const withHeadingStatus = approved.replace(
   '# The ShakaStack License\n',
   '# The ShakaStack License\n\n## Status: pending legal approval\n',
 );
+const withBareHeadingStatus = approved.replace(
+  '# The ShakaStack License\n',
+  '# The ShakaStack License\n\n## Status\nPending legal approval\n',
+);
+const withBoldHeadingStatus = approved.replace(
+  '# The ShakaStack License\n',
+  '# The ShakaStack License\n\n**Status**:\nPending legal approval\n',
+);
 const withNotice = approved.replace(
   '# The ShakaStack License\n',
   '# The ShakaStack License\n\n**Notice: pending counsel review. Not in force.**\n',
@@ -80,6 +88,18 @@ test('rejects a status notice without counsel markers', () => {
 
 test('rejects a Markdown status heading', () => {
   const result = runGuard(withHeadingStatus, '0.8.0');
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /status notice/i);
+});
+
+test('rejects a status heading without a colon', () => {
+  const result = runGuard(withBareHeadingStatus, '0.8.0');
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /status notice/i);
+});
+
+test('rejects a bold status heading', () => {
+  const result = runGuard(withBoldHeadingStatus, '0.8.0');
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /status notice/i);
 });
