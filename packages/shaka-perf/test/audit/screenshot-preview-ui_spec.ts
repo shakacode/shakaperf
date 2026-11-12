@@ -41,7 +41,7 @@ function fixture(): ReportData {
     ].map((outcomes, index) => ({
       id: `preview-${index}`, name: `Preview ${index}`, filePath: 'previews.abtest.ts',
       startingPath: '/', controlUrl: 'http://localhost:3090/', experimentUrl: 'http://localhost:3090/',
-      code: null, chips: [], sorts: [], durationMs: 1000, measuredAt: 0,
+       chips: [], sorts: [], durationMs: 1000, measuredAt: 0,
       runId: 'preview', viewportArtifactPaths: [], outcomes,
     })),
   };

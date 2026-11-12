@@ -386,7 +386,7 @@ describe('runPipeline', () => {
     };
     try {
       const first = await runWithFrozenTest({ cwd, tests: [test], categories: 'visreg', skipReport: true }, selected);
-      expect(first.testResults[0]!.code).toBe(source);
+      expect(first.testResults[0]!).not.toHaveProperty('code');
       const store = new ArtifactStore(first.resultsRoot);
       const measured = first.testResults[0]!.outcomes.filter((o) => o.stage === 'visreg');
       expect(measured.length).toBeGreaterThan(0);
@@ -399,7 +399,7 @@ describe('runPipeline', () => {
       for (const deleted of [false, true]) {
         if (deleted) fs.unlinkSync(file);
         const report = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
-        expect(report.testResults[0]!.code).toBe(source);
+        expect(report.testResults[0]!).not.toHaveProperty('code');
         expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'visreg')?.executionDetails.testSourceHref).toBeTruthy();
       }
     } finally {
@@ -436,10 +436,10 @@ describe('runPipeline', () => {
           .map((o) => o.executionDetails.testSourceHref).filter(Boolean));
         expect(measuredPaths.size).toBe(1);
       }
-      expect(second.testResults[0]!.code).toBe(changed);
+      expect(second.testResults[0]!).not.toHaveProperty('code');
       fs.unlinkSync(file);
       const report = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
-      expect(report.testResults[0]!.code).toBe(changed);
+      expect(report.testResults[0]!).not.toHaveProperty('code');
       clock.mockReturnValue(Date.parse('2026-10-20T12:00:00Z'));
       // Source capture fails before new work or cleanup can replace old results.
       const pending = pipeline();
@@ -448,14 +448,14 @@ describe('runPipeline', () => {
         .rejects.toThrow('Cannot capture abTest source');
       for (const engine of engines) expect(engine).not.toHaveBeenCalled();
       const retained = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
-      expect(retained.testResults[0]!.code).toBe(changed);
+      expect(retained.testResults[0]!).not.toHaveProperty('code');
       for (const outcome of outcomes) {
         if (outcome.runMetadata && outcome.executionDetails.runId !== original.executionDetails.runId) {
           fs.rmSync(path.join(second.resultsRoot, outcome.executionDetails.testSourceHref!), { force: true });
         }
       }
       const missing = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
-      expect(missing.testResults[0]!.code).toBeNull();
+      expect(missing.testResults[0]!).not.toHaveProperty('code');
       expect(missing.testResults[0]!.outcomes).toHaveLength(retained.testResults[0]!.outcomes.length);
       expect(store.readTextArtifact(originalPath)).toBe(source);
       // A normal rerun removes obsolete snapshots with the other unit artifacts.

@@ -370,7 +370,7 @@ function testResult({
     startingPath,
     controlUrl: `http://control.test${startingPath}`,
     experimentUrl: `http://experiment.test${startingPath}`,
-    code: null,
+
     chips: [],
     sorts: [],
     durationMs: 1_000,

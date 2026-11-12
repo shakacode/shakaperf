@@ -443,3 +443,7 @@ independently of measurement provenance in `runMetadata`. Each `StageRenderEntry
 receives that same object as `executionDetails`, scoped to its measurement.
 Saved outcomes must use the current contract; readers do not convert legacy fields.
 Stages continue returning domain measurements from `run()`.
+
+## Source snapshots and report packaging
+
+Source references live on `executionDetails.testSourceHref`; reports do not keep a separate `test.code` copy. Dialogs use their selected execution; test-level source selection offers the saved snapshots. Report packaging traverses measurements and failure media explicitly, while embedding source text separately.

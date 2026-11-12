@@ -2934,7 +2934,8 @@ input {
 .ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata-row) {
   max-height: 50%;
 }
-@media (max-height: 600px) {
+/* Keep room for image annotations and controls on short windows. */
+@media (max-height: 700px) {
   .ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata-row) {
     max-height: 24%;
   }

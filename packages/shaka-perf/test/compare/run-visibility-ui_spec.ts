@@ -23,7 +23,7 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained'): R
   const card = (id: string, runId: string, mixed = false): TestResult => ({
     id, name: id, filePath: 'suite.abtest.ts', startingPath: '/',
     controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test',
-    code: null, durationMs: 0, measuredAt: 0, runId,
+    durationMs: 0, measuredAt: 0, runId,
     chips: [{ tag: id === 'Older' ? 'broken' : 'passed', text: id === 'Older' ? 'broken' : 'passed', color: 'gray', sortingWeight: 0 }],
     sorts: [], viewportArtifactPaths: [],
     outcomes: [
