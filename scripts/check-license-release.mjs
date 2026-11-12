@@ -41,7 +41,7 @@ try {
   }
   const text = license.toString('utf8');
   if (/\[COUNSEL-\d+\]/.test(text)
-    || /^[ \t]*(?:#{1,6}[ \t]+)?(?:\*\*)?(?:Status|Notice)(?:[ \t]*:|[ \t]*\*\*(?:[ \t]*:)?|[ \t]*$)|\b(?:counsel|proposed|draft|unapproved)\b|not in force/im.test(text)) {
+    || /^[ \t]*(?:#{1,6}[ \t]+)?(?:\*\*)?(?:Status|Notice)\b|\b(?:counsel|proposed|draft|unapproved)\b|not in force/im.test(text)) {
     throw new Error('License has a counsel marker or status notice');
   }
   if (compareVersions(version, firstVersion) < 0) {
