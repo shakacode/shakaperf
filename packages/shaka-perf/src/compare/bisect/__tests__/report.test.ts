@@ -130,7 +130,7 @@ function reportData(screenshot = '/tmp/control.png'): BisectReportData {
       durationMs: 0,
       measuredAt: null,
       runId: null,
-      outcomes: [{ executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
+      outcomes: [{ executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok',
         stage: 'visreg',
         viewport: DESKTOP_VIEWPORT,

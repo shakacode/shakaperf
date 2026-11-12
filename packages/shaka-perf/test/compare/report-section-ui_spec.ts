@@ -35,12 +35,12 @@ function reportData(mode: 'full' | 'self-contained'): ReportData {
       code: null, chips: [], sorts: [], durationMs: 1000, measuredAt: 1, runId: 'run-1',
       viewportArtifactPaths: [],
       outcomes: [
-        { executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg', viewport: DESKTOP_VIEWPORT, measurement: [] },
-        ...[DESKTOP_VIEWPORT, PHONE_VIEWPORT].map((viewport) => ({ executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
+        { executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg', viewport: DESKTOP_VIEWPORT, measurement: [] },
+        ...[DESKTOP_VIEWPORT, PHONE_VIEWPORT].map((viewport) => ({ executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok' as const, stage: 'perf', viewport, measurement: { metrics: [] },
         })),
-        { executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'accessibility', viewport: DESKTOP_VIEWPORT, measurement: cleanAccessibility },
-        { executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility', viewport: PHONE_VIEWPORT, error: { message: 'Intentional phone failure' } },
+        { executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'accessibility', viewport: DESKTOP_VIEWPORT, measurement: cleanAccessibility },
+        { executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility', viewport: PHONE_VIEWPORT, error: { message: 'Intentional phone failure' } },
       ],
     })),
   };
@@ -133,7 +133,7 @@ describe.each(['full', 'self-contained'] as const)('%s section disclosures', (mo
   });
 
   it.each(['reduce', 'no-preference'] as const)('returns to only the originating control after a global layout shift (%s motion)', async (motion) => {
-    data.tests[0].outcomes[0] = { executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
+    data.tests[0].outcomes[0] = { executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'error', stage: 'visreg', viewport: DESKTOP_VIEWPORT,
       error: { message: 'Saved visual capture failure', stack: Array(40).fill('    at savedCapture (example.abtest.ts:1:1)').join('\n') },
     };

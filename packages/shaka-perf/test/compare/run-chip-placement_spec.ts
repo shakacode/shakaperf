@@ -74,8 +74,8 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained', ex
       controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test', code: null,
       durationMs: 0, measuredAt: 0, runId: LATEST, chips: [], sorts: [], viewportArtifactPaths: [],
       outcomes: examples.flatMap(({ stage, measurement }) => [
-        { executionDetails: { runId: OLD, recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement, viewport: DESKTOP_VIEWPORT,  },
-        { executionDetails: { runId: LATEST, recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement, viewport: PHONE_VIEWPORT,  },
+        { executionDetails: { testSourcePath: null, runId: OLD, recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement, viewport: DESKTOP_VIEWPORT,  },
+        { executionDetails: { testSourcePath: null, runId: LATEST, recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement, viewport: PHONE_VIEWPORT,  },
       ]),
     }],
   };
@@ -166,8 +166,8 @@ describe('contextual old-run chips', () => {
     try {
       for (const { stage, measurement, heading } of examples) {
         const artifact = renderPersistedStageArtifacts(pipeline, {}, stage, [
-          { measurement, viewport: DESKTOP_VIEWPORT, executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: false },
-          { measurement, viewport: PHONE_VIEWPORT, executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true },
+          { measurement, viewport: DESKTOP_VIEWPORT, executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: false },
+          { measurement, viewport: PHONE_VIEWPORT, executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true },
         ]);
         await page.setContent(renderToStaticMarkup(artifact));
         expect(await page.locator('.stage-artifact__title').count()).toBe(1);

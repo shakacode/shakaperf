@@ -263,7 +263,7 @@ function entry(result: AccessibilityCompareResult) {
     stage: 'accessibility',
     viewport: DESKTOP_VIEWPORT,
     measurement: result,
-    outcome: { executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
+    outcome: { executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'ok' as const,
       stage: 'accessibility',
       measurement: result,
