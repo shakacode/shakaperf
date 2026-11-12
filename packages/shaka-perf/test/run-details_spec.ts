@@ -47,8 +47,8 @@ it('shows shared measurement facts once across results and viewports', () => {
   const first = outcomes[0]!;
   outcomes[1]!.runMetadata = { ...first.runMetadata!, measuredAt: first.executionDetails.runId };
   outcomes[2]!.runMetadata = { ...first.runMetadata! };
-  outcomes[1]!.executionDetails = { ...outcomes[1]!.executionDetails, runId: first.executionDetails.runId };
-  outcomes[2]!.executionDetails = { ...outcomes[2]!.executionDetails, runId: first.executionDetails.runId };
+  outcomes[1]!.executionDetails = { ...outcomes[1]!.executionDetails, runId: first.executionDetails.runId, throttling: first.executionDetails.throttling };
+  outcomes[2]!.executionDetails = { ...outcomes[2]!.executionDetails, runId: first.executionDetails.runId, throttling: first.executionDetails.throttling };
   const html = details(outcomes);
   expect(html).not.toContain('<textarea');
   expect(html).not.toContain('http://127.0.0.1:3910/');
@@ -63,8 +63,9 @@ it('keeps different throttling settings associated with their runs', () => {
   const outcomes = runDetailsFixture('audit').tests[0]!.outcomes;
   const prior = outcomes[1]!.runMetadata!;
   outcomes[1]!.runMetadata = { ...prior, command: 'shaka-perf audit --filter Homepage --categories accessibility', categories: ['accessibility'], throttling: [{ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 7, network: { rttMs: 90 } }], targets: [{ ...prior.targets[0]!, url: 'http://127.0.0.1:3911/' }] };
+  outcomes[1]!.executionDetails = { ...outcomes[1]!.executionDetails, throttling: outcomes[1]!.runMetadata!.throttling };
   const html = details(outcomes);
-  for (const metadata of outcomes.slice(0, 2).map((outcome) => outcome.runMetadata!)) {
+  for (const metadata of outcomes.slice(0, 2).map((outcome) => outcome.executionDetails)) {
     expect(html).toContain(`${metadata.throttling![0]!.cpuSlowdownMultiplier}× CPU`);
   }
   expect(html).toContain('Run 1 / audit');
@@ -84,7 +85,7 @@ it('shows distinct result times only inside the run table and retains full times
 it('shows equal control and experiment throttling once', () => {
   const outcomes = runDetailsFixture('compare').tests[0]!.outcomes.slice(0, 1);
   const metadata = outcomes[0]!.runMetadata!;
-  metadata.throttling = [{ ...metadata.throttling![0]!, side: 'control' }, { ...metadata.throttling![0]!, side: 'experiment' }];
+  outcomes[0]!.executionDetails = { ...outcomes[0]!.executionDetails, throttling: [{ ...outcomes[0]!.executionDetails.throttling![0]!, side: 'control' }, { ...outcomes[0]!.executionDetails.throttling![0]!, side: 'experiment' }] };
   const html = details(outcomes);
   expect(html.match(/4× CPU/g)).toHaveLength(1);
 });
@@ -94,7 +95,7 @@ it.each([
   { throttling: [{ engine: 'Browser', method: 'legacy', cpuSlowdownMultiplier: 7, network: { rttMs: 11 } }] },
 ])('omits throttling when no Lighthouse settings were saved: $throttling', ({ throttling }) => {
   const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(1, 2);
-  outcomes[0]!.runMetadata!.throttling = throttling;
+  outcomes[0]!.executionDetails = { ...outcomes[0]!.executionDetails, throttling };
   expect(details(outcomes)).not.toContain('Throttling');
 });
 
@@ -117,7 +118,7 @@ it.each(['Subject', 'Subject\n\n', ''])('does not expand a commit without body c
 it('keeps grouped Lighthouse samples and result totals without visual retry details', () => {
   const outcomes = runDetailsFixture('compare').tests[0]!.outcomes;
   const metadata = outcomes[0]!.runMetadata!;
-  Object.assign(metadata, { numberOfMeasurements: 7 });
+  Object.assign(outcomes[0]!.executionDetails, { numberOfMeasurements: 7 });
   outcomes[1]!.stage = 'visreg';
   Object.assign(outcomes[1]!.runMetadata!, { compareRetries: 5, compareAttempts: 2 });
   outcomes[2]!.runMetadata = { ...metadata };
@@ -133,8 +134,8 @@ it('keeps grouped Lighthouse samples and result totals without visual retry deta
 
 it('keeps differing saved sampling counts scoped to their measurement runs', () => {
   const outcomes = runDetailsFixture('compare').tests[0]!.outcomes.slice(0, 2);
-  Object.assign(outcomes[0]!.runMetadata!, { numberOfMeasurements: 7 });
-  Object.assign(outcomes[1]!.runMetadata!, { numberOfMeasurements: 1 });
+  Object.assign(outcomes[0]!.executionDetails, { numberOfMeasurements: 7 });
+  Object.assign(outcomes[1]!.executionDetails, { numberOfMeasurements: 1 });
   outcomes[1]!.stage = 'perf';
   const html = details(outcomes);
   expect(html).toContain('7 LH samples per side');
@@ -156,7 +157,7 @@ it.each([undefined, 0])('omits absent sampling fields and unused visual retries:
 it.each(['perf-low-noise', 'perf-warmup', 'audit'])('omits sample counts for %s', (stage) => {
   const outcomes = runDetailsFixture('compare').tests[0]!.outcomes.slice(0, 1);
   outcomes[0]!.stage = stage;
-  outcomes[0]!.runMetadata!.numberOfMeasurements = 1;
+  Object.assign(outcomes[0]!.executionDetails, { numberOfMeasurements: 1 });
   expect(details(outcomes)).not.toContain('<h3>Sampling</h3>');
 });
 

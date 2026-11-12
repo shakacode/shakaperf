@@ -22,7 +22,7 @@ import {
   type SideBySideInteraction,
 } from '../../../bench/core/side-by-side-frames';
 import type { ExecutionDetails } from '../../../pipeline/outcome';
-import { Dialog, ArtifactMetadata } from '../../../pipeline/stage-report-components';
+import { Dialog, ArtifactMetadata, ArtifactDialogTitle } from '../../../pipeline/stage-report-components';
 
 const SPEEDS = [0.1, 0.25, 0.5, 1, 2, 3, 5, 10] as const;
 const CHANGED_PIXEL_THRESHOLD = 8;
@@ -171,7 +171,11 @@ function formatSeconds(ms: number): string {
   return `${(ms / 1000).toFixed(2)}s`;
 }
 
-export function FramePlayerButton({ href, executionDetails }: { href: string; executionDetails: ExecutionDetails }) {
+export function FramePlayerButton({ href, executionDetails, fields }: {
+  href: string;
+  executionDetails: ExecutionDetails;
+  fields?: Readonly<Record<string, string>>;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -181,8 +185,8 @@ export function FramePlayerButton({ href, executionDetails }: { href: string; ex
           open={open}
           onClose={() => setOpen(false)}
           variant="wide"
-          title={<span className="ui-dialog__title-text">frames side by side</span>}
-          meta={<ArtifactMetadata executionDetails={executionDetails} />}
+          title={<ArtifactDialogTitle title={`${executionDetails.viewport.label} frames side by side`} />}
+          meta={<ArtifactMetadata fields={fields} executionDetails={executionDetails} />}
         >
           <FramePlayer href={href} />
         </Dialog>
