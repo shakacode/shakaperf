@@ -58,7 +58,7 @@ describe('latest measurement run visibility', () => {
     fs.rmSync(directory, { recursive: true, force: true });
   });
 
-  it('passes per-measurement provenance and run freshness to stage renderers', () => {
+  it('passes per-measurement run freshness to stage renderers', () => {
     const render = jest.spyOn(pipelineArtifacts, 'renderPersistedStageArtifacts').mockReturnValue('artifact');
     const data = fixture('compare', 'full');
     const outcomes = [LATEST, OLD].map((runId) => ({
@@ -68,8 +68,8 @@ describe('latest measurement run visibility', () => {
     try {
       stageSection(data.meta, outcomes, LATEST);
       expect(render).toHaveBeenLastCalledWith('compare', {}, 'accessibility', [
-        { measurement: { runId: LATEST }, outcome: outcomes[0], viewport: DESKTOP_VIEWPORT, latestRun: true },
-        { measurement: { runId: OLD }, outcome: outcomes[1], viewport: DESKTOP_VIEWPORT, latestRun: false },
+        { measurement: { runId: LATEST }, viewport: DESKTOP_VIEWPORT, latestRun: true },
+        { measurement: { runId: OLD }, viewport: DESKTOP_VIEWPORT, latestRun: false },
       ]);
       stageSection(data.meta, outcomes, null);
       expect(render.mock.calls.at(-1)?.[3].map((entry) => entry.latestRun)).toEqual([true, true]);
