@@ -56,7 +56,9 @@ export function BuildAnnotatedTimelineArtifactView({
             <div key={`${row.viewportLabel}-${index}`} className="stage-stack__viewport">
               <div className="stage-section">
                 <ReportHeading className="stage-section__head" level={5} title={row.viewportLabel} badge={<OldRunChip latestRun={row.latestRun} />} />
-                <DetailedArtifactDialog executionDetails={row.executionDetails}
+                <DetailedArtifactDialog
+                  executionDetails={row.executionDetails}
+                  title={`${row.viewportLabel} annotated timeline`}
                   body={
                     <AnnotatedTimelineDialog
                       frames={frames}
