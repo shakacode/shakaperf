@@ -29,7 +29,8 @@ export type JsonValue =
   | { [key: string]: JsonValue };
 
 export interface StageRuntime {
-  readonly measurementRun?: Pick<RunMetadata, 'command' | 'runId' | 'stages' | 'categories'> & {
+  readonly measurementRun?: Pick<RunMetadata, 'command' | 'stages' | 'categories'> & {
+    readonly runId: string;
     readonly sides: readonly ('control' | 'experiment')[];
   };
   readonly resultsRoot: string;

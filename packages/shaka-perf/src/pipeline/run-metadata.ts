@@ -32,7 +32,6 @@ export interface MeasurementThrottling {
 }
 export interface RunMetadata {
   command: string;
-  runId: string;
   measuredAt: string;
   stages: string[];
   categories: string[];

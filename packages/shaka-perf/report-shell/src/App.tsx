@@ -182,7 +182,7 @@ function currentConfigurationTest(test: TestResult): TestResult {
   const outcomes = test.outcomes.filter((outcome) => !outcome.outsideCurrentConfig);
   if (outcomes.length === test.outcomes.length) return test;
   const runId = outcomes.reduce<string | null>((latest, outcome) =>
-    outcome.runId && (!latest || outcome.runId > latest) ? outcome.runId : latest, null);
+    outcome.executionDetails.runId && (!latest || outcome.executionDetails.runId > latest) ? outcome.executionDetails.runId : latest, null);
   return { ...test, ...test.currentConfig, outcomes, runId };
 }
 

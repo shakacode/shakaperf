@@ -60,7 +60,7 @@ export class ArtifactScope {
 }
 
 export class ArtifactStore {
-  constructor(readonly resultsRoot: string, private readonly runId?: string) {}
+  constructor(readonly resultsRoot: string) {}
 
   unitDir(test: AbTestDefinition): string {
     return path.join(this.resultsRoot, testIdForTest(test));
@@ -99,12 +99,9 @@ export class ArtifactStore {
   writeOutcome(test: AbTestDefinition, viewportLabel: string, outcome: RecordedOutcome): void {
     const dir = this.unitDirForViewport(test, viewportLabel);
     fs.mkdirSync(dir, { recursive: true });
-    const payload = this.runId && outcome.runId == null
-      ? { ...outcome, runId: this.runId }
-      : outcome;
     fs.writeFileSync(
       path.join(dir, `${outcome.stage}.json`),
-      JSON.stringify(payload, null, 2),
+      JSON.stringify(outcome, null, 2),
     );
   }
 
