@@ -2959,7 +2959,7 @@ input {
   max-height: 50%;
 }
 /* Keep room for image annotations and controls on short windows. */
-@media (max-height: 700px) {
+@media (max-height: 800px) {
   .ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata-row) {
     max-height: 24%;
   }
