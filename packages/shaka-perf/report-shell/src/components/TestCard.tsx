@@ -262,6 +262,7 @@ export function TestCard({
                 const scopedTest = {
                   ...test,
                   outcomes: selected ? [selected] : [],
+                  measuredAt: selected?.runMetadata ? Date.parse(selected.runMetadata.measuredAt) : null,
                 };
                 return (
                   <TestMetadata

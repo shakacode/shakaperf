@@ -226,6 +226,7 @@ describe('visual preview metadata', () => {
       await page.locator('.artifact-card--single').getByRole('button').click();
       const metadata = page.getByRole('dialog').locator('.card__metadata');
       expect(await metadata.getByRole('button', { name: 'command', exact: true }).count()).toBe(0);
+      expect(await metadata.locator('.card__measured-at').textContent()).toContain('never measured');
       expect(await metadata.locator('.card__target-commits').allTextContents()).toEqual(['', '']);
       expect(await metadata.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(0);
       expect(await metadata.getByRole('button', { name: 'test source', exact: true }).isVisible()).toBe(true);

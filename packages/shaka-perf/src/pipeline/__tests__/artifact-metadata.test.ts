@@ -30,4 +30,3 @@ it('omits unused execution rows and preserves unknown recovery counts', () => {
     executionDetails: { runId: 'fixture-run', testSourceHref: null, viewport: DESKTOP_VIEWPORT, recoveredAfterRetries: true },
   }))).toContain('?/? · recovered');
 });
-
