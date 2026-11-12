@@ -52,8 +52,6 @@ describe('readVisregArtifacts', function () {
             viewportLabel: 'desktop',
             selector: 'document',
             mismatchThreshold: 0.01,
-            compareAttempts: 3,
-            compareRetries: 2,
             diff: { misMatchPercentage: '0.00', isSameDimensions: false },
             diffImage: 'failed_diff_homepage_desktop.txt',
           },
@@ -78,8 +76,6 @@ describe('readVisregArtifacts', function () {
       );
       assert.strictEqual(hasVisualChange(artifactSet.artifacts), true);
       assert.strictEqual(visualChangeCount(artifactSet.artifacts), 1);
-      assert.strictEqual(artifactSet.artifacts[0].compareAttempts, 3);
-      assert.strictEqual(artifactSet.artifacts[0].compareRetries, 2);
     });
   });
 
@@ -109,8 +105,6 @@ describe('readVisregArtifacts', function () {
       assert.strictEqual(artifactSet.artifacts[0].diffImage, null);
       assert.strictEqual(hasVisualChange(artifactSet.artifacts), false);
       assert.strictEqual(visualChangeCount(artifactSet.artifacts), 0);
-      assert.strictEqual(artifactSet.artifacts[0].compareAttempts, undefined);
-      assert.strictEqual(artifactSet.artifacts[0].compareRetries, undefined);
     });
   });
 });
