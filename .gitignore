@@ -43,7 +43,6 @@ packages/shaka-perf/src/pipeline/__tests__/tmp-report-discovery-*/
 
 # Playwright
 test-results/
-packages/shaka-perf/src/pipeline/__tests__/tmp-report-discovery-*/
 playwright-report/
 .playwright-mcp/
 
