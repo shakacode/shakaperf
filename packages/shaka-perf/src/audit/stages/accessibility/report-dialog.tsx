@@ -44,7 +44,7 @@ export function accessibilityDialogFields(scan: AccessibilityScan, hotspotCount:
     viewport: scan.viewportLabel,
     issues: `${scan.violations.length} rules · ${nodeCount} nodes`,
     hotspots: String(hotspotCount),
-    url: scan.url,
+    'scanned URL': scan.url,
   };
 }
 
