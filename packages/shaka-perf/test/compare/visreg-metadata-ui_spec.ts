@@ -102,7 +102,7 @@ describe('visual preview metadata', () => {
     try {
       await page.goto(url);
       const preview = page.locator('.artifact-card--single');
-      expect(await preview.locator('.artifact-card__image-label').allTextContents()).toEqual(['no diff']);
+      expect(await preview.locator('.artifact-card__image-labels').allTextContents()).toEqual(['no diffflakyunstable']);
       await preview.getByRole('button').click();
       const dialog = page.getByRole('dialog');
       const metadata = dialog.locator('.card__metadata');
@@ -140,6 +140,8 @@ describe('visual preview metadata', () => {
       }
       await metadata.getByRole('button', { name: 'test source', exact: true }).click();
       expect(await metadata.locator('.card__code').textContent()).toContain("abTest('Homepage'");
+      expect(await metadata.locator('dl > div').filter({ has: page.locator('dt', { hasText: 'visual comparisons' }) }).locator('dd').textContent()).toBe('2/3 · matched on retry');
+      expect(await metadata.locator('dl > div').filter({ has: page.locator('dt', { hasText: 'error retries' }) }).locator('dd').textContent()).toBe('1/2 · recovered');
       await dialog.locator('.card__actions').getByRole('button', { name: 'logs', exact: true }).click();
       const logs = page.getByRole('dialog', { name: 'measurement logs' });
       await logs.waitFor();
@@ -149,6 +151,26 @@ describe('visual preview metadata', () => {
       await page.close();
     }
   });
+  it.each(['full', 'self-contained'])('keeps viewport recovery isolated in %s reports', async (mode) => {
+    const page = await browser.newPage();
+    try {
+      await page.goto(`${url}?mixed=1&mode=${mode}`);
+      const cards = page.locator('.artifact-card--single');
+      expect(await cards.count()).toBe(2);
+      await cards.nth(0).getByRole('button').click();
+      let dialog = page.getByRole('dialog');
+      expect(await dialog.textContent()).toContain('1/2 · recovered');
+      await dialog.getByRole('button', { name: 'close', exact: true }).click();
+      await cards.nth(1).getByRole('button').click();
+      dialog = page.getByRole('dialog');
+      expect(await dialog.locator('dt').allTextContents()).not.toContain('error retries');
+      expect(await dialog.locator('dt').allTextContents()).not.toContain('visual comparisons');
+      expect(await cards.nth(1).locator('.artifact-card__image-labels').textContent()).toBe('no diff');
+    } finally {
+      await page.close();
+    }
+  });
+
   it.each(['full', 'self-contained'])('selects card snapshots and scopes dialog source in %s reports', async mode => {
     const page = await browser.newPage();
     try {
