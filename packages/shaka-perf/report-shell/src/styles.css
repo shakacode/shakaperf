@@ -2959,7 +2959,7 @@ input {
   max-height: 50%;
 }
 /* Keep room for image annotations and controls on short windows. */
-@media (max-height: 700px) {
+@media (max-height: 800px) {
   .ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata-row) {
     max-height: 24%;
   }
@@ -3211,7 +3211,9 @@ input {
 .card__metadata-row--dialog:has(> .card__actions) .card__metadata > summary { margin-right: 65px; }
 .card__actions { position: absolute; top: 9px; right: 20px; display: flex; align-items: baseline; gap: 14px; }
 .card__metadata--dialog > summary .card__metadata-provenance { flex: 1 1 100%; order: 1; }
+.card__metadata-separator { display: none; }
 @container (min-width: 900px) {
+  .card__metadata-separator { display: inline; }
   .card__metadata--dialog > summary { flex-wrap: nowrap; }
   .card__metadata--dialog > summary .card__metadata-provenance { flex: 1; order: 0; margin-left: 10px; }
 }
@@ -3227,7 +3229,7 @@ input {
     overflow-wrap: anywhere;
   }
 }
-.card__metadata-content .ui-dialog__meta { padding: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.card__metadata-content .ui-dialog__meta { padding: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 100px), 1fr)); }
 .card__metadata-content .ui-dialog__meta dd { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 .card__metadata .card__urls { padding: 0; margin: 0; border: 0; }
 .card__metadata .run-details__commit code { font-size: 10px; line-height: 1; }
@@ -3347,3 +3349,5 @@ input {
 .perf-run-settings .ui-dialog__meta { padding: 0; grid-template-columns: minmax(0, 1fr); }
 .perf-run-settings .ui-dialog__meta dd { white-space: normal; overflow: visible; word-break: normal; overflow-wrap: anywhere; }
 .perf-viewport__dimensions { color: var(--fg-muted); font-size: 11px; font-weight: 400; white-space: nowrap; }
+
+.card__metadata-content .ui-dialog__meta-wide { grid-column: 1 / -1; }

@@ -131,7 +131,13 @@ function ArtifactLinks({ audit, executionDetails }: { audit: AuditResult; execut
     <FullReportOnly>
       <div className="artifact-links">
         {links.map(([label, href]) => (
-          <DetailedArtifactDialog executionDetails={executionDetails} key={label} href={href} label={label}>
+          <DetailedArtifactDialog
+            executionDetails={executionDetails}
+            key={label}
+            href={href}
+            label={label}
+            title={`${executionDetails.viewport.label} ${label}`}
+          >
             {label}
           </DetailedArtifactDialog>
         ))}
@@ -167,7 +173,9 @@ function LighthouseColumn({ audit, executionDetails }: { audit: AuditResult; exe
   if (!audit.lighthouseHref) return null;
   return (
     <div style={METRIC_COLUMN_STYLE}>
-      <DetailedArtifactDialog executionDetails={executionDetails}
+      <DetailedArtifactDialog
+        executionDetails={executionDetails}
+        title={`${executionDetails.viewport.label} Lighthouse report`}
         href={audit.lighthouseHref}
         label="Lighthouse report"
         variant="preview"

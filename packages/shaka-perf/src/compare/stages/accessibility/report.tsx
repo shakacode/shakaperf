@@ -8,6 +8,7 @@
 import { ImageViewport } from '../../../pipeline/image-viewport';
 import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { FullReportOnly } from '../../../pipeline/report-mode';
+import type { Viewport } from '../../../config';
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { ExecutionDetails } from '../../../pipeline/outcome';
 import {
@@ -568,7 +569,7 @@ function AccessibilityCompareViewport({
               className="a11y-compare-card__inspect"
               href={result.comparisonArtifactHref ?? '#'}
               label={`${viewportLabel} accessibility comparison`}
-              fields={compareDialogFields(result, viewportLabel)}
+              fields={compareDialogFields(result, executionDetails.viewport)}
               executionDetails={executionDetails}
               body={<CompareFindingsDialog result={result} viewportLabel={viewportLabel} />}
             >
@@ -587,13 +588,13 @@ function AccessibilityCompareViewport({
   );
 }
 
-export function compareDialogFields(result: AccessibilityCompareResult, viewportLabel: string): Readonly<Record<string, string>> {
+export function compareDialogFields(result: AccessibilityCompareResult, viewport: Viewport): Readonly<Record<string, string>> {
   return {
-    viewport: viewportLabel,
     new: String(result.summary.new),
     fixed: String(result.summary.fixed),
     changed: String(result.summary.changed),
     unchanged: String(result.summary.unchanged),
+    viewport: `${viewport.label} ${viewport.width} × ${viewport.height}`,
   };
 }
 
