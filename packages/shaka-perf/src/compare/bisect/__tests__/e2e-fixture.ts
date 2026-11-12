@@ -423,10 +423,10 @@ function regressionResult(
   return {
     ...baseResult(first.testFile, first.testName),
     outcomes: [
-      ...(visualTargets.length === 0 ? [] : [{
+      ...(visualTargets.length === 0 ? [] : [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok' as const,
         stage: 'visreg',
-        viewport: DESKTOP_VIEWPORT,
+
         measurement: visualTargets.map((target) => ({
           selector: target.subject,
           controlImage: `${target.id}-control.png`,
@@ -439,10 +439,10 @@ function regressionResult(
           savedByRetries: false,
         })),
       }]),
-      ...(perfTargets.length === 0 ? [] : [{
+      ...(perfTargets.length === 0 ? [] : [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok' as const,
         stage: 'perf',
-        viewport: DESKTOP_VIEWPORT,
+
         measurement: {
           metrics: perfTargets.map((target) => ({
             label: target.subject,
@@ -460,10 +460,10 @@ function regressionResult(
           })),
         },
       }]),
-      ...(accessibilityTargets.length === 0 ? [] : [{
+      ...(accessibilityTargets.length === 0 ? [] : [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok' as const,
         stage: 'accessibility',
-        viewport: DESKTOP_VIEWPORT,
+
         measurement: accessibilityMeasurement(accessibilityTargets, targetsWithRegression),
       }]),
     ],
@@ -531,7 +531,7 @@ function baseResult(testFile: string, testName: string): TestResult {
     startingPath: '/',
     controlUrl: 'http://control.test/',
     experimentUrl: 'http://experiment.test/',
-    code: null,
+
     chips: [],
     sorts: [],
     durationMs: 0,
@@ -545,10 +545,10 @@ function baseResult(testFile: string, testName: string): TestResult {
 function visregResult(regressionDetected: boolean): TestResult {
   return {
     ...baseResult('tests/homepage.abtest.ts', 'Homepage'),
-    outcomes: [{
+    outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'ok',
       stage: 'visreg',
-      viewport: DESKTOP_VIEWPORT,
+
       measurement: [{
         selector: 'document',
         controlImage: 'control.png',

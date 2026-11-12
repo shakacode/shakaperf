@@ -6,6 +6,8 @@
  */
 
 import { useId, useState, type ReactNode } from 'react';
+import type { ExecutionDetails } from '../../../src/pipeline/outcome';
+import { ExecutionDetailsSource } from './ExecutionDetailsSource';
 import type { ReportMeta, TestResult } from '../types';
 import { MeasurementCommand, RunCommits } from './RunDetails';
 import { pipelineTroubleshootCommands, renderPipelineTestCardUrls } from '../../../src/pipeline/pipeline-artifacts';
@@ -32,7 +34,8 @@ function formatMeasuredAt(measuredAt: number | null): string | null {
   return `${pluralize(days, 'day')} ${pluralize(hours, 'hour')} ago`;
 }
 
-export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExpanded, defaultExpanded = false, variant = 'card', actions, children }: {
+export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExpanded, defaultExpanded = false, variant = 'card', actions, children, executionDetails }: {
+  executionDetails?: ExecutionDetails;
   meta: ReportMeta;
   test: TestResult;
   expanded?: boolean;
@@ -46,17 +49,17 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
   const expanded = sharedExpanded ?? localExpanded;
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const panelId = useId();
-  const viewports = [...new Set(test.outcomes.map((outcome) => outcome.viewport.label))];
+  const viewports = [...new Set(test.outcomes.map((outcome) => outcome.executionDetails.viewport.label))];
   const troubleshoot = pipelineTroubleshootCommands(meta, test.name, viewports);
   // Outcome order follows stages/viewports, not measurement chronology.
   const latest = test.outcomes.flatMap((outcome) => outcome.runMetadata ? [outcome.runMetadata] : [])
-    .sort((a, b) => (Date.parse(b.measuredAt) || Date.parse(b.runId) || 0) - (Date.parse(a.measuredAt) || Date.parse(a.runId) || 0))[0];
+    .sort((a, b) => (Date.parse(b.measuredAt) || 0) - (Date.parse(a.measuredAt) || 0))[0];
   const sections = [
     { id: 'command', label: 'command', content: latest ? <>
       <div className="run-details__label">Latest command</div>
       <MeasurementCommand key={latest.command} command={latest.command} compact />
     </> : null },
-    { id: 'source', label: 'test source', content: test.code ? <pre className="card__code">{test.code}</pre> : null },
+    { id: 'source', label: 'test source', content: <ExecutionDetailsSource outcomes={test.outcomes} executionDetails={executionDetails} /> },
     { id: 'troubleshoot', label: 'troubleshoot', content: troubleshoot.length ? <pre className="card__code">{troubleshoot.join('\n')}</pre> : null },
     { id: 'artifacts', label: 'artifact paths', content: test.viewportArtifactPaths?.length ? <pre className="card__code">{test.viewportArtifactPaths.map(({ viewport, path }) => `${viewport}: ${path}`).join('\n')}</pre> : null },
   ].filter((section) => section.content !== null);

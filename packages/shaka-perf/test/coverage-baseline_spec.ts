@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import assert from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -50,7 +51,7 @@ describe('coverage-baseline.mts save', function () {
       ...extra,
     ];
     write('audit-results/report.json', JSON.stringify({
-      tests: tests.map(({ id, name }) => ({ id, name, outcomes: [{ kind: 'ok', stage: 'code_coverage' }] })),
+      tests: tests.map(({ id, name }) => ({ id, name, outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'code_coverage' }] })),
     }));
     for (const { id, file, ran } of tests) {
       write(`audit-results/${id}/artifacts/coverage.json`, JSON.stringify({

@@ -1762,8 +1762,8 @@ input {
   gap: 8px;
 }
 
-.artifact-links a,
-.artifact-links button {
+.artifact-links > a,
+.artifact-links > button {
   appearance: none;
   font-size: 10px;
   font-family: inherit;
@@ -1776,8 +1776,8 @@ input {
   cursor: pointer;
 }
 
-.artifact-links a:hover,
-.artifact-links button:hover {
+.artifact-links > a:hover,
+.artifact-links > button:hover {
   background: var(--border);
   color: #fff;
 }
@@ -2958,7 +2958,8 @@ input {
 .ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata-row) {
   max-height: 50%;
 }
-@media (max-height: 600px) {
+/* Keep room for image annotations and controls on short windows. */
+@media (max-height: 700px) {
   .ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata-row) {
     max-height: 24%;
   }
@@ -3228,8 +3229,6 @@ input {
 }
 .card__metadata-content .ui-dialog__meta { padding: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 .card__metadata-content .ui-dialog__meta dd { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
-.ui-dialog__meta .visreg-meta__retries { flex-wrap: nowrap; }
-.card__metadata-content .ui-dialog__meta .visreg-meta__retries dd { flex: 0 1 auto; white-space: nowrap; }
 .card__metadata .card__urls { padding: 0; margin: 0; border: 0; }
 .card__metadata .run-details__commit code { font-size: 10px; line-height: 1; }
 .card__metadata .card__code { margin-top: 4px; }

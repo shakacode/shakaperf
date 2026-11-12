@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -13,6 +14,7 @@ import { ArtifactScope, ArtifactStore } from '../artifact-store';
 import {
   buildSelfContainedArtifactDictionary,
   reportDataForMode,
+  prepareReportData,
   SELF_CONTAINED_REPORT_FILENAME,
   writeReport,
   writeMachineReport,
@@ -62,24 +64,56 @@ describe('reportDataForMode', () => {
     fs.rmSync(resultsRoot, { recursive: true, force: true });
   });
 
-  it('embeds resolved source once and leaves metadata paths out of the artifact dictionary', async () => {
+  it('packages the execution source explicitly in both modes without a card-level copy', async () => {
     const source = "abTest('Checkout', {}, async () => {});";
     const scope = new ArtifactScope(path.join(resultsRoot, 'checkout-desktop', 'artifacts'), resultsRoot);
-    const testSourcePath = await scope.writeFile('test-source.ts', source);
+    const testSourceHref = await scope.writeFile('test-source.ts', source);
     const data = {
       meta: { reportMode: 'full' },
-      tests: [{ name: 'Checkout', code: source, outcomes: [{
-        kind: 'ok', stage: 'visreg', runMetadata: { testSourcePath },
+      tests: [{ name: 'Checkout',  outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref, runId: 'fixture-run', recoveredAfterRetries: false },
+        kind: 'ok', stage: 'visreg',
       }] }],
     } as unknown as ReportData;
-    const dictionary = await buildSelfContainedArtifactDictionary(data, [], resultsRoot);
-    expect(dictionary).not.toHaveProperty(testSourcePath);
+    const dictionary = await buildSelfContainedArtifactDictionary(data, resultsRoot);
+    expect(dictionary).not.toHaveProperty(testSourceHref);
     for (const mode of ['full', 'self-contained'] as const) {
       const projected = reportDataForMode(data, mode, [], resultsRoot, dictionary);
-      expect(projected.tests[0]!.code).toBe(source);
-      expect(projected.tests[0]!.outcomes[0]!.runMetadata).toEqual({ testSourcePath });
-      expect(JSON.stringify(projected).split(source)).toHaveLength(2);
+      expect(projected.tests[0]).not.toHaveProperty('code');
+      const href = projected.tests[0]!.outcomes[0]!.executionDetails.testSourceHref!;
+      expect(href).toBe(`data:text/plain;charset=utf-8;base64,${Buffer.from(source).toString('base64')}`);
+      expect(data.tests[0]!.outcomes[0]!.executionDetails.testSourceHref).toBe(testSourceHref);
+
     }
+  });
+
+  it('traverses only artifact payloads, regardless of property names inside measurements', async () => {
+    const asset = 'checkout-tablet/artifacts/raw.json';
+    fs.mkdirSync(path.dirname(path.join(resultsRoot, asset)), { recursive: true });
+    fs.writeFileSync(path.join(resultsRoot, asset), '{"ok":true}');
+    const data = { meta: { title: asset }, tests: [{ filePath: asset, outcomes: [{
+      kind: 'ok', stage: 'visreg',
+      executionDetails: { runId: asset, viewport: DESKTOP_VIEWPORT, testSourceHref: null, recoveredAfterRetries: false },
+      runMetadata: { command: asset },
+      measurement: { runMetadata: asset, executionDetails: asset },
+    }] }] } as unknown as ReportData;
+    const dictionary = await buildSelfContainedArtifactDictionary(data, resultsRoot);
+    expect(Object.keys(dictionary)).toEqual([asset]);
+    const packaged = reportDataForMode(data, 'self-contained', [], resultsRoot, dictionary);
+    expect(packaged.meta.title).toBe(asset);
+    expect(packaged.tests[0]!.filePath).toBe(asset);
+    expect(packaged.tests[0]!.outcomes[0]!.runMetadata).toBe(data.tests[0]!.outcomes[0]!.runMetadata);
+    expect(packaged.tests[0]!.outcomes[0]!.executionDetails.runId).toBe(asset);
+    expect(packaged.tests[0]!.outcomes[0]!.measurement).toEqual({ runMetadata: dictionary[asset], executionDetails: dictionary[asset] });
+  });
+
+  it('marks a missing source unavailable without borrowing another execution source', () => {
+    const data = { meta: {}, tests: [{ outcomes: [{ kind: 'ok', stage: 'visreg',
+      executionDetails: { runId: 'run', viewport: DESKTOP_VIEWPORT, testSourceHref: 'missing.ts', recoveredAfterRetries: false },
+    }] }] } as unknown as ReportData;
+    for (const mode of ['full', 'self-contained'] as const) {
+      expect(reportDataForMode(data, mode, [], resultsRoot).tests[0]!.outcomes[0]!.executionDetails.testSourceHref).toBeNull();
+    }
+    expect(data.tests[0]!.outcomes[0]!.executionDetails.testSourceHref).toBe('missing.ts');
   });
 
   it('inlines every artifact path only in the self-contained report', () => {
@@ -97,10 +131,10 @@ describe('reportDataForMode', () => {
       meta: { reportMode: 'full' },
       tests: [{
         name: 'Checkout',
-        outcomes: [{
+        outcomes: [{ executionDetails: { viewport: { label: 'tablet' }, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'error',
           stage: 'visreg',
-          viewport: { label: 'tablet' },
+
           failure: { media: mediaPath },
           measurement: {
             nested: [{ rawPath, timelinePath, videoPath }],
@@ -167,10 +201,10 @@ describe('reportDataForMode', () => {
       meta: { reportMode: 'self-contained' },
       tests: [{
         name: 'Checkout',
-        outcomes: [{
+        outcomes: [{ executionDetails: { viewport: { label: 'tablet' }, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok',
           stage: 'accessibility',
-          viewport: { label: 'tablet' },
+
           measurement: {
             visiblePath,
             hiddenPath,
@@ -191,8 +225,7 @@ describe('reportDataForMode', () => {
     } as unknown as Stage;
 
     const artifacts = await buildSelfContainedArtifactDictionary(
-      data,
-      [stage],
+      prepareReportData(data, 'self-contained', [stage], resultsRoot),
       resultsRoot,
     );
     const selfContained = reportDataForMode(
@@ -252,32 +285,34 @@ describe('reportDataForMode', () => {
         startingPath: '/',
         controlUrl: 'https://control.test',
         experimentUrl: 'https://experiment.test',
-        code: null,
+
         chips: [],
         sorts: [],
         durationMs: 1,
         measuredAt: null,
         runId: null,
-        outcomes: [{
-          kind: 'ok',
-          stage: 'visreg',
-          viewport: {
+        outcomes: [{ executionDetails: { viewport: {
             label: 'tablet',
             width: 800,
             height: 600,
             deviceScaleFactor: 1,
             formFactor: 'desktop',
-          },
+          }, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
+          kind: 'ok',
+          stage: 'visreg',
+
           measurement: { controlImage: imagePath },
         }],
         viewportArtifactPaths: [],
       }],
     };
+    const stripRule = jest.fn(() => false);
+    const original = JSON.stringify(data);
     const stage = {
       name: 'visreg',
       category: 'visreg',
       renderArtifacts: () => null,
-      selfContainedReportStrip: {},
+      selfContainedReportStrip: { get controlImage() { return stripRule(); } },
     } as unknown as Stage;
 
     await writeReport(data, resultsRoot, [stage]);
@@ -288,6 +323,11 @@ describe('reportDataForMode', () => {
     );
     expect(html).toContain('data:image/avif;base64,');
     expect(html).not.toContain(imagePath);
+    expect(stripRule).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(data)).toBe(original);
+    const fullHtml = fs.readFileSync(path.join(resultsRoot, 'full-report.html'), 'utf8');
+    expect(fullHtml).toContain(imagePath);
+    expect(fullHtml).not.toContain('data:image/avif;base64,');
   });
 });
 

@@ -89,8 +89,8 @@ describe.each([
   it('reloads review state when full suite reveals another viewport from an older run', async () => {
     data.tests[0].outcomes.push({
       ...data.tests[0].outcomes[0],
-      viewport: { ...DESKTOP_VIEWPORT, label: 'mobile', width: 390, height: 844 },
-      runId: 'run-0',
+
+      executionDetails: { ...data.tests[0].outcomes[0].executionDetails, viewport: { ...DESKTOP_VIEWPORT, label: 'mobile', width: 390, height: 844 }, runId: 'run-0' },
       outsideCurrentConfig: true,
     });
     await regenerate();
@@ -116,35 +116,15 @@ describe.each([
 
   it('resets review when an older outcome changes even if the newest run stays the same', async () => {
     data.tests[0] = testResult('home', 'run-3');
-    data.tests[0].outcomes.push({ ...data.tests[0].outcomes[0], stage: 'perf', runId: 'run-1' });
+    data.tests[0].outcomes.push({ ...data.tests[0].outcomes[0], stage: 'perf', executionDetails: { ...data.tests[0].outcomes[0].executionDetails, runId: 'run-1' } });
     await regenerate();
     await reviewed().check();
     data.tests[0].outcomes.reverse();
     await regenerate();
     expect(await reviewed().isChecked()).toBe(true);
-    data.tests[0].outcomes[0].runId = 'run-2';
+    data.tests[0].outcomes[0].executionDetails = { ...data.tests[0].outcomes[0].executionDetails, runId: 'run-2' };
     await regenerate();
     expect(await reviewed().isChecked()).toBe(false);
-  });
-});
-
-describe('reviewed result identity for legacy reports', () => {
-  it('uses saved measurement time when run ids are absent', () => {
-    const { meta, tests: [test] } = reportData();
-    test.runId = null;
-    delete test.outcomes[0].runId;
-    const key = reviewedKey(meta, test);
-    expect(reviewedKey({ ...meta, generatedAt: 'later report' }, test)).toBe(key);
-    expect(reviewedKey(meta, { ...test, measuredAt: test.measuredAt! + 1 })).not.toBe(key);
-    expect(reviewedKey({ ...meta, pipelineName: 'audit' }, test)).not.toBe(key);
-  });
-
-  it('limits undated results to their report', () => {
-    const { meta, tests: [test] } = reportData();
-    test.runId = null;
-    test.measuredAt = null;
-    delete test.outcomes[0].runId;
-    expect(reviewedKey({ ...meta, generatedAt: 'later report' }, test)).not.toBe(reviewedKey(meta, test));
   });
 });
 
@@ -153,11 +133,11 @@ function testResult(id: string, runId: string): TestResult {
     id, name: id === 'home' ? 'Homepage' : 'Product',
     filePath: `ab-tests/${id}.abtest.ts`, startingPath: '/',
     controlUrl: 'http://localhost:3000/', experimentUrl: 'http://localhost:3001/',
-    code: null, chips: [], sorts: [], durationMs: 1000,
+     chips: [], sorts: [], durationMs: 1000,
     measuredAt: 1_790_000_000_000, runId, viewportArtifactPaths: [],
-    outcomes: [{
-      kind: 'error', stage: 'visreg', viewport: DESKTOP_VIEWPORT,
-      error: { message: 'Screenshot capture failed' }, runId,
+    outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: runId, recoveredAfterRetries: false },
+      kind: 'error', stage: 'visreg',
+      error: { message: 'Screenshot capture failed' },
     }],
   };
 }

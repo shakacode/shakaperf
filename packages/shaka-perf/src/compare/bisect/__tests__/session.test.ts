@@ -86,17 +86,17 @@ function resultWithVisualDiff(diffImage: string | null): TestResult {
     startingPath: '/',
     controlUrl: 'http://control.test/',
     experimentUrl: 'http://experiment.test/',
-    code: null,
+
     chips: [],
     sorts: [],
     durationMs: 0,
     measuredAt: null,
     runId: null,
     viewportArtifactPaths: [],
-    outcomes: [{
+    outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'ok',
       stage: 'visreg',
-      viewport: DESKTOP_VIEWPORT,
+
       measurement: [{
         selector: 'document',
         controlImage: 'control.png',
@@ -127,10 +127,10 @@ function resultForTest(
 
 function resultWithVisualDiffAndError(diffImage: string | null): TestResult {
   const result = resultWithVisualDiff(diffImage);
-  result.outcomes.push({
+  result.outcomes.push({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
     kind: 'error',
     stage: 'visreg',
-    viewport: DESKTOP_VIEWPORT,
+
     error: { message: 'capture failed after one selector succeeded' },
   });
   return result;

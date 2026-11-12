@@ -12,12 +12,12 @@ interface RetryUsage {
   limit: number | undefined;
 }
 
-type UsageUnit = 'retries' | 'attempts';
+type UsageUnit = 'retries' | 'comparisons';
 
 function formatUsage({ count, limit }: RetryUsage, unit: UsageUnit): string {
-  const singular = unit === 'retries' ? 'retry' : 'attempt';
+  const singular = unit === 'retries' ? 'retry' : 'comparison';
   if (count === undefined) {
-    const label = unit === 'retries' ? 'Retry' : 'Attempt';
+    const label = unit === 'retries' ? 'Retry' : 'Comparison';
     return `${label} count unavailable; limit: ${limit ?? 'unknown'}`;
   }
   if (limit === undefined) {

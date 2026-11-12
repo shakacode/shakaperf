@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import { chromium } from 'playwright';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -525,7 +526,7 @@ function writePerfResultsForPages(
     }, null, 2)}\n`);
     if (page.agent) {
       const url = `http://localhost${page.startingPath || '/'}`;
-      fs.writeFileSync(path.join(dir, page.id, 'agent-readiness.json'), `${JSON.stringify({
+      fs.writeFileSync(path.join(dir, page.id, 'agent-readiness.json'), `${JSON.stringify({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok',
         stage: 'agent-readiness',
         measurement: agentReadinessFixture(url, page.agent),
@@ -533,7 +534,7 @@ function writePerfResultsForPages(
     }
     if (page.a11y) {
       const url = `http://localhost${page.startingPath || '/'}`;
-      fs.writeFileSync(path.join(dir, page.id, 'accessibility.json'), `${JSON.stringify({
+      fs.writeFileSync(path.join(dir, page.id, 'accessibility.json'), `${JSON.stringify({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok',
         stage: 'accessibility',
         measurement: accessibilityResultFixture(url, page.a11y),

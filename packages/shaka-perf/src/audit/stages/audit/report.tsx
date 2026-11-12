@@ -7,6 +7,7 @@
 
 import type { CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
+import type { ExecutionDetails } from '../../../pipeline/outcome';
 import {
   DetailedArtifactDialog,
   StageArtifact,
@@ -55,8 +56,9 @@ export function AuditArtifactView({
   const rows = measurements
     .map((entry) => ({
       audit: entry.measurement,
-      viewportLabel: entry.viewport.label,
+      viewportLabel: entry.executionDetails.viewport.label,
       latestRun: entry.latestRun,
+      executionDetails: entry.executionDetails,
     }))
     .filter(({ audit }) => hasRenderableData(audit));
   if (rows.length === 0) return null;
@@ -67,7 +69,7 @@ export function AuditArtifactView({
       <div className="stage-stack">
         {rows.map((row, index) => (
           <div key={`${row.viewportLabel}-${index}`} className="stage-stack__viewport">
-            <AuditBody audit={row.audit} viewportLabel={row.viewportLabel} latestRun={row.latestRun} />
+            <AuditBody audit={row.audit} viewportLabel={row.viewportLabel} latestRun={row.latestRun} executionDetails={row.executionDetails} />
           </div>
         ))}
       </div>
@@ -75,18 +77,20 @@ export function AuditArtifactView({
   );
 }
 
-function AuditBody({ audit, viewportLabel, latestRun }: { audit: AuditResult; viewportLabel: string; latestRun: boolean }) {
-  return <MetricTable audit={audit} viewportLabel={viewportLabel} latestRun={latestRun} />;
+function AuditBody({ audit, viewportLabel, latestRun, executionDetails }: { audit: AuditResult; viewportLabel: string; latestRun: boolean; executionDetails: ExecutionDetails }) {
+  return <MetricTable audit={audit} viewportLabel={viewportLabel} latestRun={latestRun} executionDetails={executionDetails} />;
 }
 
 function MetricTable({
   audit,
   viewportLabel,
   latestRun,
+  executionDetails,
 }: {
   audit: AuditResult;
   viewportLabel: string;
   latestRun: boolean;
+  executionDetails: ExecutionDetails;
 }) {
   const metrics = audit.metrics ?? [];
   if (metrics.length === 0 && !hasArtifacts(audit)) return null;
@@ -104,11 +108,11 @@ function MetricTable({
         })}
         {audit.lighthouseHref ? (
           <FullReportOnly>
-            <LighthouseColumn audit={audit} />
+            <LighthouseColumn audit={audit} executionDetails={executionDetails} />
           </FullReportOnly>
         ) : null}
       </div>
-      <ArtifactLinks audit={audit} />
+      <ArtifactLinks audit={audit} executionDetails={executionDetails} />
       </ReportSection>
     </div>
   );
@@ -117,7 +121,7 @@ function MetricTable({
 // The single-side halves of compare's "profile diff" / "network diff" — the
 // profile timeline this stage renders, and the network log every run already
 // wrote but nothing surfaced.
-function ArtifactLinks({ audit }: { audit: AuditResult }) {
+function ArtifactLinks({ audit, executionDetails }: { audit: AuditResult; executionDetails: ExecutionDetails }) {
   const links = [
     audit.performanceProfileHref ? ['performance profile', audit.performanceProfileHref] : null,
     audit.networkActivityHref ? ['network activity', audit.networkActivityHref] : null,
@@ -127,7 +131,7 @@ function ArtifactLinks({ audit }: { audit: AuditResult }) {
     <FullReportOnly>
       <div className="artifact-links">
         {links.map(([label, href]) => (
-          <DetailedArtifactDialog key={label} href={href} label={label}>
+          <DetailedArtifactDialog executionDetails={executionDetails} key={label} href={href} label={label}>
             {label}
           </DetailedArtifactDialog>
         ))}
@@ -159,11 +163,11 @@ function MetricGroupColumn({ title, metrics }: { title: string; metrics: readonl
   );
 }
 
-function LighthouseColumn({ audit }: { audit: AuditResult }) {
+function LighthouseColumn({ audit, executionDetails }: { audit: AuditResult; executionDetails: ExecutionDetails }) {
   if (!audit.lighthouseHref) return null;
   return (
     <div style={METRIC_COLUMN_STYLE}>
-      <DetailedArtifactDialog
+      <DetailedArtifactDialog executionDetails={executionDetails}
         href={audit.lighthouseHref}
         label="Lighthouse report"
         variant="preview"

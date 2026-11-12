@@ -8,7 +8,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { VisregArtifact, VisregResult } from '../visreg';
-import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, ReportHeading, OldRunChip, StageNote, ArtifactMetadata, ArtifactScope } from '../../../pipeline/stage-report-components';
+import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, ReportHeading, OldRunChip, StageNote, RecoveryBadges } from '../../../pipeline/stage-report-components';
 import { ImageViewport } from '../../../pipeline/image-viewport';
 import { Scrubber } from './scrubber';
 
@@ -21,7 +21,7 @@ export function VisregArtifactView({
     .flatMap((entry) => entry.measurement.map((artifact) => ({
       artifact,
       entry,
-      viewportLabel: entry.viewport.label,
+      viewportLabel: entry.executionDetails.viewport.label,
       latestRun: entry.latestRun,
     })))
     .sort((a, b) => a.artifact.selector.localeCompare(b.artifact.selector) || a.viewportLabel.localeCompare(b.viewportLabel));
@@ -40,9 +40,7 @@ export function VisregArtifactView({
       <div className="artifact-stack">
         <div className="artifact-grid">
           {rows.map((row, index) => (
-            <ArtifactScope key={`${row.artifact.selector}-${row.viewportLabel}-${index}`} outcome={row.entry.outcome}>
-              <VisregCard row={row} />
-            </ArtifactScope>
+            <VisregCard key={`${row.artifact.selector}-${row.viewportLabel}-${index}`} row={row} />
           ))}
         </div>
       </div>
@@ -78,7 +76,8 @@ function VisregCard({ row }: { row: VisregRow }) {
         href={artifact.diffImage}
         label={`${viewportLabel} ${artifact.selector}`}
         title={`visual regressions ${viewportLabel} > ${artifact.selector}`}
-        meta={<VisregMeta row={row} />}
+        fields={visualComparisonFields(row)}
+        executionDetails={row.entry.executionDetails}
         body={<VisregDialogImages row={artifact} diffImage={artifact.diffImage} />}
       >
         <DiffImages row={artifact} diffImage={artifact.diffImage} />
@@ -93,12 +92,13 @@ function VisregCard({ row }: { row: VisregRow }) {
         href={artifact.controlImage}
         label={`${viewportLabel} ${artifact.selector}`}
         title={`visual regressions ${viewportLabel} > ${artifact.selector}`}
-        meta={<VisregMeta row={row} />}
+        fields={visualComparisonFields(row)}
+        executionDetails={row.entry.executionDetails}
         body={<VisregDialogImages row={artifact} />}
       >
         <div className="artifact-card__media">
           <ImageCell kind="no diff" src={artifact.controlImage}>
-            <RecoveryLabels row={row} />
+            <RecoveryBadges taskRecovered={row.entry.executionDetails.recoveredAfterRetries} comparisonRecovered={artifact.savedByRetries} />
           </ImageCell>
         </div>
       </DetailedArtifactDialog>
@@ -106,67 +106,19 @@ function VisregCard({ row }: { row: VisregRow }) {
   );
 }
 
-function VisregMeta({ row }: { row: VisregRow }) {
-  const { artifact, viewportLabel, entry } = row;
-  return (
-    <ArtifactMetadata>
-      <dl className="ui-dialog__meta">
-        <div>
-          <dt>viewport</dt>
-          <dd>{viewportLabel} {entry.viewport.width} × {entry.viewport.height}</dd>
-        </div>
-        <div>
-          <dt>selector</dt>
-          <dd>{artifact.selector}</dd>
-        </div>
-        <div>
-          <dt>mismatch</dt>
-          <dd>{artifact.misMatchPercentage.toFixed(2)}%</dd>
-        </div>
-        <VisualAttemptMetadata artifact={artifact} />
-        <TaskRetryMetadata outcome={entry.outcome} />
-      </dl>
-    </ArtifactMetadata>
-  );
-}
-
-function VisualAttemptMetadata({ artifact }: { artifact: VisregArtifact }) {
-  const { compareAttempts: attempts, compareRetries: retries, savedByRetries } = artifact;
-  if (attempts === undefined) {
-    if (!savedByRetries) return null;
-    return <div>
-      <dt>visual comparison</dt>
-      <dd>Matched after retrying · attempt count unavailable</dd>
-    </div>;
+export function visualComparisonFields({ artifact, viewportLabel, entry }: Pick<VisregRow, 'artifact' | 'viewportLabel' | 'entry'>): Readonly<Record<string, string>> {
+  const fields: Record<string, string> = {
+    viewport: `${viewportLabel} ${entry.executionDetails.viewport.width} × ${entry.executionDetails.viewport.height}`,
+    selector: artifact.selector,
+    mismatch: `${artifact.misMatchPercentage.toFixed(2)}%`,
+  };
+  if (artifact.compareAttempts === undefined) {
+    if (artifact.savedByRetries) fields['visual comparisons'] = 'Matched after retrying · comparison count unavailable';
+  } else if (artifact.compareAttempts > 1) {
+    const limit = artifact.compareRetries === undefined ? '?' : artifact.compareRetries + 1;
+    fields['visual comparisons'] = `${artifact.compareAttempts}/${limit}${artifact.savedByRetries ? ' · matched on retry' : ''}`;
   }
-  if (attempts <= 1) return null;
-  const limit = retries === undefined ? '?' : retries + 1;
-  return <div className="visreg-meta__retries">
-    <dt>visual attempts</dt>
-    <dd>{attempts}/{limit}{savedByRetries ? ' · matched on retry' : ''}</dd>
-  </div>;
-}
-
-function TaskRetryMetadata({ outcome }: Pick<StageRenderEntry, 'outcome'>) {
-  const retries = outcome?.runMetadata?.taskRetries;
-  const limit = outcome?.runMetadata?.taskRetryLimit;
-  const recovered = outcome?.recoveredAfterRetries;
-  if (!recovered && (retries ?? 0) === 0) return null;
-  return <div className="visreg-meta__retries">
-    <dt>error retries</dt>
-    <dd>{retries ?? '?'}/{limit ?? '?'}{recovered ? ' · recovered' : ''}</dd>
-  </div>;
-}
-
-function RecoveryLabels({ row: { artifact, entry } }: { row: VisregRow }) {
-  return <>
-    {entry.outcome?.recoveredAfterRetries ? (
-      <span className="artifact-card__image-label artifact-card__image-label--flaky">flaky</span>
-    ) : null}
-    {artifact.savedByRetries ? (
-      <span className="artifact-card__image-label artifact-card__image-label--unstable">unstable</span>
-    ) : null}
-  </>;
+  return fields;
 }
 
 function DiffImages({ row, diffImage }: { row: VisregArtifact; diffImage: string }) {

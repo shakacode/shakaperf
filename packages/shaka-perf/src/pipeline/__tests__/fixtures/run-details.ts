@@ -12,7 +12,7 @@ import type { ReportData as PipelineReportData } from '../../report';
 import type { BisectReportModel } from '../../../compare/bisect/report-model';
 type ReportData = PipelineReportData & { bisect?: BisectReportModel };
 import type { ReportOutcome, TestResult } from '../../report';
-import type { LoadedRunMetadata } from '../../run-metadata';
+import type { RunMetadata } from '../../run-metadata';
 
 const firstRun = '2026-10-20T20:54:53.891Z';
 const secondRun = '2026-10-20T21:00:50.722Z';
@@ -26,28 +26,25 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
     controlDisplay: '1.8 s', experimentDisplay: '2.1 s', deltaDisplay: '+300 ms', percentDisplay: '+16.7%', deltaPercent: 16.7,
     pValue: 0.0078, direction: 'regression',
   }] };
-  const metadata = (runId: string): LoadedRunMetadata => ({
-    testSourcePath: null,
+  const metadata = (runId: string): RunMetadata => ({
     command: `shaka-perf ${pipelineName} --filter 'Homepage' --categories ${audit ? 'audit,accessibility' : 'perf,accessibility'}`,
-    runId, measuredAt: runId, stages: [stage, 'accessibility'], categories: [audit ? 'audit' : 'perf', 'accessibility'],
-    viewport: DESKTOP_VIEWPORT,
+    measuredAt: runId, stages: [stage, 'accessibility'], categories: [audit ? 'audit' : 'perf', 'accessibility'],
     targets: (audit ? ['experiment'] as const : ['control', 'experiment'] as const).map((side) => ({
       side, url: 'http://127.0.0.1:3910/',
       commit: { sha: '1e04e03852fee4e3257a2084f226189b97f13e2e', message: 'Redact complete credential values before persisting run details [skip ci]', source: 'Git in twin-server source checkout' },
     })),
-    throttling: [{ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 150, throughputKbps: 1638.4 } }],
   });
   const result = (id: string, name: string, withMetadata: boolean): TestResult => ({
     id, name, filePath: `ab-tests/${id}.abtest.ts`, startingPath: '/',
     controlUrl: 'http://127.0.0.1:3910/', experimentUrl: 'http://127.0.0.1:3910/',
-    code: "abTest('Homepage', { startingPath: '/' }, async ({ page }) => {\n  await waitUntilPageSettled(page);\n});",
+
     chips: [{ tag: audit ? 'good' : 'regression', text: audit ? 'Good LCP' : 'LCP +16.7%', color: audit ? 'green' : 'red', sortingWeight: 1 }], sorts: [], durationMs: 12000,
     measuredAt: Date.parse(secondRun), runId: secondRun,
     viewportArtifactPaths: [{ viewport: 'desktop', path: `results/${id}-desktop` }],
     outcomes: [
-      { kind: 'ok', stage, measurement, viewport: DESKTOP_VIEWPORT, logs: '<0.1s> Measurement completed', ...(withMetadata ? { runMetadata: metadata(firstRun) } : {}) },
-      { kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' }, viewport: DESKTOP_VIEWPORT, ...(withMetadata ? { runMetadata: { ...metadata(secondRun), throttling: [] } } : {}) },
-      { kind: 'ok', stage, measurement, viewport: PHONE_VIEWPORT },
+      { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: 'data:text/plain;charset=utf-8,' + encodeURIComponent("abTest('Homepage', { startingPath: '/' }, async ({ page }) => {\n  await waitUntilPageSettled(page);\n});"), runId: firstRun, recoveredAfterRetries: false, ...(withMetadata ? { measurementSideCount: audit ? 1 : 2, throttling: [{ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 150, throughputKbps: 1638.4 } }] } : {}) }, kind: 'ok', stage, measurement,  logs: '<0.1s> Measurement completed', ...(withMetadata ? { runMetadata: metadata(firstRun) } : {}) },
+      { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: 'data:text/plain;charset=utf-8,' + encodeURIComponent("abTest('Homepage', { startingPath: '/' }, async ({ page }) => {\n  await waitUntilPageSettled(page);\n});"), runId: secondRun, recoveredAfterRetries: false, ...(withMetadata ? { measurementSideCount: audit ? 1 : 2 } : {}) }, kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' },  ...(withMetadata ? { runMetadata: metadata(secondRun) } : {}) },
+      { executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref: 'data:text/plain;charset=utf-8,' + encodeURIComponent("abTest('Homepage', { startingPath: '/' }, async ({ page }) => {\n  await waitUntilPageSettled(page);\n});"), runId: secondRun, recoveredAfterRetries: false, ...(withMetadata ? { measurementSideCount: audit ? 1 : 2 } : {}) }, kind: 'ok', stage, measurement,  },
     ] as ReportOutcome[],
   });
   const data: ReportData = {

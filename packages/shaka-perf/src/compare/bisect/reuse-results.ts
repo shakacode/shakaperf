@@ -61,7 +61,7 @@ function loadTestResult(
       return [{ ...outcome, viewport }];
     })
   ));
-  const viewportLabels = new Set(outcomes.map((outcome) => outcome.viewport.label));
+  const viewportLabels = new Set(outcomes.map((outcome) => outcome.executionDetails.viewport.label));
 
   return {
     id: testIdForTest(test),
@@ -76,7 +76,7 @@ function loadTestResult(
       test.experimentPathOverride ?? test.startingPath,
       test.config?.shared?.experimentURL ?? options.experimentURL,
     ),
-    code: null,
+
     chips: [],
     sorts: [],
     durationMs: 0,

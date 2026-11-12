@@ -15,11 +15,11 @@ it('omits all scopes when usage is identical across stages and viewports', () =>
 });
 
 it('groups equal viewports under stage labels when usage differs', () => {
-  expect(retryUsageTooltip('Screenshots still differ', 'attempts', [
+  expect(retryUsageTooltip('Screenshots still differ', 'comparisons', [
     { stage: 'Visual comparison', viewport: 'desktop', count: 3, limit: 3 },
     { stage: 'Visual comparison', viewport: 'tablet', count: 3, limit: 3 },
     { stage: 'Visual comparison', viewport: 'phone', count: 2, limit: 3 },
-  ])).toBe('Screenshots still differ.\nVisual comparison\ndesktop, tablet — 3 of 3 attempts used\nphone — 2 of 3 attempts used');
+  ])).toBe('Screenshots still differ.\nVisual comparison\ndesktop, tablet — 3 of 3 comparisons used\nphone — 2 of 3 comparisons used');
 });
 
 it('keeps distinct retry limits separate even when counts match', () => {

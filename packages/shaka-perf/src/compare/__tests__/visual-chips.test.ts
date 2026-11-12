@@ -6,9 +6,9 @@
  */
 
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
-import type { VisregArtifact, VisregResult } from '../../visreg';
-import type { ChipStageResults } from '../../../../pipeline/pipeline';
-import { unstableVisregChip, visualChangeChip } from '../chips';
+import type { VisregArtifact, VisregResult } from '../stages/visreg';
+import type { ChipStageResults } from '../../pipeline/pipeline';
+import { unstableVisregChip, visualChangeChip } from '../compare-pipeline';
 
 function artifact(selector: string, overrides: Partial<VisregArtifact> = {}): VisregArtifact {
   return {
@@ -20,8 +20,8 @@ function artifact(selector: string, overrides: Partial<VisregArtifact> = {}): Vi
 
 function entries(measurement: VisregResult): ChipStageResults<VisregResult> {
   return [{
-    stage: 'visreg', viewport: DESKTOP_VIEWPORT, measurement,
-    outcome: { kind: 'ok', stage: 'visreg', measurement },
+    stage: 'visreg',  measurement,
+    outcome: { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg', measurement },
   }];
 }
 
@@ -31,7 +31,7 @@ it('counts shared retries once and excludes selectors that kept differing', () =
     artifact('main', { diffImage: 'diff.png', savedByRetries: false, compareAttempts: 3 }),
   ]);
   expect(unstableVisregChip(result)?.text).toBe('visreg unstable (matched after 1 retry)');
-  expect(visualChangeChip(result)?.tooltip).toBe('Screenshots still differ after 3 of 3 allowed attempts.');
+  expect(visualChangeChip(result)?.tooltip).toBe('Screenshots still differ after 3 of 3 allowed comparisons.');
 });
 
 it('scopes differing attempt counts to their selectors', () => {
@@ -39,8 +39,8 @@ it('scopes differing attempt counts to their selectors', () => {
     artifact('header', { diffImage: 'header.png', savedByRetries: false, compareAttempts: 2 }),
     artifact('footer', { diffImage: 'footer.png', savedByRetries: false, compareAttempts: 3 }),
   ]);
-  expect(visualChangeChip(result)?.tooltip).toContain('desktop · header — 2 of 3 attempts used');
-  expect(visualChangeChip(result)?.tooltip).toContain('desktop · footer — 3 of 3 attempts used');
+  expect(visualChangeChip(result)?.tooltip).toContain('desktop · header — 2 of 3 comparisons used');
+  expect(visualChangeChip(result)?.tooltip).toContain('desktop · footer — 3 of 3 comparisons used');
   expect(unstableVisregChip(result)).toBeNull();
 });
 

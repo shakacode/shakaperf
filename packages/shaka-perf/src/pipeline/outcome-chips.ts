@@ -13,9 +13,9 @@ export function brokenChip(outcomes: readonly ReportOutcome[], stages: readonly 
   const failedTasks = outcomes.filter((outcome) => outcome.kind === 'error');
   const usage = failedTasks.map((outcome) => ({
     stage: stages.find((stage) => stage.name === outcome.stage)?.label ?? outcome.stage,
-    viewport: outcome.viewport.label,
-    count: outcome.runMetadata?.taskRetries,
-    limit: outcome.runMetadata?.taskRetryLimit,
+    viewport: outcome.executionDetails.viewport.label,
+    count: outcome.executionDetails.taskRetries,
+    limit: outcome.executionDetails.taskRetryLimit,
   }));
   const tooltip = retryUsageTooltip('Tasks still failed', 'retries', usage);
   return { tag: 'broken', text: 'broken', color: 'red', sortingWeight: 0, tooltip };
@@ -25,7 +25,7 @@ export function brokenChip(outcomes: readonly ReportOutcome[], stages: readonly 
 export function flakyChip(recovered: readonly ReportOutcome[]): ChipDescriptor {
   let retries: number | undefined = 0;
   for (const outcome of recovered) {
-    const count = outcome.runMetadata?.taskRetries;
+    const count = outcome.executionDetails.taskRetries;
     if (count === undefined || count < 1) {
       retries = undefined;
       break;
