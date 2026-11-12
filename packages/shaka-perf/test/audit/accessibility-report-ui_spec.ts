@@ -65,9 +65,9 @@ describe('accessibility report UI filters', () => {
           },
           children: React.createElement(AccessibilityArtifactView, {
             measurements: [{
-              ...executionFixture(),
-              latestRun: true,
+              ...executionFixture(), latestRun: true,
               measurement: result,
+
             }],
           }),
         },
@@ -83,8 +83,7 @@ describe('accessibility report UI filters', () => {
     const html = renderToStaticMarkup(
       React.createElement(AccessibilityArtifactView, {
         measurements: [{
-          ...executionFixture(),
-          latestRun: true,
+          ...executionFixture(), latestRun: true,
           measurement: accessibilityResult({
             effectiveConfig: {
               tags: ['wcag2a', 'wcag2aa'],
@@ -96,6 +95,7 @@ describe('accessibility report UI filters', () => {
               violation('color-contrast', ['wcag2aa', 'cat.color']),
             ],
           }),
+
         }],
       }),
     );
@@ -153,11 +153,11 @@ describe('accessibility report UI filters', () => {
     const html = renderToStaticMarkup(
       React.createElement(AccessibilityArtifactView, {
         measurements: [{
-          ...executionFixture(),
-          latestRun: true,
+          ...executionFixture(), latestRun: true,
           measurement: accessibilityResult({
             violations: [violation('button-name', ['wcag2a'])],
           }),
+
         }],
       }),
     );
@@ -234,7 +234,7 @@ function reportData(accessibility: AccessibilityResult): ReportData {
       startingPath: '/',
       controlUrl: 'http://localhost:3090/',
       experimentUrl: 'http://localhost:3090/',
-      code: null,
+
       chips: [{
         tag: 'accessibility violation',
         text: 'accessibility: 3 violations',
