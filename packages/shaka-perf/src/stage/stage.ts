@@ -139,6 +139,8 @@ export interface TestContext extends StageRenderContext {
 
 export interface StageRenderEntry<M = unknown> {
   readonly measurement: M;
+  /** Task recovery details for artifact previews. */
+  readonly outcome?: Outcome;
   readonly viewport: Viewport;
   /** Whether this measurement belongs to the report's latest run. */
   readonly latestRun: boolean;
