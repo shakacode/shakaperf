@@ -23,7 +23,7 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained'): R
   const card = (id: string, runId: string, mixed = false): TestResult => ({
     id, name: id, filePath: 'suite.abtest.ts', startingPath: '/',
     controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test',
-    durationMs: 0, measuredAt: 0, runId,
+     durationMs: 0, measuredAt: 0, runId,
     chips: [{ tag: id === 'Older' ? 'broken' : 'passed', text: id === 'Older' ? 'broken' : 'passed', color: 'gray', sortingWeight: 0 }],
     sorts: [], viewportArtifactPaths: [],
     outcomes: [
@@ -68,8 +68,8 @@ describe('latest measurement run visibility', () => {
     try {
       stageSection(data.meta, outcomes, LATEST);
       expect(render).toHaveBeenLastCalledWith('compare', {}, 'accessibility', [
-        { measurement: { runId: LATEST }, executionDetails: outcomes[0]!.executionDetails, outcome: outcomes[0], latestRun: true },
-        { measurement: { runId: OLD }, executionDetails: outcomes[1]!.executionDetails, outcome: outcomes[1], latestRun: false },
+        { measurement: { runId: LATEST }, executionDetails: outcomes[0]!.executionDetails, latestRun: true },
+        { measurement: { runId: OLD }, executionDetails: outcomes[1]!.executionDetails, latestRun: false },
       ]);
       const entries = render.mock.calls.at(-1)![3];
       entries.forEach((entry, index) => expect(entry.executionDetails).toBe(outcomes[index]!.executionDetails));

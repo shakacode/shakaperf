@@ -38,7 +38,7 @@ export function BuildAnnotatedTimelineArtifactView({
 }) {
   const mode = useReportMode();
   const rows = measurements
-    .map((entry) => ({ timeline: entry.measurement, viewportLabel: entry.executionDetails.viewport.label, latestRun: entry.latestRun }))
+    .map((entry) => ({ timeline: entry.measurement, viewportLabel: entry.executionDetails.viewport.label, latestRun: entry.latestRun, executionDetails: entry.executionDetails }))
     .filter(({ timeline }) => {
       const frames = timeline.frames;
       if (!frames || frames.length === 0) return false;
@@ -56,7 +56,7 @@ export function BuildAnnotatedTimelineArtifactView({
             <div key={`${row.viewportLabel}-${index}`} className="stage-stack__viewport">
               <div className="stage-section">
                 <ReportHeading className="stage-section__head" level={5} title={row.viewportLabel} badge={<OldRunChip latestRun={row.latestRun} />} />
-                <DetailedArtifactDialog
+                <DetailedArtifactDialog executionDetails={row.executionDetails}
                   body={
                     <AnnotatedTimelineDialog
                       frames={frames}

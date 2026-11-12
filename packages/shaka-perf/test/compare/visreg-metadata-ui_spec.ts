@@ -204,6 +204,20 @@ describe('visual preview metadata', () => {
     }
   });
 
+  it('uses shared metadata and execution facts in performance dialogs', async () => {
+    const page = await browser.newPage();
+    try {
+      await page.goto(`${url}?perf=1`);
+      await page.getByRole('button', { name: 'control lh', exact: true }).click();
+      const dialog = page.getByRole('dialog');
+      expect(await dialog.locator('.card__metadata').textContent()).toContain('1/2 · recovered');
+      await dialog.getByRole('button', { name: 'test source', exact: true }).click();
+      expect(await dialog.locator('.card__code').textContent()).toContain("abTest('Homepage'");
+    } finally {
+      await page.close();
+    }
+  });
+
   it('does not borrow a newer sibling result for a legacy visual artifact', async () => {
     delete data.tests[0]!.outcomes[0]!.runMetadata;
     const page = await browser.newPage();
@@ -212,6 +226,7 @@ describe('visual preview metadata', () => {
       await page.locator('.artifact-card--single').getByRole('button').click();
       const metadata = page.getByRole('dialog').locator('.card__metadata');
       expect(await metadata.getByRole('button', { name: 'command', exact: true }).count()).toBe(0);
+      expect(await metadata.locator('.card__measured-at').textContent()).toContain('never measured');
       expect(await metadata.locator('.card__target-commits').allTextContents()).toEqual(['', '']);
       expect(await metadata.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(0);
       expect(await metadata.getByRole('button', { name: 'test source', exact: true }).isVisible()).toBe(true);

@@ -7,6 +7,7 @@
 
 import { useMemo } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
+import type { ExecutionDetails } from '../../../pipeline/outcome';
 import {
   StageArtifact,
   StageArtifactTitle,
@@ -56,6 +57,7 @@ export function AccessibilityArtifactView({
               result={entry.measurement}
               viewportLabel={entry.executionDetails.viewport.label}
               latestRun={entry.latestRun}
+              executionDetails={entry.executionDetails}
             />
           </div>
         ))}
@@ -68,10 +70,12 @@ function AccessibilityBody({
   result,
   viewportLabel,
   latestRun,
+  executionDetails,
 }: {
   result: AccessibilityResult;
   viewportLabel: string;
   latestRun: boolean;
+  executionDetails: ExecutionDetails;
 }) {
   const filterState = useAccessibilityFilterState();
   const localOptions = useMemo(() => collectConfiguredFilterOptions([result]), [result]);
@@ -84,6 +88,7 @@ function AccessibilityBody({
       <ReportHeading className="stage-section__head" level={5} title={viewportLabel} badge={<OldRunChip latestRun={latestRun} />} />
       <div style={SCAN_STYLE}>
         <ScreenshotPreview
+          executionDetails={executionDetails}
           filterOptions={filterState?.options ?? localOptions}
           includeFilterStyles={!filterState}
           rawArtifactHref={result.rawArtifactHref}

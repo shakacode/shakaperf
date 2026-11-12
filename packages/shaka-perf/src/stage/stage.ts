@@ -140,7 +140,6 @@ export interface TestContext extends StageRenderContext {
 
 export interface StageRenderEntry<M = unknown> {
   readonly measurement: M;
-  readonly outcome?: Outcome;
   /** Framework-owned execution facts, scoped to this measurement. */
   readonly executionDetails: ExecutionDetails;
   /** Whether this measurement belongs to the report's latest run. */
