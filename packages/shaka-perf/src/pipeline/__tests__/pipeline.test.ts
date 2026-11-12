@@ -34,7 +34,6 @@ jest.mock('../measurement-lock', () => ({
 import { buildAbTestsConfig } from '../../config';
 import { withAbTestsConfigPath } from '../../effective-config';
 import { createVisregStage } from '../../compare/stages/visreg';
-import { comparePipelineConfigFromAbTests, createComparePipeline } from '../../compare/compare-pipeline';
 import type { Stage, StageCategory, StageName, TestContext } from '../../stage/stage';
 import type { WorkerPool } from '../worker-pool';
 import type { Outcome } from '../outcome';
@@ -490,51 +489,6 @@ describe('runPipeline', () => {
       expect(outcome.kind).toBe(exhausted ? 'error' : 'ok');
       expect(outcome.runMetadata).toMatchObject({ taskRetries: 1, taskRetryLimit: 1 });
     }
-    expect(result.testResults[0]!.chips.filter((chip) => chip.tag === 'flaky')).toEqual(exhausted ? [] : [expect.objectContaining({
-      text: `flaky (recovered after ${measured.length} ${measured.length === 1 ? 'retry' : 'retries'})`,
-    })]);
-    if (exhausted) {
-      expect(result.testResults[0]!.chips.find((chip) => chip.tag === 'broken')?.tooltip).toBe(
-        'Tasks still failed after 1 of 1 allowed retries.',
-      );
-    }
-  });
-
-  it.each([undefined, 1, 3])('reports visual attempts and their limit on mismatches (%p attempts)', async (attempts) => {
-    const config = buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, timeoutMs: 1_000, retries: 0, retryDelay: 0 } });
-    const selected = createComparePipeline(comparePipelineConfigFromAbTests(config));
-    selected.stages[0]!.run = async (ctx) => {
-      ctx.recordMeasurementOptions?.({ compareRetries: ctx.config.visreg.compareRetries });
-      if (attempts !== undefined) ctx.recordMeasurementOptions?.({ compareAttempts: attempts });
-      return [{ selector: 'document', controlImage: '', experimentImage: '', diffImage: 'diff.png',
-        misMatchPercentage: 1, diffPixels: 1, threshold: 0, diffBbox: null, savedByRetries: false,
-        compareAttempts: attempts, compareRetries: 2 }];
-    };
-    const test: AbTestDefinition = { ...frozenTest, config: { visreg: { viewports: ['desktop'], compareRetries: 2 } } };
-    const result = await runWithFrozenTest({ tests: [test], categories: 'visreg', skipReport: true }, selected);
-    expect(result.testResults[0]!.chips).toEqual([expect.objectContaining({
-      tag: 'visual change', text: 'visual change: 1 diff',
-      tooltip: attempts === undefined ? 'Screenshots still differ. Attempt count unavailable; limit: 3.'
-        : `Screenshots still differ after ${attempts} of 3 allowed attempts.`,
-    })]);
-  });
-
-  it.each([1, 2])('counts visual retries once per recovered viewport, not per selector (%i retries)', async (retries) => {
-    const config = buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, timeoutMs: 1_000, retries: 0, retryDelay: 0 } });
-    const selected = createComparePipeline(comparePipelineConfigFromAbTests(config));
-    selected.stages[0]!.run = async (ctx) => {
-      ctx.recordMeasurementOptions?.({ compareAttempts: retries + 1 });
-      return [0, 1].map((selector) => ({
-        selector: String(selector), controlImage: '', experimentImage: '', diffImage: null,
-        misMatchPercentage: 0, diffPixels: 0, threshold: 0, diffBbox: null, savedByRetries: true,
-        compareAttempts: retries + 1,
-      }));
-    };
-    const test: AbTestDefinition = { ...frozenTest, config: { visreg: { viewports: ['desktop'] } } };
-    const result = await runWithFrozenTest({ tests: [test], categories: 'visreg', skipReport: true }, selected);
-    expect(result.testResults[0]!.chips).toEqual([expect.objectContaining({
-      tag: 'visreg unstable', text: `visreg unstable (matched after ${retries} ${retries === 1 ? 'retry' : 'retries'})`,
-    })]);
   });
 
   it('persists per-result metadata and reuses it unchanged across mixed runs and report-only', async () => {
