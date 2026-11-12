@@ -436,14 +436,43 @@ See `.claude/skills/review-architecture/SKILL.md`.
 - [ ] The watchdog stays silent on a realistic test run, or the
   warnings are tracked as follow-up TODOs.
 
-## Execution details
+## Shared dialog metadata
+
+Keep `run()` results as typed domain measurements with artifact paths. Stage
+renderers may arrange specialized content, but must supply metadata as plain
+`fields: Readonly<Record<string, string>>` to `DetailedArtifactDialog`. Do not
+pass metadata JSX or build metadata disclosure markup in a stage.
 
 The runner records task retries and recovery on `outcome.executionDetails`,
-independently of measurement provenance in `runMetadata`. Each `StageRenderEntry`
-receives that same object as `executionDetails`, scoped to its measurement.
-Saved outcomes must use the current contract; readers do not convert legacy fields.
-Stages continue returning domain measurements from `run()`.
+independently of measurement provenance in `runMetadata`. Every `StageRenderEntry`
+receives that same object as `executionDetails`; no report-time extraction is needed.
+Pass the entry's object through measurement-backed dialog helpers:
 
-## Source snapshots and report packaging
+```tsx
+<DetailedArtifactDialog
+  href={measurement.imageHref}
+  label="Screenshot"
+  fields={{ selector: measurement.selector }}
+  executionDetails={entry.executionDetails}
+/>
+```
 
-Source references live on `executionDetails.testSourceHref`; reports do not keep a separate `test.code` copy. Dialogs use their selected execution; test-level source selection offers the saved snapshots. Report packaging traverses measurements and failure media explicitly, while embedding source text separately.
+Shared components render task retries and metadata fields. Keep card-chip
+policy in the pipeline chip builder, not stage report components. Do not pass full
+outcomes or look up another viewport's execution details. Do not infer execution facts from current configuration.
+
+Execution context is owned by the runner: `executionDetails` contains `runId`,
+`testSourceHref`, `viewport`, retry usage, and recovery state. Report entries and
+shared components receive the same object. Do not copy these fields onto outcomes,
+run metadata, or render entries. Source paths are null when no snapshot was captured.
+Visual comparison counts remain measurement data.
+
+Saved outcomes must use the current contract. There is no legacy normalization or
+fallback to another run or the current configuration. Regenerate outdated results.
+
+Source snapshots are referenced by `executionDetails.testSourceHref`; there is no
+card-level source copy. Report packaging embeds source text explicitly in both modes
+so source viewing works from `file://`. Dialogs use their execution's reference;
+cards offer a selector when their executions reference different snapshots.
+Artifact collection and inlining traverse measurements and failure media only.
+Execution context and measurement provenance are never recursively scanned.

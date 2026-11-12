@@ -8,7 +8,7 @@
 import type { CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { VisregArtifact, VisregResult } from '../visreg';
-import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, ReportHeading, OldRunChip, StageNote, ArtifactScope } from '../../../pipeline/stage-report-components';
+import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, ReportHeading, OldRunChip, StageNote } from '../../../pipeline/stage-report-components';
 import { ImageViewport } from '../../../pipeline/image-viewport';
 import { Scrubber } from './scrubber';
 
@@ -40,9 +40,7 @@ export function VisregArtifactView({
       <div className="artifact-stack">
         <div className="artifact-grid">
           {rows.map((row, index) => (
-            <ArtifactScope key={`${row.artifact.selector}-${row.viewportLabel}-${index}`} outcome={row.entry.outcome}>
-              <VisregCard row={row} />
-            </ArtifactScope>
+            <VisregCard key={`${row.artifact.selector}-${row.viewportLabel}-${index}`} row={row} />
           ))}
         </div>
       </div>
@@ -78,7 +76,8 @@ function VisregCard({ row }: { row: VisregRow }) {
         href={artifact.diffImage}
         label={`${viewportLabel} ${artifact.selector}`}
         title={`visual regressions ${viewportLabel} > ${artifact.selector}`}
-        extra={<VisregMeta row={row} />}
+        fields={visualComparisonFields(row)}
+        executionDetails={row.entry.executionDetails}
         body={<VisregDialogImages row={artifact} diffImage={artifact.diffImage} />}
       >
         <DiffImages row={artifact} diffImage={artifact.diffImage} />
@@ -93,7 +92,8 @@ function VisregCard({ row }: { row: VisregRow }) {
         href={artifact.controlImage}
         label={`${viewportLabel} ${artifact.selector}`}
         title={`visual regressions ${viewportLabel} > ${artifact.selector}`}
-        extra={<VisregMeta row={row} />}
+        fields={visualComparisonFields(row)}
+        executionDetails={row.entry.executionDetails}
         body={<VisregDialogImages row={artifact} />}
       >
         <div className="artifact-card__media">
@@ -104,24 +104,13 @@ function VisregCard({ row }: { row: VisregRow }) {
   );
 }
 
-function VisregMeta({ row }: { row: VisregRow }) {
-  const { artifact, viewportLabel } = row;
-  return (
-    <>
-      <div>
-        <dt>viewport</dt>
-        <dd>{viewportLabel}</dd>
-      </div>
-      <div>
-        <dt>selector</dt>
-        <dd>{artifact.selector}</dd>
-      </div>
-      <div>
-        <dt>mismatch</dt>
-        <dd>{artifact.misMatchPercentage.toFixed(2)}%</dd>
-      </div>
-    </>
-  );
+export function visualComparisonFields({ artifact, viewportLabel, entry }: Pick<VisregRow, 'artifact' | 'viewportLabel' | 'entry'>): Readonly<Record<string, string>> {
+  const fields: Record<string, string> = {
+    viewport: `${viewportLabel} ${entry.executionDetails.viewport.width} × ${entry.executionDetails.viewport.height}`,
+    selector: artifact.selector,
+    mismatch: `${artifact.misMatchPercentage.toFixed(2)}%`,
+  };
+  return fields;
 }
 
 function DiffImages({ row, diffImage }: { row: VisregArtifact; diffImage: string }) {

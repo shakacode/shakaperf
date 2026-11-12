@@ -8,7 +8,7 @@
 import type { ReactNode } from 'react';
 import { pipelineStagesForReport, renderPersistedStageArtifacts, renderPersistedStageHeadingBadge } from '../../../src/pipeline/pipeline-artifacts';
 import { ScreenshotPreview } from '../../../src/pipeline/screenshot-preview';
-import { ArtifactScope, DetailedArtifactDialog, OldRunChip, StageRunChipsProvider } from '../../../src/pipeline/stage-report-components';
+import { DetailedArtifactDialog, OldRunChip, StageRunChipsProvider } from '../../../src/pipeline/stage-report-components';
 import type { ReportMeta, ReportOutcome } from '../types';
 import { ReportSection } from '../../../src/pipeline/report-section';
 
@@ -58,17 +58,16 @@ function OutcomeError({ outcome, latestRun }: { outcome: ReportOutcome; latestRu
           />
         ) : null}
         {media && !isVideo ? (
-          <ArtifactScope outcome={outcome}>
-            <DetailedArtifactDialog
-              className="slot-error__screenshot"
-              image
-              href={media}
-              label="failure screenshot"
-              title={`${outcome.executionDetails.viewport.label} ${outcome.stage} failure screenshot`}
-            >
-              <ScreenshotPreview src={media} alt="failure screenshot" />
-            </DetailedArtifactDialog>
-          </ArtifactScope>
+          <DetailedArtifactDialog
+            executionDetails={outcome.executionDetails}
+            className="slot-error__screenshot"
+            image
+            href={media}
+            label="failure screenshot"
+            title={`${outcome.executionDetails.viewport.label} ${outcome.stage} failure screenshot`}
+          >
+            <ScreenshotPreview src={media} alt="failure screenshot" />
+          </DetailedArtifactDialog>
         ) : null}
         {stack ? (
           <details open>
@@ -102,7 +101,6 @@ export function stageSection(
       ? []
       : [{
         measurement: outcome.measurement,
-        outcome,
         executionDetails: outcome.executionDetails,
         latestRun: latestRunId == null || outcome.executionDetails.runId === latestRunId,
       }]
