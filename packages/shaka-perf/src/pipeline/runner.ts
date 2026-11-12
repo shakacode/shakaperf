@@ -40,11 +40,11 @@ import type { CdpPorts } from '../troubleshoot/debug-session';
 import {
   writeMachineReport,
   writeReport,
-  type ChipDescriptor,
   type ReportData,
   type ReportOutcome,
   type TestResult,
 } from './report';
+import { brokenChip, flakyChip } from './outcome-chips';
 import {
   persistedOutcomeInScope,
   resolveViewportsForTest,
@@ -789,7 +789,7 @@ async function runConfiguredPipelineWithSelection(
         store,
         categories,
         reportedStages,
-        executionRunId: runId,
+        currentRunId: runId,
         reportOnly: runtime.reportOnly === true || !measuredTestIds.has(testIdForTest(test)),
         viewportsFilter: preservedViewportSelection,
         config: runtime.config,
@@ -836,10 +836,10 @@ async function runConfiguredPipelineWithSelection(
     return testPartials.map((p) => {
       // Cross-cutting, runner-owned chip (not a pipeline concern): any stage task
       // that crashed/timed out and recovered on a retry makes the test flaky.
-      const recovered = p.partialResult.outcomes.some((o) => o.executionDetails.recoveredAfterRetries);
-      const flaky = recovered ? [flakyChip()] : [];
+      const recovered = p.partialResult.outcomes.filter((o) => o.executionDetails.recoveredAfterRetries);
+      const flaky = recovered.length > 0 ? [flakyChip(recovered)] : [];
       if (p.hasError) {
-        const chips = [brokenChip(), ...flaky];
+        const chips = [brokenChip(p.partialResult.outcomes, pipeline.stages), ...flaky];
         // Failed tests have no measured values to sort by.
         return { ...p.partialResult, chips, sorts: [] };
       }
@@ -1520,7 +1520,7 @@ function resultBytes(result: Omit<TestResult, 'chips' | 'sorts'> | TestResult): 
 }
 
 interface BuildTestResultOpts {
-  executionRunId: string | undefined;
+  currentRunId: string | undefined;
   test: AbTestDefinition;
   pipeline: Pipeline;
   cwd: string;
@@ -1565,7 +1565,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
       const categoryStages = pipeline.stages.filter((stage) => stage.category === testType);
       if (!testRunsForType(test, testType)) {
         persistSkippedOutcomesForStages(
-          opts.executionRunId!,
+          opts.currentRunId!,
           store,
           test,
           categoryStages,
@@ -1654,26 +1654,6 @@ function chipResultsForOutcomes(
     });
   }
   return results;
-}
-
-function brokenChip(): ChipDescriptor {
-  return { tag: 'broken', text: 'broken', color: 'red', sortingWeight: 0 };
-}
-
-// Cross-cutting warning chip the runner attaches to any test whose stage task
-// crashed or timed out on an earlier attempt but succeeded on a worker-pool
-// retry. Informational (doesn't drive card order); filterable to isolate flaky
-// tests. Distinct from the compare pipeline's "visreg unstable" chip, which is
-// about visual-comparison instability rather than crash recovery.
-function flakyChip(): ChipDescriptor {
-  return {
-    tag: 'flaky',
-    text: 'flaky (recovered after retries)',
-    color: 'yellow',
-    sortingWeight: 16,
-    affectsCardOrder: false,
-    tooltip: 'A stage task failed on an earlier attempt but a retry succeeded — the test is flaky but recovered.',
-  };
 }
 
 function hasChipTag(test: TestResult, tag: string): boolean {

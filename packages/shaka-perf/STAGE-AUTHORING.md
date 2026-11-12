@@ -436,7 +436,7 @@ See `.claude/skills/review-architecture/SKILL.md`.
 - [ ] The watchdog stays silent on a realistic test run, or the
   warnings are tracked as follow-up TODOs.
 
-## Shared dialog metadata
+## Shared dialog metadata and recovery badges
 
 Keep `run()` results as typed domain measurements with artifact paths. Stage
 renderers may arrange specialized content, but must supply metadata as plain
@@ -457,7 +457,9 @@ Pass the entry's object through measurement-backed dialog helpers:
 />
 ```
 
-Shared components render task retries and metadata fields. Keep card-chip
+Shared components render task retries and metadata fields. Use `RecoveryBadges`
+with `taskRecovered={entry.executionDetails.recoveredAfterRetries}` and the domain's
+comparison-recovery boolean where a preview needs recovery labels. Keep card-chip
 policy in the pipeline chip builder, not stage report components. Do not pass full
 outcomes or look up another viewport's execution details. Do not infer execution facts from current configuration.
 
