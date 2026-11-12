@@ -38,34 +38,14 @@ import {
   type AccessibilityFilterSelection,
 } from './report-utils';
 
-export function AccessibilityDialogMeta({
-  hotspotCount,
-  scan,
-}: {
-  hotspotCount: number;
-  scan: AccessibilityScan;
-}) {
+export function accessibilityDialogFields(scan: AccessibilityScan, hotspotCount: number): Readonly<Record<string, string>> {
   const nodeCount = scan.violations.reduce((total, violation) => total + violation.nodes.length, 0);
-  return (
-    <>
-      <div>
-        <dt>viewport</dt>
-        <dd>{scan.viewportLabel}</dd>
-      </div>
-      <div>
-        <dt>issues</dt>
-        <dd>{scan.violations.length} rules · {nodeCount} nodes</dd>
-      </div>
-      <div>
-        <dt>hotspots</dt>
-        <dd>{hotspotCount}</dd>
-      </div>
-      <div>
-        <dt>url</dt>
-        <dd className="ui-dialog__meta-break">{scan.url}</dd>
-      </div>
-    </>
-  );
+  return {
+    viewport: scan.viewportLabel,
+    issues: `${scan.violations.length} rules · ${nodeCount} nodes`,
+    hotspots: String(hotspotCount),
+    url: scan.url,
+  };
 }
 
 export function AccessibilityDialog({

@@ -59,6 +59,7 @@ function OutcomeError({ outcome, latestRun }: { outcome: ReportOutcome; latestRu
         ) : null}
         {media && !isVideo ? (
           <DetailedArtifactDialog
+            executionDetails={outcome.executionDetails}
             className="slot-error__screenshot"
             image
             href={media}

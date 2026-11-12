@@ -1275,21 +1275,23 @@ input {
 .card[data-collapsed="true"] .card__head { border-bottom: none; }
 
 .card__path {
-  min-width: 0;
   font-size: 11px;
   color: var(--fg-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  margin-top: 4px;
+  word-break: break-all;
 }
 
-/* Keep freshness visible beside the path, including in narrow cards. */
+/* Freshness line under the test path: "updated 2d 5h ago". Muted and a bit
+   dimmer than the path so it reads as supplementary metadata — useful for
+   spotting stale measurements in a report assembled from multiple shards
+   that ran at different times. */
 .card__measured-at {
-  flex-shrink: 0;
-  font-size: 11px;
+  font-size: 10px;
   color: var(--fg-muted);
   opacity: 0.7;
-  white-space: nowrap;
+  margin-top: 2px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .missing-artifacts__toggle { padding: 4px 0; border: 0; background: transparent; color: var(--fg-muted); font-size: 11px; text-transform: none; letter-spacing: 0; white-space: nowrap; }
@@ -1329,6 +1331,11 @@ input {
      "worst metrics" chip to list one metric per line) while still
      collapsing other whitespace so single-line chips look unchanged. */
   white-space: pre-line;
+}
+
+.pill .report-tooltip__trigger {
+  text-transform: inherit;
+  letter-spacing: inherit;
 }
 
 .pill__sep {
@@ -1396,7 +1403,7 @@ input {
 }
 
 .card__body {
-  padding: 16px 16px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1647,10 +1654,17 @@ input {
   display: block;
 }
 
-.artifact-card__image-label {
+.artifact-card__image-labels {
   position: absolute;
   bottom: 4px;
   left: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: calc(100% - 12px);
+}
+
+.artifact-card__image-label {
   font-size: 9px;
   color: var(--fg-muted);
   letter-spacing: 0.1em;
@@ -1676,6 +1690,18 @@ input {
   letter-spacing: 0.14em;
   font-weight: 700;
   text-shadow: none;
+}
+
+.artifact-card--single .artifact-card__image-label--flaky {
+  color: var(--visual_change);
+  background: var(--visual_change-tint);
+  border-color: var(--visual_change);
+}
+
+.artifact-card--single .artifact-card__image-label--unstable {
+  color: var(--error);
+  background: var(--error-tint);
+  border-color: var(--error);
 }
 
 .stage-section {
@@ -2089,9 +2115,6 @@ input {
 }
 
 @media (max-width: 760px) {
-  .stage-table th { padding: 6px 4px; }
-  .stage-table td { padding: 6px 6px; }
-  .stage-table-scroll { overflow-x: auto; }
   /* Phone layout for every report this shell renders — compare, bisect, audit.
      Reclaim the wide gutters, stack the header controls, and collapse the
      page-level grids to one column so nothing is pushed past the viewport edge.
@@ -2931,11 +2954,12 @@ input {
   max-height: 24%;
   overflow: auto;
 }
-.ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata-row) {
+.ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata) {
   max-height: 50%;
 }
-@media (max-height: 600px) {
-  .ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata-row) {
+/* Keep room for image annotations and controls on short windows. */
+@media (max-height: 700px) {
+  .ui-dialog--image .ui-dialog__meta-wrap:has(> .card__metadata) {
     max-height: 24%;
   }
 }
@@ -3129,6 +3153,9 @@ input {
 .run-details__section { padding: 20px 0; border-bottom: 1px solid var(--border); }
 .run-details__section:last-child { border-bottom: 0; }
 .run-details h3 { margin: 0 0 12px; color: var(--fg-muted); font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; }
+.run-details__applications { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.run-details__application h4 { margin: 0 0 4px; font-size: 12px; text-transform: capitalize; }
+.run-details__url { overflow-wrap: anywhere; color: var(--fg-muted); }
 .run-details__commits { display: grid; gap: 12px; margin-top: 16px; }
 .run-details__label { color: var(--fg-muted); font-size: 10px; text-transform: capitalize; }
 .run-details__commit summary, .run-details__commit-heading { display: flex; align-items: baseline; gap: 10px; }
@@ -3146,6 +3173,12 @@ input {
 .run-details__command textarea { resize: vertical; }
 .run-details__command button { margin-top: 8px; padding: 5px 9px; font: inherit; font-size: 10px; background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); cursor: pointer; }
 .run-details__command button:hover { background: var(--bg-hover); }
+.run-details__overview { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; }
+.run-details__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.run-details__tags span { padding: 2px 7px; border: 1px solid var(--border); background: var(--bg); font-size: 10px; }
+.run-details__viewports { display: grid; gap: 8px; }
+.run-details__viewport strong { display: inline-block; min-width: 66px; font-weight: 500; text-transform: capitalize; }
+.run-details__viewport > span { color: var(--fg-muted); font-size: 10px; }
 .run-details__settings { display: grid; gap: 14px; }
 .run-details__setting-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; }
 .run-details__setting-head strong { font-weight: 500; }
@@ -3168,48 +3201,30 @@ input {
 @media (max-width: 540px) {
   .run-details { padding: 0 16px; }
   .run-details__section { padding: 16px 0; }
+  .run-details__overview { grid-template-columns: 1fr; gap: 16px; }
   .run-details__commit summary { gap: 8px; }
 }
 
+.run-details__command-variant { border: 1px solid var(--border); margin-top: 8px; }
+.run-details__command-variant > summary { display: flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: pointer; list-style: none; }
+.run-details__command-variant > summary::-webkit-details-marker { display: none; }
+.run-details__command-variant > summary::before { content: '+'; color: var(--fg-muted); }
+.run-details__command-variant[open] > summary::before { content: '−'; }
+.run-details__command-variant > summary .run-details__scope { display: block; margin: 0; }
+.run-details__command-variant .run-details__command { padding: 0 12px 12px; }
 
 .card__disclosure { border-bottom: 1px solid var(--border); font-size: 11px; }
 .card__disclosure > summary { padding: 9px 20px; cursor: pointer; color: var(--fg-muted); }
 .card__disclosure > summary:hover { color: var(--fg); background: var(--bg-hover); }
 .card__metadata { container-type: inline-size; }
-.card__metadata > summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px; }
-.card__metadata > summary::-webkit-details-marker { display: none; }
-.card__metadata > summary::before { content: '▸'; }
-.card__metadata[open] > summary::before { content: '▾'; }
-.card__metadata[open] > summary { padding-bottom: 3px; }
-.card__metadata-row { position: relative; }
-.card__metadata-row:has(> .card__actions) .card__metadata > summary { margin-right: 210px; padding-right: 0; }
-.card__metadata-row--dialog:has(> .card__actions) .card__metadata > summary { margin-right: 65px; }
-.card__actions { position: absolute; top: 9px; right: 20px; display: flex; align-items: baseline; gap: 14px; }
-.card__metadata--dialog > summary .card__metadata-provenance { flex: 1 1 100%; order: 1; }
-@container (min-width: 900px) {
-  .card__metadata--dialog > summary { flex-wrap: nowrap; }
-  .card__metadata--dialog > summary .card__metadata-provenance { flex: 1; order: 0; margin-left: 10px; }
-}
 .card__metadata-content { display: grid; gap: 10px; min-width: 0; padding: 0 20px 14px; }
 .card__metadata-content > * { min-width: 0; }
-.card__metadata-provenance { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
-@container (max-width: 899px) {
-  .card__metadata-provenance { flex-wrap: wrap; }
-  .card__metadata-provenance .card__path {
-    max-width: 100%;
-    white-space: normal;
-    overflow: visible;
-    overflow-wrap: anywhere;
-  }
-}
 .card__metadata-content .ui-dialog__meta { padding: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 .card__metadata-content .ui-dialog__meta dd { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
-.ui-dialog__meta .visreg-meta__retries { flex-wrap: nowrap; }
-.card__metadata-content .ui-dialog__meta .visreg-meta__retries dd { flex: 0 1 auto; white-space: nowrap; }
 .card__metadata .card__urls { padding: 0; margin: 0; border: 0; }
 .card__metadata .run-details__commit code { font-size: 10px; line-height: 1; }
 .card__metadata .card__code { margin-top: 4px; }
-.card__targets { gap: 16px; align-items: start; }
+.card__targets { gap: 16px; }
 .card__targets > div { align-items: start; gap: 8px; }
 .card__targets dd { display: grid; gap: 8px; }
 .card__targets dd > a { justify-self: start; max-width: 100%; }
@@ -3278,7 +3293,7 @@ input {
 }
 .report-section__body[hidden] { display: none; }
 .report-section--nested {
-  margin-inline-start: 3px;
+  margin-inline-start: 8px;
   padding-inline-start: 12px;
   border-inline-start: 1px solid var(--border-strong);
   min-width: 0;
@@ -3303,5 +3318,15 @@ input {
 }
 .card__tag-list .pill { max-width: 100%; }
 
+.card__metadata-row { position: relative; }
+.card__metadata-row .card__metadata > summary { margin-right: 210px; padding-right: 0; }
+.card__actions {
+  position: absolute;
+  top: 9px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
 
 .perf-timeline-preview { margin-block: 12px; }

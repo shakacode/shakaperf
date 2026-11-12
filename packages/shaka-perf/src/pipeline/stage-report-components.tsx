@@ -9,8 +9,8 @@ import { createContext, useContext, useEffect, useId, useRef, useState, type Rea
 import { useReportSection } from './report-section';
 import { ReportHeading, type ReportHeadingProps } from './report-heading';
 import { ImageSizeContext, ImageViewport } from './image-viewport';
+import type { ExecutionDetails } from './outcome';
 import { renderPipelineDialogMetaUrls } from './pipeline-artifacts';
-import type { Outcome } from './outcome';
 
 export { ReportHeading } from './report-heading';
 
@@ -25,32 +25,48 @@ export interface StageArtifactTestMeta {
 }
 
 const StageArtifactContext = createContext<StageArtifactTestMeta | null>(null);
-type ArtifactMetadataRenderer = (extra: ReactNode, outcome?: Outcome) => ReactNode;
+export interface ArtifactMetadataProps {
+  readonly fields?: Readonly<Record<string, string>>;
+  readonly executionDetails?: ExecutionDetails;
+}
+
+type ArtifactMetadataRenderer = (props: ArtifactMetadataProps) => ReactNode;
 const ArtifactMetadataContext = createContext<ArtifactMetadataRenderer | null>(null);
-const ArtifactOutcomeContext = createContext<Outcome | undefined>(undefined);
 
-/** Bind metadata to the result that produced this artifact, including legacy results. */
-export function ArtifactScope({ outcome, children }: { outcome?: Outcome; children: ReactNode }) {
-  return <ArtifactOutcomeContext.Provider value={outcome}>{children}</ArtifactOutcomeContext.Provider>;
+/** Shared markup: stages supply plain values, never metadata elements. */
+export function ArtifactMetadataFields({ fields, executionDetails }: ArtifactMetadataProps) {
+  const showRetries = executionDetails?.recoveredAfterRetries || (executionDetails?.taskRetries ?? 0) > 0;
+  return <>
+    {showRetries ? <dl className="ui-dialog__meta">
+      <div><dt>error retries</dt><dd>{executionDetails?.taskRetries ?? '?'}/{executionDetails?.taskRetryLimit ?? '?'}{executionDetails?.recoveredAfterRetries ? ' · recovered' : ''}</dd></div>
+    </dl> : null}
+    {fields && Object.keys(fields).length > 0 ? <dl className="ui-dialog__meta">
+      {Object.entries(fields).map(([label, value]) => <div key={label}><dt>{label}</dt><dd className="ui-dialog__meta-break">{value}</dd></div>)}
+    </dl> : null}
+  </>;
 }
 
-export function ArtifactDialogTitle({ title }: { title: ReactNode }) {
-  const test = useContext(StageArtifactContext);
-  return <span className="ui-dialog__title-text">{title}{test ? <> · {test.name}</> : null}</span>;
-}
-
-/** Wrap stage-specific fields in the shell's shared metadata disclosure. */
-export function ArtifactMetadata({ children }: { children?: ReactNode }) {
+export function ArtifactMetadata(props: ArtifactMetadataProps) {
   const renderMetadata = useContext(ArtifactMetadataContext);
-  const outcome = useContext(ArtifactOutcomeContext);
   const test = useContext(StageArtifactContext);
-  if (renderMetadata) return renderMetadata(children, outcome);
-  return (
-    <details className="card__disclosure card__metadata" open>
-      <summary>Metadata</summary>
-      <div className="card__metadata-content">{test ? <TestMeta test={test} /> : null}{children}</div>
-    </details>
-  );
+  if (renderMetadata) return renderMetadata(props);
+  return <details className="card__disclosure card__metadata" open>
+    <summary>Metadata</summary>
+    <div className="card__metadata-content">
+      {test ? <TestMeta test={test} /> : null}
+      <ArtifactMetadataFields {...props} />
+    </div>
+  </details>;
+}
+
+export function RecoveryBadges({ taskRecovered, comparisonRecovered }: {
+  taskRecovered: boolean;
+  comparisonRecovered: boolean;
+}) {
+  return <>
+    {taskRecovered ? <span className="artifact-card__image-label artifact-card__image-label--flaky" title="A task failed, then succeeded on retry.">flaky</span> : null}
+    {comparisonRecovered ? <span className="artifact-card__image-label artifact-card__image-label--unstable" title="Screenshots differed initially, then matched on retry.">unstable</span> : null}
+  </>;
 }
 
 // Whole-test warnings and bisect reports suppress repeated viewport warnings,
@@ -157,10 +173,8 @@ export function Dialog({
 
 export function TestMeta({
   test,
-  extra,
 }: {
   test: StageArtifactTestMeta;
-  extra?: ReactNode;
 }) {
   return (
     <dl className="ui-dialog__meta">
@@ -172,7 +186,6 @@ export function TestMeta({
         <dt>file</dt>
         <dd>{test.filePath}</dd>
       </div>
-      {extra}
       <TestMetaUrls test={test} />
     </dl>
   );
@@ -180,10 +193,6 @@ export function TestMeta({
 
 function TestMetaUrls({ test }: { test: StageArtifactTestMeta }) {
   return <>{renderPipelineDialogMetaUrls(test)}</>;
-}
-
-export function useStageArtifactTest(): StageArtifactTestMeta | null {
-  return useContext(StageArtifactContext);
 }
 
 export function StageArtifactProvider({
@@ -238,11 +247,10 @@ export function DetailedArtifactDialog({
   body,
   children,
   className,
-  extra,
-  meta,
+  fields,
+  executionDetails,
   href,
   label,
-  title = label,
   variant,
   image = false,
 }: {
@@ -255,14 +263,11 @@ export function DetailedArtifactDialog({
    * CSS file keyed by class name.
    */
   className?: string;
-  extra?: ReactNode;
-  meta?: ReactNode;
   href: string;
   label: string;
-  title?: ReactNode;
   variant?: 'preview';
   image?: boolean;
-}) {
+} & ArtifactMetadataProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -280,8 +285,8 @@ export function DetailedArtifactDialog({
           image={image}
           open={open}
           onClose={() => setOpen(false)}
-          title={<ArtifactDialogTitle title={title} />}
-          meta={meta ?? <ArtifactMetadata>{extra ? <dl className="ui-dialog__meta">{extra}</dl> : null}</ArtifactMetadata>}
+          title={<span className="ui-dialog__title-text">{label}</span>}
+          meta={<ArtifactMetadata fields={fields} executionDetails={executionDetails} />}
         >
           {body ?? (image ? <ImageViewport><img src={href} alt={label} /></ImageViewport> : <iframe className="artifact-dialog__frame" src={href} title={label} />)}
         </Dialog>

@@ -20,6 +20,7 @@ export function VisregArtifactView({
   const rows = measurements
     .flatMap((entry) => entry.measurement.map((artifact) => ({
       artifact,
+      entry,
       viewportLabel: entry.executionDetails.viewport.label,
       latestRun: entry.latestRun,
     })))
@@ -48,6 +49,7 @@ export function VisregArtifactView({
 }
 
 interface VisregRow {
+  entry: StageRenderEntry<VisregResult>;
   latestRun: boolean;
   artifact: VisregArtifact;
   viewportLabel: string;
@@ -73,7 +75,8 @@ function VisregCard({ row }: { row: VisregRow }) {
         className="artifact-card__media-button"
         href={artifact.diffImage}
         label={`${viewportLabel} ${artifact.selector}`}
-        extra={<VisregMeta row={row} />}
+        fields={visualComparisonFields(row)}
+        executionDetails={row.entry.executionDetails}
         body={<VisregDialogImages row={artifact} diffImage={artifact.diffImage} />}
       >
         <DiffImages row={artifact} diffImage={artifact.diffImage} />
@@ -87,7 +90,8 @@ function VisregCard({ row }: { row: VisregRow }) {
         className="artifact-card__media-button"
         href={artifact.controlImage}
         label={`${viewportLabel} ${artifact.selector}`}
-        extra={<VisregMeta row={row} />}
+        fields={visualComparisonFields(row)}
+        executionDetails={row.entry.executionDetails}
         body={<VisregDialogImages row={artifact} />}
       >
         <div className="artifact-card__media">
@@ -98,24 +102,13 @@ function VisregCard({ row }: { row: VisregRow }) {
   );
 }
 
-function VisregMeta({ row }: { row: VisregRow }) {
-  const { artifact, viewportLabel } = row;
-  return (
-    <>
-      <div>
-        <dt>viewport</dt>
-        <dd>{viewportLabel}</dd>
-      </div>
-      <div>
-        <dt>selector</dt>
-        <dd>{artifact.selector}</dd>
-      </div>
-      <div>
-        <dt>mismatch</dt>
-        <dd>{artifact.misMatchPercentage.toFixed(2)}%</dd>
-      </div>
-    </>
-  );
+export function visualComparisonFields({ artifact, viewportLabel }: Pick<VisregRow, 'artifact' | 'viewportLabel' | 'entry'>): Readonly<Record<string, string>> {
+  const fields: Record<string, string> = {
+    viewport: viewportLabel,
+    selector: artifact.selector,
+    mismatch: `${artifact.misMatchPercentage.toFixed(2)}%`,
+  };
+  return fields;
 }
 
 function DiffImages({ row, diffImage }: { row: VisregArtifact; diffImage: string }) {

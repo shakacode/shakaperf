@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import type { ExecutionDetails } from '../../../pipeline/outcome';
 import {
   DetailedArtifactDialog,
 } from '../../../pipeline/stage-report-components';
@@ -13,7 +14,7 @@ import type {
   AccessibilityScan,
   AccessibilityViolation,
 } from './types';
-import { AccessibilityDialog, AccessibilityDialogMeta, ThumbnailMarker } from './report-dialog';
+import { AccessibilityDialog, accessibilityDialogFields, ThumbnailMarker } from './report-dialog';
 import { FilteredEmptyState, useAccessibilityFilterState } from './report-filter';
 import { ACCESSIBILITY_CSS, ACCESSIBILITY_PREVIEW_CSS } from './report-styles';
 import { ViolationTagChips } from './report-tag-chips';
@@ -27,12 +28,14 @@ import {
 } from './report-utils';
 
 export function ScreenshotPreview({
+  executionDetails,
   filterOptions,
   includeFilterStyles = true,
   rawArtifactHref,
   scan,
   totalViolationCount,
 }: {
+  executionDetails: ExecutionDetails;
   filterOptions: AccessibilityFilterOptions;
   includeFilterStyles?: boolean;
   rawArtifactHref?: string;
@@ -58,7 +61,8 @@ export function ScreenshotPreview({
           image
           href={source}
           label={`${scan.viewportLabel} accessibility issues`}
-          extra={<AccessibilityDialogMeta scan={scan} hotspotCount={hotspots.length} />}
+          fields={accessibilityDialogFields(scan, hotspots.length)}
+          executionDetails={executionDetails}
           body={<AccessibilityDialog filterOptions={filterOptions} scan={scan} source={source} />}
         >
           <div className="a11y-thumb">

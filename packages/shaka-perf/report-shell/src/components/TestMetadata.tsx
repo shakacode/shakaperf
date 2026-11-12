@@ -32,14 +32,12 @@ function formatMeasuredAt(measuredAt: number | null): string | null {
   return `${pluralize(days, 'day')} ${pluralize(hours, 'hour')} ago`;
 }
 
-export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExpanded, defaultExpanded = false, variant = 'card', actions, children }: {
+export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExpanded, defaultExpanded = false, children }: {
   meta: ReportMeta;
   test: TestResult;
   expanded?: boolean;
   onToggleExpanded?: () => void;
   defaultExpanded?: boolean;
-  variant?: 'card' | 'dialog';
-  actions?: ReactNode;
   children?: ReactNode;
 }) {
   const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
@@ -61,29 +59,24 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
     { id: 'artifacts', label: 'artifact paths', content: test.viewportArtifactPaths?.length ? <pre className="card__code">{test.viewportArtifactPaths.map(({ viewport, path }) => `${viewport}: ${path}`).join('\n')}</pre> : null },
   ].filter((section) => section.content !== null);
   const active = sections.find((section) => section.id === activeSection);
-  const provenance = <span className="card__metadata-provenance">
-    <span className="card__path" title={test.filePath}>{test.filePath}</span>
-    <span className="card__measured-at" title="mtime of the freshest per-test artifact on disk">
-      <span aria-hidden="true">· </span>updated {formatMeasuredAt(test.measuredAt)}
-    </span>
-  </span>;
   return (
-    <div className={`card__metadata-row card__metadata-row--${variant}`}>
-    <details className={`card__disclosure card__metadata card__metadata--${variant}`} open={expanded}>
+    <details className="card__disclosure card__metadata" open={expanded}>
       <summary onClick={(event) => {
         event.preventDefault();
         if (onToggleExpanded) onToggleExpanded();
         else setLocalExpanded((previous) => !previous);
-      }}>
-        <span>Metadata</span>
-        {variant === 'dialog' ? provenance : null}
-      </summary>
+      }}>Metadata</summary>
       <div className="card__metadata-content">
-        {variant === 'card' ? provenance : null}
+        <div>
+          <div className="card__path">{test.filePath}</div>
+          <div className="card__measured-at" title="mtime of the freshest per-test artifact on disk">
+            updated {formatMeasuredAt(test.measuredAt)}
+          </div>
+        </div>
+        {children}
         <dl className="card__urls card__targets" aria-label="URLs">
           {renderPipelineTestCardUrls(meta, test, (side) => <RunCommits outcomes={test.outcomes} side={side} />)}
         </dl>
-        {children}
         {sections.length ? <div>
           <div className="card__metadata-controls" aria-label="Metadata sections">
             {sections.map(({ id, label }) => <button
@@ -105,7 +98,5 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
         </div> : null}
       </div>
     </details>
-    {actions ? <div className="card__actions">{actions}</div> : null}
-    </div>
   );
 }

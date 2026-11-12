@@ -12,7 +12,7 @@ import { TestMetadata } from './TestMetadata';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
 import { AnsiLog, firstElapsedSeconds } from './AnsiLog';
-import { Dialog, StageArtifactProvider } from '../../../src/pipeline/stage-report-components';
+import { Dialog, ArtifactMetadataFields, StageArtifactProvider, TestMeta } from '../../../src/pipeline/stage-report-components';
 
 interface LogEntry {
   label: string;
@@ -75,7 +75,7 @@ export function reviewedKey(meta: ReportMeta, test: TestResult): string {
     outcome.executionDetails.viewport.label,
     outcome.executionDetails.viewport.width,
     outcome.executionDetails.viewport.height,
-    outcome.executionDetails.runId ?? test.runId ?? test.measuredAt ?? meta.generatedAt,
+    outcome.executionDetails.runId,
   ])).sort();
   return `shaka-perf:reviewed:v2:${JSON.stringify([
     meta.cwd, meta.pipelineName, test.id, outcomes,
@@ -239,7 +239,9 @@ export function TestCard({
           </div>
         </details>
 
-        <TestMetadata meta={meta} test={test} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} actions={<>
+        <div className="card__metadata-row">
+          <TestMetadata meta={meta} test={test} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} />
+          <div className="card__actions">
             <RunDetails outcomes={test.outcomes} />
             {logs.length > 0 ? (
               <button
@@ -251,21 +253,19 @@ export function TestCard({
                 logs
               </button>
             ) : null}
-        </>} />
+          </div>
+        </div>
 
         {reviewed ? null : (
           <div className="card__body">
             <StageArtifactProvider
               test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}
-              renderMetadata={(fields, outcome) => {
-                const selected = test.outcomes.find((candidate) => candidate === outcome);
-                const scopedTest = { ...test, outcomes: selected ? [selected] : [] };
-                return <TestMetadata meta={meta} test={scopedTest} defaultExpanded variant="dialog" actions={logs.length > 0 ? (
-                  <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button>
-                ) : null}>
-                  {fields}
-                </TestMetadata>;
-              }}
+              renderMetadata={(details) => (
+                <TestMetadata meta={meta} test={test} defaultExpanded>
+                  <ArtifactMetadataFields {...details} />
+                  {logs.length > 0 ? <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button> : null}
+                </TestMetadata>
+              )}
             >
               {groups.map((outcomes, index) => (
                 <OutcomeSlot
@@ -281,11 +281,11 @@ export function TestCard({
         )}
       </div>
 
-      {logsOpen ? <Dialog
+      <Dialog
         open={logsOpen}
         onClose={() => setLogsOpen(false)}
-        title={<span className="ui-dialog__title-text">measurement logs · {test.name}</span>}
-        meta={<TestMetadata meta={meta} test={test} defaultExpanded variant="dialog" />}
+        title={<span className="ui-dialog__title-text">measurement logs</span>}
+        meta={<TestMeta test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }} />}
       >
         <div className="card-logs">
           {logs.map((log, index) => (
@@ -299,7 +299,7 @@ export function TestCard({
             </section>
           ))}
         </div>
-      </Dialog> : null}
+      </Dialog>
     </article>
   );
 }

@@ -436,10 +436,38 @@ See `.claude/skills/review-architecture/SKILL.md`.
 - [ ] The watchdog stays silent on a realistic test run, or the
   warnings are tracked as follow-up TODOs.
 
-## Execution details
+## Shared dialog metadata and recovery badges
+
+Keep `run()` results as typed domain measurements with artifact paths. Stage
+renderers may arrange specialized content, but must supply metadata as plain
+`fields: Readonly<Record<string, string>>` to `DetailedArtifactDialog`. Do not
+pass metadata JSX or build metadata disclosure markup in a stage.
 
 The runner records task retries and recovery on `outcome.executionDetails`,
-independently of measurement provenance in `runMetadata`. Each `StageRenderEntry`
-receives that same object as `executionDetails`, scoped to its measurement.
-Saved outcomes must use the current contract; readers do not convert legacy fields.
-Stages continue returning domain measurements from `run()`.
+independently of measurement provenance in `runMetadata`. Every `StageRenderEntry`
+receives that same object as `executionDetails`; no report-time extraction is needed.
+Pass the entry's object through measurement-backed dialog helpers:
+
+```tsx
+<DetailedArtifactDialog
+  href={measurement.imageHref}
+  label="Screenshot"
+  fields={{ selector: measurement.selector }}
+  executionDetails={entry.executionDetails}
+/>
+```
+
+Shared components render task retries and metadata fields. Use `RecoveryBadges`
+with `taskRecovered={entry.executionDetails.recoveredAfterRetries}` and the domain's
+comparison-recovery boolean where a preview needs recovery labels. Keep card-chip
+policy in the pipeline chip builder, not stage report components. Do not pass full
+outcomes or look up another viewport's execution details. Do not infer execution facts from current configuration.
+
+Execution context is owned by the runner: `executionDetails` contains `runId`,
+`testSourcePath`, `viewport`, retry usage, and recovery state. Report entries and
+shared components receive the same object. Do not copy these fields onto outcomes,
+run metadata, or render entries. Source paths are null when no snapshot was captured.
+Visual comparison counts remain measurement data.
+
+Saved outcomes must use the current contract. There is no legacy normalization or
+fallback to another run or the current configuration. Regenerate outdated results.
