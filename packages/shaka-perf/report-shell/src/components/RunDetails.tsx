@@ -133,10 +133,10 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
   const entries = savedRunDetails(outcomes).flatMap(([, items]) => items);
   const runs = unique(entries.map(({ executionDetails }) => executionDetails.runId));
   const targets = entries.flatMap((entry) => entry.metadata.targets.map((target) => ({ entry, target })));
-  const sampling = groupValues(entries.filter(({ stage, metadata }) => stage === 'perf' && metadata.numberOfMeasurements !== undefined), ({ metadata }) => ({
-    count: metadata.numberOfMeasurements!, perSide: metadata.targets.length > 1,
+  const sampling = groupValues(entries.filter(({ stage, executionDetails }) => stage === 'perf' && executionDetails.numberOfMeasurements !== undefined), ({ executionDetails }) => ({
+    count: executionDetails.numberOfMeasurements!, perSide: (executionDetails.measurementSideCount ?? 0) > 1,
   }));
-  const settings = groupValues(entries.flatMap((entry) => (entry.metadata.throttling ?? []).filter((setting) => setting.engine === 'Lighthouse').map((setting) => ({ entry, setting }))), ({ setting }) => ({
+  const settings = groupValues(entries.flatMap((entry) => (entry.executionDetails.throttling ?? []).filter((setting) => setting.engine === 'Lighthouse').map((setting) => ({ entry, setting }))), ({ setting }) => ({
     engine: setting.engine, method: setting.method, cpu: setting.method === 'provided' ? undefined : setting.cpuSlowdownMultiplier,
     network: Object.entries(setting.network).sort(([a], [b]) => a.localeCompare(b)),
   }));

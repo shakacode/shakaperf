@@ -33,7 +33,6 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
       side, url: 'http://127.0.0.1:3910/',
       commit: { sha: '1e04e03852fee4e3257a2084f226189b97f13e2e', message: 'Redact complete credential values before persisting run details [skip ci]', source: 'Git in twin-server source checkout' },
     })),
-    throttling: [{ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 150, throughputKbps: 1638.4 } }],
   });
   const result = (id: string, name: string, withMetadata: boolean): TestResult => ({
     id, name, filePath: `ab-tests/${id}.abtest.ts`, startingPath: '/',
@@ -43,9 +42,9 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
     measuredAt: Date.parse(secondRun), runId: secondRun,
     viewportArtifactPaths: [{ viewport: 'desktop', path: `results/${id}-desktop` }],
     outcomes: [
-      { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: 'data:text/plain;charset=utf-8,' + encodeURIComponent("abTest('Homepage', { startingPath: '/' }, async ({ page }) => {\n  await waitUntilPageSettled(page);\n});"), runId: firstRun, recoveredAfterRetries: false }, kind: 'ok', stage, measurement,  logs: '<0.1s> Measurement completed', ...(withMetadata ? { runMetadata: metadata(firstRun) } : {}) },
-      { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: 'data:text/plain;charset=utf-8,' + encodeURIComponent("abTest('Homepage', { startingPath: '/' }, async ({ page }) => {\n  await waitUntilPageSettled(page);\n});"), runId: secondRun, recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' },  ...(withMetadata ? { runMetadata: { ...metadata(secondRun), throttling: [] } } : {}) },
-      { executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref: 'data:text/plain;charset=utf-8,' + encodeURIComponent("abTest('Homepage', { startingPath: '/' }, async ({ page }) => {\n  await waitUntilPageSettled(page);\n});"), runId: secondRun, recoveredAfterRetries: false }, kind: 'ok', stage, measurement,  },
+      { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: 'data:text/plain;charset=utf-8,' + encodeURIComponent("abTest('Homepage', { startingPath: '/' }, async ({ page }) => {\n  await waitUntilPageSettled(page);\n});"), runId: firstRun, recoveredAfterRetries: false, ...(withMetadata ? { measurementSideCount: audit ? 1 : 2, throttling: [{ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 150, throughputKbps: 1638.4 } }] } : {}) }, kind: 'ok', stage, measurement,  logs: '<0.1s> Measurement completed', ...(withMetadata ? { runMetadata: metadata(firstRun) } : {}) },
+      { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: 'data:text/plain;charset=utf-8,' + encodeURIComponent("abTest('Homepage', { startingPath: '/' }, async ({ page }) => {\n  await waitUntilPageSettled(page);\n});"), runId: secondRun, recoveredAfterRetries: false, ...(withMetadata ? { measurementSideCount: audit ? 1 : 2 } : {}) }, kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' },  ...(withMetadata ? { runMetadata: metadata(secondRun) } : {}) },
+      { executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref: 'data:text/plain;charset=utf-8,' + encodeURIComponent("abTest('Homepage', { startingPath: '/' }, async ({ page }) => {\n  await waitUntilPageSettled(page);\n});"), runId: secondRun, recoveredAfterRetries: false, ...(withMetadata ? { measurementSideCount: audit ? 1 : 2 } : {}) }, kind: 'ok', stage, measurement,  },
     ] as ReportOutcome[],
   });
   const data: ReportData = {

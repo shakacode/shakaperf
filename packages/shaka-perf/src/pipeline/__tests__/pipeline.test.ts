@@ -485,7 +485,7 @@ describe('runPipeline', () => {
     expect(measured.length).toBeGreaterThan(0);
     for (const outcome of measured) {
       expect(outcome.kind).toBe(exhausted ? 'error' : 'ok');
-      expect(outcome.executionDetails).toEqual({ runId: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourceHref: derived ? null : expect.any(String), taskRetries: 1, taskRetryLimit: 1, recoveredAfterRetries: !exhausted });
+      expect(outcome.executionDetails).toEqual({ runId: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourceHref: derived ? null : expect.any(String), measurementSideCount: derived ? undefined : 2, taskRetries: 1, taskRetryLimit: 1, recoveredAfterRetries: !exhausted });
       if (derived) expect(outcome.runMetadata).toBeUndefined();
     }
     expect(result.testResults[0]!.chips.filter((chip) => chip.tag === 'flaky')).toEqual(exhausted ? [] : [expect.objectContaining({
@@ -598,7 +598,9 @@ describe('runPipeline', () => {
       expect(second.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.executionDetails.viewport.label === before.executionDetails.viewport.label)?.runMetadata).toEqual(before.runMetadata);
       const perf = second.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.kind === 'ok')!;
       expect(perf.runMetadata?.command).toContain('--restart-from-stage perf');
-      expect(perf.runMetadata?.numberOfMeasurements).toBe(7);
+      expect(perf.executionDetails.numberOfMeasurements).toBe(7);
+      expect(perf.executionDetails.measurementSideCount).toBe(2);
+      expect(perf.runMetadata).not.toHaveProperty('numberOfMeasurements');
       expect(perf.runMetadata).not.toHaveProperty('compareRetries');
       expect(perf.executionDetails.runId).not.toBe(before.executionDetails.runId);
       jest.mocked(measuredCommit).mockClear();
@@ -638,7 +640,9 @@ describe('runPipeline', () => {
     }] }, { ...selected, measurementSides: ['experiment'] });
     const outcome = result.testResults[0]!.outcomes.find((o) => o.kind === 'ok')!;
     expect(outcome.runMetadata?.targets).toEqual([{ side: 'experiment', url: 'https://user:password@deployment.test/cart?token=secret', commit: null }]);
-    expect(outcome.runMetadata?.throttling).toEqual([{ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } }]);
+    expect(outcome.executionDetails.throttling).toEqual([{ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } }]);
+    expect(outcome.executionDetails.measurementSideCount).toBe(1);
+    expect(outcome.runMetadata).not.toHaveProperty('throttling');
     expect(outcome.runMetadata).not.toHaveProperty('viewport');
     expect(outcome.executionDetails.viewport.width).toBeGreaterThan(0);
   });
@@ -670,7 +674,7 @@ describe('runPipeline', () => {
     const result = await runWithFrozenTest({ skipReport: true, categories: 'visreg' }, selected);
     const outcome = result.testResults[0]!.outcomes.find((outcome) => outcome.stage === selected.stages[0]!.name)!;
     expect(outcome.kind).toBe('ok');
-    expect(outcome.runMetadata?.throttling?.map(({ side }) => side)).toEqual(['control', 'experiment']);
+    expect(outcome.executionDetails.throttling?.map(({ side }) => side)).toEqual(['control', 'experiment']);
   });
 
   it('uses frozen report tests without loading test definitions', async () => {

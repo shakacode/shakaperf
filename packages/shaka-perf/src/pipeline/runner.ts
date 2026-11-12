@@ -1139,9 +1139,12 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   const [raceCancellation] = cancellableRace();
   const throttling: MeasurementThrottling[] = [];
   let metadata: RunMetadata | undefined;
+  let numberOfMeasurements: number | undefined;
   const ctx: TestContext = {
     recordMeasurementOptions: (options) => {
-      if (metadata) Object.assign(metadata, options);
+      const { numberOfMeasurements: reportedCount, ...comparisonOptions } = options;
+      if (reportedCount !== undefined) numberOfMeasurements = reportedCount;
+      if (metadata) Object.assign(metadata, comparisonOptions);
     },
     recordMeasurementThrottling: (settings) => {
       if (settings.engine === 'Lighthouse' && settings.side) {
@@ -1153,7 +1156,6 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
         }
       }
       if (!throttling.some((entry) => JSON.stringify(entry) === JSON.stringify(settings))) throttling.push(settings);
-      if (metadata) metadata.throttling = throttling;
     },
     test: unit.test,
     viewport: unit.viewport,
@@ -1245,7 +1247,12 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       kind: 'ok',
       stage: stage.name,
       measurement,
-      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
+      executionDetails: {
+        runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref,
+        numberOfMeasurements, measurementSideCount: metadata?.targets.length,
+        ...(throttling.length ? { throttling } : {}),
+        taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0,
+      },
     };
   } catch (err) {
     // Walk the cause chain, don't instanceof: a stage that throws from inside a
@@ -1254,7 +1261,12 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const failure = findFailureArtifacts(err);
     outcome = {
       kind: 'error',
-      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
+      executionDetails: {
+        runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref,
+        numberOfMeasurements, measurementSideCount: metadata?.targets.length,
+        ...(throttling.length ? { throttling } : {}),
+        taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false,
+      },
       stage: stage.name,
       error: errorInfo(err),
       ...(failure ? { failure } : {}),
