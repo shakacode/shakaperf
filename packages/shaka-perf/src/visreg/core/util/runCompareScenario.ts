@@ -92,8 +92,6 @@ async function processCompareView (
 
   for (const outcome of outcomes) {
     const { selector, testPair, result, refFrame, testFrame } = outcome;
-    testPair.compareAttempts = outcome.compareAttempts;
-    testPair.compareRetries = config.compareRetries;
 
     const refAnalysis = analyzeWhitePixels(refFrame.buffer);
     const testAnalysis = analyzeWhitePixels(testFrame.buffer);
