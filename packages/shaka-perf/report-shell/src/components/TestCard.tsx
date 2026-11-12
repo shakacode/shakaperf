@@ -7,7 +7,6 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
-import { RunDetails } from './RunDetails';
 import { TestMetadata } from './TestMetadata';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
@@ -240,7 +239,6 @@ export function TestCard({
         </details>
 
         <TestMetadata meta={meta} test={test} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} actions={<>
-            <RunDetails outcomes={test.outcomes} />
             {logs.length > 0 ? (
               <button
                 type="button"
