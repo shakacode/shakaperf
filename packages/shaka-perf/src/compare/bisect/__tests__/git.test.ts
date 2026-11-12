@@ -17,6 +17,7 @@ import {
   prepareGitRange,
   restoreCheckout,
   NativeGitBisectDriver,
+  parseNativeBisectCompletion,
 } from '../git';
 
 function git(cwd: string, args: string[]): string {
@@ -399,7 +400,8 @@ describe('bisect Git helpers', () => {
       complete: true,
       firstBadSha: fixture.commits[2],
     });
-    expect(await nativeBisectLog(fixture.experimentDir)).toContain('# first bad commit:');
+    expect(await nativeBisectLog(fixture.experimentDir))
+      .toMatch(new RegExp(`# first .+ commit: \\[${fixture.commits[2]}\\]`));
 
     await driver.reset();
     expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe(fixture.experimentBranch);
@@ -461,5 +463,17 @@ describe('bisect Git helpers', () => {
     expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(originalHead);
     expect(fs.existsSync(git(fixture.experimentDir, ['rev-parse', '--git-path', 'BISECT_START'])))
       .toBe(false);
+  });
+});
+
+describe('native bisect completion', () => {
+  const sha = '0123456789abcdef0123456789abcdef01234567';
+
+  it.each([
+    ['the original completion line', 'is the first bad commit'],
+    ['the quoted completion line', "is the first 'bad' commit"],
+    ['a custom bad term', "is the first 'broken' commit"],
+  ])('recognizes %s', (_name, suffix) => {
+    expect(parseNativeBisectCompletion(`${sha} ${suffix}\ncommit ${sha}`)).toBe(sha);
   });
 });
