@@ -11,7 +11,7 @@ import type { AbTestDefinition, TestType } from 'shaka-shared';
 import type { AbTestsConfig, Viewport } from '../config';
 import type { ArtifactScope } from '../pipeline/artifact-store';
 import type { MeasurementThrottling, RunMetadata } from '../pipeline/run-metadata';
-import type { Outcome } from '../pipeline/outcome';
+import type { Outcome, ExecutionDetails } from '../pipeline/outcome';
 import type { WorkerPool } from '../pipeline/worker-pool';
 import type { CdpPorts } from '../troubleshoot/debug-session';
 
@@ -139,8 +139,8 @@ export interface TestContext extends StageRenderContext {
 
 export interface StageRenderEntry<M = unknown> {
   readonly measurement: M;
-  /** Task recovery details for artifact previews. */
-  readonly outcome?: Outcome;
+  /** Framework-owned execution facts, scoped to this measurement. */
+  readonly executionDetails: ExecutionDetails;
   readonly viewport: Viewport;
   /** Whether this measurement belongs to the report's latest run. */
   readonly latestRun: boolean;
