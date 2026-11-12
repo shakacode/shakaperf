@@ -61,7 +61,7 @@ export function ScreenshotPreview({
           image
           href={source}
           label={`${scan.viewportLabel} accessibility issues`}
-          fields={accessibilityDialogFields(scan, hotspots.length)}
+          fields={accessibilityDialogFields(scan, hotspots.length, executionDetails.viewport)}
           executionDetails={executionDetails}
           body={<AccessibilityDialog filterOptions={filterOptions} scan={scan} source={source} />}
         >

@@ -67,7 +67,7 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
   const provenance = <span className="card__metadata-provenance">
     <span className="card__path" title={test.filePath}>{test.filePath}</span>
     <span className="card__measured-at" title="mtime of the freshest per-test artifact on disk">
-      <span aria-hidden="true">· </span>updated {formatMeasuredAt(test.measuredAt)}
+      <span className="card__metadata-separator" aria-hidden="true">· </span>updated {formatMeasuredAt(test.measuredAt)}
     </span>
   </span>;
   return (

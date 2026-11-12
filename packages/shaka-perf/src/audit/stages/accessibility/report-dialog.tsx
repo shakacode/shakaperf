@@ -12,6 +12,7 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
+import type { Viewport } from '../../../config';
 import { ImageViewport } from '../../../pipeline/image-viewport';
 import type {
   AccessibilityNodeTarget,
@@ -38,13 +39,13 @@ import {
   type AccessibilityFilterSelection,
 } from './report-utils';
 
-export function accessibilityDialogFields(scan: AccessibilityScan, hotspotCount: number): Readonly<Record<string, string>> {
+export function accessibilityDialogFields(scan: AccessibilityScan, hotspotCount: number, viewport?: Viewport): Readonly<Record<string, string>> {
   const nodeCount = scan.violations.reduce((total, violation) => total + violation.nodes.length, 0);
   return {
-    viewport: scan.viewportLabel,
     issues: `${scan.violations.length} rules · ${nodeCount} nodes`,
     hotspots: String(hotspotCount),
     'scanned URL': scan.url,
+    viewport: viewport ? `${viewport.label} ${viewport.width} × ${viewport.height}` : scan.viewportLabel,
   };
 }
 
