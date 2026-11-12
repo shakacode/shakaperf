@@ -8,7 +8,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { TestCard } from '../report-shell/src/components/TestCard';
-import { savedRunDetails, RunDetailsContent, RunCommits } from '../report-shell/src/components/RunDetails';
+import { savedRunDetails, RunDetailsContent } from '../report-shell/src/components/RunDetails';
 import { runDetailsFixture } from '../src/pipeline/__tests__/fixtures/run-details';
 import { reportDataForMode } from '../src/pipeline/report';
 
@@ -48,23 +48,26 @@ it('shows shared measurement facts once across results and viewports', () => {
   outcomes[1]!.runMetadata = { ...first.runMetadata!, measuredAt: first.runMetadata!.runId };
   outcomes[2]!.runMetadata = { ...first.runMetadata!, viewport: outcomes[2]!.viewport };
   const html = details(outcomes);
-  expect(html).not.toContain('<textarea');
-  expect(html).not.toContain('http://127.0.0.1:3910/');
-  expect(html).not.toContain('>1e04e038<');
+  expect(html.match(/<textarea\b/g)).toHaveLength(1);
+  expect(html.match(/http:\/\/127\.0\.0\.1:3910\//g)).toHaveLength(1);
+  expect(html.match(/>1e04e038</g)).toHaveLength(1);
   expect(html.match(/4× CPU/g)).toHaveLength(1);
   expect(html).toContain('desktop');
   expect(html).toContain('phone');
   expect(html).not.toContain('<th>Measured</th>');
 });
 
-it('keeps different throttling settings associated with their runs', () => {
+it('keeps different saved commands, targets, categories and settings associated with their runs', () => {
   const outcomes = runDetailsFixture('audit').tests[0]!.outcomes;
   const prior = outcomes[1]!.runMetadata!;
   outcomes[1]!.runMetadata = { ...prior, command: 'shaka-perf audit --filter Homepage --categories accessibility', categories: ['accessibility'], throttling: [{ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 7, network: { rttMs: 90 } }], targets: [{ ...prior.targets[0]!, url: 'http://127.0.0.1:3911/' }] };
   const html = details(outcomes);
   for (const metadata of outcomes.slice(0, 2).map((outcome) => outcome.runMetadata!)) {
+    expect(html).toContain(metadata.targets[0]!.url);
     expect(html).toContain(`${metadata.throttling![0]!.cpuSlowdownMultiplier}× CPU`);
   }
+  expect(html).toContain('--categories audit,accessibility');
+  expect(html).toContain('shaka-perf audit --filter Homepage --categories accessibility');
   expect(html).toContain('Run 1 / audit');
   expect(html).toContain('Run 2 / accessibility');
 });
@@ -99,20 +102,20 @@ it.each([
 it('keeps commit-message body whitespace in the expandable details', () => {
   const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(0, 1);
   outcomes[0]!.runMetadata!.targets[0]!.commit!.message = 'Subject\n\n  Indented body\n\n';
-  const html = renderToStaticMarkup(createElement(RunCommits, { outcomes }));
-  expect(html.match(/<summary>/g)).toHaveLength(1);
+  const html = details(outcomes);
+  expect(html.match(/<summary>/g)).toHaveLength(2);
   expect(html).toContain('  Indented body\n\n</pre>');
 });
 
 it.each(['Subject', 'Subject\n\n', ''])('does not expand a commit without body content: %p', (message) => {
   const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(0, 1);
   outcomes[0]!.runMetadata!.targets[0]!.commit!.message = message;
-  const html = renderToStaticMarkup(createElement(RunCommits, { outcomes }));
-  expect(html).not.toContain('<summary>');
+  const html = details(outcomes);
+  expect(html.match(/<summary>/g)).toHaveLength(1);
   expect(html).toContain('>1e04e038<');
 });
 
-it('keeps grouped Lighthouse samples and result totals without visual retry details', () => {
+it('shows grouped Lighthouse samples and visual retries separately from result totals', () => {
   const outcomes = runDetailsFixture('compare').tests[0]!.outcomes;
   const metadata = outcomes[0]!.runMetadata!;
   Object.assign(metadata, { numberOfMeasurements: 7 });
@@ -123,7 +126,7 @@ it('keeps grouped Lighthouse samples and result totals without visual retry deta
   expect(html).toContain('3 Results');
   expect(html).not.toContain('3 measurements');
   expect(html.match(/7 LH samples per side/g)).toHaveLength(1);
-  expect(html).not.toContain('2 visual attempts');
+  expect(html).toContain('2 visual attempts');
   expect(html).not.toContain('Up to');
 });
 
@@ -156,19 +159,31 @@ it.each(['perf-low-noise', 'perf-warmup', 'audit'])('omits sample counts for %s'
   expect(details(outcomes)).not.toContain('<h3>Sampling</h3>');
 });
 
-it.each(['compare', 'audit'] as const)('%s details omit sections available in card and visual metadata', (pipeline) => {
-  const outcomes = runDetailsFixture(pipeline).tests[0]!.outcomes;
-  outcomes[0]!.recoveredAfterRetries = true;
-  Object.assign(outcomes[0]!.runMetadata!, { taskRetries: 1, taskRetryLimit: 2, compareAttempts: 4, compareRetries: 2 });
+it.each([undefined, 1])('does not show a configured retry budget when actual tries are %p', (compareAttempts) => {
+  const outcomes = runDetailsFixture('compare').tests[0]!.outcomes.slice(0, 1);
+  outcomes[0]!.stage = 'visreg';
+  Object.assign(outcomes[0]!.runMetadata!, { compareRetries: 5, compareAttempts });
+  expect(details(outcomes)).not.toContain('<h3>Sampling</h3>');
+});
+
+it('distinguishes error recovery from visual comparisons and scopes both to their viewport', () => {
+  const outcomes = runDetailsFixture('compare').tests[0]!.outcomes;
+  outcomes[0]!.stage = 'visreg';
+  outcomes[0]!.executionDetails = { taskRetries: 1, taskRetryLimit: 2, recoveredAfterRetries: false };
+  Object.assign(outcomes[0]!.runMetadata!, { compareAttempts: 4, compareRetries: 2 });
   const html = details(outcomes);
-  for (const heading of ['Applications', 'Measurement command', 'Categories', 'Viewports', 'Retries and attempts']) {
-    expect(html).not.toContain(`<h3>${heading}</h3>`);
-  }
-  expect(html).not.toContain('1 task retry');
-  expect(html).not.toContain('4 visual attempts');
-  expect(html).not.toContain('1e04e038');
-  expect(html).not.toContain('http://127.0.0.1:3910/');
-  expect(html).not.toContain('<textarea');
-  expect(html).toContain('Throttling');
-  expect(html).toContain('Runs');
+  expect(html).toContain('Error recovery: explanation');
+  expect(html).not.toContain('Reruns failed worker tasks');
+  expect(html).toContain('1 task retry');
+  expect(html).toContain('Visual comparison');
+  expect(html).toContain('4 visual attempts');
+  expect(html).toContain('visreg · desktop');
+});
+
+it('does not invent error retry counts for older recovered results', () => {
+  const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(0, 1);
+  outcomes[0]!.executionDetails = { recoveredAfterRetries: true };
+  expect(details(outcomes)).toContain('Retry count unavailable');
+  outcomes[0]!.executionDetails = { recoveredAfterRetries: true, taskRetries: 0 };
+  expect(details(outcomes)).not.toContain('Error recovery');
 });

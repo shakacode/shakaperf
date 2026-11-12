@@ -20,10 +20,10 @@ const TALL_IMAGE = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://
 const BROKEN_IMAGE = 'data:image/png;base64,broken';
 
 function fixture(): ReportData {
-  const ok = (stage: 'audit' | 'code_coverage', measurement: unknown): ReportOutcome => ({
+  const ok = (stage: 'audit' | 'code_coverage', measurement: unknown): ReportOutcome => ({ executionDetails: { recoveredAfterRetries: false },
     kind: 'ok', stage, viewport: DESKTOP_VIEWPORT, measurement,
   } as ReportOutcome);
-  const error = (stage: 'audit' | 'code_coverage'): ReportOutcome => ({
+  const error = (stage: 'audit' | 'code_coverage'): ReportOutcome => ({ executionDetails: { recoveredAfterRetries: false },
     kind: 'error', stage, viewport: DESKTOP_VIEWPORT,
     error: { message: 'Navigation timed out' }, failure: { media: TALL_IMAGE },
   } as ReportOutcome);
@@ -168,7 +168,7 @@ describe('audit and coverage screenshot previews', () => {
     const data = fixture();
     data.meta.reportMode = 'self-contained';
     data.tests = [data.tests[0]];
-    data.tests[0].outcomes = [{
+    data.tests[0].outcomes = [{ executionDetails: { recoveredAfterRetries: false },
       kind: 'ok', stage: 'code_coverage', viewport: DESKTOP_VIEWPORT,
       measurement: { files: 0, totalStatements: 0, coveredStatements: 0, coverageHref: 'data:application/json,{}', visibilityMapHref: 'data:text/plain,map' },
     } as ReportOutcome];

@@ -45,9 +45,9 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
     measuredAt: Date.parse(secondRun), runId: secondRun,
     viewportArtifactPaths: [{ viewport: 'desktop', path: `results/${id}-desktop` }],
     outcomes: [
-      { kind: 'ok', stage, measurement, viewport: DESKTOP_VIEWPORT, logs: '<0.1s> Measurement completed', ...(withMetadata ? { runMetadata: metadata(firstRun) } : {}) },
-      { kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' }, viewport: DESKTOP_VIEWPORT, ...(withMetadata ? { runMetadata: { ...metadata(secondRun), throttling: [] } } : {}) },
-      { kind: 'ok', stage, measurement, viewport: PHONE_VIEWPORT },
+      { executionDetails: { recoveredAfterRetries: false }, kind: 'ok', stage, measurement, viewport: DESKTOP_VIEWPORT, logs: '<0.1s> Measurement completed', ...(withMetadata ? { runMetadata: metadata(firstRun) } : {}) },
+      { executionDetails: { recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' }, viewport: DESKTOP_VIEWPORT, ...(withMetadata ? { runMetadata: { ...metadata(secondRun), throttling: [] } } : {}) },
+      { executionDetails: { recoveredAfterRetries: false }, kind: 'ok', stage, measurement, viewport: PHONE_VIEWPORT },
     ] as ReportOutcome[],
   });
   const data: ReportData = {

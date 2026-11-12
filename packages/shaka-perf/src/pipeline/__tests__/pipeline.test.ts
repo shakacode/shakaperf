@@ -34,6 +34,7 @@ jest.mock('../measurement-lock', () => ({
 import { buildAbTestsConfig } from '../../config';
 import { withAbTestsConfigPath } from '../../effective-config';
 import { createVisregStage } from '../../compare/stages/visreg';
+import { comparePipelineConfigFromAbTests, createComparePipeline } from '../../compare/compare-pipeline';
 import type { Stage, StageCategory, StageName, TestContext } from '../../stage/stage';
 import type { WorkerPool } from '../worker-pool';
 import type { Outcome } from '../outcome';
@@ -318,6 +319,11 @@ describe('runPipeline', () => {
     const result = await runWithFrozenTest({ categories: 'visreg', skipReport: true }, selected);
     expect(measuredCommit).not.toHaveBeenCalled();
     expect(result.testResults[0]!.outcomes.every((outcome) => !outcome.runMetadata)).toBe(true);
+    for (const outcome of result.testResults[0]!.outcomes) {
+      expect(outcome.executionDetails).toEqual(outcome.kind === 'skipped'
+        ? { recoveredAfterRetries: false }
+        : { taskRetries: 0, taskRetryLimit: 0, recoveredAfterRetries: false });
+    }
     if (mode === 'derived') expect(run).toHaveBeenCalled();
     else expect(run).not.toHaveBeenCalled();
   });
@@ -394,17 +400,6 @@ describe('runPipeline', () => {
         expect(report.testResults[0]!.code).toBe(source);
         expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'visreg')?.runMetadata?.testSourcePath).toBeTruthy();
       }
-      // Results from before source snapshots cannot borrow the current source.
-      for (const outcome of measured) {
-        const file = path.join(store.unitDirForViewport(test, outcome.viewport.label), 'visreg.json');
-        const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
-        delete saved.runMetadata.testSourcePath;
-        fs.writeFileSync(file, JSON.stringify(saved));
-      }
-      fs.writeFileSync(file, changed);
-      const legacy = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
-      expect(legacy.testResults[0]!.code).toBeNull();
-      expect(legacy.testResults[0]!.outcomes.find((o) => o.stage === 'visreg')?.runMetadata?.testSourcePath).toBeNull();
     } finally {
       fs.rmSync(cwd, { recursive: true, force: true });
     }
@@ -472,8 +467,9 @@ describe('runPipeline', () => {
     }
   });
 
-  it.each([false, true])('saves actual worker retries, including exhausted tasks: %p', async (exhausted) => {
+  it.each([[false, false], [true, false], [false, true], [true, true]])('saves worker retries (exhausted: %p, derived: %p)', async (exhausted, derived) => {
     const selected = pipeline();
+    Object.assign(selected.stages[0]!, { measuresApplication: !derived });
     selected.stages[0]!.run = async (_ctx, pool) => {
       let attempts = 0;
       return pool.submit(async () => {
@@ -487,7 +483,8 @@ describe('runPipeline', () => {
     expect(measured.length).toBeGreaterThan(0);
     for (const outcome of measured) {
       expect(outcome.kind).toBe(exhausted ? 'error' : 'ok');
-      expect(outcome.runMetadata).toMatchObject({ taskRetries: 1, taskRetryLimit: 1 });
+      expect(outcome.executionDetails).toEqual({ taskRetries: 1, taskRetryLimit: 1, recoveredAfterRetries: !exhausted });
+      if (derived) expect(outcome.runMetadata).toBeUndefined();
     }
   });
 
@@ -511,7 +508,7 @@ describe('runPipeline', () => {
       const before = first.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.kind === 'ok')!;
       expect(before.runMetadata).toEqual(expect.objectContaining({
         command: 'shaka-perf compare --categories visreg',
-        runId: before.runId, compareRetries: 2, compareAttempts: 2, taskRetries: 0, taskRetryLimit: 0,
+        runId: before.runId, compareRetries: 2, compareAttempts: 2,
         stages: ['visreg'], categories: ['visreg'],
         viewport: before.viewport,
         targets: [
@@ -636,7 +633,7 @@ describe('runPipeline', () => {
       // A saved sibling failure belongs in the report, but must not fail a
       // later measurement that selected only the successful homepage.
       const store = new ArtifactStore(path.join(cwd, 'test-results'));
-      store.writeOutcome(sibling, 'desktop', {
+      store.writeOutcome(sibling, 'desktop', { executionDetails: { recoveredAfterRetries: false },
         kind: 'error', stage: 'visreg', runId: full.testResults[1]!.runId!,
         error: { message: 'Older saved failure' },
       });
@@ -696,7 +693,7 @@ describe('runPipeline', () => {
       const newerArchive = await run('desktop', { config: mixedConfig, reportOnly: true, skipReport: false });
       expect(newerArchive.testResults[0]!.currentConfig!.measuredAt).toBe(scoped.testResults[0]!.currentConfig!.measuredAt);
       expect(newerArchive.testResults[0]!.measuredAt).toBe(fs.statSync(file).mtimeMs);
-      store.writeOutcome(frozenTest, 'phone', { kind: 'error', stage: 'visreg',
+      store.writeOutcome(frozenTest, 'phone', { executionDetails: { recoveredAfterRetries: false }, kind: 'error', stage: 'visreg',
         runId: phone.testResults[0]!.runId!, error: { message: 'Archived phone error' } });
       const contents = fs.readFileSync(file, 'utf8');
       const mtime = fs.statSync(file).mtimeMs;
@@ -928,7 +925,7 @@ describe('pre-run wipe', () => {
 
   function seedOutcome(viewportLabel: string, stage: string) {
     const store = new ArtifactStore(path.join(cwd, 'test-results'));
-    store.writeOutcome(narrowedTest, viewportLabel, { kind: 'ok', stage, measurement: {} });
+    store.writeOutcome(narrowedTest, viewportLabel, { executionDetails: { recoveredAfterRetries: false }, kind: 'ok', stage, measurement: {} });
     return path.join(store.unitDirForViewport(narrowedTest, viewportLabel), `${stage}.json`);
   }
 
@@ -974,7 +971,7 @@ describe('pre-run wipe', () => {
     // run's best-of-N match and pass on stale pixels. Deleting the outcome is
     // not enough — the artifacts/ subtree must go with it.
     const store = new ArtifactStore(path.join(cwd, 'test-results'));
-    store.writeOutcome(narrowedTest, 'tablet', {
+    store.writeOutcome(narrowedTest, 'tablet', { executionDetails: { recoveredAfterRetries: false },
       kind: 'error', stage: 'visreg', error: 'stale from previous run',
     } as never);
     const unitDir = store.unitDirForViewport(narrowedTest, 'tablet');

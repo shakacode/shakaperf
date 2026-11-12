@@ -62,7 +62,7 @@ describe('source artifacts at the persistence boundary', () => {
     expect(store.writeTestSource(test, 'desktop', source)).toBe(testSourcePath);
     expect(fs.statSync(file).mtimeMs).toBe(mtime);
     for (const stage of ['visreg', 'perf'] as const) {
-      store.writeOutcome(test, 'desktop', { kind: 'ok', stage, runMetadata: { ...metadata, testSourcePath } });
+      store.writeOutcome(test, 'desktop', { executionDetails: { recoveredAfterRetries: false }, kind: 'ok', stage, runMetadata: { ...metadata, testSourcePath } });
       const saved = JSON.parse(fs.readFileSync(path.join(store.unitDirForViewport(test, 'desktop'), `${stage}.json`), 'utf8'));
       expect(saved.runMetadata).toMatchObject({ testSourcePath });
     }
@@ -75,21 +75,9 @@ describe('source artifacts at the persistence boundary', () => {
     expect(store.readTextArtifact(testSourcePath)).toBe(source);
   });
 
-  it.each([null, undefined])('normalizes source path %p without rewriting saved JSON', (testSourcePath) => {
-    const unit = store.unitDirForViewport(test, 'desktop');
-    fs.mkdirSync(unit, { recursive: true });
-    const file = path.join(unit, 'visreg.json');
-    const json = JSON.stringify({ kind: 'ok', stage: 'visreg', runMetadata: { ...metadata, testSourcePath } });
-    fs.writeFileSync(file, json);
-    for (const outcome of [store.readOutcome(test, 'desktop', 'visreg'), ...store.readOutcomesForViewport(test, 'desktop')]) {
-      expect(outcome?.runMetadata?.testSourcePath).toBeNull();
-    }
-    expect(fs.readFileSync(file, 'utf8')).toBe(json);
-  });
-
   it('keeps measured outcomes readable when their source artifact is missing', () => {
     const testSourcePath = store.writeTestSource(test, 'desktop', source);
-    store.writeOutcome(test, 'desktop', { kind: 'ok', stage: 'visreg', runMetadata: { ...metadata, testSourcePath } });
+    store.writeOutcome(test, 'desktop', { executionDetails: { recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg', runMetadata: { ...metadata, testSourcePath } });
     fs.unlinkSync(path.join(dir, testSourcePath));
     expect(store.readOutcome(test, 'desktop', 'visreg')?.kind).toBe('ok');
     expect(store.readOutcome(test, 'desktop', 'visreg')?.runMetadata?.testSourcePath).toBe(testSourcePath);

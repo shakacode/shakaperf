@@ -27,8 +27,8 @@ function makeStage(name: string, category: Stage['category']): Stage {
   return { name, category, measuresApplication: true } as Stage;
 }
 
-const okOutcome = (stage: string): Outcome => ({ kind: 'ok', stage });
-const skippedOutcome = (stage: string): Outcome => ({ kind: 'skipped', stage, reason: 'r' });
+const okOutcome = (stage: string): Outcome => ({ executionDetails: { recoveredAfterRetries: false }, kind: 'ok', stage });
+const skippedOutcome = (stage: string): Outcome => ({ executionDetails: { recoveredAfterRetries: false }, kind: 'skipped', stage, reason: 'r' });
 
 // Default config: shared viewports desktop/tablet/phone; visreg at all three,
 // accessibility at desktop/phone.
