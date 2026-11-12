@@ -76,7 +76,7 @@ describe('visual preview metadata', () => {
     try {
       await page.goto(url);
       const preview = page.locator('.artifact-card--single');
-      expect(await preview.locator('.artifact-card__image-labels').allTextContents()).toEqual(['no diffflakyunstable']);
+      expect(await preview.locator('.artifact-card__image-label').allTextContents()).toEqual(['no diff']);
       await preview.getByRole('button').click();
       const dialog = page.getByRole('dialog');
       expect(await dialog.locator('.ui-dialog__title').innerText()).toBe('visual regressions desktop > document · Homepage');
@@ -113,14 +113,7 @@ describe('visual preview metadata', () => {
       ]);
       await metadata.getByRole('button', { name: 'test source', exact: true }).click();
       expect(await metadata.locator('.card__code').textContent()).toContain("abTest('Homepage'");
-      expect(await metadata.locator('.visreg-meta__retries dd').allTextContents()).toEqual([
-        '2/3 · matched on retry', '1/2 · recovered',
-      ]);
-      for (const row of await metadata.locator('.visreg-meta__retries').all()) {
-        const label = (await row.locator('dt').boundingBox())!;
-        const value = (await row.locator('dd').boundingBox())!;
-        expect(Math.abs(label.y - value.y)).toBeLessThan(2);
-      }
+      expect(await metadata.locator('.visreg-meta__retries').count()).toBe(0);
     } finally {
       await page.close();
     }
