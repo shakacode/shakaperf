@@ -34,7 +34,7 @@ function testResult(
     viewportArtifactPaths: [],
     outcomes: [
       ...(includeVisualAndPerf ? [
-        { executionDetails: { recoveredAfterRetries: false },
+        { executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok' as const,
           stage: 'visreg',
           viewport,
@@ -50,7 +50,7 @@ function testResult(
             savedByRetries: false,
           }],
         },
-        { executionDetails: { recoveredAfterRetries: false },
+        { executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok' as const,
           stage: 'perf',
           viewport,
@@ -72,7 +72,7 @@ function testResult(
           },
         },
       ] : []),
-      { executionDetails: { recoveredAfterRetries: false },
+      { executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok' as const,
         stage: 'accessibility',
         viewport,
@@ -255,7 +255,7 @@ describe('bisect regression analysis', () => {
 
   it('rejects mixed valid and error outcomes before analysis', () => {
     const result = testResult();
-    result.outcomes.push({ executionDetails: { recoveredAfterRetries: false },
+    result.outcomes.push({ executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'error',
       stage: 'visreg',
       viewport: PHONE_VIEWPORT,

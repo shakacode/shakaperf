@@ -23,7 +23,7 @@ it('preserves every mixed-run result and omits viewports without metadata', () =
   const data = runDetailsFixture('compare');
   const groups = savedRunDetails(data.tests[0]!.outcomes);
   expect(groups.map(([label]) => label)).toEqual(['desktop']);
-  expect(groups[0]![1].map(({ stage, metadata }) => [stage, metadata.runId])).toEqual([
+  expect(groups[0]![1].map(({ stage, executionDetails }) => [stage, executionDetails.runId])).toEqual([
     ['perf', '2026-10-20T20:54:53.891Z'], ['accessibility', '2026-10-20T21:00:50.722Z'],
   ]);
 });
@@ -45,8 +45,10 @@ function details(outcomes = runDetailsFixture('audit').tests[0]!.outcomes) {
 it('shows shared measurement facts once across results and viewports', () => {
   const outcomes = runDetailsFixture('audit').tests[0]!.outcomes;
   const first = outcomes[0]!;
-  outcomes[1]!.runMetadata = { ...first.runMetadata!, measuredAt: first.runMetadata!.runId };
+  outcomes[1]!.runMetadata = { ...first.runMetadata!, measuredAt: first.executionDetails.runId };
   outcomes[2]!.runMetadata = { ...first.runMetadata!, viewport: outcomes[2]!.viewport };
+  outcomes[1]!.executionDetails = first.executionDetails;
+  outcomes[2]!.executionDetails = first.executionDetails;
   const html = details(outcomes);
   expect(html.match(/<textarea\b/g)).toHaveLength(1);
   expect(html.match(/http:\/\/127\.0\.0\.1:3910\//g)).toHaveLength(1);
@@ -120,8 +122,10 @@ it('shows grouped Lighthouse samples and visual retries separately from result t
   const metadata = outcomes[0]!.runMetadata!;
   Object.assign(metadata, { numberOfMeasurements: 7 });
   outcomes[1]!.stage = 'visreg';
-  Object.assign(outcomes[1]!.runMetadata!, { runId: metadata.runId, compareRetries: 5, compareAttempts: 2 });
+  Object.assign(outcomes[1]!.runMetadata!, { compareRetries: 5, compareAttempts: 2 });
   outcomes[2]!.runMetadata = { ...metadata, viewport: outcomes[2]!.viewport };
+  outcomes[1]!.executionDetails = outcomes[0]!.executionDetails;
+  outcomes[2]!.executionDetails = outcomes[0]!.executionDetails;
   const html = details(outcomes);
   expect(html).toContain('3 Results');
   expect(html).not.toContain('3 measurements');
@@ -169,7 +173,7 @@ it.each([undefined, 1])('does not show a configured retry budget when actual tri
 it('distinguishes error recovery from visual comparisons and scopes both to their viewport', () => {
   const outcomes = runDetailsFixture('compare').tests[0]!.outcomes;
   outcomes[0]!.stage = 'visreg';
-  outcomes[0]!.executionDetails = { taskRetries: 1, taskRetryLimit: 2, recoveredAfterRetries: false };
+  outcomes[0]!.executionDetails = { ...outcomes[0]!.executionDetails, taskRetries: 1, taskRetryLimit: 2, recoveredAfterRetries: false };
   Object.assign(outcomes[0]!.runMetadata!, { compareAttempts: 4, compareRetries: 2 });
   const html = details(outcomes);
   expect(html).toContain('Error recovery: explanation');
@@ -182,8 +186,8 @@ it('distinguishes error recovery from visual comparisons and scopes both to thei
 
 it('does not invent error retry counts for older recovered results', () => {
   const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(0, 1);
-  outcomes[0]!.executionDetails = { recoveredAfterRetries: true };
+  outcomes[0]!.executionDetails = { ...outcomes[0]!.executionDetails, recoveredAfterRetries: true };
   expect(details(outcomes)).toContain('Retry count unavailable');
-  outcomes[0]!.executionDetails = { recoveredAfterRetries: true, taskRetries: 0 };
+  outcomes[0]!.executionDetails = { ...outcomes[0]!.executionDetails, recoveredAfterRetries: true, taskRetries: 0 };
   expect(details(outcomes)).not.toContain('Error recovery');
 });

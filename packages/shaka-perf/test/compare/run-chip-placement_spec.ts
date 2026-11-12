@@ -74,8 +74,8 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained', ex
       controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test', code: null,
       durationMs: 0, measuredAt: 0, runId: LATEST, chips: [], sorts: [], viewportArtifactPaths: [],
       outcomes: examples.flatMap(({ stage, measurement }) => [
-        { executionDetails: { recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement, viewport: DESKTOP_VIEWPORT, runId: OLD },
-        { executionDetails: { recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement, viewport: PHONE_VIEWPORT, runId: LATEST },
+        { executionDetails: { runId: OLD, recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement, viewport: DESKTOP_VIEWPORT,  },
+        { executionDetails: { runId: LATEST, recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement, viewport: PHONE_VIEWPORT,  },
       ]),
     }],
   };
@@ -166,8 +166,8 @@ describe('contextual old-run chips', () => {
     try {
       for (const { stage, measurement, heading } of examples) {
         const artifact = renderPersistedStageArtifacts(pipeline, {}, stage, [
-          { measurement, viewport: DESKTOP_VIEWPORT, executionDetails: { recoveredAfterRetries: false }, latestRun: false },
-          { measurement, viewport: PHONE_VIEWPORT, executionDetails: { recoveredAfterRetries: false }, latestRun: true },
+          { measurement, viewport: DESKTOP_VIEWPORT, executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: false },
+          { measurement, viewport: PHONE_VIEWPORT, executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true },
         ]);
         await page.setContent(renderToStaticMarkup(artifact));
         expect(await page.locator('.stage-artifact__title').count()).toBe(1);
@@ -209,7 +209,7 @@ describe('contextual old-run chips', () => {
     const data = fixture('audit', mode, audit);
     for (const outcome of data.tests[0].outcomes.filter((item) => item.stage === 'ai_summary')) {
       outcome.measurement = { summary: outcome.viewport.label === 'desktop' ? desktop : phone };
-      outcome.runId = outcome.viewport.label === 'desktop' ? desktopRun : phoneRun;
+      outcome.executionDetails = { ...outcome.executionDetails, runId: outcome.viewport.label === 'desktop' ? desktopRun : phoneRun };
     }
     const file = path.join(directory, `summary-${mode}-${stale}-${desktop.length}.html`);
     fs.writeFileSync(file, renderReportHtml(data));

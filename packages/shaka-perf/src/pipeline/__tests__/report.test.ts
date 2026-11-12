@@ -68,7 +68,7 @@ describe('reportDataForMode', () => {
     const testSourcePath = await scope.writeFile('test-source.ts', source);
     const data = {
       meta: { reportMode: 'full' },
-      tests: [{ name: 'Checkout', code: source, outcomes: [{ executionDetails: { recoveredAfterRetries: false },
+      tests: [{ name: 'Checkout', code: source, outcomes: [{ executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok', stage: 'visreg', runMetadata: { testSourcePath },
       }] }],
     } as unknown as ReportData;
@@ -97,7 +97,7 @@ describe('reportDataForMode', () => {
       meta: { reportMode: 'full' },
       tests: [{
         name: 'Checkout',
-        outcomes: [{ executionDetails: { recoveredAfterRetries: false },
+        outcomes: [{ executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'error',
           stage: 'visreg',
           viewport: { label: 'tablet' },
@@ -167,7 +167,7 @@ describe('reportDataForMode', () => {
       meta: { reportMode: 'self-contained' },
       tests: [{
         name: 'Checkout',
-        outcomes: [{ executionDetails: { recoveredAfterRetries: false },
+        outcomes: [{ executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok',
           stage: 'accessibility',
           viewport: { label: 'tablet' },
@@ -258,7 +258,7 @@ describe('reportDataForMode', () => {
         durationMs: 1,
         measuredAt: null,
         runId: null,
-        outcomes: [{ executionDetails: { recoveredAfterRetries: false },
+        outcomes: [{ executionDetails: { runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok',
           stage: 'visreg',
           viewport: {
