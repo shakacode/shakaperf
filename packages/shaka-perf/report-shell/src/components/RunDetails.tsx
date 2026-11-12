@@ -8,7 +8,6 @@
 import { useRef, useState } from 'react';
 import type { ReportOutcome } from '../types';
 import { Dialog } from '../../../src/pipeline/stage-report-components';
-import { TooltipLabel } from '../../../src/pipeline/report-tooltip';
 import type { ExecutionDetails } from '../../../src/pipeline/outcome';
 import type { RunMetadata } from '../../../src/pipeline/run-metadata';
 
@@ -134,41 +133,15 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
   const entries = savedRunDetails(outcomes).flatMap(([, items]) => items);
   const runs = unique(entries.map(({ executionDetails }) => executionDetails.runId));
   const targets = entries.flatMap((entry) => entry.metadata.targets.map((target) => ({ entry, target })));
-  const commands = groupValues(entries, ({ metadata }) => metadata.command);
-  const categories = groupValues(entries, ({ metadata }) => [...metadata.categories].sort());
-  const viewports = groupValues(entries, ({ executionDetails }) => executionDetails.viewport);
   const sampling = groupValues(entries.filter(({ stage, metadata }) => stage === 'perf' && metadata.numberOfMeasurements !== undefined), ({ metadata }) => ({
     count: metadata.numberOfMeasurements!, perSide: metadata.targets.length > 1,
   }));
-  const comparisons = groupValues(entries.filter(({ metadata }) => (metadata.compareAttempts ?? 0) > 1), ({ metadata }) => ({ count: metadata.compareAttempts!, limit: metadata.compareRetries }));
-  const errorRetries = groupValues(entries.filter(({ executionDetails }) => (executionDetails.taskRetries ?? 0) > 0 || (executionDetails.taskRetries === undefined && executionDetails.recoveredAfterRetries)), ({ executionDetails }) => ({ count: executionDetails.taskRetries, limit: executionDetails.taskRetryLimit }));
   const settings = groupValues(entries.flatMap((entry) => (entry.metadata.throttling ?? []).filter((setting) => setting.engine === 'Lighthouse').map((setting) => ({ entry, setting }))), ({ setting }) => ({
     engine: setting.engine, method: setting.method, cpu: setting.method === 'provided' ? undefined : setting.cpuSlowdownMultiplier,
     network: Object.entries(setting.network).sort(([a], [b]) => a.localeCompare(b)),
   }));
   const scope = (items: Entry[]) => <Scope items={items} entries={entries} runs={runs} />;
   return <div className="run-details">
-    <section className="run-details__section">
-      <h3>Applications</h3>
-      <div className="run-details__applications">
-        {groupValues(targets, ({ target }) => target.url).map(({ value: url, items }) => <div className="run-details__application" key={url}>
-          <h4>{unique(items.map(({ target }) => target.side)).join(' / ')}</h4>
-          <div className="run-details__url">{url}</div>
-          {scope(items.map(({ entry }) => entry))}
-        </div>)}
-      </div>
-      <RunCommits outcomes={outcomes} />
-    </section>
-    <section className="run-details__section">
-      <h3>Measurement command</h3>
-      {commands.map(({ value, items }) => commands.length === 1 ? <MeasurementCommand key={value} command={value} /> : <details className="run-details__command-variant" key={value}><summary>{scope(items)}</summary><MeasurementCommand command={value} /></details>)}
-    </section>
-    <section className="run-details__section run-details__overview">
-      <div><h3>Categories</h3>{categories.map(({ value, items }) => <div key={value.join(',')}><div className="run-details__tags">{value.map((category) => <span key={category}>{category}</span>)}</div>{categories.length > 1 ? scope(items) : null}</div>)}</div>
-      <div><h3>Viewports</h3><div className="run-details__viewports">{viewports.map(({ value, items }, index) => <div className="run-details__viewport" key={index}>
-        <strong>{value.label}</strong><span>{value.width} × {value.height} · {value.deviceScaleFactor}× · {value.formFactor}</span>{viewports.filter((group) => group.value.label === value.label).length > 1 ? scope(items) : null}
-      </div>)}</div></div>
-    </section>
     {sampling.length ? <section className="run-details__section">
       <h3>Sampling</h3>
       <div className="run-details__settings">
@@ -177,29 +150,6 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
           {scope(items)}
         </div>)}
       </div>
-    </section> : null}
-    {errorRetries.length || comparisons.length ? <section className="run-details__section">
-      <h3>Retries and attempts</h3>
-      {errorRetries.length ? <div>
-        <h4><TooltipLabel label="Error recovery" explanation="Reruns failed worker tasks after errors. Hard task timeouts are not retried." /></h4>
-        <div className="run-details__settings">{errorRetries.map(({ value, items }, index) => <div className="run-details__setting" key={index}>
-          <div className="run-details__setting-head">
-            <strong>{value.count === undefined ? 'Retry count unavailable' : `${value.count} task ${value.count === 1 ? 'retry' : 'retries'}`}</strong>
-            {value.limit !== undefined ? <span>Limit: {value.limit} {value.limit === 1 ? 'retry' : 'retries'} per task</span> : null}
-          </div>
-          <Scope items={items} entries={entries} runs={runs} always />
-        </div>)}</div>
-      </div> : null}
-      {comparisons.length ? <div>
-        <h4><TooltipLabel label="Visual comparison" explanation="Capture-and-compare attempts, including those started before an error. Mismatches trigger another capture." /></h4>
-        <div className="run-details__settings">{comparisons.map(({ value, items }, index) => <div className="run-details__setting" key={index}>
-          <div className="run-details__setting-head">
-            <strong>{value.count} visual attempts</strong>
-            {value.limit !== undefined ? <span>Limit: {value.limit + 1} attempts per task</span> : null}
-          </div>
-          <Scope items={items} entries={entries} runs={runs} always />
-        </div>)}</div>
-      </div> : null}
     </section> : null}
     {settings.length ? <section className="run-details__section">
       <h3>Throttling</h3>

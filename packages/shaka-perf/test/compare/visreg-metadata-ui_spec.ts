@@ -25,8 +25,8 @@ function fixture() {
   test.outcomes = [{
     ...saved,
     stage: 'visreg',
-    recoveredAfterRetries: true,
-    runMetadata: { ...saved.runMetadata!, taskRetries: 1, taskRetryLimit: 2 },
+    executionDetails: { ...saved.executionDetails, recoveredAfterRetries: true, taskRetries: 1, taskRetryLimit: 2 },
+    runMetadata: { ...saved.runMetadata! },
     measurement: [{
       selector: 'document', controlImage: image, experimentImage: image,
       diffImage: null, misMatchPercentage: 0, savedByRetries: true,
