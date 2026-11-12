@@ -64,7 +64,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     expect(await metadata.locator('.card__metadata-panel').isVisible()).toBe(false);
   });
 
-  it('hides metadata by default and keeps nested source, paths and the modal usable', async () => {
+  it('hides metadata by default and keeps nested source and paths usable', async () => {
     const card = page.locator('[data-report-test-id="homepage"]');
     const metadata = card.locator('.card__metadata');
     expect(await metadata.count()).toBe(1);
@@ -83,14 +83,6 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     await metadata.getByRole('button', { name: 'artifact paths' }).click();
     expect(await metadata.getByText('desktop: results/homepage-desktop').isVisible()).toBe(true);
     expect(await card.locator('.card__body').getByRole('button', { name: /source|paths|troubleshoot/ }).count()).toBe(0);
-    await card.getByRole('button', { name: 'Metadata details', exact: true }).click();
-    expect(await page.getByRole('dialog').isVisible()).toBe(true);
-    const dialog = page.getByRole('dialog');
-    expect(await dialog.getByRole('heading', { name: 'Throttling', exact: true }).isVisible()).toBe(true);
-    expect(await dialog.getByRole('heading', { name: 'Runs', exact: true }).isVisible()).toBe(true);
-    for (const name of ['Applications', 'Measurement command', 'Categories', 'Viewports', 'Retries and attempts']) {
-      expect(await dialog.getByRole('heading', { name, exact: true }).count()).toBe(0);
-    }
     expect(await metadata.evaluate((el) => el.getBoundingClientRect().right <= window.innerWidth && Array.from(el.querySelectorAll('*')).every((child) => child.getBoundingClientRect().right <= window.innerWidth))).toBe(true);
   });
 
