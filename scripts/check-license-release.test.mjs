@@ -49,6 +49,10 @@ const withStatus = approved.replace(
   '# The ShakaStack License\n',
   '# The ShakaStack License\n\n**Status: proposed text, pending counsel review. Not in force.**\n',
 );
+const withHeadingStatus = approved.replace(
+  '# The ShakaStack License\n',
+  '# The ShakaStack License\n\n## Status: pending legal approval\n',
+);
 const withNotice = approved.replace(
   '# The ShakaStack License\n',
   '# The ShakaStack License\n\n**Notice: pending counsel review. Not in force.**\n',
@@ -70,6 +74,12 @@ test('rejects a counsel marker', () => {
 
 test('rejects a status notice without counsel markers', () => {
   const result = runGuard(withStatus, '0.8.0');
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /status notice/i);
+});
+
+test('rejects a Markdown status heading', () => {
+  const result = runGuard(withHeadingStatus, '0.8.0');
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /status notice/i);
 });
