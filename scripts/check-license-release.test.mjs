@@ -73,6 +73,10 @@ const withListedNotice = approved.replace(
   '# The ShakaStack License\n',
   '# The ShakaStack License\n\n- **Notice: awaiting legal approval**\n',
 );
+const withNumberedNotice = approved.replace(
+  '# The ShakaStack License\n',
+  '# The ShakaStack License\n\n1. **Status: awaiting legal approval**\n',
+);
 const withNotice = approved.replace(
   '# The ShakaStack License\n',
   '# The ShakaStack License\n\n**Notice: pending counsel review. Not in force.**\n',
@@ -130,6 +134,12 @@ test('rejects a quoted status notice', () => {
 
 test('rejects a listed notice', () => {
   const result = runGuard(withListedNotice, '0.8.0');
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /status notice/i);
+});
+
+test('rejects a numbered notice', () => {
+  const result = runGuard(withNumberedNotice, '0.8.0');
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /status notice/i);
 });

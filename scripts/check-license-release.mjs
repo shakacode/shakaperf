@@ -41,7 +41,7 @@ try {
   }
   const text = license.toString('utf8');
   const hasNotice = text.split(/\r?\n/).some((line) =>
-    /^(?:Status|Notice)\b/i.test(line.replace(/^[\s>#+*`_~.-]*/, '')));
+    /^(?:Status|Notice)\b/i.test(line.replace(/^[\s>#+*`_~.()\d-]*/, '')));
   if (/\[COUNSEL-\d+\]/.test(text)
     || hasNotice
     || /\b(?:counsel|proposed|draft|unapproved)\b|not in force/i.test(text)) {
