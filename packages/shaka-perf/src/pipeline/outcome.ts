@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import type { LoadedRunMetadata, RunMetadata } from './run-metadata';
+import type { RunMetadata } from './run-metadata';
 import type { StageName } from '../stage/stage';
 import type { StageFailureArtifacts } from '../stage/stage-failure';
 
@@ -25,6 +25,7 @@ export interface ErrorInfo {
 
 export interface ExecutionDetails {
   readonly runId: string;
+  readonly testSourcePath: string | null;
   readonly taskRetries?: number;
   readonly taskRetryLimit?: number;
   readonly recoveredAfterRetries: boolean;
@@ -44,13 +45,8 @@ export interface Outcome {
   failure?: StageFailureArtifacts;
   reason?: string;
   logs?: string;
-  runMetadata?: LoadedRunMetadata;
-}
-
-/** New outcomes cannot persist metadata without a captured source. */
-export type RecordedOutcome = Omit<Outcome, 'runMetadata'> & {
   runMetadata?: RunMetadata;
-};
+}
 
 /** Read the current saved outcome contract without legacy conversions. */
 export function parseOutcome(json: string): Outcome {

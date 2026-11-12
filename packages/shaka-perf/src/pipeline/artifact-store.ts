@@ -9,7 +9,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import type { AbTestDefinition } from 'shaka-shared';
-import { parseOutcome, type Outcome, type RecordedOutcome } from './outcome';
+import { parseOutcome, type Outcome } from './outcome';
 import type { StageName } from '../stage/stage';
 import { testIdForTest, unitIdForTest } from './unit-id';
 import { toPosixRelative } from './path-utils';
@@ -96,7 +96,7 @@ export class ArtifactStore {
     return scope.pathFor(name);
   }
 
-  writeOutcome(test: AbTestDefinition, viewportLabel: string, outcome: RecordedOutcome): void {
+  writeOutcome(test: AbTestDefinition, viewportLabel: string, outcome: Outcome): void {
     const dir = this.unitDirForViewport(test, viewportLabel);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(

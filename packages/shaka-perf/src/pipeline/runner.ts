@@ -77,7 +77,7 @@ import type { StageSelection } from './pipeline';
 import { testIdForTest, unitIdForTest } from './unit-id';
 import { burnDisplayName, expandTestsForBurn } from './burn';
 import { ArtifactStore, type ArtifactPath } from './artifact-store';
-import type { Outcome, RecordedOutcome, ErrorInfo } from './outcome';
+import type { Outcome, ErrorInfo } from './outcome';
 import { findFailureArtifacts, findLastAnnotation } from '../stage/stage-failure';
 import { colorizedLogPrefix, testSourcePrefix } from '../visreg/core/util/testContext';
 import { attachStickyStatus, formatPoolProgress } from '../bench/cli/commands/compare/sticky-status';
@@ -1109,7 +1109,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     progress.error += 1;
     persistStageOutcome(store, unit, logger, {
       kind: 'error',
-      executionDetails: { runId, recoveredAfterRetries: false },
+      executionDetails: { runId, testSourcePath: unit.testSourcePath, recoveredAfterRetries: false },
       stage: stage.name,
       error: errorInfo(err),
     });
@@ -1179,7 +1179,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     readPriorResult: <M = unknown>(priorStage: StageName): M | undefined =>
       store.readOutcome(unit.test, unit.viewport.label, priorStage)?.measurement as M | undefined,
   };
-  let outcome: RecordedOutcome;
+  let outcome: Outcome;
   // Failed attempts for THIS task only (the shared `taskProgress.errors` is a
   // stage-wide aggregate). If the task ultimately succeeds with this > 0, a
   // retry recovered it from a crash/timeout → "flaky (recovered after retries)".
@@ -1213,7 +1213,6 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       // Measuring units have their source artifact written before stages execute.
       metadata = {
         command: run.command, measuredAt: new Date().toISOString(),
-        testSourcePath: unit.testSourcePath!,
         stages: run.stages, categories: run.categories, viewport: unit.viewport,
         targets: await Promise.all(run.sides.map(async (side) => {
           const url = side === 'control' ? ctx.controlURL : ctx.experimentURL;
@@ -1246,7 +1245,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       kind: 'ok',
       stage: stage.name,
       measurement,
-      executionDetails: { runId, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
+      executionDetails: { runId, testSourcePath: unit.testSourcePath, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
     };
   } catch (err) {
     // Walk the cause chain, don't instanceof: a stage that throws from inside a
@@ -1255,7 +1254,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const failure = findFailureArtifacts(err);
     outcome = {
       kind: 'error',
-      executionDetails: { runId, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
+      executionDetails: { runId, testSourcePath: unit.testSourcePath, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
       stage: stage.name,
       error: errorInfo(err),
       ...(failure ? { failure } : {}),
@@ -1275,7 +1274,7 @@ function persistStageOutcome(
   store: ArtifactStore,
   unit: WorkUnit,
   logger: StageLogger,
-  outcome: RecordedOutcome,
+  outcome: Outcome,
 ): void {
   const logs = logger.flush();
   if (logs) outcome.logs = logs;
@@ -1696,16 +1695,15 @@ function savedTestSource(outcomes: readonly Outcome[], store: ArtifactStore): st
   for (const outcome of outcomes) {
     if (outcome.runMetadata && (!newest || outcome.executionDetails.runId > newest.executionDetails.runId)) newest = outcome;
   }
-  // Legacy results and unavailable snapshots must never borrow today's source
-  // or an older run's source. A missing saved artifact also hides the source.
-  if (typeof newest?.runMetadata?.testSourcePath === 'string') {
-    return store.readTextArtifact(newest.runMetadata.testSourcePath) ?? null;
+  // Unavailable snapshots must not borrow today's or an older run's source.
+  if (typeof newest?.executionDetails.testSourcePath === 'string') {
+    return store.readTextArtifact(newest.executionDetails.testSourcePath) ?? null;
   }
   return null;
 }
 
-function skippedOutcome(stage: StageName, reason: string, runId: string): RecordedOutcome {
-  return { kind: 'skipped', stage, reason, executionDetails: { runId, recoveredAfterRetries: false } };
+function skippedOutcome(stage: StageName, reason: string, runId: string): Outcome {
+  return { kind: 'skipped', stage, reason, executionDetails: { runId, testSourcePath: null, recoveredAfterRetries: false } };
 }
 
 function persistSkippedOutcomesForStages(
