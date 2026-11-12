@@ -34,10 +34,16 @@ export function useReportSection(): string | null {
   return useContext(SectionContext);
 }
 
-export function ReportSection({ sectionKey, title, children, badge, nested = false }: {
+export function useReportSectionExpanded(sectionKey: string): boolean {
+  const visibility = useContext(VisibilityContext);
+  return !visibility?.hidden.has(sectionKey);
+}
+
+export function ReportSection({ sectionKey, title, children, badge, actions, nested = false }: {
   sectionKey: string;
   title: string;
   badge?: ReactNode;
+  actions?: ReactNode;
   children: ReactNode;
   nested?: boolean;
 }) {
@@ -84,6 +90,7 @@ export function ReportSection({ sectionKey, title, children, badge, nested = fal
               },
             } : undefined}
           />
+          {actions}
         </div>
         <div id={contentId} className="report-section__body" hidden={hidden}>{children}</div>
       </div>

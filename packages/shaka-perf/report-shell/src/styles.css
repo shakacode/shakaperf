@@ -3328,3 +3328,22 @@ input {
 
 
 .perf-timeline-preview { margin-block: 12px; }
+.perf-viewport > .report-section > .report-section__head { flex-wrap: wrap; }
+.perf-run-settings-toggle {
+  margin-inline-start: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 11px;
+  text-decoration: underline;
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.perf-run-settings-toggle:hover { color: var(--fg); background: transparent; }
+.perf-run-settings .ui-dialog__meta { padding: 0; grid-template-columns: minmax(0, 1fr); }
+.perf-run-settings .ui-dialog__meta dd { white-space: normal; overflow: visible; word-break: normal; overflow-wrap: anywhere; }
+.perf-viewport__dimensions { color: var(--fg-muted); font-size: 11px; font-weight: 400; white-space: nowrap; }
