@@ -40,8 +40,11 @@ try {
     throw new Error('License does not match license.lock.json');
   }
   const text = license.toString('utf8');
+  const hasNotice = text.split(/\r?\n/).some((line) =>
+    /^(?:Status|Notice)\b/i.test(line.replace(/^[\s>#+*`_~.-]*/, '')));
   if (/\[COUNSEL-\d+\]/.test(text)
-    || /^[ \t]*(?:#{1,6}[ \t]+)?(?:\*\*)?(?:Status|Notice)\b|\b(?:counsel|proposed|draft|unapproved)\b|not in force/im.test(text)) {
+    || hasNotice
+    || /\b(?:counsel|proposed|draft|unapproved)\b|not in force/i.test(text)) {
     throw new Error('License has a counsel marker or status notice');
   }
   if (compareVersions(version, firstVersion) < 0) {
