@@ -64,9 +64,9 @@ describe('accessibility report UI filters', () => {
           },
           children: React.createElement(AccessibilityArtifactView, {
             measurements: [{
-              latestRun: true,
+              executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
               measurement: result,
-              viewport: DESKTOP_VIEWPORT,
+
             }],
           }),
         },
@@ -82,7 +82,7 @@ describe('accessibility report UI filters', () => {
     const html = renderToStaticMarkup(
       React.createElement(AccessibilityArtifactView, {
         measurements: [{
-          latestRun: true,
+          executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
           measurement: accessibilityResult({
             effectiveConfig: {
               tags: ['wcag2a', 'wcag2aa'],
@@ -94,7 +94,7 @@ describe('accessibility report UI filters', () => {
               violation('color-contrast', ['wcag2aa', 'cat.color']),
             ],
           }),
-          viewport: DESKTOP_VIEWPORT,
+
         }],
       }),
     );
@@ -152,11 +152,11 @@ describe('accessibility report UI filters', () => {
     const html = renderToStaticMarkup(
       React.createElement(AccessibilityArtifactView, {
         measurements: [{
-          latestRun: true,
+          executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
           measurement: accessibilityResult({
             violations: [violation('button-name', ['wcag2a'])],
           }),
-          viewport: DESKTOP_VIEWPORT,
+
         }],
       }),
     );
@@ -245,10 +245,10 @@ function reportData(accessibility: AccessibilityResult): ReportData {
       measuredAt: 0,
       runId: 'run-1',
       viewportArtifactPaths: [],
-      outcomes: [{
+      outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok',
         stage: 'accessibility',
-        viewport: DESKTOP_VIEWPORT,
+
         measurement: accessibility,
       }],
     }],

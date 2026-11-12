@@ -72,10 +72,10 @@ describe('bisect report browser acceptance', () => {
     const data = reportData();
     data.tests = data.tests.map((test) => ({
       ...test, runId: latest,
-      outcomes: test.outcomes.map((outcome) => ({ ...outcome, runId: latest })),
+      outcomes: test.outcomes.map((outcome) => ({ ...outcome, executionDetails: { ...outcome.executionDetails, runId: latest } })),
     }));
     const homepage = data.tests[0];
-    homepage.outcomes.push({ ...homepage.outcomes[0], viewport: PHONE_VIEWPORT, runId: old });
+    homepage.outcomes.push({ ...homepage.outcomes[0],  executionDetails: { ...homepage.outcomes[0].executionDetails, viewport: PHONE_VIEWPORT, runId: old } });
     const render = jest.spyOn(pipelineArtifacts, 'renderPersistedStageArtifacts').mockReturnValue('artifact');
     try {
       const html = renderToStaticMarkup(createElement(App, { data }));
@@ -457,7 +457,7 @@ function reportTest(
     measuredAt: null,
     runId: null,
     outcomes: stages.map((stage) => stage === 'visreg' && id === 'homepage-card'
-      ? ({
+      ? ({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok' as const,
         stage,
         measurement: [{
@@ -471,13 +471,13 @@ function reportTest(
           diffBbox: null,
           savedByRetries: false,
         }],
-        viewport: DESKTOP_VIEWPORT,
+
       })
-      : ({
+      : ({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'error' as const,
         stage,
         error: { message: `${stage} fixture outcome` },
-        viewport: DESKTOP_VIEWPORT,
+
       })),
     viewportArtifactPaths: [],
   };

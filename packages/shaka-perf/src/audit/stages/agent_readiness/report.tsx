@@ -34,8 +34,8 @@ export function AgentReadinessArtifactView({
           const rawWords = raw?.textWords ?? 0;
           const coverage = r.textWords > 0 ? Math.round((rawWords / r.textWords) * 100) : 0;
           return (
-            <div key={`${entry.viewport.label}-${index}`} className="stage-stack__viewport">
-              <ReportHeading className="stage-section__head" level={5} title={entry.viewport.label} badge={<OldRunChip latestRun={entry.latestRun} />} />
+            <div key={`${entry.executionDetails.viewport.label}-${index}`} className="stage-stack__viewport">
+              <ReportHeading className="stage-section__head" level={5} title={entry.executionDetails.viewport.label} badge={<OldRunChip latestRun={entry.latestRun} />} />
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
                 <li>
                   Raw fetch: {m.raw.ok ? 'ok' : 'failed'}

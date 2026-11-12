@@ -8,7 +8,7 @@
 import type { ReactNode } from 'react';
 import { pipelineStagesForReport, renderPersistedStageArtifacts, renderPersistedStageHeadingBadge } from '../../../src/pipeline/pipeline-artifacts';
 import { ScreenshotPreview } from '../../../src/pipeline/screenshot-preview';
-import { ArtifactScope, DetailedArtifactDialog, OldRunChip, StageRunChipsProvider } from '../../../src/pipeline/stage-report-components';
+import { DetailedArtifactDialog, OldRunChip, StageRunChipsProvider } from '../../../src/pipeline/stage-report-components';
 import type { ReportMeta, ReportOutcome } from '../types';
 import { ReportSection } from '../../../src/pipeline/report-section';
 
@@ -39,7 +39,7 @@ function OutcomeError({ outcome, latestRun }: { outcome: ReportOutcome; latestRu
       <div className="slot-error__body">
         <p className="slot-error__message">
           <span className="slot-error__label">
-            Error during "{heading}" · {outcome.viewport.label}:
+            Error during "{heading}" · {outcome.executionDetails.viewport.label}:
             <OldRunChip latestRun={latestRun} />
           </span>{' '}
           <span className="slot-error__detail">{displayMessage}</span>
@@ -58,17 +58,14 @@ function OutcomeError({ outcome, latestRun }: { outcome: ReportOutcome; latestRu
           />
         ) : null}
         {media && !isVideo ? (
-          <ArtifactScope outcome={outcome}>
-            <DetailedArtifactDialog
-              className="slot-error__screenshot"
-              image
-              href={media}
-              label="failure screenshot"
-              title={`${outcome.viewport.label} ${outcome.stage} failure screenshot`}
-            >
-              <ScreenshotPreview src={media} alt="failure screenshot" />
-            </DetailedArtifactDialog>
-          </ArtifactScope>
+          <DetailedArtifactDialog
+            className="slot-error__screenshot"
+            image
+            href={media}
+            label="failure screenshot"
+          >
+            <ScreenshotPreview src={media} alt="failure screenshot" />
+          </DetailedArtifactDialog>
         ) : null}
         {stack ? (
           <details open>
@@ -102,9 +99,8 @@ export function stageSection(
       ? []
       : [{
         measurement: outcome.measurement,
-        outcome,
-        viewport: outcome.viewport,
-        latestRun: latestRunId == null || outcome.runId === latestRunId,
+        executionDetails: outcome.executionDetails,
+        latestRun: latestRunId == null || outcome.executionDetails.runId === latestRunId,
       }]
   ));
   const artifact = measurements.length > 0
@@ -140,9 +136,9 @@ export function OutcomeSlot({
         <ReportSection sectionKey={first.stage} title={title} badge={badge}>
           {errorOutcomes.map((outcome, index) => (
             <OutcomeError
-              key={`error-${outcome.viewport.label}-${index}`}
+              key={`error-${outcome.executionDetails.viewport.label}-${index}`}
               outcome={outcome}
-              latestRun={latestRunId == null || outcome.runId === latestRunId}
+              latestRun={latestRunId == null || outcome.executionDetails.runId === latestRunId}
             />
           ))}
           {artifact ? <div className="stage-artifact">{artifact}</div> : null}

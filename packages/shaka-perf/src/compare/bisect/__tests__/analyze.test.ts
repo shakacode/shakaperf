@@ -34,10 +34,10 @@ function testResult(
     viewportArtifactPaths: [],
     outcomes: [
       ...(includeVisualAndPerf ? [
-        {
+        { executionDetails: { viewport: viewport, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok' as const,
           stage: 'visreg',
-          viewport,
+
           measurement: [{
             selector: '[data-cy="hero-section"]',
             controlImage: 'control.png',
@@ -50,10 +50,10 @@ function testResult(
             savedByRetries: false,
           }],
         },
-        {
+        { executionDetails: { viewport: viewport, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok' as const,
           stage: 'perf',
-          viewport,
+
           measurement: {
             metrics: [{
               label: 'TBT',
@@ -72,10 +72,10 @@ function testResult(
           },
         },
       ] : []),
-      {
+      { executionDetails: { viewport: viewport, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok' as const,
         stage: 'accessibility',
-        viewport,
+
         measurement: accessibilityResult(accessibilityStatus),
       },
     ],
@@ -255,10 +255,10 @@ describe('bisect regression analysis', () => {
 
   it('rejects mixed valid and error outcomes before analysis', () => {
     const result = testResult();
-    result.outcomes.push({
+    result.outcomes.push({ executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'error',
       stage: 'visreg',
-      viewport: PHONE_VIEWPORT,
+
       error: { message: 'phone capture failed' },
     });
 

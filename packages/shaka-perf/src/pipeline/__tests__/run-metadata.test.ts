@@ -46,9 +46,9 @@ describe('source artifacts at the persistence boundary', () => {
     testFn: async () => {},
   };
   const source = "abTest('Homepage', {}, async () => {});";
-  const metadata: Omit<RunMetadata, 'testSourcePath'> = {
-    command: 'shaka-perf compare', runId: '2026-11-04T10:00:00Z', measuredAt: '2026-11-04T10:00:00Z',
-    stages: ['visreg'], categories: ['visreg'], viewport: DESKTOP_VIEWPORT, targets: [],
+  const metadata: RunMetadata = {
+    command: 'shaka-perf compare', measuredAt: '2026-11-04T10:00:00Z',
+    stages: ['visreg'], categories: ['visreg'], targets: [],
   };
   let dir: string;
   let store: ArtifactStore;
@@ -56,44 +56,33 @@ describe('source artifacts at the persistence boundary', () => {
   afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
   it('shares one immutable source artifact across stage outcomes', () => {
-    const testSourcePath = store.writeTestSource(test, 'desktop', source);
-    const file = path.join(dir, testSourcePath);
+    const testSourceHref = store.writeTestSource(test, 'desktop', source);
+    const file = path.join(dir, testSourceHref);
     const mtime = fs.statSync(file).mtimeMs;
-    expect(store.writeTestSource(test, 'desktop', source)).toBe(testSourcePath);
+    expect(store.writeTestSource(test, 'desktop', source)).toBe(testSourceHref);
     expect(fs.statSync(file).mtimeMs).toBe(mtime);
     for (const stage of ['visreg', 'perf'] as const) {
-      store.writeOutcome(test, 'desktop', { kind: 'ok', stage, runMetadata: { ...metadata, testSourcePath } });
+      store.writeOutcome(test, 'desktop', { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage, runMetadata: metadata });
       const saved = JSON.parse(fs.readFileSync(path.join(store.unitDirForViewport(test, 'desktop'), `${stage}.json`), 'utf8'));
-      expect(saved.runMetadata).toMatchObject({ testSourcePath });
+      expect(saved.executionDetails).toMatchObject({ testSourceHref });
+      expect(saved.runMetadata).not.toHaveProperty('testSourceHref');
     }
-    expect(store.readTextArtifact(testSourcePath)).toBe(source);
-    expect(fs.readdirSync(store.artifactsDirForViewport(test, 'desktop'))).toEqual([path.basename(testSourcePath)]);
+    expect(store.readTextArtifact(testSourceHref)).toBe(source);
+    expect(fs.readdirSync(store.artifactsDirForViewport(test, 'desktop'))).toEqual([path.basename(testSourceHref)]);
     const changed = source.replace('Homepage', 'Changed homepage');
     const changedPath = store.writeTestSource(test, 'desktop', changed);
-    expect(changedPath).not.toBe(testSourcePath);
+    expect(changedPath).not.toBe(testSourceHref);
     expect(store.readTextArtifact(changedPath)).toBe(changed);
-    expect(store.readTextArtifact(testSourcePath)).toBe(source);
-  });
-
-  it.each([null, undefined])('normalizes source path %p without rewriting saved JSON', (testSourcePath) => {
-    const unit = store.unitDirForViewport(test, 'desktop');
-    fs.mkdirSync(unit, { recursive: true });
-    const file = path.join(unit, 'visreg.json');
-    const json = JSON.stringify({ kind: 'ok', stage: 'visreg', runMetadata: { ...metadata, testSourcePath } });
-    fs.writeFileSync(file, json);
-    for (const outcome of [store.readOutcome(test, 'desktop', 'visreg'), ...store.readOutcomesForViewport(test, 'desktop')]) {
-      expect(outcome?.runMetadata?.testSourcePath).toBeNull();
-    }
-    expect(fs.readFileSync(file, 'utf8')).toBe(json);
+    expect(store.readTextArtifact(testSourceHref)).toBe(source);
   });
 
   it('keeps measured outcomes readable when their source artifact is missing', () => {
-    const testSourcePath = store.writeTestSource(test, 'desktop', source);
-    store.writeOutcome(test, 'desktop', { kind: 'ok', stage: 'visreg', runMetadata: { ...metadata, testSourcePath } });
-    fs.unlinkSync(path.join(dir, testSourcePath));
+    const testSourceHref = store.writeTestSource(test, 'desktop', source);
+    store.writeOutcome(test, 'desktop', { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg', runMetadata: metadata });
+    fs.unlinkSync(path.join(dir, testSourceHref));
     expect(store.readOutcome(test, 'desktop', 'visreg')?.kind).toBe('ok');
-    expect(store.readOutcome(test, 'desktop', 'visreg')?.runMetadata?.testSourcePath).toBe(testSourcePath);
-    expect(store.readTextArtifact(testSourcePath)).toBeUndefined();
+    expect(store.readOutcome(test, 'desktop', 'visreg')?.executionDetails.testSourceHref).toBe(testSourceHref);
+    expect(store.readTextArtifact(testSourceHref)).toBeUndefined();
   });
 
   it('does not read source paths outside the results root', () => {

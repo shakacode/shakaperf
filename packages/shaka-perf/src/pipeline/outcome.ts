@@ -5,7 +5,8 @@
  * License in LICENSE.md.
  */
 
-import type { LoadedRunMetadata, RunMetadata } from './run-metadata';
+import type { Viewport } from '../config';
+import type { RunMetadata } from './run-metadata';
 import type { StageName } from '../stage/stage';
 import type { StageFailureArtifacts } from '../stage/stage-failure';
 
@@ -23,7 +24,17 @@ export interface ErrorInfo {
   lastAnnotation?: string;
 }
 
+export interface ExecutionDetails {
+  readonly runId: string;
+  readonly viewport: Viewport;
+  readonly testSourceHref: string | null;
+  readonly taskRetries?: number;
+  readonly taskRetryLimit?: number;
+  readonly recoveredAfterRetries: boolean;
+}
+
 export interface Outcome {
+  executionDetails: ExecutionDetails;
   kind: OutcomeKind;
   stage: StageName;
   measurement?: unknown;
@@ -36,25 +47,10 @@ export interface Outcome {
   failure?: StageFailureArtifacts;
   reason?: string;
   logs?: string;
-  runId?: string;
-  runMetadata?: LoadedRunMetadata;
-  /**
-   * True when the worker pool ran this stage task more than once — it crashed
-   * or timed out on an earlier attempt but a retry succeeded. Set by the runner
-   * (not by any stage), and surfaced as the cross-cutting "flaky (recovered
-   * after retries)" chip. Only meaningful on `kind === 'ok'`.
-   */
-  recoveredAfterRetries?: boolean;
+  runMetadata?: RunMetadata;
 }
 
-/** New outcomes cannot persist metadata without a captured source. */
-export type RecordedOutcome = Omit<Outcome, 'runMetadata'> & {
-  runMetadata?: RunMetadata;
-};
-
-/** Normalize missing legacy source fields at the JSON read boundary. */
+/** Read the current saved outcome contract without legacy conversions. */
 export function parseOutcome(json: string): Outcome {
-  const outcome = JSON.parse(json) as Outcome;
-  if (outcome.runMetadata) outcome.runMetadata.testSourcePath ??= null;
-  return outcome;
+  return JSON.parse(json) as Outcome;
 }

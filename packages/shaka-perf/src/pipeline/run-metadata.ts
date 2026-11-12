@@ -7,9 +7,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { Viewport } from '../config';
 import type { LighthouseConfig } from '../bench/core/lighthouse-config';
-import type { ArtifactPath } from './artifact-store';
 import { readContainerCommit, SERVER_COMMIT_LABEL } from '../twin-servers/helpers/server-commit';
 
 export type MeasurementSide = 'control' | 'experiment';
@@ -32,14 +30,10 @@ export interface MeasurementThrottling {
 }
 export interface RunMetadata {
   command: string;
-  runId: string;
   measuredAt: string;
   stages: string[];
   categories: string[];
-  viewport: Viewport;
   targets: MeasurementTarget[];
-  /** Saved verbatim abTest call, relative to the results root. Required for new measurements. */
-  testSourcePath: ArtifactPath;
   throttling?: MeasurementThrottling[];
   /** Effective Lighthouse samples requested per measured side. */
   numberOfMeasurements?: number;
@@ -47,16 +41,8 @@ export interface RunMetadata {
   compareRetries?: number;
   /** Actual visual comparison attempts started across worker retries. */
   compareAttempts?: number;
-  /** Worker retries actually started after errors, across this stage's tasks. */
-  taskRetries?: number;
-  /** Effective error retry budget for each worker task, after runtime overrides. */
-  taskRetryLimit?: number;
-}
 
-/** Older results can lack a source snapshot; readers normalize that to null. */
-export type LoadedRunMetadata = Omit<RunMetadata, 'testSourcePath'> & {
-  testSourcePath: string | null;
-};
+}
 
 /** Reconstruct the measurement invocation without changing any argument values. */
 export function measurementCommand(argv: readonly string[] = process.argv.slice(2)): string {

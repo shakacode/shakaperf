@@ -168,10 +168,10 @@ function savedReport(): BisectReportData {
       durationMs: 0,
       measuredAt: null,
       runId: null,
-      outcomes: [{
+      outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok',
         stage: 'visreg',
-        viewport: DESKTOP_VIEWPORT,
+
         measurement: { screenshot: 'data:image/png;base64,fixture' },
       }],
       viewportArtifactPaths: [],
