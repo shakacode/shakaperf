@@ -104,7 +104,7 @@ function PerfViewportBlock({ perf, viewportLabel, latestRun, executionDetails }:
             aria-controls={settingsId}
             onClick={() => setShowSettings(previous => !previous)}
           >
-            {showSettings ? 'hide run settings' : 'show run settings'}
+            {showSettings ? 'hide metadata' : 'show metadata'}
           </button>
         ) : null}
         nested
