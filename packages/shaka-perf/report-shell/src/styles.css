@@ -1483,8 +1483,7 @@ input {
   opacity: 0.6;
 }
 
-.card__logs-button,
-.card__run-details-button {
+.card__logs-button {
   padding: 2px 0;
   border: 0;
   background: transparent;
@@ -1498,8 +1497,7 @@ input {
   text-underline-offset: 3px;
 }
 
-.card__logs-button:hover,
-.card__run-details-button:hover {
+.card__logs-button:hover {
   background: transparent;
   color: var(--fg);
 }
@@ -3150,10 +3148,6 @@ input {
 }
 
 /* Saved measurement details: shared facts first, individual results on demand. */
-.run-details { padding: 0 24px; color: var(--fg); font-size: 12px; line-height: 1.6; }
-.run-details__section { padding: 20px 0; border-bottom: 1px solid var(--border); }
-.run-details__section:last-child { border-bottom: 0; }
-.run-details h3 { margin: 0 0 12px; color: var(--fg-muted); font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; }
 .run-details__commits { display: grid; gap: 12px; margin-top: 16px; }
 .run-details__label { color: var(--fg-muted); font-size: 10px; text-transform: capitalize; }
 .run-details__commit summary, .run-details__commit-heading { display: flex; align-items: baseline; gap: 10px; }
@@ -3171,28 +3165,8 @@ input {
 .run-details__command textarea { resize: vertical; }
 .run-details__command button { margin-top: 8px; padding: 5px 9px; font: inherit; font-size: 10px; background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); cursor: pointer; }
 .run-details__command button:hover { background: var(--bg-hover); }
-.run-details__settings { display: grid; gap: 14px; }
-.run-details__setting-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; }
-.run-details__setting-head strong { font-weight: 500; }
-.run-details__setting-head > span { color: var(--fg-muted); font-size: 11px; }
-.run-details__network { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 3px; color: var(--fg-muted); font-size: 11px; }
 .run-details__unavailable { margin: 4px 0; color: var(--fg-muted); }
-.run-details__run { border: 1px solid var(--border); margin-top: 8px; }
-.run-details__run > summary { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; padding: 10px 12px; cursor: pointer; list-style: none; }
-.run-details__run > summary::-webkit-details-marker { display: none; }
-.run-details__run > summary > span::before { content: '+ '; color: var(--fg-muted); }
-.run-details__run[open] > summary > span::before { content: '− '; }
-.run-details__run time { color: var(--fg-muted); font-size: 10px; }
-.run-details__table-wrap { overflow-x: auto; border-top: 1px solid var(--border); }
-.run-details table { width: 100%; border-collapse: collapse; text-align: left; font-size: 10px; }
-.run-details th { color: var(--fg-muted); font-weight: 400; }
-.run-details th, .run-details td { padding: 8px 12px; vertical-align: top; }
-.run-details tr + tr { border-top: 1px solid var(--border); }
-.run-details td { overflow-wrap: anywhere; }
-.run-details summary:focus-visible, .run-details button:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
 @media (max-width: 540px) {
-  .run-details { padding: 0 16px; }
-  .run-details__section { padding: 16px 0; }
   .run-details__commit summary { gap: 8px; }
 }
 
@@ -3207,7 +3181,7 @@ input {
 .card__metadata[open] > summary::before { content: '▾'; }
 .card__metadata[open] > summary { padding-bottom: 3px; }
 .card__metadata-row { position: relative; }
-.card__metadata-row:has(> .card__actions) .card__metadata > summary { margin-right: 210px; padding-right: 0; }
+.card__metadata-row:has(> .card__actions) .card__metadata > summary { margin-right: 65px; padding-right: 0; }
 .card__metadata-row--dialog:has(> .card__actions) .card__metadata > summary { margin-right: 65px; }
 .card__actions { position: absolute; top: 9px; right: 20px; display: flex; align-items: baseline; gap: 14px; }
 .card__metadata--dialog > summary .card__metadata-provenance { flex: 1 1 100%; order: 1; }
