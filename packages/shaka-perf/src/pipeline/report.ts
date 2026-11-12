@@ -84,7 +84,6 @@ export type Status =
   | 'skipped';
 
 export type ReportOutcome = Outcome & {
-  viewport: Viewport;
   /** Saved result outside the current measurement configuration; revealed by Show old runs. */
   outsideCurrentConfig?: boolean;
 };
@@ -645,8 +644,6 @@ export function writeMachineReport(
       startingPath: test.startingPath,
       viewport: {
         label: viewport.label,
-        width: viewport.width,
-        height: viewport.height,
       },
       chips: chipsByTest.get(test) ?? [],
       outcomes: outcomes.map((outcome) => ({
@@ -659,7 +656,7 @@ export function writeMachineReport(
         executionDetails: outcome.executionDetails,
         summary: machineSummaryForOutcome(stagesByName, outcome, {
           test,
-          viewport,
+          viewport: outcome.executionDetails.viewport,
           artifacts: store.scopeFor(test, viewport.label),
           logger: new ReportSummaryLogger(),
           priorOutcomes: new Map(),

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import type { Viewport } from '../config';
 import type { RunMetadata } from './run-metadata';
 import type { StageName } from '../stage/stage';
 import type { StageFailureArtifacts } from '../stage/stage-failure';
@@ -25,6 +26,7 @@ export interface ErrorInfo {
 
 export interface ExecutionDetails {
   readonly runId: string;
+  readonly viewport: Viewport;
   readonly testSourcePath: string | null;
   readonly taskRetries?: number;
   readonly taskRetryLimit?: number;

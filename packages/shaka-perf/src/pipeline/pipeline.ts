@@ -48,7 +48,6 @@ export type ChipStageOutcome<M> = Outcome & {
 
 export interface ChipStageResult<M> {
   readonly stage: StageName;
-  readonly viewport: Viewport;
   readonly measurement: M;
   readonly outcome: ChipStageOutcome<M>;
 }
@@ -114,7 +113,6 @@ export interface PipelineMachineReportMeta {
 }
 
 export interface PipelineMachineReportRow {
-  readonly viewport: Viewport;
   readonly outcomes: readonly Outcome[];
 }
 

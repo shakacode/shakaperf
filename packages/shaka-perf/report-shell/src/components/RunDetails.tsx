@@ -16,7 +16,7 @@ export function savedRunDetails(outcomes: readonly ReportOutcome[]) {
   const groups = new Map<string, Entry[]>();
   for (const outcome of outcomes) {
     if (!outcome.runMetadata) continue;
-    const label = outcome.viewport.label;
+    const label = outcome.executionDetails.viewport.label;
     const entries = groups.get(label) ?? [];
     entries.push({ stage: outcome.stage, metadata: outcome.runMetadata, executionDetails: outcome.executionDetails });
     groups.set(label, entries);
@@ -88,7 +88,7 @@ function Scope({ items, entries, runs, always = false }: { items: Entry[]; entri
   if (!always && new Set(items).size === entries.length) return null;
   const scopes = groupValues(items, ({ stage, executionDetails }) => [executionDetails.runId, stage]);
   return <span className="run-details__scope">{scopes.map(({ value: [runId, stage], items }) =>
-    `${runs.length > 1 ? `Run ${runs.indexOf(runId!) + 1} / ` : ''}${stage} · ${unique(items.map((item) => item.metadata.viewport.label)).join(', ')}`,
+    `${runs.length > 1 ? `Run ${runs.indexOf(runId!) + 1} / ` : ''}${stage} · ${unique(items.map((item) => item.executionDetails.viewport.label)).join(', ')}`,
   ).join(' / ')}</span>;
 }
 
@@ -136,7 +136,7 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
   const targets = entries.flatMap((entry) => entry.metadata.targets.map((target) => ({ entry, target })));
   const commands = groupValues(entries, ({ metadata }) => metadata.command);
   const categories = groupValues(entries, ({ metadata }) => [...metadata.categories].sort());
-  const viewports = groupValues(entries, ({ metadata }) => metadata.viewport);
+  const viewports = groupValues(entries, ({ executionDetails }) => executionDetails.viewport);
   const sampling = groupValues(entries.filter(({ stage, metadata }) => stage === 'perf' && metadata.numberOfMeasurements !== undefined), ({ metadata }) => ({
     count: metadata.numberOfMeasurements!, perSide: metadata.targets.length > 1,
   }));
@@ -224,7 +224,7 @@ export function RunDetailsContent({ outcomes }: { outcomes: readonly ReportOutco
         return <details className="run-details__run" key={runId}>
           <summary><span>{runs.length > 1 ? `Run ${index + 1}` : `${items.length} ${items.length === 1 ? 'Result' : 'Results'}`}</span><time title={runId}>{timestamp(runId)}</time></summary>
           <div className="run-details__table-wrap"><table><thead><tr><th>Result</th><th>Viewport</th>{showTime ? <th>Measured</th> : null}</tr></thead><tbody>
-            {rows.map(({ value, items }, rowIndex) => <tr key={rowIndex}><td>{value.stage}</td><td>{items.map(({ metadata }) => <span key={metadata.viewport.label} title={metadata.measuredAt}>{metadata.viewport.label} </span>)}</td>{showTime ? <td title={items.map(({ metadata }) => metadata.measuredAt).join(' / ')}>{value.measured === timestamp(runId) ? '—' : value.measured}</td> : null}</tr>)}
+            {rows.map(({ value, items }, rowIndex) => <tr key={rowIndex}><td>{value.stage}</td><td>{items.map(({ metadata, executionDetails }) => <span key={executionDetails.viewport.label} title={metadata.measuredAt}>{executionDetails.viewport.label} </span>)}</td>{showTime ? <td title={items.map(({ metadata }) => metadata.measuredAt).join(' / ')}>{value.measured === timestamp(runId) ? '—' : value.measured}</td> : null}</tr>)}
           </tbody></table></div>
         </details>;
       })}

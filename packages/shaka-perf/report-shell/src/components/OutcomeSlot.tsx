@@ -39,7 +39,7 @@ function OutcomeError({ outcome, latestRun }: { outcome: ReportOutcome; latestRu
       <div className="slot-error__body">
         <p className="slot-error__message">
           <span className="slot-error__label">
-            Error during "{heading}" · {outcome.viewport.label}:
+            Error during "{heading}" · {outcome.executionDetails.viewport.label}:
             <OldRunChip latestRun={latestRun} />
           </span>{' '}
           <span className="slot-error__detail">{displayMessage}</span>
@@ -100,7 +100,6 @@ export function stageSection(
       : [{
         measurement: outcome.measurement,
         executionDetails: outcome.executionDetails,
-        viewport: outcome.viewport,
         latestRun: latestRunId == null || outcome.executionDetails.runId === latestRunId,
       }]
   ));
@@ -137,7 +136,7 @@ export function OutcomeSlot({
         <ReportSection sectionKey={first.stage} title={title} badge={badge}>
           {errorOutcomes.map((outcome, index) => (
             <OutcomeError
-              key={`error-${outcome.viewport.label}-${index}`}
+              key={`error-${outcome.executionDetails.viewport.label}-${index}`}
               outcome={outcome}
               latestRun={latestRunId == null || outcome.executionDetails.runId === latestRunId}
             />
