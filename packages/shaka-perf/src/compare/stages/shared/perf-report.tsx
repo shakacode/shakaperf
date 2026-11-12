@@ -5,11 +5,13 @@
  * License in LICENSE.md.
  */
 
+import { useId, useState } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { ExecutionDetails } from '../../../pipeline/outcome';
 import type { PerfArtifact, PerfMetric, PerfMetricGroup } from '../perf';
 import {
   DetailedArtifactDialog,
+  ArtifactMetadataFields,
   StageArtifact,
   StageArtifactTitle,
   ReportHeading,
@@ -75,11 +77,40 @@ export function PerfArtifactView({
 
 function PerfViewportBlock({ perf, viewportLabel, latestRun, executionDetails }: PerfRow) {
   const section = useReportSection();
+  const viewport = executionDetails.viewport;
+  const fields = performanceMetadataFields(executionDetails);
+  const hasSettings = Object.keys(fields).length > 0;
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsId = useId();
   const hasSignificantMetrics = significantMetrics(perf).length > 0;
   const hasNoDifference = hasNoDifferenceMetrics(perf);
   return (
     <section className="stage-stack__viewport perf-viewport" aria-label={`${viewportLabel} performance`}>
-      <ReportSection sectionKey={`${section ?? "perf"}:viewport:${viewportLabel}`} title={`${viewportLabel} performance`} badge={<OldRunChip latestRun={latestRun} />} nested>
+      <ReportSection
+        sectionKey={`${section ?? 'perf'}:viewport:${viewportLabel}`}
+        title={`${viewportLabel} performance`}
+        badge={<>
+          {showSettings ? <span className="perf-viewport__dimensions">{viewport.width} × {viewport.height}</span> : null}
+          <OldRunChip latestRun={latestRun} />
+        </>}
+        actions={hasSettings ? (
+          <button
+            type="button"
+            className="perf-run-settings-toggle"
+            aria-expanded={showSettings}
+            aria-controls={settingsId}
+            onClick={() => setShowSettings(previous => !previous)}
+          >
+            {showSettings ? 'hide run settings' : 'show run settings'}
+          </button>
+        ) : null}
+        nested
+      >
+        {hasSettings ? (
+          <div id={settingsId} className="perf-run-settings" hidden={!showSettings}>
+            <ArtifactMetadataFields fields={fields} />
+          </div>
+        ) : null}
 
       <PerfBody
         executionDetails={executionDetails}
