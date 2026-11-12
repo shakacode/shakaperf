@@ -23,7 +23,7 @@ it('preserves every mixed-run result and omits viewports without metadata', () =
   const data = runDetailsFixture('compare');
   const groups = savedRunDetails(data.tests[0]!.outcomes);
   expect(groups.map(([label]) => label)).toEqual(['desktop']);
-  expect(groups[0]![1].map(({ stage, metadata }) => [stage, metadata.runId])).toEqual([
+  expect(groups[0]![1].map(({ stage, executionDetails }) => [stage, executionDetails.runId])).toEqual([
     ['perf', '2026-10-20T20:54:53.891Z'], ['accessibility', '2026-10-20T21:00:50.722Z'],
   ]);
 });
@@ -45,8 +45,10 @@ function details(outcomes = runDetailsFixture('audit').tests[0]!.outcomes) {
 it('shows shared measurement facts once across results and viewports', () => {
   const outcomes = runDetailsFixture('audit').tests[0]!.outcomes;
   const first = outcomes[0]!;
-  outcomes[1]!.runMetadata = { ...first.runMetadata!, measuredAt: first.runMetadata!.runId };
-  outcomes[2]!.runMetadata = { ...first.runMetadata!, viewport: outcomes[2]!.viewport };
+  outcomes[1]!.runMetadata = { ...first.runMetadata!, measuredAt: first.executionDetails.runId };
+  outcomes[2]!.runMetadata = { ...first.runMetadata! };
+  outcomes[1]!.executionDetails = { ...outcomes[1]!.executionDetails, runId: first.executionDetails.runId };
+  outcomes[2]!.executionDetails = { ...outcomes[2]!.executionDetails, runId: first.executionDetails.runId };
   const html = details(outcomes);
   expect(html).not.toContain('<textarea');
   expect(html).not.toContain('http://127.0.0.1:3910/');
@@ -117,8 +119,10 @@ it('keeps grouped Lighthouse samples and result totals without visual retry deta
   const metadata = outcomes[0]!.runMetadata!;
   Object.assign(metadata, { numberOfMeasurements: 7 });
   outcomes[1]!.stage = 'visreg';
-  Object.assign(outcomes[1]!.runMetadata!, { runId: metadata.runId, compareRetries: 5, compareAttempts: 2 });
-  outcomes[2]!.runMetadata = { ...metadata, viewport: outcomes[2]!.viewport };
+  Object.assign(outcomes[1]!.runMetadata!, { compareRetries: 5, compareAttempts: 2 });
+  outcomes[2]!.runMetadata = { ...metadata };
+  outcomes[1]!.executionDetails = { ...outcomes[1]!.executionDetails, runId: outcomes[0]!.executionDetails.runId };
+  outcomes[2]!.executionDetails = { ...outcomes[2]!.executionDetails, runId: outcomes[0]!.executionDetails.runId };
   const html = details(outcomes);
   expect(html).toContain('3 Results');
   expect(html).not.toContain('3 measurements');
@@ -158,8 +162,8 @@ it.each(['perf-low-noise', 'perf-warmup', 'audit'])('omits sample counts for %s'
 
 it.each(['compare', 'audit'] as const)('%s details omit sections available in card and visual metadata', (pipeline) => {
   const outcomes = runDetailsFixture(pipeline).tests[0]!.outcomes;
-  outcomes[0]!.recoveredAfterRetries = true;
-  Object.assign(outcomes[0]!.runMetadata!, { taskRetries: 1, taskRetryLimit: 2, compareAttempts: 4, compareRetries: 2 });
+  outcomes[0]!.executionDetails = { ...outcomes[0]!.executionDetails, recoveredAfterRetries: true, taskRetries: 1, taskRetryLimit: 2 };
+  Object.assign(outcomes[0]!.runMetadata!, { compareAttempts: 4, compareRetries: 2 });
   const html = details(outcomes);
   for (const heading of ['Applications', 'Measurement command', 'Categories', 'Viewports', 'Retries and attempts']) {
     expect(html).not.toContain(`<h3>${heading}</h3>`);

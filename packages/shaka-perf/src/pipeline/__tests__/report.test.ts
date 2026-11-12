@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -65,19 +66,20 @@ describe('reportDataForMode', () => {
   it('embeds resolved source once and leaves metadata paths out of the artifact dictionary', async () => {
     const source = "abTest('Checkout', {}, async () => {});";
     const scope = new ArtifactScope(path.join(resultsRoot, 'checkout-desktop', 'artifacts'), resultsRoot);
-    const testSourcePath = await scope.writeFile('test-source.ts', source);
+    const testSourceHref = await scope.writeFile('test-source.ts', source);
     const data = {
       meta: { reportMode: 'full' },
-      tests: [{ name: 'Checkout', code: source, outcomes: [{
-        kind: 'ok', stage: 'visreg', runMetadata: { testSourcePath },
+      tests: [{ name: 'Checkout', code: source, outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref, runId: 'fixture-run', recoveredAfterRetries: false },
+        kind: 'ok', stage: 'visreg',
       }] }],
     } as unknown as ReportData;
     const dictionary = await buildSelfContainedArtifactDictionary(data, [], resultsRoot);
-    expect(dictionary).not.toHaveProperty(testSourcePath);
+    expect(dictionary).not.toHaveProperty(testSourceHref);
     for (const mode of ['full', 'self-contained'] as const) {
       const projected = reportDataForMode(data, mode, [], resultsRoot, dictionary);
       expect(projected.tests[0]!.code).toBe(source);
-      expect(projected.tests[0]!.outcomes[0]!.runMetadata).toEqual({ testSourcePath });
+      expect(projected.tests[0]!.outcomes[0]!.executionDetails.testSourceHref).toEqual(testSourceHref);
+      expect(projected.tests[0]!.outcomes[0]!.executionDetails).toBe(data.tests[0]!.outcomes[0]!.executionDetails);
       expect(JSON.stringify(projected).split(source)).toHaveLength(2);
     }
   });
@@ -97,10 +99,10 @@ describe('reportDataForMode', () => {
       meta: { reportMode: 'full' },
       tests: [{
         name: 'Checkout',
-        outcomes: [{
+        outcomes: [{ executionDetails: { viewport: { label: 'tablet' }, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'error',
           stage: 'visreg',
-          viewport: { label: 'tablet' },
+
           failure: { media: mediaPath },
           measurement: {
             nested: [{ rawPath, timelinePath, videoPath }],
@@ -167,10 +169,10 @@ describe('reportDataForMode', () => {
       meta: { reportMode: 'self-contained' },
       tests: [{
         name: 'Checkout',
-        outcomes: [{
+        outcomes: [{ executionDetails: { viewport: { label: 'tablet' }, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok',
           stage: 'accessibility',
-          viewport: { label: 'tablet' },
+
           measurement: {
             visiblePath,
             hiddenPath,
@@ -258,16 +260,16 @@ describe('reportDataForMode', () => {
         durationMs: 1,
         measuredAt: null,
         runId: null,
-        outcomes: [{
-          kind: 'ok',
-          stage: 'visreg',
-          viewport: {
+        outcomes: [{ executionDetails: { viewport: {
             label: 'tablet',
             width: 800,
             height: 600,
             deviceScaleFactor: 1,
             formFactor: 'desktop',
-          },
+          }, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
+          kind: 'ok',
+          stage: 'visreg',
+
           measurement: { controlImage: imagePath },
         }],
         viewportArtifactPaths: [],

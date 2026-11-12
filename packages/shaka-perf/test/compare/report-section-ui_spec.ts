@@ -35,12 +35,12 @@ function reportData(mode: 'full' | 'self-contained'): ReportData {
       code: null, chips: [], sorts: [], durationMs: 1000, measuredAt: 1, runId: 'run-1',
       viewportArtifactPaths: [],
       outcomes: [
-        { kind: 'ok', stage: 'visreg', viewport: DESKTOP_VIEWPORT, measurement: [] },
-        ...[DESKTOP_VIEWPORT, PHONE_VIEWPORT].map((viewport) => ({
-          kind: 'ok' as const, stage: 'perf', viewport, measurement: { metrics: [] },
+        { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg',  measurement: [] },
+        ...[DESKTOP_VIEWPORT, PHONE_VIEWPORT].map((viewport) => ({ executionDetails: { viewport: viewport, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
+          kind: 'ok' as const, stage: 'perf',  measurement: { metrics: [] },
         })),
-        { kind: 'ok', stage: 'accessibility', viewport: DESKTOP_VIEWPORT, measurement: cleanAccessibility },
-        { kind: 'error', stage: 'accessibility', viewport: PHONE_VIEWPORT, error: { message: 'Intentional phone failure' } },
+        { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'accessibility',  measurement: cleanAccessibility },
+        { executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility',  error: { message: 'Intentional phone failure' } },
       ],
     })),
   };
@@ -133,8 +133,8 @@ describe.each(['full', 'self-contained'] as const)('%s section disclosures', (mo
   });
 
   it.each(['reduce', 'no-preference'] as const)('returns to only the originating control after a global layout shift (%s motion)', async (motion) => {
-    data.tests[0].outcomes[0] = {
-      kind: 'error', stage: 'visreg', viewport: DESKTOP_VIEWPORT,
+    data.tests[0].outcomes[0] = { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
+      kind: 'error', stage: 'visreg',
       error: { message: 'Saved visual capture failure', stack: Array(40).fill('    at savedCapture (example.abtest.ts:1:1)').join('\n') },
     };
     page = await browser.newPage({ viewport: { width: 390, height: 420 }, reducedMotion: motion });

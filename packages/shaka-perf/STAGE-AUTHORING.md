@@ -435,3 +435,11 @@ See `.claude/skills/review-architecture/SKILL.md`.
 - [ ] `yarn build` is clean.
 - [ ] The watchdog stays silent on a realistic test run, or the
   warnings are tracked as follow-up TODOs.
+
+## Execution details
+
+The runner records task retries and recovery on `outcome.executionDetails`,
+independently of measurement provenance in `runMetadata`. Each `StageRenderEntry`
+receives that same object as `executionDetails`, scoped to its measurement.
+Saved outcomes must use the current contract; readers do not convert legacy fields.
+Stages continue returning domain measurements from `run()`.

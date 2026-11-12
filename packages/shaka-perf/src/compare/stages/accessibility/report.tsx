@@ -516,10 +516,10 @@ export function AccessibilityCompareArtifactView({
       <StageArtifactTitle title="accessibility" />
       <div className="stage-stack">
         {rows.map((entry) => (
-          <div key={entry.viewport.label} className="stage-stack__viewport">
+          <div key={entry.executionDetails.viewport.label} className="stage-stack__viewport">
             <AccessibilityCompareViewport
               result={entry.measurement}
-              viewportLabel={entry.viewport.label}
+              viewportLabel={entry.executionDetails.viewport.label}
               latestRun={entry.latestRun}
             />
           </div>

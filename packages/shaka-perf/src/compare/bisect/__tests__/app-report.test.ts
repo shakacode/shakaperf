@@ -121,11 +121,11 @@ describe('bisect report App rendering', () => {
     data.tests = [{
       ...reportTest(),
       measuredAt: null,
-      outcomes: [{
+      outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'skipped',
         stage: 'visreg',
         reason: 'fixture skip',
-        viewport: DESKTOP_VIEWPORT,
+
       }],
     }];
 
@@ -184,11 +184,11 @@ describe('bisect report App rendering', () => {
     data.tests = [{
       ...reportTest(),
       measuredAt: null,
-      outcomes: [{
+      outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'skipped',
         stage: 'visreg',
         reason: 'fixture skip',
-        viewport: DESKTOP_VIEWPORT,
+
       }],
     }];
 
@@ -376,11 +376,11 @@ function testResult({
     durationMs: 1_000,
     measuredAt: Date.UTC(2026, 6, 13),
     runId: null,
-    outcomes: stages.map((stage) => ({
+    outcomes: stages.map((stage) => ({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'error' as const,
       stage,
       error: { message: `${stage} failed` },
-      viewport: DESKTOP_VIEWPORT,
+
     })),
     viewportArtifactPaths: [],
   };

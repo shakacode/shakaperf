@@ -77,7 +77,7 @@ import type { StageSelection } from './pipeline';
 import { testIdForTest, unitIdForTest } from './unit-id';
 import { burnDisplayName, expandTestsForBurn } from './burn';
 import { ArtifactStore, type ArtifactPath } from './artifact-store';
-import type { Outcome, RecordedOutcome, ErrorInfo } from './outcome';
+import type { Outcome, ErrorInfo } from './outcome';
 import { findFailureArtifacts, findLastAnnotation } from '../stage/stage-failure';
 import { colorizedLogPrefix, testSourcePrefix } from '../visreg/core/util/testContext';
 import { attachStickyStatus, formatPoolProgress } from '../bench/cli/commands/compare/sticky-status';
@@ -122,7 +122,7 @@ function resultsRootFor(cwd: string, pipeline: Pipeline): string {
 interface WorkUnit {
   test: AbTestDefinition;
   testSource: string | null;
-  testSourcePath: ArtifactPath | null;
+  testSourceHref: ArtifactPath | null;
   viewport: Viewport;
   priorOutcomes: Map<StageName, Outcome>;
 }
@@ -143,7 +143,7 @@ interface StageTaskProgress {
   errors: number;
 }
 
-interface StageExecution {
+interface StageRun {
   stage: Stage;
   progress: StageProgress;
   taskProgress: StageTaskProgress;
@@ -160,7 +160,7 @@ interface RuntimeWorkerPool {
   /** This pool's `config -> TaskLimits` mapping (see `taskLimitsResolver`). */
   taskLimits(config: AbTestsConfig): TaskLimits;
   unitChains: Map<string, Promise<void>>;
-  stageExecutions: StageExecution[];
+  stageRuns: StageRun[];
   pending: Promise<void>[];
 }
 
@@ -183,44 +183,44 @@ function formatDurationSummary(durations: readonly number[]): string {
   return ` · durations total ${formatMs(total)}, avg ${formatMs(total / durations.length)}, max ${formatMs(max)}`;
 }
 
-function formatExecutionStatus(
-  execution: StageExecution,
+function formatStageRunStatus(
+  stageRun: StageRun,
   runtimePool: RuntimeWorkerPool | undefined,
 ): string {
   const snapshot = runtimePool?.pool.snapshot();
-  const submitted = execution.taskProgress.submitted;
-  const running = execution.taskProgress.running;
-  const completed = execution.taskProgress.completed;
+  const submitted = stageRun.taskProgress.submitted;
+  const running = stageRun.taskProgress.running;
+  const completed = stageRun.taskProgress.completed;
   return formatPoolProgress({
-    startedAt: execution.taskProgress.startedAt ?? Date.now(),
+    startedAt: stageRun.taskProgress.startedAt ?? Date.now(),
     completed,
     expectedTotal: submitted === 0 ? null : submitted,
     parallelism: snapshot?.parallelism ?? 1,
     active: running,
-    errors: execution.taskProgress.errors,
+    errors: stageRun.taskProgress.errors,
   }, {
-    name: execution.stage.name,
-    description: execution.stage.description,
-    index: execution.index,
-    total: execution.total,
-    skipOption: execution.skipOption,
+    name: stageRun.stage.name,
+    description: stageRun.stage.description,
+    index: stageRun.index,
+    total: stageRun.total,
+    skipOption: stageRun.skipOption,
   });
 }
 
 function formatPipelineSticky(
-  executions: readonly StageExecution[],
+  stageRuns: readonly StageRun[],
   pools: ReadonlyMap<PipelineWorkerPool, RuntimeWorkerPool>,
 ): string {
-  const active = executions.filter((execution) => (
-    execution.progress.queued > 0 ||
-    execution.progress.running > 0
+  const active = stageRuns.filter((stageRun) => (
+    stageRun.progress.queued > 0 ||
+    stageRun.progress.running > 0
   ));
   if (active.length === 0) return '';
-  return active.map((execution) => {
+  return active.map((stageRun) => {
     const runtimePool = [...pools.values()].find((candidate) => (
-      candidate.stageExecutions.includes(execution)
+      candidate.stageRuns.includes(stageRun)
     ));
-    return formatExecutionStatus(execution, runtimePool);
+    return formatStageRunStatus(stageRun, runtimePool);
   }).join('\n\n');
 }
 
@@ -481,7 +481,7 @@ async function runConfiguredPipelineWithSelection(
   const resultsRoot = resultsRootFor(cwd, pipeline);
   const startedAt = Date.now();
   const runId = runtime.reportOnly ? undefined : new Date(startedAt).toISOString();
-  const store = new ArtifactStore(resultsRoot, runId);
+  const store = new ArtifactStore(resultsRoot);
   const categories = categoriesForStages(executableStages);
   const restarting = stageSelection.restartFromStage !== null;
   // Keep the prior run's per-unit artifacts dir on restart: the retained
@@ -651,7 +651,7 @@ async function runConfiguredPipelineWithSelection(
     for (const unit of units) {
       fs.mkdirSync(store.artifactsDirForViewport(unit.test, unit.viewport.label), { recursive: true });
       if (unit.testSource !== null) {
-        unit.testSourcePath = store.writeTestSource(unit.test, unit.viewport.label, unit.testSource);
+        unit.testSourceHref = store.writeTestSource(unit.test, unit.viewport.label, unit.testSource);
       }
     }
     // Restart discards the redone stages' prior results before they re-run.
@@ -674,8 +674,8 @@ async function runConfiguredPipelineWithSelection(
     installConsoleCapture();
     const sticky = attachStickyStatus();
     const runtimePools = new Map<PipelineWorkerPool, RuntimeWorkerPool>();
-    const executions: StageExecution[] = [];
-    const renderSticky = () => sticky.set(formatPipelineSticky(executions, runtimePools));
+    const stageRuns: StageRun[] = [];
+    const renderSticky = () => sticky.set(formatPipelineSticky(stageRuns, runtimePools));
 
     const getRuntimePool = (ref: PipelineWorkerPool): RuntimeWorkerPool => {
       let runtimePool = runtimePools.get(ref);
@@ -693,7 +693,7 @@ async function runConfiguredPipelineWithSelection(
         pool,
         taskLimits,
         unitChains: new Map(),
-        stageExecutions: [],
+        stageRuns: [],
         pending: [],
       };
       pool.onProgressChange = renderSticky;
@@ -727,7 +727,7 @@ async function runConfiguredPipelineWithSelection(
       for (const step of stageSelection.steps) {
         if (step.kind === 'run-stage') {
           const runtimePool = getRuntimePool(step.pool);
-          const execution = scheduleStageExecution({
+          const stageRun = scheduleStageRun({
             stage: step.stage,
             runtimePool,
             units,
@@ -740,9 +740,9 @@ async function runConfiguredPipelineWithSelection(
             renderSticky,
             troubleshootCommand: pipeline.report.troubleshootCommand,
           });
-          runtimePool.stageExecutions.push(execution);
-          runtimePool.pending.push(execution.promise);
-          executions.push(execution);
+          runtimePool.stageRuns.push(stageRun);
+          runtimePool.pending.push(stageRun.promise);
+          stageRuns.push(stageRun);
           renderSticky();
           continue;
         }
@@ -757,6 +757,7 @@ async function runConfiguredPipelineWithSelection(
   }
   if (!runtime.reportOnly) {
     persistCliSkippedStageOutcomes(
+      runId!,
       store,
       preservedViewportSelection
         ? testsSelectedForMeasurement.filter((test) => measuredTestIds.has(testIdForTest(test)))
@@ -788,6 +789,7 @@ async function runConfiguredPipelineWithSelection(
         store,
         categories,
         reportedStages,
+        executionRunId: runId,
         reportOnly: runtime.reportOnly === true || !measuredTestIds.has(testIdForTest(test)),
         viewportsFilter: preservedViewportSelection,
         config: runtime.config,
@@ -834,7 +836,7 @@ async function runConfiguredPipelineWithSelection(
     return testPartials.map((p) => {
       // Cross-cutting, runner-owned chip (not a pipeline concern): any stage task
       // that crashed/timed out and recovered on a retry makes the test flaky.
-      const recovered = p.partialResult.outcomes.some((o) => o.recoveredAfterRetries);
+      const recovered = p.partialResult.outcomes.some((o) => o.executionDetails.recoveredAfterRetries);
       const flaky = recovered ? [flakyChip()] : [];
       if (p.hasError) {
         const chips = [brokenChip(), ...flaky];
@@ -961,7 +963,7 @@ async function runConfiguredPipelineWithSelection(
   };
 }
 
-interface ScheduleStageExecutionOptions {
+interface ScheduleStageRunOptions {
   stage: Stage;
   runtimePool: RuntimeWorkerPool;
   units: readonly WorkUnit[];
@@ -978,7 +980,7 @@ interface ScheduleStageExecutionOptions {
   troubleshootCommand: PipelineReport['troubleshootCommand'];
 }
 
-function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecution {
+function scheduleStageRun(opts: ScheduleStageRunOptions): StageRun {
   const {
     stage,
     runtimePool,
@@ -1006,7 +1008,7 @@ function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecu
     completed: 0,
     errors: 0,
   };
-  const execution: StageExecution = {
+  const stageRun: StageRun = {
     stage,
     progress,
     taskProgress,
@@ -1033,7 +1035,7 @@ function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecu
         config,
         progress,
         taskProgress,
-        durations: execution.durations,
+        durations: stageRun.durations,
         renderSticky,
         testAndViewportId: id,
         troubleshootCommand,
@@ -1042,13 +1044,13 @@ function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecu
     return run;
   });
 
-  execution.promise = Promise.all(unitRuns).then(() => {
+  stageRun.promise = Promise.all(unitRuns).then(() => {
     // Print the final status block to stdout so it scrolls into history
     // before the sticky drops it from its active list.
-    console.log(formatExecutionStatus(execution, runtimePool));
-    console.log(chalk.blue(`<<< ${stage.name} · ${formatStageProgress(progress)}${formatDurationSummary(execution.durations)}`));
+    console.log(formatStageRunStatus(stageRun, runtimePool));
+    console.log(chalk.blue(`<<< ${stage.name} · ${formatStageProgress(progress)}${formatDurationSummary(stageRun.durations)}`));
   });
-  return execution;
+  return stageRun;
 }
 
 interface ExecuteStageForUnitOptions {
@@ -1085,6 +1087,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     renderSticky,
     testAndViewportId,
   } = opts;
+  const runId = runtime.measurementRun!.runId;
   const logger = new BufferedStageLogger(stage, unit.test, unit.viewport.label);
   const start = Date.now();
 
@@ -1106,6 +1109,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     progress.error += 1;
     persistStageOutcome(store, unit, logger, {
       kind: 'error',
+      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, recoveredAfterRetries: false },
       stage: stage.name,
       error: errorInfo(err),
     });
@@ -1118,7 +1122,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const reason = !viewportApplies
       ? `${unit.viewport.label} not in ${stage.category}.viewports`
       : `${stage.name} does not apply to ${unit.viewport.label}`;
-    persistStageOutcome(store, unit, logger, skippedOutcome(stage.name, reason));
+    persistStageOutcome(store, unit, logger, skippedOutcome(stage.name, reason, runId, unit.viewport));
     progress.skipped += 1;
     renderSticky();
     return;
@@ -1175,11 +1179,12 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     readPriorResult: <M = unknown>(priorStage: StageName): M | undefined =>
       store.readOutcome(unit.test, unit.viewport.label, priorStage)?.measurement as M | undefined,
   };
-  let outcome: RecordedOutcome;
+  let outcome: Outcome;
   // Failed attempts for THIS task only (the shared `taskProgress.errors` is a
   // stage-wide aggregate). If the task ultimately succeeds with this > 0, a
   // retry recovered it from a crash/timeout → "flaky (recovered after retries)".
   let failedAttempts = 0;
+  let taskRetries = 0;
   const taskProgressSink: WorkerTaskProgressSink & { readonly stageName: string } = {
     stageName: stage.name,
     onTaskSubmitted() {
@@ -1198,7 +1203,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       failedAttempts += 1;
     },
     onTaskRetry() {
-      if (metadata) metadata.taskRetries = (metadata.taskRetries ?? 0) + 1;
+      taskRetries += 1;
     },
   };
   const taskLimits = runtimePool.taskLimits(ctx.config);
@@ -1207,10 +1212,8 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     if (stage.measuresApplication && run) {
       // Measuring units have their source artifact written before stages execute.
       metadata = {
-        command: run.command, runId: run.runId, measuredAt: new Date().toISOString(),
-        testSourcePath: unit.testSourcePath!,
-        stages: run.stages, categories: run.categories, viewport: unit.viewport,
-        taskRetries: 0, taskRetryLimit: taskLimits.retries,
+        command: run.command, measuredAt: new Date().toISOString(),
+        stages: run.stages, categories: run.categories,
         targets: await Promise.all(run.sides.map(async (side) => {
           const url = side === 'control' ? ctx.controlURL : ctx.experimentURL;
           return { side, url, commit: await measuredCommit(url) };
@@ -1242,7 +1245,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       kind: 'ok',
       stage: stage.name,
       measurement,
-      ...(failedAttempts > 0 ? { recoveredAfterRetries: true } : {}),
+      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
     };
   } catch (err) {
     // Walk the cause chain, don't instanceof: a stage that throws from inside a
@@ -1251,6 +1254,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const failure = findFailureArtifacts(err);
     outcome = {
       kind: 'error',
+      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
       stage: stage.name,
       error: errorInfo(err),
       ...(failure ? { failure } : {}),
@@ -1270,7 +1274,7 @@ function persistStageOutcome(
   store: ArtifactStore,
   unit: WorkUnit,
   logger: StageLogger,
-  outcome: RecordedOutcome,
+  outcome: Outcome,
 ): void {
   const logs = logger.flush();
   if (logs) outcome.logs = logs;
@@ -1301,6 +1305,7 @@ function reportedStagesFor(pipeline: Pipeline, stageSelection: StageSelection): 
 }
 
 function persistCliSkippedStageOutcomes(
+  runId: string,
   store: ArtifactStore,
   tests: AbTestDefinition[],
   stageSelection: StageSelection,
@@ -1317,15 +1322,14 @@ function persistCliSkippedStageOutcomes(
     for (const { stage, reason } of skippedStages) {
       for (const viewport of viewports) {
         if (viewportsFilter && !viewportsFilter.includes(viewport.label)) continue;
-        store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason));
+        store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason, runId, viewport));
       }
     }
   }
 }
 
 function leanPriorOutcome(outcome: Outcome): Outcome {
-  const lean: Outcome = { kind: outcome.kind, stage: outcome.stage };
-  if (outcome.runId !== undefined) lean.runId = outcome.runId;
+  const lean: Outcome = { kind: outcome.kind, stage: outcome.stage, executionDetails: outcome.executionDetails };
   return lean;
 }
 
@@ -1363,7 +1367,7 @@ function expandWorkUnits(
         const outcome = options.store?.readOutcome(test, viewport.label, stage.name);
         if (outcome) priorOutcomes.set(stage.name, leanPriorOutcome(outcome));
       }
-      units.push({ test, testSource, testSourcePath: null, viewport, priorOutcomes });
+      units.push({ test, testSource, testSourceHref: null, viewport, priorOutcomes });
     }
   }
   // Otherwise the run does nothing and exits 0, which reads as success.
@@ -1516,6 +1520,7 @@ function resultBytes(result: Omit<TestResult, 'chips' | 'sorts'> | TestResult): 
 }
 
 interface BuildTestResultOpts {
+  executionRunId: string | undefined;
   test: AbTestDefinition;
   pipeline: Pipeline;
   cwd: string;
@@ -1560,6 +1565,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
       const categoryStages = pipeline.stages.filter((stage) => stage.category === testType);
       if (!testRunsForType(test, testType)) {
         persistSkippedOutcomesForStages(
+          opts.executionRunId!,
           store,
           test,
           categoryStages,
@@ -1592,8 +1598,8 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
     if (pa !== pb) return pb - pa;
     return (sa?.index ?? Number.MAX_SAFE_INTEGER) - (sb?.index ?? Number.MAX_SAFE_INTEGER);
   });
-  const outcomes = viewportOutcomes.map(({ outcome, viewport, outsideCurrentConfig }) => ({
-    ...outcome, viewport, ...(outsideCurrentConfig ? { outsideCurrentConfig: true } : {}),
+  const outcomes = viewportOutcomes.map(({ outcome, outsideCurrentConfig }) => ({
+    ...outcome, ...(outsideCurrentConfig ? { outsideCurrentConfig: true } : {}),
   }));
   const hasError = outcomes.some((outcome) => outcome.kind === 'error');
   const chipResults = chipResultsForOutcomes(pipeline, outcomes);
@@ -1643,7 +1649,7 @@ function chipResultsForOutcomes(
     const entries = results[outcome.stage] ?? (results[outcome.stage] = []);
     entries.push({
       stage: outcome.stage,
-      viewport: outcome.viewport,
+
       measurement: successfulOutcome.measurement,
       outcome: successfulOutcome,
     });
@@ -1678,30 +1684,30 @@ function hasChipTag(test: TestResult, tag: string): boolean {
 function newestRunId(outcomes: readonly Outcome[]): string | null {
   let newest: string | null = null;
   for (const outcome of outcomes) {
-    if (!outcome.runId) continue;
-    if (newest == null || outcome.runId > newest) newest = outcome.runId;
+    if (!outcome.executionDetails.runId) continue;
+    if (newest == null || outcome.executionDetails.runId > newest) newest = outcome.executionDetails.runId;
   }
   return newest;
 }
 
 function savedTestSource(outcomes: readonly Outcome[], store: ArtifactStore): string | null {
-  let newest: Outcome['runMetadata'];
-  for (const { runMetadata } of outcomes) {
-    if (runMetadata && (!newest || runMetadata.runId > newest.runId)) newest = runMetadata;
+  let newest: Outcome | undefined;
+  for (const outcome of outcomes) {
+    if (outcome.runMetadata && (!newest || outcome.executionDetails.runId > newest.executionDetails.runId)) newest = outcome;
   }
-  // Legacy results and unavailable snapshots must never borrow today's source
-  // or an older run's source. A missing saved artifact also hides the source.
-  if (typeof newest?.testSourcePath === 'string') {
-    return store.readTextArtifact(newest.testSourcePath) ?? null;
+  // Unavailable snapshots must not borrow today's or an older run's source.
+  if (typeof newest?.executionDetails.testSourceHref === 'string') {
+    return store.readTextArtifact(newest.executionDetails.testSourceHref) ?? null;
   }
   return null;
 }
 
-function skippedOutcome(stage: StageName, reason: string): RecordedOutcome {
-  return { kind: 'skipped', stage, reason };
+function skippedOutcome(stage: StageName, reason: string, runId: string, viewport: Viewport): Outcome {
+  return { kind: 'skipped', stage, reason, executionDetails: { runId, viewport, testSourceHref: null, recoveredAfterRetries: false } };
 }
 
 function persistSkippedOutcomesForStages(
+  runId: string,
   store: ArtifactStore,
   test: AbTestDefinition,
   stages: readonly Stage[],
@@ -1713,7 +1719,7 @@ function persistSkippedOutcomesForStages(
     for (const viewport of viewportsForCategory(config, stage.category)) {
       if (viewportsFilter && !viewportsFilter.includes(viewport.label)) continue;
       if (store.readOutcome(test, viewport.label, stage.name)) continue;
-      store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason));
+      store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason, runId, viewport));
     }
   }
 }
@@ -1729,7 +1735,7 @@ function freshestArtifactMtime(
   let freshest = 0;
   for (const outcome of outcomes) {
     if (outcome.kind === 'skipped') continue;
-    const unit = unitIdForTest(test, outcome.viewport.label);
+    const unit = unitIdForTest(test, outcome.executionDetails.viewport.label);
     try {
       const mtime = fs.statSync(path.join(resultsRoot, unit, `${outcome.stage}.json`)).mtimeMs;
       if (mtime > freshest) freshest = mtime;

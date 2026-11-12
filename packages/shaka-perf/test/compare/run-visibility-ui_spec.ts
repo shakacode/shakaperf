@@ -27,15 +27,15 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained'): R
     chips: [{ tag: id === 'Older' ? 'broken' : 'passed', text: id === 'Older' ? 'broken' : 'passed', color: 'gray', sortingWeight: 0 }],
     sorts: [], viewportArtifactPaths: [],
     outcomes: [
-      { kind: 'error', stage: 'accessibility', viewport: DESKTOP_VIEWPORT, runId,
+      { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: runId, recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility',
         error: { message: 'Saved result' } },
-      ...(id === 'Older' ? [{ kind: 'error' as const, stage: 'accessibility' as const,
-        viewport: PHONE_VIEWPORT, runId: '2026-09-30T00:00:00.000Z',
+      ...(id === 'Older' ? [{ executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref: null, runId: '2026-09-30T00:00:00.000Z', recoveredAfterRetries: false }, kind: 'error' as const, stage: 'accessibility' as const,
+
         error: { message: 'Another old run' } }] : []),
-      ...(mixed ? [{ kind: 'error' as const, stage: 'accessibility' as const, viewport: PHONE_VIEWPORT,
-        runId: OLD, error: { message: 'Older phone result' } },
-        { kind: 'error' as const, stage: pipelineName === 'audit' ? 'audit' as const : 'visreg' as const,
-          viewport: DESKTOP_VIEWPORT, runId: OLD, error: { message: 'Older stage result' } }] : []),
+      ...(mixed ? [{ executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref: null, runId: OLD, recoveredAfterRetries: false }, kind: 'error' as const, stage: 'accessibility' as const,
+         error: { message: 'Older phone result' } },
+        { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: OLD, recoveredAfterRetries: false }, kind: 'error' as const, stage: pipelineName === 'audit' ? 'audit' as const : 'visreg' as const,
+            error: { message: 'Older stage result' } }] : []),
     ],
   });
   return {
@@ -61,16 +61,18 @@ describe('latest measurement run visibility', () => {
   it('passes per-measurement provenance and run freshness to stage renderers', () => {
     const render = jest.spyOn(pipelineArtifacts, 'renderPersistedStageArtifacts').mockReturnValue('artifact');
     const data = fixture('compare', 'full');
-    const outcomes = [LATEST, OLD].map((runId) => ({
-      kind: 'ok' as const, stage: 'accessibility' as const, viewport: DESKTOP_VIEWPORT,
-      runId, measurement: { runId },
+    const outcomes = [LATEST, OLD].map((runId) => ({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: runId, recoveredAfterRetries: false },
+      kind: 'ok' as const, stage: 'accessibility' as const,
+       measurement: { runId },
     }));
     try {
       stageSection(data.meta, outcomes, LATEST);
       expect(render).toHaveBeenLastCalledWith('compare', {}, 'accessibility', [
-        { measurement: { runId: LATEST }, outcome: outcomes[0], viewport: DESKTOP_VIEWPORT, latestRun: true },
-        { measurement: { runId: OLD }, outcome: outcomes[1], viewport: DESKTOP_VIEWPORT, latestRun: false },
+        { measurement: { runId: LATEST }, executionDetails: outcomes[0]!.executionDetails, outcome: outcomes[0], latestRun: true },
+        { measurement: { runId: OLD }, executionDetails: outcomes[1]!.executionDetails, outcome: outcomes[1], latestRun: false },
       ]);
+      const entries = render.mock.calls.at(-1)![3];
+      entries.forEach((entry, index) => expect(entry.executionDetails).toBe(outcomes[index]!.executionDetails));
       stageSection(data.meta, outcomes, null);
       expect(render.mock.calls.at(-1)?.[3].map((entry) => entry.latestRun)).toEqual([true, true]);
     } finally {
@@ -125,7 +127,7 @@ describe('latest measurement run visibility', () => {
       runId: LATEST, measuredAt: 0,
     };
     mixed.outcomes = mixed.outcomes.map((outcome) => ({
-      ...outcome, ...(outcome.viewport.label === 'phone' ? { outsideCurrentConfig: true } : {}),
+      ...outcome, ...(outcome.executionDetails.viewport.label === 'phone' ? { outsideCurrentConfig: true } : {}),
     }));
     const file = path.join(directory, `controls-${pipeline}-${mode}.html`);
     fs.writeFileSync(file, renderReportHtml(data));
@@ -162,7 +164,7 @@ describe('latest measurement run visibility', () => {
     const data = fixture(pipeline, mode);
     const mixed = data.tests.find((test) => test.name === 'Mixed')!;
     mixed.outcomes = mixed.outcomes.map((outcome) => ({
-      ...outcome, ...(outcome.viewport.label === 'phone' ? { outsideCurrentConfig: true } : {}),
+      ...outcome, ...(outcome.executionDetails.viewport.label === 'phone' ? { outsideCurrentConfig: true } : {}),
     }));
     const current = data.tests.find((test) => test.name === 'Current')!;
     current.outcomes = current.outcomes.map((outcome) => ({ ...outcome, outsideCurrentConfig: true }));
