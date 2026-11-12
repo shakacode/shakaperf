@@ -46,9 +46,9 @@ it('shows shared measurement facts once across results and viewports', () => {
   const outcomes = runDetailsFixture('audit').tests[0]!.outcomes;
   const first = outcomes[0]!;
   outcomes[1]!.runMetadata = { ...first.runMetadata!, measuredAt: first.executionDetails.runId };
-  outcomes[2]!.runMetadata = { ...first.runMetadata!, viewport: outcomes[2]!.viewport };
-  outcomes[1]!.executionDetails = first.executionDetails;
-  outcomes[2]!.executionDetails = first.executionDetails;
+  outcomes[2]!.runMetadata = { ...first.runMetadata! };
+  outcomes[1]!.executionDetails = { ...outcomes[1]!.executionDetails, runId: first.executionDetails.runId };
+  outcomes[2]!.executionDetails = { ...outcomes[2]!.executionDetails, runId: first.executionDetails.runId };
   const html = details(outcomes);
   expect(html.match(/<textarea\b/g)).toHaveLength(1);
   expect(html.match(/http:\/\/127\.0\.0\.1:3910\//g)).toHaveLength(1);
@@ -123,9 +123,9 @@ it('shows grouped Lighthouse samples and visual retries separately from result t
   Object.assign(metadata, { numberOfMeasurements: 7 });
   outcomes[1]!.stage = 'visreg';
   Object.assign(outcomes[1]!.runMetadata!, { compareRetries: 5, compareAttempts: 2 });
-  outcomes[2]!.runMetadata = { ...metadata, viewport: outcomes[2]!.viewport };
-  outcomes[1]!.executionDetails = outcomes[0]!.executionDetails;
-  outcomes[2]!.executionDetails = outcomes[0]!.executionDetails;
+  outcomes[2]!.runMetadata = { ...metadata };
+  outcomes[1]!.executionDetails = { ...outcomes[1]!.executionDetails, runId: outcomes[0]!.executionDetails.runId };
+  outcomes[2]!.executionDetails = { ...outcomes[2]!.executionDetails, runId: outcomes[0]!.executionDetails.runId };
   const html = details(outcomes);
   expect(html).toContain('3 Results');
   expect(html).not.toContain('3 measurements');

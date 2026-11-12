@@ -261,9 +261,9 @@ function baseConfig(): Parameters<typeof createComparePipeline>[0] {
 function entry(result: AccessibilityCompareResult) {
   return {
     stage: 'accessibility',
-    viewport: DESKTOP_VIEWPORT,
+
     measurement: result,
-    outcome: { executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+    outcome: { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'ok' as const,
       stage: 'accessibility',
       measurement: result,

@@ -12,9 +12,9 @@ import type { PipelineMachineReportRow } from '../../pipeline/pipeline';
 
 function row(
   viewport: Viewport,
-  outcomes: PipelineMachineReportRow['outcomes'] = [{ executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'audit', measurement: {} }],
+  outcomes: PipelineMachineReportRow['outcomes'] = [{ executionDetails: { viewport, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'audit', measurement: {} }],
 ): PipelineMachineReportRow {
-  return { viewport, outcomes };
+  return { outcomes };
 }
 
 describe('auditMachineReportMeta', () => {
@@ -72,7 +72,7 @@ describe('auditMachineReportMeta', () => {
   });
 
   it('omits audit meta when no row has a successful audit outcome', () => {
-    expect(auditMachineReportMeta({}, [row(PHONE_VIEWPORT, [{ executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'skipped', stage: 'audit', reason: 'skip' }])])).toEqual({});
+    expect(auditMachineReportMeta({}, [row(PHONE_VIEWPORT, [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'skipped', stage: 'audit', reason: 'skip' }])])).toEqual({});
   });
 
   it('keeps viewport but omits Slow-4G when throttling is customized', () => {

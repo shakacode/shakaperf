@@ -89,8 +89,8 @@ describe.each([
   it('reloads review state when full suite reveals another viewport from an older run', async () => {
     data.tests[0].outcomes.push({
       ...data.tests[0].outcomes[0],
-      viewport: { ...DESKTOP_VIEWPORT, label: 'mobile', width: 390, height: 844 },
-      executionDetails: { ...data.tests[0].outcomes[0].executionDetails, runId: 'run-0' },
+
+      executionDetails: { ...data.tests[0].outcomes[0].executionDetails, viewport: { ...DESKTOP_VIEWPORT, label: 'mobile', width: 390, height: 844 }, runId: 'run-0' },
       outsideCurrentConfig: true,
     });
     await regenerate();
@@ -135,8 +135,8 @@ function testResult(id: string, runId: string): TestResult {
     controlUrl: 'http://localhost:3000/', experimentUrl: 'http://localhost:3001/',
     code: null, chips: [], sorts: [], durationMs: 1000,
     measuredAt: 1_790_000_000_000, runId, viewportArtifactPaths: [],
-    outcomes: [{ executionDetails: { testSourcePath: null, runId: runId, recoveredAfterRetries: false },
-      kind: 'error', stage: 'visreg', viewport: DESKTOP_VIEWPORT,
+    outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: runId, recoveredAfterRetries: false },
+      kind: 'error', stage: 'visreg',
       error: { message: 'Screenshot capture failed' },
     }],
   };

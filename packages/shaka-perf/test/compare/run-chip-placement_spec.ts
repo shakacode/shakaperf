@@ -74,8 +74,8 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained', ex
       controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test', code: null,
       durationMs: 0, measuredAt: 0, runId: LATEST, chips: [], sorts: [], viewportArtifactPaths: [],
       outcomes: examples.flatMap(({ stage, measurement }) => [
-        { executionDetails: { testSourcePath: null, runId: OLD, recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement, viewport: DESKTOP_VIEWPORT,  },
-        { executionDetails: { testSourcePath: null, runId: LATEST, recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement, viewport: PHONE_VIEWPORT,  },
+        { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: OLD, recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement,   },
+        { executionDetails: { viewport: PHONE_VIEWPORT, testSourcePath: null, runId: LATEST, recoveredAfterRetries: false }, kind: 'ok' as const, stage, measurement,   },
       ]),
     }],
   };
@@ -166,8 +166,8 @@ describe('contextual old-run chips', () => {
     try {
       for (const { stage, measurement, heading } of examples) {
         const artifact = renderPersistedStageArtifacts(pipeline, {}, stage, [
-          { measurement, viewport: DESKTOP_VIEWPORT, executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: false },
-          { measurement, viewport: PHONE_VIEWPORT, executionDetails: { testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true },
+          { measurement,  executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: false },
+          { measurement,  executionDetails: { viewport: PHONE_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true },
         ]);
         await page.setContent(renderToStaticMarkup(artifact));
         expect(await page.locator('.stage-artifact__title').count()).toBe(1);
@@ -208,8 +208,8 @@ describe('contextual old-run chips', () => {
   ] as const)('%s Summary attributes its main heading to the displayed measurement (%s / %s)', async (mode, desktop, desktopRun, phone, phoneRun, stale) => {
     const data = fixture('audit', mode, audit);
     for (const outcome of data.tests[0].outcomes.filter((item) => item.stage === 'ai_summary')) {
-      outcome.measurement = { summary: outcome.viewport.label === 'desktop' ? desktop : phone };
-      outcome.executionDetails = { ...outcome.executionDetails, runId: outcome.viewport.label === 'desktop' ? desktopRun : phoneRun };
+      outcome.measurement = { summary: outcome.executionDetails.viewport.label === 'desktop' ? desktop : phone };
+      outcome.executionDetails = { ...outcome.executionDetails, runId: outcome.executionDetails.viewport.label === 'desktop' ? desktopRun : phoneRun };
     }
     const file = path.join(directory, `summary-${mode}-${stale}-${desktop.length}.html`);
     fs.writeFileSync(file, renderReportHtml(data));
