@@ -2130,7 +2130,7 @@ input {
 
   .header__search-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .header__search-actions { justify-content: flex-end; flex-wrap: wrap; }
-  .missing-artifacts .run-details__command--auto-size pre { flex-basis: 100%; width: 100%; }
+  .missing-artifacts .measurement-command--auto-size pre { flex-basis: 100%; width: 100%; }
 
   .filterbar-wrap {
     align-items: stretch;
@@ -3147,27 +3147,27 @@ input {
   white-space: nowrap;
 }
 
-/* Saved measurement details: shared facts first, individual results on demand. */
-.run-details__commits { display: grid; gap: 12px; margin-top: 16px; }
-.run-details__label { color: var(--fg-muted); font-size: 10px; text-transform: capitalize; }
-.run-details__commit summary, .run-details__commit-heading { display: flex; align-items: baseline; gap: 10px; }
-.run-details__commit summary { cursor: pointer; list-style: none; }
-.run-details__commit summary::-webkit-details-marker { display: none; }
-.run-details__commit summary::after { content: '+'; margin-left: auto; color: var(--fg-muted); }
-.run-details__commit[open] summary::after { content: '−'; }
-.run-details__commit code { flex-shrink: 0; padding: 1px 5px; border: 1px solid var(--border-strong); font-size: 11px; }
-.run-details__commit summary > span, .run-details__commit-heading > span { min-width: 0; overflow-wrap: anywhere; }
-.run-details__commit-body { margin: 10px 0 0; padding: 0 0 0 12px; border-left: 2px solid var(--border-strong); color: var(--fg-muted); }
-.run-details__commit-body pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; margin: 0 0 8px; color: var(--fg); }
-.run-details__scope { display: block; margin: 5px 0 0; color: var(--fg-muted); font-size: 10px; }
-.run-details__command { position: relative; }
-.run-details__command :is(textarea, pre) { display: block; box-sizing: border-box; width: 100%; min-height: 74px; margin: 0; padding: 12px; font: 11px/1.7 monospace; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 0; }
-.run-details__command textarea { resize: vertical; }
-.run-details__command button { margin-top: 8px; padding: 5px 9px; font: inherit; font-size: 10px; background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); cursor: pointer; }
-.run-details__command button:hover { background: var(--bg-hover); }
-.run-details__unavailable { margin: 4px 0; color: var(--fg-muted); }
+/* Saved commit provenance and measurement commands shared by cards and dialogs. */
+.target-commits { display: grid; gap: 12px; margin-top: 16px; }
+.metadata-label { color: var(--fg-muted); font-size: 10px; text-transform: capitalize; }
+.target-commit summary, .target-commit__heading { display: flex; align-items: baseline; gap: 10px; }
+.target-commit summary { cursor: pointer; list-style: none; }
+.target-commit summary::-webkit-details-marker { display: none; }
+.target-commit summary::after { content: '+'; margin-left: auto; color: var(--fg-muted); }
+.target-commit[open] summary::after { content: '−'; }
+.target-commit code { flex-shrink: 0; padding: 1px 5px; border: 1px solid var(--border-strong); font-size: 11px; }
+.target-commit summary > span, .target-commit__heading > span { min-width: 0; overflow-wrap: anywhere; }
+.target-commit__body { margin: 10px 0 0; padding: 0 0 0 12px; border-left: 2px solid var(--border-strong); color: var(--fg-muted); }
+.target-commit__body pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; margin: 0 0 8px; color: var(--fg); }
+.target-commit__scope { display: block; margin: 5px 0 0; color: var(--fg-muted); font-size: 10px; }
+.measurement-command { position: relative; }
+.measurement-command :is(textarea, pre) { display: block; box-sizing: border-box; width: 100%; min-height: 74px; margin: 0; padding: 12px; font: 11px/1.7 monospace; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 0; }
+.measurement-command textarea { resize: vertical; }
+.measurement-command button { margin-top: 8px; padding: 5px 9px; font: inherit; font-size: 10px; background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); cursor: pointer; }
+.measurement-command button:hover { background: var(--bg-hover); }
+.target-commit__unavailable { margin: 4px 0; color: var(--fg-muted); }
 @media (max-width: 540px) {
-  .run-details__commit summary { gap: 8px; }
+  .target-commit summary { gap: 8px; }
 }
 
 
@@ -3206,15 +3206,15 @@ input {
 .card__metadata-content .ui-dialog__meta { padding: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 100px), 1fr)); }
 .card__metadata-content .ui-dialog__meta dd { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 .card__metadata .card__urls { padding: 0; margin: 0; border: 0; }
-.card__metadata .run-details__commit code { font-size: 10px; line-height: 1; }
+.card__metadata .target-commit code { font-size: 10px; line-height: 1; }
 .card__metadata .card__code { margin-top: 4px; }
 .card__targets { gap: 16px; align-items: start; }
 .card__targets > div { align-items: start; gap: 8px; }
 .card__targets dd { display: grid; gap: 8px; }
 .card__targets dd > a { justify-self: start; max-width: 100%; }
 .card__target-commits { display: grid; gap: 8px; }
-.card__targets .run-details__commit summary { position: relative; padding-right: 18px; }
-.card__targets .run-details__commit summary::after { position: absolute; right: 0; top: 0; }
+.card__targets .target-commit summary { position: relative; padding-right: 18px; }
+.card__targets .target-commit summary::after { position: absolute; right: 0; top: 0; }
 .card__metadata-controls { display: flex; gap: 16px; overflow-x: auto; align-items: center; }
 .card__metadata-controls .card__code-toggle { margin: 0; padding: 8px 0; flex-shrink: 0; white-space: nowrap; }
 .card__metadata-controls button[aria-expanded="true"] { color: var(--fg); box-shadow: 0 1px 0 currentColor; }
@@ -3224,14 +3224,14 @@ input {
   .card__targets > div { grid-template-columns: minmax(0, 1fr); }
   .card__targets > div:only-child { grid-column: 1 / -1; }
 }
-.run-details__command--compact { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 4px; }
-.run-details__command--compact textarea { flex: 1; min-width: 0; width: auto; min-height: 30px; padding: 5px 7px; line-height: 18px; }
-.run-details__command--compact button { flex-shrink: 0; margin: 0; padding: 5px 7px; line-height: 18px; }
-.run-details__command--auto-size { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 8px; }
-.run-details__command--auto-size pre { flex: 1; min-width: 0; width: auto; min-height: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.run-details__command--auto-size button { flex-shrink: 0; margin-top: 0; }
-.run-details__copy-status { flex-basis: 100%; font-size: 10px; color: var(--fg-muted); }
-.run-details__copy-status:empty { display: none; }
+.measurement-command--compact { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 4px; }
+.measurement-command--compact textarea { flex: 1; min-width: 0; width: auto; min-height: 30px; padding: 5px 7px; line-height: 18px; }
+.measurement-command--compact button { flex-shrink: 0; margin: 0; padding: 5px 7px; line-height: 18px; }
+.measurement-command--auto-size { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 8px; }
+.measurement-command--auto-size pre { flex: 1; min-width: 0; width: auto; min-height: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.measurement-command--auto-size button { flex-shrink: 0; margin-top: 0; }
+.measurement-command__status { flex-basis: 100%; font-size: 10px; color: var(--fg-muted); }
+.measurement-command__status:empty { display: none; }
 
 /* Shared rows keep hidden categories compact and always restorable. */
 .report-section__head {
