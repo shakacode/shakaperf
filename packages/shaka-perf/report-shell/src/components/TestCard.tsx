@@ -261,7 +261,7 @@ export function TestCard({
             <StageArtifactProvider
               test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}
               renderMetadata={(details) => (
-                <TestMetadata meta={meta} test={test} defaultExpanded>
+                <TestMetadata meta={meta} test={test} executionDetails={details.executionDetails} defaultExpanded>
                   <ArtifactMetadataFields {...details} />
                   {logs.length > 0 ? <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button> : null}
                 </TestMetadata>
