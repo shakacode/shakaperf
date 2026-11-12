@@ -80,7 +80,8 @@ function PerfViewportBlock({ perf, viewportLabel, latestRun, executionDetails }:
   const sectionKey = `${section ?? 'perf'}:viewport:${viewportLabel}`;
   const expanded = useReportSectionExpanded(sectionKey);
   const viewport = executionDetails.viewport;
-  const fields = performanceMetadataFields(executionDetails);
+  const { throttling, ...measurementFields } = performanceMetadataFields(executionDetails);
+  const fields = throttling === undefined ? measurementFields : { throttling, ...measurementFields };
   const hasSettings = Object.keys(fields).length > 0;
   const [showSettings, setShowSettings] = useState(false);
   const settingsVisible = showSettings && expanded;

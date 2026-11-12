@@ -3344,8 +3344,6 @@ input {
   cursor: pointer;
 }
 .perf-run-settings-toggle:hover { color: var(--fg); background: transparent; }
-.perf-run-settings { padding-block: 0 12px; }
-.perf-run-settings .ui-dialog__meta { padding: 0; }
+.perf-run-settings .ui-dialog__meta { padding: 0; grid-template-columns: minmax(0, 1fr); }
 .perf-run-settings .ui-dialog__meta dd { white-space: normal; overflow: visible; word-break: normal; overflow-wrap: anywhere; }
-.perf-run-settings .ui-dialog__meta__sample { margin-top: 8px; }
 .perf-viewport__dimensions { color: var(--fg-muted); font-size: 11px; font-weight: 400; white-space: nowrap; }
