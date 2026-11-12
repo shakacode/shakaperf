@@ -85,7 +85,7 @@ describe('artifact modal measurement context', () => {
       }
       if (example.opener === '.a11y-thumb-button') {
         // Preserve the measured URL independently of framework target URLs.
-        expect(await metadata.locator('.ui-dialog__meta dt').allTextContents()).toContain('url');
+        expect(await metadata.locator('.ui-dialog__meta dt').allTextContents()).toContain('scanned URL');
       }
     } finally { await page.close(); }
   });
