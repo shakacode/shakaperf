@@ -32,7 +32,7 @@ function reportData(mode: 'full' | 'self-contained'): ReportData {
     tests: ['Homepage', 'Product'].map((name) => ({
       id: name, name, filePath: 'example.abtest.ts', startingPath: '/',
       controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test',
-      code: null, chips: [], sorts: [], durationMs: 1000, measuredAt: 1, runId: 'run-1',
+       chips: [], sorts: [], durationMs: 1000, measuredAt: 1, runId: 'run-1',
       viewportArtifactPaths: [],
       outcomes: [
         { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg',  measurement: [] },

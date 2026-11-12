@@ -233,7 +233,7 @@ function reportData(accessibility: AccessibilityResult): ReportData {
       startingPath: '/',
       controlUrl: 'http://localhost:3090/',
       experimentUrl: 'http://localhost:3090/',
-      code: null,
+
       chips: [{
         tag: 'accessibility violation',
         text: 'accessibility: 3 violations',

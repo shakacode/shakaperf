@@ -13,6 +13,7 @@ import type { AbTestsConfig } from '../config';
 import {
   mimeTypeForArtifactPath,
   type ArtifactStore,
+  type ArtifactPath,
 } from './artifact-store';
 import { persistedOutcomeInScope } from './viewport-plan';
 import type { Outcome } from './outcome';
@@ -95,7 +96,6 @@ export interface TestResult {
   startingPath: string;
   controlUrl: string;
   experimentUrl: string;
-  code: string | null;
   chips: ChipDescriptor[];
   /**
    * Per-test sort-dimension values (one per metric the pipeline exposes for
@@ -274,28 +274,10 @@ export async function writeReport(
   stages: readonly Stage[] = [],
 ): Promise<WriteReportResult> {
   fs.mkdirSync(outDir, { recursive: true });
-  const fullData = reportDataForMode(
-    { ...data, meta: { ...data.meta, reportMode: 'full' } },
-    'full',
-    stages,
-    outDir,
-  );
-  const selfContainedInput = {
-    ...data,
-    meta: { ...data.meta, reportMode: 'self-contained' as const },
-  };
-  const artifactDictionary = await buildSelfContainedArtifactDictionary(
-    selfContainedInput,
-    stages,
-    outDir,
-  );
-  const selfContainedData = reportDataForMode(
-    selfContainedInput,
-    'self-contained',
-    stages,
-    outDir,
-    artifactDictionary,
-  );
+  const fullData = prepareReportData(data, 'full', stages, outDir);
+  const selfContainedData = prepareReportData(fullData, 'self-contained', stages, outDir);
+  const artifactDictionary = await buildSelfContainedArtifactDictionary(selfContainedData, outDir);
+  inlineReportArtifacts(selfContainedData, outDir, artifactDictionary);
   const fullPath = path.join(outDir, FULL_REPORT_FILENAME);
   const selfContainedPath = path.join(
     outDir,
@@ -314,39 +296,78 @@ export async function writeReport(
  * artifact paths; self-contained reports recursively replace those paths with
  * data URIs.
  */
-export function reportDataForMode<T extends ReportData>(
-  data: T,
+export function reportDataForMode(
+  data: ReportData,
   mode: ReportMode,
   stages: readonly Stage[],
   resultsRoot: string,
   artifactDictionary?: Readonly<Record<string, string>>,
-): T {
-  const selfContainedStrips = new Map(
-    stages.map((stage) => [stage.name, stage.selfContainedReportStrip]),
-  );
-  const shouldStrip = mode === 'self-contained' &&
-    selfContainedStrips.size > 0;
-  const stripped = !shouldStrip ? data : {
+): ReportData {
+  const prepared = prepareReportData(data, mode, stages, resultsRoot);
+  if (mode === 'self-contained') {
+    inlineReportArtifacts(prepared, resultsRoot, artifactDictionary);
+  }
+  return prepared;
+}
+
+/** Copy report outcomes and prepare their source and measurement fields. */
+export function prepareReportData(
+  data: ReportData,
+  mode: ReportMode,
+  stages: readonly Stage[],
+  resultsRoot: string,
+): ReportData {
+  const strips = new Map(stages.map(stage => [stage.name, stage.selfContainedReportStrip]));
+  return {
     ...data,
-    tests: data.tests.map((test) => ({
+    meta: { ...data.meta, reportMode: mode },
+    tests: data.tests.map(test => ({
       ...test,
-      outcomes: test.outcomes.map((outcome) => {
-        if (outcome.kind !== 'ok' || outcome.measurement == null) return outcome;
-        const strip = selfContainedStrips.get(outcome.stage);
-        if (!strip) return outcome;
-        return {
+      outcomes: test.outcomes.map(outcome => {
+        const prepared: ReportOutcome = {
           ...outcome,
-          measurement: applySelfContainedReportStrip(
-            outcome.measurement,
-            strip,
-          ),
+          executionDetails: {
+            ...outcome.executionDetails,
+            testSourceHref: embedSource(outcome.executionDetails.testSourceHref, resultsRoot),
+          },
         };
+        const strip = strips.get(outcome.stage);
+        if (mode === 'self-contained' && outcome.kind === 'ok' && strip) {
+          prepared.measurement = applySelfContainedReportStrip(outcome.measurement, strip);
+        }
+        return prepared;
       }),
     })),
-  } as T;
-  return mode === 'self-contained'
-    ? inlineArtifactPaths(stripped, resultsRoot, artifactDictionary) as T
-    : stripped;
+  };
+}
+
+/** Update only the copied outcomes produced by prepareReportData. */
+function inlineReportArtifacts(
+  data: ReportData,
+  resultsRoot: string,
+  artifactDictionary?: Readonly<Record<string, string>>,
+): void {
+  for (const test of data.tests) {
+    for (const outcome of test.outcomes) {
+      if (outcome.measurement !== undefined) {
+        outcome.measurement = inlineArtifactPaths(outcome.measurement, resultsRoot, artifactDictionary);
+      }
+      if (outcome.failure?.media !== undefined) {
+        // The report representation replaces a branded path with its embedded URI.
+        const media = inlineArtifactPaths(outcome.failure.media, resultsRoot, artifactDictionary) as ArtifactPath;
+        outcome.failure = { ...outcome.failure, media };
+      }
+    }
+  }
+}
+
+// Embed source in both modes so the source viewer also works from file://.
+// The runner's persisted reference stays relative; only report packaging changes it.
+function embedSource(href: string | null, resultsRoot: string): string | null {
+  if (href === null || href.startsWith('data:text/plain')) return href;
+  const source = resolveArtifactPath(href, resultsRoot);
+  if (!source) return null;
+  return `data:text/plain;charset=utf-8;base64,${fs.readFileSync(source).toString('base64')}`;
 }
 
 function applySelfContainedReportStrip(
@@ -411,7 +432,7 @@ function inlineArtifactPaths(
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
         key,
-        key === 'runMetadata' || key === 'executionDetails' ? item : inlineArtifactPaths(item, resultsRoot, artifactDictionary),
+        inlineArtifactPaths(item, resultsRoot, artifactDictionary),
       ]),
     );
   }
@@ -424,23 +445,19 @@ const SVG_IMAGE_DATA_URI_RE =
 
 /**
  * Build the exact path→data-URI dictionary used by the self-contained report.
- * Stage strip dictionaries remove local-only fields first; this function
- * centrally encodes every artifact path that survives.
+ * Accepts prepared data with local-only measurement fields already stripped.
  */
 export async function buildSelfContainedArtifactDictionary(
   data: ReportData,
-  stages: readonly Stage[],
   resultsRoot: string,
 ): Promise<Record<string, string>> {
-  const projected = reportDataForMode(
-    data,
-    'self-contained',
-    stages,
-    resultsRoot,
-    {},
-  );
   const artifactPaths = new Set<string>();
-  collectArtifactPaths(projected, resultsRoot, artifactPaths);
+  for (const test of data.tests) {
+    for (const outcome of test.outcomes) {
+      collectArtifactPaths(outcome.measurement, resultsRoot, artifactPaths);
+      collectArtifactPaths(outcome.failure?.media, resultsRoot, artifactPaths);
+    }
+  }
 
   const encoded = await Promise.all(
     [...artifactPaths].map(async (artifactPath) => [
@@ -467,10 +484,7 @@ function collectArtifactPaths(
     return;
   }
   if (value && typeof value === 'object') {
-    for (const [key, item] of Object.entries(value)) {
-      // Metadata paths are provenance, not display assets. Source text is
-      // already resolved once into TestResult.code by the report builder.
-      if (key === 'runMetadata' || key === 'executionDetails') continue;
+    for (const item of Object.values(value)) {
       collectArtifactPaths(item, resultsRoot, artifactPaths);
     }
   }

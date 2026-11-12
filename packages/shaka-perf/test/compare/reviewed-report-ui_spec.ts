@@ -133,7 +133,7 @@ function testResult(id: string, runId: string): TestResult {
     id, name: id === 'home' ? 'Homepage' : 'Product',
     filePath: `ab-tests/${id}.abtest.ts`, startingPath: '/',
     controlUrl: 'http://localhost:3000/', experimentUrl: 'http://localhost:3001/',
-    code: null, chips: [], sorts: [], durationMs: 1000,
+     chips: [], sorts: [], durationMs: 1000,
     measuredAt: 1_790_000_000_000, runId, viewportArtifactPaths: [],
     outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: runId, recoveredAfterRetries: false },
       kind: 'error', stage: 'visreg',

@@ -32,6 +32,6 @@ export function imageModalFixture(pipeline: 'audit' | 'compare' = 'audit'): Repo
   ];
   return {
     meta: { title: 'Image sizing verification', pipelineName: pipeline, pipelineConfig: {}, generatedAt: new Date(0).toISOString(), controlUrl: 'https://example.test', experimentUrl: 'https://example.test', cwd: '/tmp/image-modal', errors: [], durationMs: 1000, reportOnly: true, reportMode: 'full' },
-    tests: [...outcomes, error].map((outcome, index) => ({ id: `image-${index}`, name: ['Tall mobile image', 'Wide desktop image', 'Accessibility annotations', 'Failure screenshot'][index], filePath: 'images.abtest.ts', startingPath: '/', controlUrl: 'https://example.test', experimentUrl: 'https://example.test', code: null, chips: [], sorts: [], durationMs: 1000, measuredAt: 0, runId: 'image-sizing', viewportArtifactPaths: [], outcomes: [outcome] })),
+    tests: [...outcomes, error].map((outcome, index) => ({ id: `image-${index}`, name: ['Tall mobile image', 'Wide desktop image', 'Accessibility annotations', 'Failure screenshot'][index], filePath: 'images.abtest.ts', startingPath: '/', controlUrl: 'https://example.test', experimentUrl: 'https://example.test',  chips: [], sorts: [], durationMs: 1000, measuredAt: 0, runId: 'image-sizing', viewportArtifactPaths: [], outcomes: [outcome] })),
   };
 }

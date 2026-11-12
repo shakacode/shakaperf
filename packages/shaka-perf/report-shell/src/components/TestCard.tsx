@@ -260,7 +260,7 @@ export function TestCard({
               renderMetadata={(fields, outcome) => {
                 const selected = test.outcomes.find((candidate) => candidate === outcome);
                 const scopedTest = { ...test, outcomes: selected ? [selected] : [] };
-                return <TestMetadata meta={meta} test={scopedTest} defaultExpanded variant="dialog" actions={logs.length > 0 ? (
+                return <TestMetadata meta={meta} test={scopedTest} executionDetails={outcome?.executionDetails} defaultExpanded variant="dialog" actions={logs.length > 0 ? (
                   <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button>
                 ) : null}>
                   {fields}
