@@ -50,7 +50,9 @@ function CoveragePreview({ measurement: m, executionDetails }: { measurement: Co
     <div className={`coverage-preview__layout${m.screenshotHref ? '' : ' coverage-preview__layout--no-image'}`}>
       {m.screenshotHref ? (
         <div className="coverage-preview__media">
-          <DetailedArtifactDialog executionDetails={executionDetails}
+          <DetailedArtifactDialog
+            executionDetails={executionDetails}
+            title={`${executionDetails.viewport.label} code coverage screenshot`}
             image
                     href={m.screenshotHref}
             label="page the visibility map describes"
@@ -111,12 +113,22 @@ function CoveragePreview({ measurement: m, executionDetails }: { measurement: Co
         <FullReportOnly>
           <div className="artifact-links">
             {m.visibilityMapHref ? (
-              <DetailedArtifactDialog executionDetails={executionDetails} href={m.visibilityMapHref} label="visibility-map.txt">
+              <DetailedArtifactDialog
+                executionDetails={executionDetails}
+                href={m.visibilityMapHref}
+                label="visibility-map.txt"
+                title={`${executionDetails.viewport.label} visibility map`}
+              >
                 visibility-map.txt
               </DetailedArtifactDialog>
             ) : null}
             {m.coverageHref ? (
-              <DetailedArtifactDialog executionDetails={executionDetails} href={m.coverageHref} label="coverage.json">
+              <DetailedArtifactDialog
+                executionDetails={executionDetails}
+                href={m.coverageHref}
+                label="coverage.json"
+                title={`${executionDetails.viewport.label} code coverage`}
+              >
                 coverage.json
               </DetailedArtifactDialog>
             ) : null}

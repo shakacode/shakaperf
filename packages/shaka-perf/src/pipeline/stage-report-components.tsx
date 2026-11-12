@@ -45,7 +45,12 @@ export function ArtifactMetadataFields({ fields, executionDetails }: ArtifactMet
       <div><dt>error retries</dt><dd>{executionDetails?.taskRetries ?? '?'}/{executionDetails?.taskRetryLimit ?? '?'}{executionDetails?.recoveredAfterRetries ? ' · recovered' : ''}</dd></div>
     </dl> : null}
     {fields && Object.keys(fields).length > 0 ? <dl className="ui-dialog__meta">
-      {Object.entries(fields).map(([label, value]) => <div key={label}><dt>{label}</dt><dd className="ui-dialog__meta-break">{value}</dd></div>)}
+      {Object.entries(fields).map(([label, value]) => (
+        <div key={label} className={value.length > 40 ? 'ui-dialog__meta-wide' : undefined}>
+          <dt>{label}</dt>
+          <dd className="ui-dialog__meta-break">{value}</dd>
+        </div>
+      ))}
     </dl> : null}
   </>;
 }
