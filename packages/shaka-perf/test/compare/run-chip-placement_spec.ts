@@ -72,7 +72,7 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained', ex
       generatedAt: LATEST, controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test',
       cwd: '/tmp/chip-placement', errors: [], durationMs: 0, reportOnly: true },
     tests: [{ id: 'Mixed', name: 'Mixed', filePath: 'suite.abtest.ts', startingPath: '/',
-      controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test', code: null,
+      controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test',
       durationMs: 0, measuredAt: 0, runId: LATEST, chips: [], sorts: [], viewportArtifactPaths: [],
       outcomes: examples.flatMap(({ stage, measurement }) => [
         { ...executionFixture({ runId: OLD }), kind: 'ok' as const, stage, measurement,   },
