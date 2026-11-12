@@ -12,7 +12,7 @@ import { TestMetadata } from './TestMetadata';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
 import { AnsiLog, firstElapsedSeconds } from './AnsiLog';
-import { Dialog, ArtifactMetadataFields, StageArtifactProvider, TestMeta } from '../../../src/pipeline/stage-report-components';
+import { Dialog, ArtifactMetadataFields, StageArtifactProvider } from '../../../src/pipeline/stage-report-components';
 
 interface LogEntry {
   label: string;
@@ -239,9 +239,7 @@ export function TestCard({
           </div>
         </details>
 
-        <div className="card__metadata-row">
-          <TestMetadata meta={meta} test={test} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} />
-          <div className="card__actions">
+        <TestMetadata meta={meta} test={test} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} actions={<>
             <RunDetails outcomes={test.outcomes} />
             {logs.length > 0 ? (
               <button
@@ -253,19 +251,34 @@ export function TestCard({
                 logs
               </button>
             ) : null}
-          </div>
-        </div>
+        </>} />
 
         {reviewed ? null : (
           <div className="card__body">
             <StageArtifactProvider
               test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}
-              renderMetadata={(details) => (
-                <TestMetadata meta={meta} test={test} executionDetails={details.executionDetails} defaultExpanded>
-                  <ArtifactMetadataFields {...details} />
-                  {logs.length > 0 ? <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button> : null}
-                </TestMetadata>
-              )}
+              renderMetadata={(details) => {
+                const selected = test.outcomes.find(outcome => outcome.executionDetails === details.executionDetails);
+                const scopedTest = {
+                  ...test,
+                  outcomes: selected ? [selected] : [],
+                  measuredAt: selected?.runMetadata ? Date.parse(selected.runMetadata.measuredAt) : null,
+                };
+                return (
+                  <TestMetadata
+                    meta={meta}
+                    test={scopedTest}
+                    executionDetails={details.executionDetails}
+                    defaultExpanded
+                    variant="dialog"
+                    actions={logs.length > 0 ? (
+                      <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button>
+                    ) : null}
+                  >
+                    <ArtifactMetadataFields {...details} />
+                  </TestMetadata>
+                );
+              }}
             >
               {groups.map((outcomes, index) => (
                 <OutcomeSlot
@@ -281,11 +294,11 @@ export function TestCard({
         )}
       </div>
 
-      <Dialog
+      {logsOpen ? <Dialog
         open={logsOpen}
         onClose={() => setLogsOpen(false)}
-        title={<span className="ui-dialog__title-text">measurement logs</span>}
-        meta={<TestMeta test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }} />}
+        title={<span className="ui-dialog__title-text">measurement logs · {test.name}</span>}
+        meta={<TestMetadata meta={meta} test={test} defaultExpanded variant="dialog" />}
       >
         <div className="card-logs">
           {logs.map((log, index) => (
@@ -299,7 +312,7 @@ export function TestCard({
             </section>
           ))}
         </div>
-      </Dialog>
+      </Dialog> : null}
     </article>
   );
 }

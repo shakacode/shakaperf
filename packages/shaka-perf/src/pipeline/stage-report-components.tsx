@@ -32,6 +32,10 @@ export interface ArtifactMetadataProps {
 
 type ArtifactMetadataRenderer = (props: ArtifactMetadataProps) => ReactNode;
 const ArtifactMetadataContext = createContext<ArtifactMetadataRenderer | null>(null);
+export function ArtifactDialogTitle({ title }: { title: ReactNode }) {
+  const test = useContext(StageArtifactContext);
+  return <span className="ui-dialog__title-text">{title}{test ? <> · {test.name}</> : null}</span>;
+}
 
 /** Shared markup: stages supply plain values, never metadata elements. */
 export function ArtifactMetadataFields({ fields, executionDetails }: ArtifactMetadataProps) {
@@ -251,6 +255,7 @@ export function DetailedArtifactDialog({
   executionDetails,
   href,
   label,
+  title = label,
   variant,
   image = false,
 }: {
@@ -265,6 +270,7 @@ export function DetailedArtifactDialog({
   className?: string;
   href: string;
   label: string;
+  title?: ReactNode;
   variant?: 'preview';
   image?: boolean;
 } & ArtifactMetadataProps) {
@@ -285,7 +291,7 @@ export function DetailedArtifactDialog({
           image={image}
           open={open}
           onClose={() => setOpen(false)}
-          title={<span className="ui-dialog__title-text">{label}</span>}
+          title={<ArtifactDialogTitle title={title} />}
           meta={<ArtifactMetadata fields={fields} executionDetails={executionDetails} />}
         >
           {body ?? (image ? <ImageViewport><img src={href} alt={label} /></ImageViewport> : <iframe className="artifact-dialog__frame" src={href} title={label} />)}
