@@ -32,15 +32,15 @@ function reportData(mode: 'full' | 'self-contained'): ReportData {
     tests: ['Homepage', 'Product'].map((name) => ({
       id: name, name, filePath: 'example.abtest.ts', startingPath: '/',
       controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test',
-      code: null, chips: [], sorts: [], durationMs: 1000, measuredAt: 1, runId: 'run-1',
+       chips: [], sorts: [], durationMs: 1000, measuredAt: 1, runId: 'run-1',
       viewportArtifactPaths: [],
       outcomes: [
-        { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg',  measurement: [] },
-        ...[DESKTOP_VIEWPORT, PHONE_VIEWPORT].map((viewport) => ({ executionDetails: { viewport: viewport, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+        { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg',  measurement: [] },
+        ...[DESKTOP_VIEWPORT, PHONE_VIEWPORT].map((viewport) => ({ executionDetails: { viewport: viewport, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok' as const, stage: 'perf',  measurement: { metrics: [] },
         })),
-        { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'accessibility',  measurement: cleanAccessibility },
-        { executionDetails: { viewport: PHONE_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility',  error: { message: 'Intentional phone failure' } },
+        { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'accessibility',  measurement: cleanAccessibility },
+        { executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'error', stage: 'accessibility',  error: { message: 'Intentional phone failure' } },
       ],
     })),
   };
@@ -133,7 +133,7 @@ describe.each(['full', 'self-contained'] as const)('%s section disclosures', (mo
   });
 
   it.each(['reduce', 'no-preference'] as const)('returns to only the originating control after a global layout shift (%s motion)', async (motion) => {
-    data.tests[0].outcomes[0] = { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+    data.tests[0].outcomes[0] = { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'error', stage: 'visreg',
       error: { message: 'Saved visual capture failure', stack: Array(40).fill('    at savedCapture (example.abtest.ts:1:1)').join('\n') },
     };

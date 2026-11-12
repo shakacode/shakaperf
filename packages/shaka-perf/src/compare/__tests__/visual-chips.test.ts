@@ -21,7 +21,7 @@ function artifact(selector: string, overrides: Partial<VisregArtifact> = {}): Vi
 function entries(measurement: VisregResult): ChipStageResults<VisregResult> {
   return [{
     stage: 'visreg',  measurement,
-    outcome: { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg', measurement },
+    outcome: { executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'visreg', measurement },
   }];
 }
 

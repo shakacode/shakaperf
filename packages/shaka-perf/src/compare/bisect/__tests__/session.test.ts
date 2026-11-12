@@ -86,14 +86,14 @@ function resultWithVisualDiff(diffImage: string | null): TestResult {
     startingPath: '/',
     controlUrl: 'http://control.test/',
     experimentUrl: 'http://experiment.test/',
-    code: null,
+
     chips: [],
     sorts: [],
     durationMs: 0,
     measuredAt: null,
     runId: null,
     viewportArtifactPaths: [],
-    outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+    outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'ok',
       stage: 'visreg',
 
@@ -127,7 +127,7 @@ function resultForTest(
 
 function resultWithVisualDiffAndError(diffImage: string | null): TestResult {
   const result = resultWithVisualDiff(diffImage);
-  result.outcomes.push({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+  result.outcomes.push({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
     kind: 'error',
     stage: 'visreg',
 

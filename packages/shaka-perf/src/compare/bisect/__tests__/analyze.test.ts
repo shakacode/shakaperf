@@ -25,7 +25,7 @@ function testResult(
     startingPath: '/',
     controlUrl: 'http://control.test/',
     experimentUrl: 'http://experiment.test/',
-    code: null,
+
     chips: [],
     sorts: [],
     durationMs: 0,
@@ -34,7 +34,7 @@ function testResult(
     viewportArtifactPaths: [],
     outcomes: [
       ...(includeVisualAndPerf ? [
-        { executionDetails: { viewport: viewport, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+        { executionDetails: { viewport: viewport, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok' as const,
           stage: 'visreg',
 
@@ -50,7 +50,7 @@ function testResult(
             savedByRetries: false,
           }],
         },
-        { executionDetails: { viewport: viewport, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+        { executionDetails: { viewport: viewport, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok' as const,
           stage: 'perf',
 
@@ -72,7 +72,7 @@ function testResult(
           },
         },
       ] : []),
-      { executionDetails: { viewport: viewport, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+      { executionDetails: { viewport: viewport, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok' as const,
         stage: 'accessibility',
 
@@ -255,7 +255,7 @@ describe('bisect regression analysis', () => {
 
   it('rejects mixed valid and error outcomes before analysis', () => {
     const result = testResult();
-    result.outcomes.push({ executionDetails: { viewport: PHONE_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+    result.outcomes.push({ executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'error',
       stage: 'visreg',
 

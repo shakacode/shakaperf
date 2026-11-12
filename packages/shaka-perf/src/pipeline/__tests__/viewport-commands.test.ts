@@ -286,7 +286,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     for (const test of [narrowed, active]) {
       for (const label of ['desktop', 'phone']) {
         mirrorCoverageToNycOutput(coverage, store().resultsRoot, unitIdForTest(test, label));
-        store().writeOutcome(test, label, { executionDetails: { viewport: built.shared.viewportDefinitions.find(viewport => viewport.label === label)!, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'code_coverage' });
+        store().writeOutcome(test, label, { executionDetails: { viewport: built.shared.viewportDefinitions.find(viewport => viewport.label === label)!, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, kind: 'ok', stage: 'code_coverage' });
       }
     }
     const mirrors = path.join(store().resultsRoot, '.nyc_output');

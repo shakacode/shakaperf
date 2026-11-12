@@ -121,7 +121,7 @@ describe('bisect report App rendering', () => {
     data.tests = [{
       ...reportTest(),
       measuredAt: null,
-      outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+      outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'skipped',
         stage: 'visreg',
         reason: 'fixture skip',
@@ -184,7 +184,7 @@ describe('bisect report App rendering', () => {
     data.tests = [{
       ...reportTest(),
       measuredAt: null,
-      outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+      outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'skipped',
         stage: 'visreg',
         reason: 'fixture skip',
@@ -370,13 +370,13 @@ function testResult({
     startingPath,
     controlUrl: `http://control.test${startingPath}`,
     experimentUrl: `http://experiment.test${startingPath}`,
-    code: null,
+
     chips: [],
     sorts: [],
     durationMs: 1_000,
     measuredAt: Date.UTC(2026, 6, 13),
     runId: null,
-    outcomes: stages.map((stage) => ({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+    outcomes: stages.map((stage) => ({ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
       kind: 'error' as const,
       stage,
       error: { message: `${stage} failed` },

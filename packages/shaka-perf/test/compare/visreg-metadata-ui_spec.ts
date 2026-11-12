@@ -6,11 +6,14 @@ import { DESKTOP_VIEWPORT } from 'shaka-shared';
  * License in LICENSE.md.
  */
 
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { PHONE_VIEWPORT } from 'shaka-shared';
 import { createServer, type Server } from 'node:http';
 import { chromium, type Browser } from 'playwright';
-import { renderReportHtml } from '../../src/pipeline/report';
+import { renderReportHtml, writeReport } from '../../src/pipeline/report';
 import { runDetailsFixture } from '../../src/pipeline/__tests__/fixtures/run-details';
 
 jest.setTimeout(60_000);
@@ -53,7 +56,7 @@ describe('visual preview metadata', () => {
         const measurement = desktop.measurement as Record<string, unknown>[];
         test.outcomes.push({
           ...desktop,
-          executionDetails: { ...desktop.executionDetails, viewport: PHONE_VIEWPORT, runId: '2026-01-01T00:00:00Z', recoveredAfterRetries: false, taskRetries: 0, taskRetryLimit: 8 },
+          executionDetails: { ...desktop.executionDetails, testSourceHref: params.has('missing') ? null : 'data:text/plain;charset=utf-8,' + encodeURIComponent('older phone source <script>window.sourceExecuted=true</script>'), viewport: PHONE_VIEWPORT, runId: '2026-01-01T00:00:00Z', recoveredAfterRetries: false, taskRetries: 0, taskRetryLimit: 8 },
           measurement: [{ ...measurement[0], compareAttempts: 1, savedByRetries: false }],
         });
       }
@@ -94,7 +97,7 @@ describe('visual preview metadata', () => {
       } else {
         expect(experiment.y).toBeGreaterThan(control.y);
       }
-      // The modal reuses the latest test metadata and source shown on the card.
+      // Test-level URLs remain shared; source is scoped to this execution.
       expect(await metadata.locator('.card__targets a').allTextContents()).toEqual([
         'http://new-control.example/', 'http://new-experiment.example/',
       ]);
@@ -132,6 +135,61 @@ describe('visual preview metadata', () => {
       expect(await cards.nth(1).locator('.artifact-card__image-labels').textContent()).toBe('no diff');
     } finally {
       await page.close();
+    }
+  });
+
+  it.each(['full', 'self-contained'])('selects card snapshots and scopes dialog source in %s reports', async mode => {
+    const page = await browser.newPage();
+    try {
+      await page.goto(`${url}?mixed=1&mode=${mode}`);
+      const cardMetadata = page.locator('.card__metadata-row > .card__metadata');
+      await cardMetadata.locator('summary').click();
+      await cardMetadata.getByRole('button', { name: 'test source', exact: true }).click();
+      const selector = cardMetadata.getByRole('combobox', { name: 'Source snapshot' });
+      expect(await selector.locator('option').count()).toBe(2);
+      await selector.selectOption({ index: 1 });
+      await cardMetadata.locator('.card__code').filter({ hasText: 'older phone source' }).waitFor();
+      await page.locator('.artifact-card--single').nth(0).getByRole('button').click();
+      let dialog = page.getByRole('dialog');
+      await dialog.getByRole('button', { name: 'test source', exact: true }).click();
+      await dialog.locator('.card__code').filter({ hasText: "abTest('Homepage'" }).waitFor();
+      expect(await dialog.getByRole('combobox').count()).toBe(0);
+      await dialog.getByRole('button', { name: 'close', exact: true }).click();
+      await page.locator('.artifact-card--single').nth(1).getByRole('button').click();
+      dialog = page.getByRole('dialog');
+      await dialog.getByRole('button', { name: 'test source', exact: true }).click();
+      await dialog.locator('.card__code').filter({ hasText: 'older phone source <script>' }).waitFor();
+      expect(await page.evaluate(() => (window as unknown as { sourceExecuted?: boolean }).sourceExecuted)).toBeUndefined();
+      await page.goto(`${url}?mixed=1&missing=1&mode=${mode}`);
+      await page.locator('.artifact-card--single').nth(1).getByRole('button').click();
+      dialog = page.getByRole('dialog');
+      await dialog.getByRole('button', { name: 'test source', exact: true }).click();
+      expect(await dialog.textContent()).toContain('No source snapshot was captured.');
+      expect(await dialog.locator('.card__code').count()).toBe(0);
+    } finally { await page.close(); }
+  });
+
+  it('opens execution source directly from disk in both report modes', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'shaka-source-browser-'));
+    const page = await browser.newPage();
+    try {
+      const source = 'saved source — مرحبا <script>window.sourceExecuted=true</script>';
+      writeFileSync(join(directory, 'snapshot.ts'), source);
+      const data = fixture();
+      const outcome = data.tests[0]!.outcomes[0]!;
+      outcome.executionDetails = { ...outcome.executionDetails, testSourceHref: 'snapshot.ts' };
+      const reports = await writeReport(data, directory);
+      for (const report of [reports.fullPath, reports.selfContainedPath]) {
+        await page.goto(pathToFileURL(report).href);
+        await page.locator('.artifact-card--single').getByRole('button').click();
+        const dialog = page.getByRole('dialog');
+        await dialog.getByRole('button', { name: 'test source', exact: true }).click();
+        expect(await dialog.locator('.card__code').textContent()).toBe(source);
+        expect(await page.evaluate(() => (window as unknown as { sourceExecuted?: boolean }).sourceExecuted)).toBeUndefined();
+      }
+    } finally {
+      await page.close();
+      rmSync(directory, { recursive: true, force: true });
     }
   });
 

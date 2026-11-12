@@ -162,13 +162,13 @@ function savedReport(): BisectReportData {
       startingPath: '/',
       controlUrl: 'http://control.test/',
       experimentUrl: 'http://experiment.test/',
-      code: null,
+
       chips: [],
       sorts: [],
       durationMs: 0,
       measuredAt: null,
       runId: null,
-      outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+      outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok',
         stage: 'visreg',
 

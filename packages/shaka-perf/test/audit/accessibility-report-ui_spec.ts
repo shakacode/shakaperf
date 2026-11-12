@@ -64,7 +64,7 @@ describe('accessibility report UI filters', () => {
           },
           children: React.createElement(AccessibilityArtifactView, {
             measurements: [{
-              executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
+              executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
               measurement: result,
 
             }],
@@ -82,7 +82,7 @@ describe('accessibility report UI filters', () => {
     const html = renderToStaticMarkup(
       React.createElement(AccessibilityArtifactView, {
         measurements: [{
-          executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
+          executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
           measurement: accessibilityResult({
             effectiveConfig: {
               tags: ['wcag2a', 'wcag2aa'],
@@ -152,7 +152,7 @@ describe('accessibility report UI filters', () => {
     const html = renderToStaticMarkup(
       React.createElement(AccessibilityArtifactView, {
         measurements: [{
-          executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
+          executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false }, latestRun: true,
           measurement: accessibilityResult({
             violations: [violation('button-name', ['wcag2a'])],
           }),
@@ -233,7 +233,7 @@ function reportData(accessibility: AccessibilityResult): ReportData {
       startingPath: '/',
       controlUrl: 'http://localhost:3090/',
       experimentUrl: 'http://localhost:3090/',
-      code: null,
+
       chips: [{
         tag: 'accessibility violation',
         text: 'accessibility: 3 violations',
@@ -245,7 +245,7 @@ function reportData(accessibility: AccessibilityResult): ReportData {
       measuredAt: 0,
       runId: 'run-1',
       viewportArtifactPaths: [],
-      outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourcePath: null, runId: 'fixture-run', recoveredAfterRetries: false },
+      outcomes: [{ executionDetails: { viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
         kind: 'ok',
         stage: 'accessibility',
 
