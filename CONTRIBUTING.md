@@ -4,7 +4,7 @@ Thank you for helping improve ShakaPerf.
 
 ## Licensing and contributions
 
-ShakaPerf is distributed under The ShakaPerf License (see
+ShakaPerf will use the approved ShakaStack License starting with release 0.8.0 (see
 [LICENSE.md](./LICENSE.md)). Before we can merge your contribution, we need
 you to agree to our Contributor License Agreement (see [CLA.md](./CLA.md)).
 

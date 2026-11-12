@@ -1,10 +1,9 @@
 /*
  * Copyright (c) 2026 ShakaCode LLC.
  *
- * SPDX-License-Identifier: LicenseRef-ShakaPerf-1.0
+ * SPDX-License-Identifier: LicenseRef-ShakaStack-1.0-ShakaPerf
  *
- * This file is part of ShakaPerf. Use is governed by The ShakaPerf
- * License in LICENSE.md.
+ * This file is part of ShakaPerf. Use is governed by the license in LICENSE.md.
  */
 
 import { exec } from '../../twin-servers/helpers/shell';

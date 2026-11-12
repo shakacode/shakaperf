@@ -1,6 +1,6 @@
 # shaka-perf
 
-[![License: ShakaPerf License](https://img.shields.io/badge/license-ShakaPerf%20License-blue.svg)](../../LICENSE.md)
+[![License: ShakaStack License](https://img.shields.io/badge/license-ShakaStack%20License-blue.svg)](../../LICENSE.md)
 
 Frontend performance testing toolkit for web applications. A single CLI and a single project-level config (`abtests.config.ts`) that drives:
 
@@ -55,13 +55,12 @@ yarn shaka-perf servers start-containers
 yarn shaka-perf servers start-servers
 ```
 
-## License
+## Free & Pro
 
-ShakaPerf is source-available under
-[The ShakaPerf License](../../LICENSE.md) — free to read, study, and
-evaluate for everyone; free in production (including CI and coding-agent
-workflows) for organizations under 10 people, $1M revenue, and $1M raised;
-paid subscription otherwise: https://shakaperf.com/pricing.
+The approved [ShakaStack License for ShakaPerf](../../LICENSE.md) starts with release 0.8.0. Reading, studying, and a 45 day evaluation are free. Ongoing use on private code, including CI, PR checks, coding agent workflows, and manual runs, needs ShakaStack Pro after evaluation in any environment unless a Free Use applies.
 
-Questions or commercial licensing:
-[contact@shakacode.com](mailto:contact@shakacode.com).
+Free Use includes organizations that answer yes to all three questions across their affiliates: fewer than 10 people, under US $1M revenue in the last twelve months, and under US $1M raised ever. Charities, educational institutions, hospitals, and qualifying public open source work also have free permissions under the license.
+
+[ShakaStack Pro](https://pro.reactonrails.com/#shakastack-pro) covers ShakaPerf, React on Rails Pro, and Inertia Rails SSR Cache for the whole organization, with no headcount or revenue limit. Each release keeps the license terms it shipped with. [Older license texts](https://github.com/shakacode/commercial-licensing/tree/main/license/archive) are archived.
+
+Questions: [contact@shakacode.com](mailto:contact@shakacode.com).

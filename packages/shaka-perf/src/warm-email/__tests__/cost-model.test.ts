@@ -1,8 +1,7 @@
 /*
  * Copyright (c) 2026 ShakaCode LLC.
  *
- * This file is part of ShakaPerf. Use is governed by The ShakaPerf
- * License in LICENSE.md.
+ * This file is part of ShakaPerf. Use is governed by the license in LICENSE.md.
  */
 
 import { DEFAULT_MOBILE_TRAFFIC_SHARE, DEFAULT_RECOVERY_BAND } from '../cost-model';
