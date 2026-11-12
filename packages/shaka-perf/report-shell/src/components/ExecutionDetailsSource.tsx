@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import type { ExecutionDetails } from '../../../src/pipeline/outcome';
 import type { ReportOutcome } from '../types';
 
-export function ExecutionSource({ outcomes, executionDetails }: {
+export function ExecutionDetailsSource({ outcomes, executionDetails }: {
   outcomes: readonly ReportOutcome[];
   executionDetails?: ExecutionDetails;
 }) {
