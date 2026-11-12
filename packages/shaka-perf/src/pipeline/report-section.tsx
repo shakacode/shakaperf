@@ -34,6 +34,11 @@ export function useReportSection(): string | null {
   return useContext(SectionContext);
 }
 
+export function useReportSectionExpanded(sectionKey: string): boolean {
+  const visibility = useContext(VisibilityContext);
+  return !visibility?.hidden.has(sectionKey);
+}
+
 export function ReportSection({ sectionKey, title, children, badge, actions, nested = false }: {
   sectionKey: string;
   title: string;
