@@ -260,6 +260,7 @@ describe('bisect regression analysis', () => {
       ...executionFixture({ viewport: PHONE_VIEWPORT }),
       kind: 'error',
       stage: 'visreg',
+
       error: { message: 'phone capture failed' },
     });
 

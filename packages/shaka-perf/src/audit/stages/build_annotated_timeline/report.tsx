@@ -38,7 +38,7 @@ export function BuildAnnotatedTimelineArtifactView({
 }) {
   const mode = useReportMode();
   const rows = measurements
-    .map((entry) => ({ timeline: entry.measurement, viewportLabel: entry.viewport.label, latestRun: entry.latestRun }))
+    .map((entry) => ({ timeline: entry.measurement, viewportLabel: entry.executionDetails.viewport.label, latestRun: entry.latestRun }))
     .filter(({ timeline }) => {
       const frames = timeline.frames;
       if (!frames || frames.length === 0) return false;

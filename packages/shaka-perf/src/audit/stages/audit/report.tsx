@@ -55,7 +55,7 @@ export function AuditArtifactView({
   const rows = measurements
     .map((entry) => ({
       audit: entry.measurement,
-      viewportLabel: entry.viewport.label,
+      viewportLabel: entry.executionDetails.viewport.label,
       latestRun: entry.latestRun,
     }))
     .filter(({ audit }) => hasRenderableData(audit));

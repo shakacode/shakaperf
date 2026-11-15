@@ -51,10 +51,10 @@ export function AccessibilityArtifactView({
       <StageArtifactTitle title="accessibility" />
       <div className="stage-stack">
         {rows.map((entry, index) => (
-          <div key={`${entry.viewport.label}-${index}`} className="stage-stack__viewport">
+          <div key={`${entry.executionDetails.viewport.label}-${index}`} className="stage-stack__viewport">
             <AccessibilityBody
               result={entry.measurement}
-              viewportLabel={entry.viewport.label}
+              viewportLabel={entry.executionDetails.viewport.label}
               latestRun={entry.latestRun}
             />
           </div>

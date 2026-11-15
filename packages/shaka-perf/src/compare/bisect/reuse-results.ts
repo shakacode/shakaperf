@@ -61,7 +61,7 @@ function loadTestResult(
       return [{ ...outcome, viewport }];
     })
   ));
-  const viewportLabels = new Set(outcomes.map((outcome) => outcome.viewport.label));
+  const viewportLabels = new Set(outcomes.map((outcome) => outcome.executionDetails.viewport.label));
 
   return {
     id: testIdForTest(test),

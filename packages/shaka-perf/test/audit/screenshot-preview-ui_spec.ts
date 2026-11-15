@@ -23,7 +23,7 @@ const BROKEN_IMAGE = 'data:image/png;base64,broken';
 function fixture(): ReportData {
   const ok = (stage: 'audit' | 'code_coverage', measurement: unknown): ReportOutcome => ({
     ...executionFixture(),
-    kind: 'ok', stage, measurement,
+    kind: 'ok', stage,  measurement,
   } as ReportOutcome);
   const error = (stage: 'audit' | 'code_coverage'): ReportOutcome => ({
     ...executionFixture(),

@@ -14,7 +14,7 @@ export type MeasurementInvocation = Pick<RunMetadata, 'command' | 'stages' | 'ca
 export async function captureMeasurementStartMetadata(
   { command, stages, categories, sides }: MeasurementInvocation,
   urls: Readonly<Record<MeasurementSide, string>>,
-) {
+): Promise<RunMetadata> {
   const measuredAt = new Date().toISOString();
   const targets = await Promise.all(sides.map(async (side) => {
     const url = urls[side];

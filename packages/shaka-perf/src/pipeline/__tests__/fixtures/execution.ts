@@ -5,11 +5,17 @@
  * License in LICENSE.md.
  */
 
-import { DESKTOP_VIEWPORT, type Viewport } from 'shaka-shared';
-import type { Outcome } from '../../outcome';
+import { DESKTOP_VIEWPORT } from 'shaka-shared';
+import type { ExecutionDetails } from '../../outcome';
 
-type ExecutionOverrides = Pick<Outcome, 'runId' | 'recoveredAfterRetries'> & { viewport?: Viewport };
-
-export function executionFixture(overrides: ExecutionOverrides = {}) {
-  return { viewport: DESKTOP_VIEWPORT, ...overrides };
+export function executionFixture(overrides: Partial<ExecutionDetails> = {}): { executionDetails: ExecutionDetails } {
+  return {
+    executionDetails: {
+      runId: 'fixture-run',
+      viewport: DESKTOP_VIEWPORT,
+      testSourceHref: null,
+      recoveredAfterRetries: false,
+      ...overrides,
+    },
+  };
 }

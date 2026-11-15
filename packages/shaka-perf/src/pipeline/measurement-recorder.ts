@@ -20,12 +20,10 @@ export class MeasurementRecorder {
   }
 
   snapshot(measurementStart: RunMetadata): { runMetadata: RunMetadata } {
-    return {
-      runMetadata: {
-        ...measurementStart,
-        ...structuredClone(this.options),
-        taskRetries: this.taskRetries,
-      },
-    };
+    return { runMetadata: { ...measurementStart, ...structuredClone(this.options) } };
+  }
+
+  executionSettings() {
+    return { taskRetries: this.taskRetries };
   }
 }
