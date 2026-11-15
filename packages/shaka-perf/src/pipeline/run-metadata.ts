@@ -27,7 +27,6 @@ export interface MeasurementThrottling {
   method: string;
   cpuSlowdownMultiplier?: number;
   network: Record<string, number>;
-  side?: MeasurementSide;
 }
 export interface RunMetadata {
   command: string;
@@ -53,8 +52,7 @@ export interface RunMetadata {
 }
 
 /** Older results can lack a source snapshot; readers normalize that to null. */
-export type LoadedRunMetadata = Omit<RunMetadata, 'testSourcePath' | 'throttling'> & {
-  throttling?: MeasurementThrottling | MeasurementThrottling[];
+export type LoadedRunMetadata = Omit<RunMetadata, 'testSourcePath'> & {
   testSourcePath: string | null;
 };
 
