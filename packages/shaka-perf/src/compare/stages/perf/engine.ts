@@ -166,12 +166,14 @@ async function runPerfPhase(
     { testKey: perfSamplerKey(ctx.testAndViewportId, config) },
   );
   const firstSample = sampleGroups[0]?.samples[0];
-  if (!firstSample) {
+  if (config.statisticalAnalysis && !firstSample) {
     throw new Error(
       `No measurements were collected.\nCONTROL: ${ctx.controlURL}\nEXPERIMENT: ${ctx.experimentURL}`,
     );
   }
-  ctx.recordMeasurementOptions({ throttling: firstSample.measurementThrottling });
+  if (firstSample) {
+    ctx.recordMeasurementOptions({ throttling: firstSample.measurementThrottling });
+  }
 
   const results = sampleGroups.map(({ group, samples }) => ({
     group,
