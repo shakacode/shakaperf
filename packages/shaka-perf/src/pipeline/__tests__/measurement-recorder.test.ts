@@ -20,7 +20,7 @@ it('keeps start metadata, reported samples, and returned snapshots independent',
   const recorder = new MeasurementRecorder();
   recorder.recordOptions({ compareRetries: 3, compareAttempts: 1 });
   recorder.recordOptions({ throttling: settings });
-  const first = recorder.snapshot(start);
+  const { runMetadata: first } = recorder.snapshot(start);
 
   recorder.recordTaskRetry();
   expect(first.taskRetries).toBe(0);
@@ -30,8 +30,10 @@ it('keeps start metadata, reported samples, and returned snapshots independent',
   expect(first.throttling!.network.rttMs).toBe(80);
   first.throttling!.network.rttMs = 100;
   expect(recorder.snapshot(start)).toEqual({
-    ...start, compareRetries: 3, compareAttempts: 2, taskRetries: 1,
-    throttling: { engine: 'Lighthouse', method: 'simulate', network: { rttMs: 80 } },
+    runMetadata: {
+      ...start, compareRetries: 3, compareAttempts: 2, taskRetries: 1,
+      throttling: { engine: 'Lighthouse', method: 'simulate', network: { rttMs: 80 } },
+    },
   });
   expect(start).not.toHaveProperty('compareAttempts');
   expect(start).not.toHaveProperty('throttling');
