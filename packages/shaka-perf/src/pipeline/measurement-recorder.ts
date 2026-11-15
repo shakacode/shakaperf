@@ -5,29 +5,21 @@
  * License in LICENSE.md.
  */
 
-import type { MeasurementOptions, MeasurementThrottling, RunMetadata } from './run-metadata';
-
-function copyThrottling(settings: MeasurementThrottling): MeasurementThrottling {
-  return { ...settings, network: { ...settings.network } };
-}
+import type { MeasurementOptions, RunMetadata } from './run-metadata';
 
 export class MeasurementRecorder {
   private readonly options: MeasurementOptions = {};
-  private throttling?: MeasurementThrottling;
 
   recordOptions(options: MeasurementOptions): void {
-    Object.assign(this.options, options);
-  }
-
-  recordThrottling(settings: MeasurementThrottling): void {
-    this.throttling = copyThrottling(settings);
+    Object.assign(this.options, structuredClone(options));
   }
 
   snapshot(measurementStart: RunMetadata): RunMetadata {
+    const { throttling, ...options } = structuredClone(this.options);
     return {
       ...measurementStart,
-      ...this.options,
-      ...(this.throttling ? { throttling: [copyThrottling(this.throttling)] } : {}),
+      ...options,
+      ...(throttling ? { throttling: [throttling] } : {}),
     };
   }
 }

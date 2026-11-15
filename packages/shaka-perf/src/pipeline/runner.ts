@@ -1151,7 +1151,6 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   let measurementStart: RunMetadata | undefined;
   const ctx: TestContext = {
     recordMeasurementOptions: (options) => recorder.recordOptions(options),
-    recordMeasurementThrottling: (settings) => recorder.recordThrottling(settings),
     test: unit.test,
     viewport: unit.viewport,
     artifacts: store.scopeFor(unit.test, unit.viewport.label),

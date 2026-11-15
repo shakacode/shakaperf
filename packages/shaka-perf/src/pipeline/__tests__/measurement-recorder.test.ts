@@ -19,7 +19,7 @@ it('keeps start metadata, reported samples, and returned snapshots independent',
   const settings = { engine: 'Lighthouse', method: 'simulate', network: { rttMs: 80 } };
   const recorder = new MeasurementRecorder();
   recorder.recordOptions({ compareRetries: 3, compareAttempts: 1 });
-  recorder.recordThrottling(settings);
+  recorder.recordOptions({ throttling: settings });
   const first = recorder.snapshot(start);
 
   settings.network.rttMs = 90;

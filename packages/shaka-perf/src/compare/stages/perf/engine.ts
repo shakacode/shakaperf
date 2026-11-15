@@ -171,7 +171,7 @@ async function runPerfPhase(
       `No measurements were collected.\nCONTROL: ${ctx.controlURL}\nEXPERIMENT: ${ctx.experimentURL}`,
     );
   }
-  ctx.recordMeasurementThrottling(firstSample.measurementThrottling);
+  ctx.recordMeasurementOptions({ throttling: firstSample.measurementThrottling });
 
   const results = sampleGroups.map(({ group, samples }) => ({
     group,
