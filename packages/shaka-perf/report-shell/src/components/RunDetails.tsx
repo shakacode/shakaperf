@@ -7,6 +7,7 @@
 
 import { useRef, useState } from 'react';
 import type { ReportOutcome } from '../types';
+import { savedThrottlingProfiles } from '../../../src/pipeline/saved-throttling';
 import type { LoadedRunMetadata } from '../../../src/pipeline/run-metadata';
 
 export function savedRunDetails(outcomes: readonly ReportOutcome[]) {

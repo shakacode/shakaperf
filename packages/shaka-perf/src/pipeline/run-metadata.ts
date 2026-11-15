@@ -39,7 +39,7 @@ export interface RunMetadata {
   targets: MeasurementTarget[];
   /** Saved verbatim abTest call, relative to the results root. Required for new measurements. */
   testSourcePath: ArtifactPath;
-  throttling?: MeasurementThrottling[];
+  throttling?: MeasurementThrottling;
   /** Effective Lighthouse samples requested per measured side. */
   numberOfMeasurements?: number;
   /** Effective visual comparison retry budget, after runtime overrides. */
@@ -53,13 +53,12 @@ export interface RunMetadata {
 }
 
 /** Older results can lack a source snapshot; readers normalize that to null. */
-export type LoadedRunMetadata = Omit<RunMetadata, 'testSourcePath'> & {
+export type LoadedRunMetadata = Omit<RunMetadata, 'testSourcePath' | 'throttling'> & {
+  throttling?: MeasurementThrottling | MeasurementThrottling[];
   testSourcePath: string | null;
 };
 
-export type MeasurementOptions = Pick<RunMetadata, 'numberOfMeasurements' | 'compareRetries' | 'compareAttempts'> & {
-  throttling?: MeasurementThrottling;
-};
+export type MeasurementOptions = Pick<RunMetadata, 'numberOfMeasurements' | 'compareRetries' | 'compareAttempts' | 'throttling'>;
 
 /** Reconstruct the measurement invocation without changing any argument values. */
 export function measurementCommand(argv: readonly string[] = process.argv.slice(2)): string {

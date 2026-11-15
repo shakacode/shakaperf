@@ -582,7 +582,7 @@ describe('runPipeline', () => {
     }] }, { ...selected, measurementSides: ['experiment'] });
     const outcome = result.testResults[0]!.outcomes.find((o) => o.kind === 'ok')!;
     expect(outcome.runMetadata?.targets).toEqual([{ side: 'experiment', url: 'https://user:password@deployment.test/cart?token=secret', commit: null }]);
-    expect(outcome.runMetadata?.throttling).toEqual([{ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } }]);
+    expect(outcome.runMetadata?.throttling).toEqual({ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } });
     expect(outcome.runMetadata?.viewport).toEqual(outcome.viewport);
   });
 
