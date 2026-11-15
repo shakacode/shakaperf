@@ -1237,7 +1237,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     outcome = {
       kind: 'ok',
       stage: stage.name,
-      ...(measurementStart ? { runMetadata: recorder.snapshot(measurementStart) } : {}),
+      ...(measurementStart ? recorder.snapshot(measurementStart) : {}),
       measurement,
       ...(failedAttempts > 0 ? { recoveredAfterRetries: true } : {}),
     };
@@ -1249,7 +1249,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     outcome = {
       kind: 'error',
       stage: stage.name,
-      ...(measurementStart ? { runMetadata: recorder.snapshot(measurementStart) } : {}),
+      ...(measurementStart ? recorder.snapshot(measurementStart) : {}),
       error: errorInfo(err),
       ...(failure ? { failure } : {}),
     };

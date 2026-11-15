@@ -19,7 +19,13 @@ export class MeasurementRecorder {
     Object.assign(this.options, structuredClone(options));
   }
 
-  snapshot(measurementStart: RunMetadata): RunMetadata {
-    return { ...measurementStart, ...structuredClone(this.options), taskRetries: this.taskRetries };
+  snapshot(measurementStart: RunMetadata): { runMetadata: RunMetadata } {
+    return {
+      runMetadata: {
+        ...measurementStart,
+        ...structuredClone(this.options),
+        taskRetries: this.taskRetries,
+      },
+    };
   }
 }
