@@ -144,7 +144,7 @@ interface StageTaskProgress {
   errors: number;
 }
 
-interface StageRun {
+interface StageExecution {
   stage: Stage;
   progress: StageProgress;
   taskProgress: StageTaskProgress;
@@ -161,7 +161,7 @@ interface RuntimeWorkerPool {
   /** This pool's `config -> TaskLimits` mapping (see `taskLimitsResolver`). */
   taskLimits(config: AbTestsConfig): TaskLimits;
   unitChains: Map<string, Promise<void>>;
-  stageRuns: StageRun[];
+  stageExecutions: StageExecution[];
   pending: Promise<void>[];
 }
 
@@ -184,44 +184,44 @@ function formatDurationSummary(durations: readonly number[]): string {
   return ` · durations total ${formatMs(total)}, avg ${formatMs(total / durations.length)}, max ${formatMs(max)}`;
 }
 
-function formatStageRunStatus(
-  stageRun: StageRun,
+function formatStageExecutionStatus(
+  stageExecution: StageExecution,
   runtimePool: RuntimeWorkerPool | undefined,
 ): string {
   const snapshot = runtimePool?.pool.snapshot();
-  const submitted = stageRun.taskProgress.submitted;
-  const running = stageRun.taskProgress.running;
-  const completed = stageRun.taskProgress.completed;
+  const submitted = stageExecution.taskProgress.submitted;
+  const running = stageExecution.taskProgress.running;
+  const completed = stageExecution.taskProgress.completed;
   return formatPoolProgress({
-    startedAt: stageRun.taskProgress.startedAt ?? Date.now(),
+    startedAt: stageExecution.taskProgress.startedAt ?? Date.now(),
     completed,
     expectedTotal: submitted === 0 ? null : submitted,
     parallelism: snapshot?.parallelism ?? 1,
     active: running,
-    errors: stageRun.taskProgress.errors,
+    errors: stageExecution.taskProgress.errors,
   }, {
-    name: stageRun.stage.name,
-    description: stageRun.stage.description,
-    index: stageRun.index,
-    total: stageRun.total,
-    skipOption: stageRun.skipOption,
+    name: stageExecution.stage.name,
+    description: stageExecution.stage.description,
+    index: stageExecution.index,
+    total: stageExecution.total,
+    skipOption: stageExecution.skipOption,
   });
 }
 
 function formatPipelineSticky(
-  stageRuns: readonly StageRun[],
+  stageExecutions: readonly StageExecution[],
   pools: ReadonlyMap<PipelineWorkerPool, RuntimeWorkerPool>,
 ): string {
-  const active = stageRuns.filter((stageRun) => (
-    stageRun.progress.queued > 0 ||
-    stageRun.progress.running > 0
+  const active = stageExecutions.filter((stageExecution) => (
+    stageExecution.progress.queued > 0 ||
+    stageExecution.progress.running > 0
   ));
   if (active.length === 0) return '';
-  return active.map((stageRun) => {
+  return active.map((stageExecution) => {
     const runtimePool = [...pools.values()].find((candidate) => (
-      candidate.stageRuns.includes(stageRun)
+      candidate.stageExecutions.includes(stageExecution)
     ));
-    return formatStageRunStatus(stageRun, runtimePool);
+    return formatStageExecutionStatus(stageExecution, runtimePool);
   }).join('\n\n');
 }
 
@@ -677,8 +677,8 @@ async function runConfiguredPipelineWithSelection(
     installConsoleCapture();
     const sticky = attachStickyStatus();
     const runtimePools = new Map<PipelineWorkerPool, RuntimeWorkerPool>();
-    const stageRuns: StageRun[] = [];
-    const renderSticky = () => sticky.set(formatPipelineSticky(stageRuns, runtimePools));
+    const stageExecutions: StageExecution[] = [];
+    const renderSticky = () => sticky.set(formatPipelineSticky(stageExecutions, runtimePools));
 
     const getRuntimePool = (ref: PipelineWorkerPool): RuntimeWorkerPool => {
       let runtimePool = runtimePools.get(ref);
@@ -696,7 +696,7 @@ async function runConfiguredPipelineWithSelection(
         pool,
         taskLimits,
         unitChains: new Map(),
-        stageRuns: [],
+        stageExecutions: [],
         pending: [],
       };
       pool.onProgressChange = renderSticky;
@@ -730,7 +730,7 @@ async function runConfiguredPipelineWithSelection(
       for (const step of stageSelection.steps) {
         if (step.kind === 'run-stage') {
           const runtimePool = getRuntimePool(step.pool);
-          const stageRun = scheduleStageRun({
+          const stageExecution = scheduleStageExecution({
             stage: step.stage,
             runtimePool,
             units,
@@ -745,9 +745,9 @@ async function runConfiguredPipelineWithSelection(
             renderSticky,
             troubleshootCommand: pipeline.report.troubleshootCommand,
           });
-          runtimePool.stageRuns.push(stageRun);
-          runtimePool.pending.push(stageRun.promise);
-          stageRuns.push(stageRun);
+          runtimePool.stageExecutions.push(stageExecution);
+          runtimePool.pending.push(stageExecution.promise);
+          stageExecutions.push(stageExecution);
           renderSticky();
           continue;
         }
@@ -965,7 +965,7 @@ async function runConfiguredPipelineWithSelection(
   };
 }
 
-interface ScheduleStageRunOptions {
+interface ScheduleStageExecutionOptions {
   stage: Stage;
   runtimePool: RuntimeWorkerPool;
   units: readonly WorkUnit[];
@@ -984,7 +984,7 @@ interface ScheduleStageRunOptions {
   troubleshootCommand: PipelineReport['troubleshootCommand'];
 }
 
-function scheduleStageRun(opts: ScheduleStageRunOptions): StageRun {
+function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecution {
   const {
     stage,
     runtimePool,
@@ -1014,7 +1014,7 @@ function scheduleStageRun(opts: ScheduleStageRunOptions): StageRun {
     completed: 0,
     errors: 0,
   };
-  const stageRun: StageRun = {
+  const stageExecution: StageExecution = {
     stage,
     progress,
     taskProgress,
@@ -1043,7 +1043,7 @@ function scheduleStageRun(opts: ScheduleStageRunOptions): StageRun {
         config,
         progress,
         taskProgress,
-        durations: stageRun.durations,
+        durations: stageExecution.durations,
         renderSticky,
         testAndViewportId: id,
         troubleshootCommand,
@@ -1052,13 +1052,13 @@ function scheduleStageRun(opts: ScheduleStageRunOptions): StageRun {
     return run;
   });
 
-  stageRun.promise = Promise.all(unitRuns).then(() => {
+  stageExecution.promise = Promise.all(unitRuns).then(() => {
     // Print the final status block to stdout so it scrolls into history
     // before the sticky drops it from its active list.
-    console.log(formatStageRunStatus(stageRun, runtimePool));
-    console.log(chalk.blue(`<<< ${stage.name} · ${formatStageProgress(progress)}${formatDurationSummary(stageRun.durations)}`));
+    console.log(formatStageExecutionStatus(stageExecution, runtimePool));
+    console.log(chalk.blue(`<<< ${stage.name} · ${formatStageProgress(progress)}${formatDurationSummary(stageExecution.durations)}`));
   });
-  return stageRun;
+  return stageExecution;
 }
 
 interface ExecuteStageForUnitOptions {
