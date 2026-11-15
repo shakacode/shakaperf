@@ -25,12 +25,11 @@ it('keeps start metadata, reported samples, and returned snapshots independent',
   settings.network.rttMs = 90;
   recorder.recordOptions({ compareAttempts: 2 });
   expect(first.compareAttempts).toBe(1);
-  expect(first.throttling).toHaveLength(1);
-  expect(first.throttling![0]!.network.rttMs).toBe(80);
-  first.throttling![0]!.network.rttMs = 100;
+  expect(first.throttling!.network.rttMs).toBe(80);
+  first.throttling!.network.rttMs = 100;
   expect(recorder.snapshot(start)).toEqual({
     ...start, compareRetries: 3, compareAttempts: 2,
-    throttling: [{ engine: 'Lighthouse', method: 'simulate', network: { rttMs: 80 } }],
+    throttling: { engine: 'Lighthouse', method: 'simulate', network: { rttMs: 80 } },
   });
   expect(start).not.toHaveProperty('compareAttempts');
   expect(start).not.toHaveProperty('throttling');

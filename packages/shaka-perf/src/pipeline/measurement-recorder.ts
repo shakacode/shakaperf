@@ -15,11 +15,6 @@ export class MeasurementRecorder {
   }
 
   snapshot(measurementStart: RunMetadata): RunMetadata {
-    const { throttling, ...options } = structuredClone(this.options);
-    return {
-      ...measurementStart,
-      ...options,
-      ...(throttling ? { throttling: [throttling] } : {}),
-    };
+    return { ...measurementStart, ...structuredClone(this.options) };
   }
 }
