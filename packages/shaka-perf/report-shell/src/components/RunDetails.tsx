@@ -7,7 +7,6 @@
 
 import { useRef, useState } from 'react';
 import type { ReportOutcome } from '../types';
-import { TooltipLabel } from '../../../src/pipeline/report-tooltip';
 import type { ExecutionDetails } from '../../../src/pipeline/outcome';
 import type { RunMetadata } from '../../../src/pipeline/run-metadata';
 
