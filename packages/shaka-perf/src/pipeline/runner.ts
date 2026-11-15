@@ -1236,7 +1236,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       stage: stage.name,
       ...(measurementStart ? recorder.snapshot(measurementStart) : {}),
       measurement,
-      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, ...recorder.executionSettings(), taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
+      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, taskRetries: recorder.taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
     };
   } catch (err) {
     // Walk the cause chain, don't instanceof: a stage that throws from inside a
@@ -1245,7 +1245,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const failure = findFailureArtifacts(err);
     outcome = {
       kind: 'error',
-      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, ...recorder.executionSettings(), taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
+      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, taskRetries: recorder.taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
       stage: stage.name,
       ...(measurementStart ? recorder.snapshot(measurementStart) : {}),
       error: errorInfo(err),
