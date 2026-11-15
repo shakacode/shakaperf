@@ -9,7 +9,7 @@ import { executionFixture } from '../../pipeline/__tests__/fixtures/execution';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { DESKTOP_VIEWPORT, type AbTestDefinition } from 'shaka-shared';
+import { type AbTestDefinition } from 'shaka-shared';
 import {
   comparePipelineConfigFromAbTests,
   comparePipelineMetadata,
@@ -262,7 +262,6 @@ function baseConfig(): Parameters<typeof createComparePipeline>[0] {
 function entry(result: AccessibilityCompareResult) {
   return {
     stage: 'accessibility',
-    viewport: DESKTOP_VIEWPORT,
     measurement: result,
     outcome: {
       ...executionFixture(),

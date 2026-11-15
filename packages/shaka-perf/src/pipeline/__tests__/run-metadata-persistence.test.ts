@@ -77,8 +77,9 @@ it('automatically persists original metadata and reuses it unchanged in every re
     const store = new ArtifactStore(path.join(cwd, 'compare-results'));
     expect(execFile).toHaveBeenCalled();
     for (const outcome of result.testResults[0]!.outcomes) {
-      expect(outcome.runMetadata?.viewport).toEqual(outcome.viewport);
-      expect(store.readOutcome(test, outcome.viewport.label, 'visreg')?.runMetadata).toEqual(outcome.runMetadata);
+      expect(outcome.runMetadata).not.toHaveProperty('viewport');
+    expect(outcome.executionDetails.viewport.width).toBeGreaterThan(0);
+      expect(store.readOutcome(test, outcome.executionDetails.viewport.label, 'visreg')?.runMetadata).toEqual(outcome.runMetadata);
       expect(outcome.runMetadata?.targets.every((target) => target.commit?.sha === deployed.sha)).toBe(true);
       expect(outcome.runMetadata?.targets[0]?.commit?.message).toBe(message);
       expect(outcome.runMetadata?.targets[0]?.url).toBe(`${url}/cart?mode=demo#anchor`);

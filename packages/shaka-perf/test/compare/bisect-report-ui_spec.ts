@@ -73,10 +73,10 @@ describe('bisect report browser acceptance', () => {
     const data = reportData();
     data.tests = data.tests.map((test) => ({
       ...test, runId: latest,
-      outcomes: test.outcomes.map((outcome) => ({ ...outcome, runId: latest })),
+      outcomes: test.outcomes.map((outcome) => ({ ...outcome, executionDetails: { ...outcome.executionDetails, runId: latest } })),
     }));
     const homepage = data.tests[0];
-    homepage.outcomes.push({ ...homepage.outcomes[0], viewport: PHONE_VIEWPORT, runId: old });
+    homepage.outcomes.push({ ...homepage.outcomes[0],  executionDetails: { ...homepage.outcomes[0].executionDetails, viewport: PHONE_VIEWPORT, runId: old } });
     const render = jest.spyOn(pipelineArtifacts, 'renderPersistedStageArtifacts').mockReturnValue('artifact');
     try {
       const html = renderToStaticMarkup(createElement(App, { data }));
@@ -473,12 +473,14 @@ function reportTest(
           diffBbox: null,
           savedByRetries: false,
         }],
+
       })
       : ({
         ...executionFixture(),
         kind: 'error' as const,
         stage,
         error: { message: `${stage} fixture outcome` },
+
       })),
     viewportArtifactPaths: [],
   };

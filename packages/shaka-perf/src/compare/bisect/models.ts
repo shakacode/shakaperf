@@ -57,7 +57,7 @@ export class TestResultsModel {
         .successfulMeasurementForStage(stage, hasExpectedMeasurementShape);
       return measurement === undefined
         ? []
-        : [new StageMeasurementModel(test, outcome.viewport.label, measurement)];
+        : [new StageMeasurementModel(test, outcome.executionDetails.viewport.label, measurement)];
     }));
   }
 }

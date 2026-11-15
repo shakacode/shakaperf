@@ -8,7 +8,7 @@
 import type { CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { VisregArtifact, VisregResult } from '../visreg';
-import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, ReportHeading, OldRunChip, StageNote, ArtifactScope } from '../../../pipeline/stage-report-components';
+import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, ReportHeading, OldRunChip, StageNote } from '../../../pipeline/stage-report-components';
 import { ImageViewport } from '../../../pipeline/image-viewport';
 import { Scrubber } from './scrubber';
 
@@ -20,8 +20,7 @@ export function VisregArtifactView({
   const rows = measurements
     .flatMap((entry) => entry.measurement.map((artifact) => ({
       artifact,
-      entry,
-      viewportLabel: entry.viewport.label,
+      viewportLabel: entry.executionDetails.viewport.label,
       latestRun: entry.latestRun,
     })))
     .sort((a, b) => a.artifact.selector.localeCompare(b.artifact.selector) || a.viewportLabel.localeCompare(b.viewportLabel));
@@ -40,9 +39,7 @@ export function VisregArtifactView({
       <div className="artifact-stack">
         <div className="artifact-grid">
           {rows.map((row, index) => (
-            <ArtifactScope key={`${row.artifact.selector}-${row.viewportLabel}-${index}`} outcome={row.entry.outcome}>
-              <VisregCard row={row} />
-            </ArtifactScope>
+            <VisregCard key={`${row.artifact.selector}-${row.viewportLabel}-${index}`} row={row} />
           ))}
         </div>
       </div>
@@ -51,7 +48,6 @@ export function VisregArtifactView({
 }
 
 interface VisregRow {
-  entry: StageRenderEntry<VisregResult>;
   latestRun: boolean;
   artifact: VisregArtifact;
   viewportLabel: string;
@@ -77,7 +73,6 @@ function VisregCard({ row }: { row: VisregRow }) {
         className="artifact-card__media-button"
         href={artifact.diffImage}
         label={`${viewportLabel} ${artifact.selector}`}
-        title={`visual regressions ${viewportLabel} > ${artifact.selector}`}
         extra={<VisregMeta row={row} />}
         body={<VisregDialogImages row={artifact} diffImage={artifact.diffImage} />}
       >
@@ -92,7 +87,6 @@ function VisregCard({ row }: { row: VisregRow }) {
         className="artifact-card__media-button"
         href={artifact.controlImage}
         label={`${viewportLabel} ${artifact.selector}`}
-        title={`visual regressions ${viewportLabel} > ${artifact.selector}`}
         extra={<VisregMeta row={row} />}
         body={<VisregDialogImages row={artifact} />}
       >

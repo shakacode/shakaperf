@@ -160,9 +160,9 @@ export function auditMachineReportMeta(
   input: Pick<AuditPipelineConfig, 'lighthouseConfig'>,
   rows: readonly PipelineMachineReportRow[],
 ): PipelineMachineReportMeta {
-  const auditedViewports = rows
-    .filter((row) => row.outcomes.some((outcome) => outcome.kind === 'ok' && outcome.stage === 'audit'))
-    .map((row) => row.viewport);
+  const auditedViewports = rows.flatMap(row => row.outcomes
+    .filter(outcome => outcome.kind === 'ok' && outcome.stage === 'audit')
+    .map(outcome => outcome.executionDetails.viewport));
   if (auditedViewports.length === 0) return {};
   return reportMetaForLighthouseRun(preferredLighthouseViewport(auditedViewports), input.lighthouseConfig);
 }
