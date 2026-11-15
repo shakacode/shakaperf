@@ -78,7 +78,7 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
       let compareAttempts = 0;
       return pool.submit(
         async () => runVisregUnit(ctx, config, () => {
-          ctx.recordMeasurementOptions?.({ compareAttempts: ++compareAttempts });
+          ctx.recordMeasurementOptions({ compareAttempts: ++compareAttempts });
         }),
         { key: ctx.testAndViewportId },
       );

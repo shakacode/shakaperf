@@ -6,9 +6,7 @@
  */
 
 import { isDeepStrictEqual } from 'node:util';
-import type { MeasurementThrottling, RunMetadata } from './run-metadata';
-
-type MeasurementOptions = Pick<RunMetadata, 'numberOfMeasurements' | 'compareRetries' | 'compareAttempts'>;
+import type { MeasurementOptions, MeasurementThrottling, RunMetadata } from './run-metadata';
 
 function copyThrottling(settings: MeasurementThrottling): MeasurementThrottling {
   return { ...settings, network: { ...settings.network } };

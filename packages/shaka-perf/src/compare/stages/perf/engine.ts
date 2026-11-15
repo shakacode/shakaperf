@@ -158,7 +158,7 @@ async function runPerfPhase(
   const numberOfMeasurements = config.statisticalAnalysis
     ? ctx.config.perf.numberOfMeasurements
     : config.numberOfMeasurements;
-  ctx.recordMeasurementOptions?.({ numberOfMeasurements });
+  ctx.recordMeasurementOptions({ numberOfMeasurements });
   const sampleGroups = await measureTest(
     benchmarks,
     numberOfMeasurements,
@@ -167,7 +167,7 @@ async function runPerfPhase(
   );
   for (const { group, samples } of sampleGroups) {
     for (const sample of samples) {
-      if (sample.measurementThrottling) ctx.recordMeasurementThrottling?.({ ...sample.measurementThrottling, side: group });
+      ctx.recordMeasurementThrottling({ ...sample.measurementThrottling, side: group });
     }
   }
   const results = sampleGroups.map(({ group, samples }) => ({
