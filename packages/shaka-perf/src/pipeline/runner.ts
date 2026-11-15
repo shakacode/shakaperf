@@ -1180,7 +1180,6 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   // stage-wide aggregate). If the task ultimately succeeds with this > 0, a
   // retry recovered it from a crash/timeout → "flaky (recovered after retries)".
   let failedAttempts = 0;
-  let taskRetries = 0;
   const taskProgressSink: WorkerTaskProgressSink & { readonly stageName: string } = {
     stageName: stage.name,
     onTaskSubmitted() {
@@ -1199,7 +1198,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       failedAttempts += 1;
     },
     onTaskRetry() {
-      taskRetries += 1;
+      recorder.recordTaskRetry();
     },
   };
   const taskLimits = runtimePool.taskLimits(ctx.config);
@@ -1238,7 +1237,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     outcome = {
       kind: 'ok',
       stage: stage.name,
-      ...(measurementStart ? { runMetadata: { ...recorder.snapshot(measurementStart), taskRetries } } : {}),
+      ...(measurementStart ? { runMetadata: recorder.snapshot(measurementStart) } : {}),
       measurement,
       ...(failedAttempts > 0 ? { recoveredAfterRetries: true } : {}),
     };
@@ -1250,7 +1249,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     outcome = {
       kind: 'error',
       stage: stage.name,
-      ...(measurementStart ? { runMetadata: { ...recorder.snapshot(measurementStart), taskRetries } } : {}),
+      ...(measurementStart ? { runMetadata: recorder.snapshot(measurementStart) } : {}),
       error: errorInfo(err),
       ...(failure ? { failure } : {}),
     };

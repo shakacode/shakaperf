@@ -9,12 +9,17 @@ import type { MeasurementOptions, RunMetadata } from './run-metadata';
 
 export class MeasurementRecorder {
   private readonly options: MeasurementOptions = {};
+  private taskRetries = 0;
+
+  recordTaskRetry(): void {
+    this.taskRetries += 1;
+  }
 
   recordOptions(options: MeasurementOptions): void {
     Object.assign(this.options, structuredClone(options));
   }
 
   snapshot(measurementStart: RunMetadata): RunMetadata {
-    return { ...measurementStart, ...structuredClone(this.options) };
+    return { ...measurementStart, ...structuredClone(this.options), taskRetries: this.taskRetries };
   }
 }
