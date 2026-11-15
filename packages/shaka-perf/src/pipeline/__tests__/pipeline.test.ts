@@ -572,7 +572,7 @@ describe('runPipeline', () => {
     const captureStage = selected.stages[0]!;
     const originalRun = captureStage.run;
     captureStage.run = async (ctx, pool) => {
-      ctx.recordMeasurementThrottling({ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } });
+      ctx.recordMeasurementOptions({ throttling: { engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } } });
       return originalRun(ctx, pool);
     };
     const result = await runWithFrozenTest({ skipReport: true, categories: 'visreg', tests: [{

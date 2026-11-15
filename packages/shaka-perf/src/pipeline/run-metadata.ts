@@ -57,7 +57,9 @@ export type LoadedRunMetadata = Omit<RunMetadata, 'testSourcePath'> & {
   testSourcePath: string | null;
 };
 
-export type MeasurementOptions = Pick<RunMetadata, 'numberOfMeasurements' | 'compareRetries' | 'compareAttempts'>;
+export type MeasurementOptions = Pick<RunMetadata, 'numberOfMeasurements' | 'compareRetries' | 'compareAttempts'> & {
+  throttling?: MeasurementThrottling;
+};
 
 /** Reconstruct the measurement invocation without changing any argument values. */
 export function measurementCommand(argv: readonly string[] = process.argv.slice(2)): string {
