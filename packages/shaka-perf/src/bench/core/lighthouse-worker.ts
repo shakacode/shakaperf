@@ -5,7 +5,6 @@
  * License in LICENSE.md.
  */
 
-import { lighthouseThrottling } from '../../pipeline/run-metadata';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -39,6 +38,7 @@ import {
   DEFAULT_MARKERS,
   getCpuSlowdownMultiplier,
   makeNavigationSample,
+  throttlingFromLighthouseSettings,
   SCREENCAST_FILENAME,
   type LighthouseBenchmarkOptions,
   type LighthouseConfig,
@@ -305,7 +305,7 @@ class LighthouseWorkerSampler {
     }
 
     const markers = testDef.markers ?? msg.options.markers;
-    const { phases, accessibilityScore, measurementThrottling } = await this.runLighthouseWithPlaywright(
+    return this.runLighthouseWithPlaywright(
       testDef,
       msg.options,
       msg.targetUrl,
@@ -314,7 +314,6 @@ class LighthouseWorkerSampler {
       `sample-${sampleIndex}`,
       saveArtifacts,
     );
-    return { ...makeNavigationSample(phases, accessibilityScore), measurementThrottling };
   }
 
   private async runLighthouseWithPlaywright(
@@ -325,7 +324,7 @@ class LighthouseWorkerSampler {
     markers: LighthouseBenchmarkOptions['markers'],
     sampleLabel: string,
     saveArtifacts: boolean,
-  ): Promise<{ phases: PhaseSample[]; accessibilityScore: number | null; measurementThrottling: import('../../pipeline/run-metadata').MeasurementThrottling | undefined }> {
+  ): Promise<NavigationSample> {
     const browser = await chromium.connectOverCDP(`http://localhost:${this.chrome!.port}`);
     let livePage: Page | null = null;
     const resultsFolder = options.resultsFolder ?? './tracerbench-results';
@@ -536,7 +535,8 @@ class LighthouseWorkerSampler {
       // Off `phases` so perf metrics stay byte-identical (null on compare).
       const accessibilityScore = accessibilityScoreFromLhr(runnerResult.lhr);
 
-      return { phases, accessibilityScore, measurementThrottling: lighthouseThrottling(runnerResult.lhr.configSettings) };
+      const measurementThrottling = throttlingFromLighthouseSettings(runnerResult.lhr.configSettings);
+      return makeNavigationSample(phases, accessibilityScore, measurementThrottling);
     } catch (err) {
       if (err instanceof Error && err.message.startsWith('[shaka-perf screencast]')) throw err;
       // STOP cuts the recording at the throw (on failure LH's measuring boundary

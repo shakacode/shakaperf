@@ -77,7 +77,7 @@ export async function runVisregUnit(
   // resolved the dir for this test, viewport and `--burn` instance. Never
   // rebuild the path: doing so is what let burn drift the engine's output away
   // from where we read it back.
-  ctx.recordMeasurementOptions?.({ compareRetries: visregConfig.compareRetries });
+  ctx.recordMeasurementOptions({ compareRetries: visregConfig.compareRetries });
   const unitArtifactsDir = ctx.artifacts.dir;
   const configPath = writeTempVisregConfig(visregConfig, unitArtifactsDir);
 

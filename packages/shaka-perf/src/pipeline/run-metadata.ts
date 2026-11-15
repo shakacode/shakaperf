@@ -8,7 +8,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { Viewport } from '../config';
-import type { LighthouseConfig } from '../bench/core/lighthouse-config';
 import type { ArtifactPath } from './artifact-store';
 import { readContainerCommit, SERVER_COMMIT_LABEL } from '../twin-servers/helpers/server-commit';
 
@@ -28,7 +27,7 @@ export interface MeasurementThrottling {
   method: string;
   cpuSlowdownMultiplier?: number;
   network: Record<string, number>;
-  side?: string;
+  side?: MeasurementSide;
 }
 export interface RunMetadata {
   command: string;
@@ -58,28 +57,13 @@ export type LoadedRunMetadata = Omit<RunMetadata, 'testSourcePath'> & {
   testSourcePath: string | null;
 };
 
+export type MeasurementOptions = Pick<RunMetadata, 'numberOfMeasurements' | 'compareRetries' | 'compareAttempts'>;
+
 /** Reconstruct the measurement invocation without changing any argument values. */
 export function measurementCommand(argv: readonly string[] = process.argv.slice(2)): string {
   return ['shaka-perf', ...argv].map((part) => /^[\w./:@=-]+$/.test(part)
     ? part
     : `'${part.replace(/'/g, "'\\''")}'`).join(' ');
-}
-
-/** Input comes from Lighthouse's resolved configSettings, after all engine defaults. */
-export function lighthouseThrottling(settings: Pick<LighthouseConfig, 'throttlingMethod' | 'throttling'>): MeasurementThrottling | undefined {
-  const method = settings.throttlingMethod;
-  if (!method) return undefined;
-  const throttling = settings.throttling;
-  const fields = method === 'simulate' ? ['rttMs', 'throughputKbps']
-    : method === 'devtools' ? ['requestLatencyMs', 'downloadThroughputKbps', 'uploadThroughputKbps'] : [];
-  return {
-    engine: 'Lighthouse',
-    method,
-    ...(method !== 'provided' && typeof throttling?.cpuSlowdownMultiplier === 'number'
-      ? { cpuSlowdownMultiplier: throttling.cpuSlowdownMultiplier } : {}),
-    network: Object.fromEntries(Object.entries(throttling ?? {})
-      .filter(([key, value]) => fields.includes(key) && typeof value === 'number')) as Record<string, number>,
-  };
 }
 
 const execFileAsync = promisify(execFile);

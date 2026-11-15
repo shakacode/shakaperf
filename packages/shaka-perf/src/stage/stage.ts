@@ -10,7 +10,7 @@ import type { RaceCancellation } from 'race-cancellation';
 import type { AbTestDefinition, TestType } from 'shaka-shared';
 import type { AbTestsConfig, Viewport } from '../config';
 import type { ArtifactScope } from '../pipeline/artifact-store';
-import type { MeasurementThrottling, RunMetadata } from '../pipeline/run-metadata';
+import type { MeasurementOptions, MeasurementThrottling } from '../pipeline/run-metadata';
 import type { Outcome } from '../pipeline/outcome';
 import type { WorkerPool } from '../pipeline/worker-pool';
 import type { CdpPorts } from '../troubleshoot/debug-session';
@@ -99,8 +99,8 @@ export interface StageRenderContext {
 
 export interface TestContext extends StageRenderContext {
   /** Actual engine settings returned by the measuring worker, never current report config. */
-  recordMeasurementThrottling?(settings: MeasurementThrottling): void;
-  recordMeasurementOptions?(options: Pick<RunMetadata, 'numberOfMeasurements' | 'compareRetries' | 'compareAttempts'>): void;
+  recordMeasurementThrottling(settings: MeasurementThrottling): void;
+  recordMeasurementOptions(options: MeasurementOptions): void;
   readonly testAndViewportId: string;
   /**
    * The effective config for THIS test: the project config with the test's
