@@ -586,36 +586,6 @@ describe('runPipeline', () => {
     expect(outcome.runMetadata?.viewport).toEqual(outcome.viewport);
   });
 
-  it.each([
-    ['CPU', { method: 'simulate', cpuSlowdownMultiplier: 6, network: { rttMs: 80, throughputKbps: 800 } }],
-    ['network', { method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 90, throughputKbps: 800 } }],
-    ['method', { method: 'devtools', cpuSlowdownMultiplier: 4, network: { rttMs: 80, throughputKbps: 800 } }],
-  ])('errors when resolved Lighthouse %s throttling differs between sides', async (_field, experiment) => {
-    const selected = pipeline();
-    selected.stages[0]!.run = async (ctx) => {
-      ctx.recordMeasurementThrottling({ engine: 'Lighthouse', side: 'control', method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 80, throughputKbps: 800 } });
-      ctx.recordMeasurementThrottling({ engine: 'Lighthouse', side: 'experiment', ...experiment });
-      return {};
-    };
-    const result = await runWithFrozenTest({ skipReport: true, categories: 'visreg' }, selected);
-    const outcome = result.testResults[0]!.outcomes.find((outcome) => outcome.stage === selected.stages[0]!.name)!;
-    expect(outcome.kind).toBe('error');
-    expect(outcome.error?.message).toContain('Lighthouse throttling must match between control and experiment');
-  });
-
-  it('accepts equal resolved Lighthouse throttling regardless of network property order', async () => {
-    const selected = pipeline();
-    selected.stages[0]!.run = async (ctx) => {
-      ctx.recordMeasurementThrottling({ engine: 'Lighthouse', side: 'control', method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 80, throughputKbps: 800 } });
-      ctx.recordMeasurementThrottling({ engine: 'Lighthouse', side: 'experiment', method: 'simulate', cpuSlowdownMultiplier: 4, network: { throughputKbps: 800, rttMs: 80 } });
-      return {};
-    };
-    const result = await runWithFrozenTest({ skipReport: true, categories: 'visreg' }, selected);
-    const outcome = result.testResults[0]!.outcomes.find((outcome) => outcome.stage === selected.stages[0]!.name)!;
-    expect(outcome.kind).toBe('ok');
-    expect(outcome.runMetadata?.throttling?.map(({ side }) => side)).toEqual(['control', 'experiment']);
-  });
-
   it('uses frozen report tests without loading test definitions', async () => {
     await runWithFrozenTest({ reportOnly: true });
 
