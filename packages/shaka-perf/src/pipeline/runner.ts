@@ -5,9 +5,10 @@
  * License in LICENSE.md.
  */
 
-import { isDeepStrictEqual } from 'node:util';
-import { measuredCommit, measurementCommand } from './run-metadata';
-import type { MeasurementThrottling, RunMetadata } from './run-metadata';
+import { MeasurementRecorder } from './measurement-recorder';
+import { captureMeasurementStartMetadata, type MeasurementInvocation } from './measurement-start-metadata';
+import { measurementCommand } from './run-metadata';
+import type { RunMetadata } from './run-metadata';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
@@ -577,12 +578,7 @@ async function runConfiguredPipelineWithSelection(
   }
 
   const stageRuntime: StageRuntime = {
-    ...(runId !== undefined ? { measurementRun: {
-      command: measurementCommand(), runId,
-      stages: stageSelection.stageNames, categories, sides: pipeline.measurementSides,
-    } } : {}),
     resultsRoot,
-    config: runtime.config,
     debugShowAllFrames: runtime.debugShowAllFrames ?? false,
     headed: runtime.headed ?? false,
     keepBrowserOpen: runtime.keepBrowserOpen ?? false,
@@ -670,7 +666,13 @@ async function runConfiguredPipelineWithSelection(
       }
     }
   }
-  if (!runtime.reportOnly) {
+  if (runId !== undefined) {
+    const invocation = {
+      command: measurementCommand(),
+      stages: stageSelection.stageNames,
+      categories,
+      sides: pipeline.measurementSides,
+    };
     installConsoleCapture();
     const sticky = attachStickyStatus();
     const runtimePools = new Map<PipelineWorkerPool, RuntimeWorkerPool>();
@@ -733,6 +735,8 @@ async function runConfiguredPipelineWithSelection(
             units,
             store,
             runtime: stageRuntime,
+            runId,
+            invocation,
             unitUrlOptions: runtime,
             config: runtime.config,
             stageIndex: executableStages.indexOf(step.stage) + 1,
@@ -967,6 +971,8 @@ interface ScheduleStageExecutionOptions {
   units: readonly WorkUnit[];
   store: ArtifactStore;
   runtime: StageRuntime;
+  runId: string;
+  invocation: MeasurementInvocation;
   unitUrlOptions: {
     readonly controlURL: string;
     readonly experimentURL: string;
@@ -985,6 +991,8 @@ function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecu
     units,
     store,
     runtime,
+    runId,
+    invocation,
     unitUrlOptions,
     config,
     stageIndex,
@@ -1029,6 +1037,8 @@ function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecu
         unit,
         store,
         runtime,
+        runId,
+        invocation,
         unitUrlOptions,
         config,
         progress,
@@ -1057,6 +1067,8 @@ interface ExecuteStageForUnitOptions {
   unit: WorkUnit;
   store: ArtifactStore;
   runtime: StageRuntime;
+  runId: string;
+  invocation: MeasurementInvocation;
   unitUrlOptions: {
     readonly controlURL: string;
     readonly experimentURL: string;
@@ -1077,6 +1089,8 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     unit,
     store,
     runtime,
+    runId,
+    invocation,
     unitUrlOptions,
     config,
     progress,
@@ -1133,24 +1147,11 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   // is what actually fires on timeout — but the field is part of the
   // contract so stages don't need to special-case its absence.
   const [raceCancellation] = cancellableRace();
-  const throttling: MeasurementThrottling[] = [];
-  let metadata: RunMetadata | undefined;
+  const recorder = new MeasurementRecorder();
+  let measurementStart: RunMetadata | undefined;
   const ctx: TestContext = {
-    recordMeasurementOptions: (options) => {
-      if (metadata) Object.assign(metadata, options);
-    },
-    recordMeasurementThrottling: (settings) => {
-      if (settings.engine === 'Lighthouse' && settings.side) {
-        const { side, ...effective } = settings;
-        for (const { side: recordedSide, ...recorded } of throttling) {
-          if (recorded.engine === 'Lighthouse' && recordedSide && recordedSide !== side && !isDeepStrictEqual(recorded, effective)) {
-            throw new Error('Lighthouse throttling must match between control and experiment. The performance comparison is invalid.');
-          }
-        }
-      }
-      if (!throttling.some((entry) => JSON.stringify(entry) === JSON.stringify(settings))) throttling.push(settings);
-      if (metadata) metadata.throttling = throttling;
-    },
+    recordMeasurementOptions: (options) => recorder.recordOptions(options),
+    recordMeasurementThrottling: (settings) => recorder.recordThrottling(settings),
     test: unit.test,
     viewport: unit.viewport,
     artifacts: store.scopeFor(unit.test, unit.viewport.label),
@@ -1167,7 +1168,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     ),
     testAndViewportId,
     raceCancellation,
-    config: applyPerTestConfigOverrides(runtime.config, unit.test),
+    config: applyPerTestConfigOverrides(config, unit.test),
     // Lazy on-demand read of an earlier stage's persisted result. Earlier
     // stages have already written their `<stage>.json` (with full measurement)
     // to this unit's dir, so a consequent stage can pull their data even though
@@ -1180,6 +1181,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   // stage-wide aggregate). If the task ultimately succeeds with this > 0, a
   // retry recovered it from a crash/timeout → "flaky (recovered after retries)".
   let failedAttempts = 0;
+  let taskRetries = 0;
   const taskProgressSink: WorkerTaskProgressSink & { readonly stageName: string } = {
     stageName: stage.name,
     onTaskSubmitted() {
@@ -1198,23 +1200,19 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       failedAttempts += 1;
     },
     onTaskRetry() {
-      if (metadata) metadata.taskRetries = (metadata.taskRetries ?? 0) + 1;
+      taskRetries += 1;
     },
   };
   const taskLimits = runtimePool.taskLimits(ctx.config);
   try {
-    const run = runtime.measurementRun;
-    if (stage.measuresApplication && run) {
-      // Measuring units have their source artifact written before stages execute.
-      metadata = {
-        command: run.command, runId: run.runId, measuredAt: new Date().toISOString(),
-        testSourcePath: unit.testSourcePath!,
-        stages: run.stages, categories: run.categories, viewport: unit.viewport,
-        taskRetries: 0, taskRetryLimit: taskLimits.retries,
-        targets: await Promise.all(run.sides.map(async (side) => {
-          const url = side === 'control' ? ctx.controlURL : ctx.experimentURL;
-          return { side, url, commit: await measuredCommit(url) };
-        })),
+    if (stage.measuresApplication) {
+      measurementStart = {
+        ...await captureMeasurementStartMetadata(invocation, {
+          control: ctx.controlURL,
+          experiment: ctx.experimentURL,
+        }),
+        runId, viewport: unit.viewport, testSourcePath: unit.testSourcePath!,
+        taskRetryLimit: taskLimits.retries,
       };
     }
     // `ctx.config` is this unit's EFFECTIVE config, so a test that overrode a
@@ -1241,6 +1239,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     outcome = {
       kind: 'ok',
       stage: stage.name,
+      ...(measurementStart ? { runMetadata: { ...recorder.snapshot(measurementStart), taskRetries } } : {}),
       measurement,
       ...(failedAttempts > 0 ? { recoveredAfterRetries: true } : {}),
     };
@@ -1252,12 +1251,12 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     outcome = {
       kind: 'error',
       stage: stage.name,
+      ...(measurementStart ? { runMetadata: { ...recorder.snapshot(measurementStart), taskRetries } } : {}),
       error: errorInfo(err),
       ...(failure ? { failure } : {}),
     };
   }
 
-  if (metadata) outcome.runMetadata = metadata;
   durations.push(Date.now() - start);
   progress.running -= 1;
   if (outcome.kind === 'error') progress.error += 1;

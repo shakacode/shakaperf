@@ -29,13 +29,7 @@ export type JsonValue =
   | { [key: string]: JsonValue };
 
 export interface StageRuntime {
-  readonly measurementRun?: Pick<RunMetadata, 'command' | 'runId' | 'stages' | 'categories'> & {
-    readonly sides: readonly ('control' | 'experiment')[];
-  };
   readonly resultsRoot: string;
-  /** The parsed project config (file-level, run-wide). Per-test effective
-   *  config is on `TestContext.config`; this is its source. */
-  readonly config: AbTestsConfig;
   /**
    * Diagnostics flag (audit `--debug-show-all-frames`): when set, stages that
    * dedupe artifacts also emit the full, non-deduped form. Only

@@ -309,6 +309,14 @@ describe('runPipeline', () => {
     }
   });
 
+  it('omits run metadata when capture fails before the stage starts', async () => {
+    jest.mocked(measuredCommit).mockRejectedValueOnce(new Error('target lookup failed'));
+    const result = await runWithFrozenTest({ categories: 'visreg', skipReport: true });
+    const failed = result.testResults[0]!.outcomes.find((outcome) => outcome.kind === 'error');
+    expect(failed?.error?.message).toContain('target lookup failed');
+    expect(failed).not.toHaveProperty('runMetadata');
+  });
+
   it.each(['derived', 'not-applicable'] as const)('excludes %s stages from automatic metadata capture', async (mode) => {
     const selected = pipeline();
     const candidate = selected.stages[0]!;
