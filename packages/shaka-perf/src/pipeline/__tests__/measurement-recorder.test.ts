@@ -20,7 +20,6 @@ it('keeps start metadata, reported samples, and returned snapshots independent',
   const recorder = new MeasurementRecorder();
   recorder.recordOptions({ compareRetries: 3, compareAttempts: 1 });
   recorder.recordThrottling(settings);
-  recorder.recordThrottling(settings);
   const first = recorder.snapshot(start);
 
   settings.network.rttMs = 90;
