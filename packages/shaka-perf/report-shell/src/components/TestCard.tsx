@@ -7,7 +7,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
-import { TestMetadata } from './TestMetadata';
+import { ArtifactMetadata, TestSummaryMetadata } from './TestMetadata';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
 import { AnsiLog, firstElapsedSeconds } from './AnsiLog';
@@ -249,7 +249,7 @@ export function TestCard({
           </div>
         </details>
 
-        <TestMetadata meta={meta} test={test} executionDetails={latestExecutionDetails} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} actions={<>
+        <TestSummaryMetadata meta={meta} test={test} latestExecution={latestExecutionDetails} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} actions={<>
             {logs.length > 0 ? (
               <button
                 type="button"
@@ -267,13 +267,11 @@ export function TestCard({
             <StageArtifactProvider
               test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}
               renderMetadata={(fields, outcome) => {
-                const selected = test.outcomes.find((candidate) => candidate === outcome);
-                const scopedTest = { ...test, outcomes: selected ? [selected] : [] };
-                return <TestMetadata meta={meta} test={scopedTest} executionDetails={outcome?.executionDetails} defaultExpanded variant="dialog" actions={logs.length > 0 ? (
+                return <ArtifactMetadata meta={meta} test={test} outcome={outcome} actions={logs.length > 0 ? (
                   <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button>
                 ) : null}>
                   {fields}
-                </TestMetadata>;
+                </ArtifactMetadata>;
               }}
             >
               {groups.map((outcomes, index) => (
@@ -294,7 +292,7 @@ export function TestCard({
         open={logsOpen}
         onClose={() => setLogsOpen(false)}
         title={<span className="ui-dialog__title-text">measurement logs · {test.name}</span>}
-        meta={<TestMetadata meta={meta} test={test} executionDetails={latestExecutionDetails} defaultExpanded variant="dialog" />}
+        meta={<TestSummaryMetadata meta={meta} test={test} latestExecution={latestExecutionDetails} defaultExpanded variant="dialog" />}
       >
         <div className="card-logs">
           {logs.map((log, index) => (

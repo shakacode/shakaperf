@@ -8,7 +8,7 @@
 import { useId, useState, type ReactNode } from 'react';
 import type { ExecutionDetails } from '../../../src/pipeline/outcome';
 import { SourceText } from './SourceText';
-import type { ReportMeta, TestResult } from '../types';
+import type { ReportMeta, ReportOutcome, TestResult } from '../types';
 import { MeasurementCommand, RunCommits } from './RunDetails';
 import { pipelineTroubleshootCommands, renderPipelineTestCardUrls } from '../../../src/pipeline/pipeline-artifacts';
 
@@ -34,22 +34,69 @@ function formatMeasuredAt(measuredAt: number | null): string | null {
   return `${pluralize(days, 'day')} ${pluralize(hours, 'hour')} ago`;
 }
 
-export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExpanded, defaultExpanded = false, variant = 'card', actions, children, executionDetails }: {
-  executionDetails: ExecutionDetails | undefined;
+interface MetadataProps {
   meta: ReportMeta;
   test: TestResult;
+  actions?: ReactNode;
+}
+
+interface PanelLayout {
   expanded?: boolean;
   onToggleExpanded?: () => void;
   defaultExpanded?: boolean;
   variant?: 'card' | 'dialog';
-  actions?: ReactNode;
+}
+
+export function TestSummaryMetadata({ test, latestExecution, ...props }: MetadataProps & PanelLayout & {
+  latestExecution: ExecutionDetails | undefined;
+}) {
+  return (
+    <MetadataPanel
+      {...props}
+      test={test}
+      outcomes={test.outcomes}
+      executionDetails={latestExecution}
+      measuredAt={test.measuredAt}
+    />
+  );
+}
+
+export function ArtifactMetadata({ outcome, children, ...props }: MetadataProps & {
+  outcome: ReportOutcome | undefined;
   children?: ReactNode;
 }) {
+  const executionDetails = outcome?.executionDetails;
+  const measuredAt = executionDetails?.measurementMetadata?.measuredAt;
+  return (
+    <MetadataPanel
+      {...props}
+      variant="dialog"
+      defaultExpanded
+      outcomes={outcome ? [outcome] : []}
+      executionDetails={executionDetails}
+      measuredAt={measuredAt ? Date.parse(measuredAt) : null}
+    >
+      {children}
+    </MetadataPanel>
+  );
+}
+
+interface MetadataPanelProps extends MetadataProps, PanelLayout {
+  outcomes: ReportOutcome[];
+  executionDetails: ExecutionDetails | undefined;
+  measuredAt: number | null;
+  children?: ReactNode;
+}
+
+function MetadataPanel({
+  meta, test, outcomes, executionDetails, measuredAt,
+  expanded: sharedExpanded, onToggleExpanded, defaultExpanded = false, variant = 'card', actions, children,
+}: MetadataPanelProps) {
   const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
   const expanded = sharedExpanded ?? localExpanded;
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const panelId = useId();
-  const viewports = [...new Set(test.outcomes.map((outcome) => outcome.executionDetails.viewport.label))];
+  const viewports = [...new Set(outcomes.map((outcome) => outcome.executionDetails.viewport.label))];
   const troubleshoot = pipelineTroubleshootCommands(meta, test.name, viewports);
   const testSourceHref = executionDetails?.testSourceHref ?? null;
   const sections = [
@@ -62,10 +109,10 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
     { id: 'artifacts', label: 'artifact paths', content: test.viewportArtifactPaths?.length ? <pre className="card__code">{test.viewportArtifactPaths.map(({ viewport, path }) => `${viewport}: ${path}`).join('\n')}</pre> : null },
   ].filter((section) => section.content !== null);
   const active = sections.find((section) => section.id === activeSection);
-  const provenance = <span className="card__metadata-provenance">
+  const fileAndTime = <span className="card__metadata-file-time">
     <span className="card__path" title={test.filePath}>{test.filePath}</span>
-    <span className="card__measured-at" title="mtime of the freshest per-test artifact on disk">
-      <span aria-hidden="true">· </span>updated {formatMeasuredAt(test.measuredAt)}
+    <span className="card__measured-at">
+      <span aria-hidden="true">· </span>updated {formatMeasuredAt(measuredAt)}
     </span>
   </span>;
   return (
@@ -77,12 +124,12 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
         else setLocalExpanded((previous) => !previous);
       }}>
         <span>Metadata</span>
-        {variant === 'dialog' ? provenance : null}
+        {variant === 'dialog' ? fileAndTime : null}
       </summary>
       <div className="card__metadata-content">
-        {variant === 'card' ? provenance : null}
+        {variant === 'card' ? fileAndTime : null}
         <dl className="card__urls card__targets" aria-label="URLs">
-          {renderPipelineTestCardUrls(meta, test, (side) => <RunCommits outcomes={test.outcomes} side={side} />)}
+          {renderPipelineTestCardUrls(meta, test, (side) => <RunCommits outcomes={outcomes} side={side} />)}
         </dl>
         {children}
         {sections.length ? <div>

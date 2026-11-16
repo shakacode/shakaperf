@@ -3160,17 +3160,17 @@ input {
 .card__metadata-row:has(> .card__actions) .card__metadata > summary { margin-right: 65px; padding-right: 0; }
 .card__metadata-row--dialog:has(> .card__actions) .card__metadata > summary { margin-right: 65px; }
 .card__actions { position: absolute; top: 9px; right: 20px; display: flex; align-items: baseline; gap: 14px; }
-.card__metadata--dialog > summary .card__metadata-provenance { flex: 1 1 100%; order: 1; }
+.card__metadata--dialog > summary .card__metadata-file-time { flex: 1 1 100%; order: 1; }
 @container (min-width: 900px) {
   .card__metadata--dialog > summary { flex-wrap: nowrap; }
-  .card__metadata--dialog > summary .card__metadata-provenance { flex: 1; order: 0; margin-left: 10px; }
+  .card__metadata--dialog > summary .card__metadata-file-time { flex: 1; order: 0; margin-left: 10px; }
 }
 .card__metadata-content { display: grid; gap: 10px; min-width: 0; padding: 0 20px 14px; }
 .card__metadata-content > * { min-width: 0; }
-.card__metadata-provenance { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+.card__metadata-file-time { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
 @container (max-width: 899px) {
-  .card__metadata-provenance { flex-wrap: wrap; }
-  .card__metadata-provenance .card__path {
+  .card__metadata-file-time { flex-wrap: wrap; }
+  .card__metadata-file-time .card__path {
     max-width: 100%;
     white-space: normal;
     overflow: visible;

@@ -59,7 +59,7 @@ describe('latest measurement run visibility', () => {
     fs.rmSync(directory, { recursive: true, force: true });
   });
 
-  it('passes per-measurement provenance and run freshness to stage renderers', () => {
+  it('passes per-measurement details and run freshness to stage renderers', () => {
     const render = jest.spyOn(pipelineArtifacts, 'renderPersistedStageArtifacts').mockReturnValue('artifact');
     const data = fixture('compare', 'full');
     const outcomes = [LATEST, OLD].map((runId) => ({

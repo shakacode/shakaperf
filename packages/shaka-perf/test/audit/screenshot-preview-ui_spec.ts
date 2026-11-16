@@ -148,7 +148,9 @@ describe('audit and coverage screenshot previews', () => {
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: /Lighthouse report/ }).click();
     await page.locator('dialog[open]').waitFor();
-    expect(await page.locator('dialog[open] iframe').getAttribute('src')).toBe('data:text/html,Lighthouse');
+    const lighthouse = page.getByRole('dialog');
+    expect(await lighthouse.locator('iframe').getAttribute('src')).toBe('data:text/html,Lighthouse');
+    expect(await lighthouse.locator('.card__metadata .card__targets a').getAttribute('href')).toBe('http://localhost:3090/');
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'failure screenshot', exact: true }).first().click();
     await page.locator('dialog[open]').waitFor();
