@@ -35,7 +35,7 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
       side, url: 'http://127.0.0.1:3910/',
       commit: { sha: '1e04e03852fee4e3257a2084f226189b97f13e2e', message: 'Redact complete credential values before persisting run details [skip ci]', source: 'Git in twin-server source checkout' },
     })),
-    throttling: [{ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 150, throughputKbps: 1638.4 } }],
+    throttling: { engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 150, throughputKbps: 1638.4 } },
   });
   const result = (id: string, name: string, withMetadata: boolean): TestResult => ({
     id, name, filePath: `ab-tests/${id}.abtest.ts`, startingPath: '/',
@@ -46,7 +46,7 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
     viewportArtifactPaths: [{ viewport: 'desktop', path: `results/${id}-desktop` }],
     outcomes: [
       { kind: 'ok', stage, measurement, viewport: DESKTOP_VIEWPORT, logs: '<0.1s> Measurement completed', ...(withMetadata ? { runMetadata: metadata(firstRun) } : {}) },
-      { kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' }, viewport: DESKTOP_VIEWPORT, ...(withMetadata ? { runMetadata: { ...metadata(secondRun), throttling: [] } } : {}) },
+      { kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' }, viewport: DESKTOP_VIEWPORT, ...(withMetadata ? { runMetadata: { ...metadata(secondRun) } } : {}) },
       { kind: 'ok', stage, measurement, viewport: PHONE_VIEWPORT },
     ] as ReportOutcome[],
   });

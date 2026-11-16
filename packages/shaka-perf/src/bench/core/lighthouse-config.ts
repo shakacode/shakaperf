@@ -20,6 +20,8 @@ export const SCREENCAST_FILENAME = 'screencast.mp4';
 export const SCREENCAST_START_FILENAME = 'screencast_start.json';
 export const DEFAULT_THROTTLE_PROFILE_LABEL = 'Slow-4G';
 
+import type { RunnerResult } from 'lighthouse';
+import type { MeasurementThrottling } from '../../pipeline/run-metadata';
 import type { Flags } from 'lighthouse/types/externs.js';
 import type { Viewport } from 'shaka-shared';
 import { userAgentForViewport } from '../../browser-user-agent';
@@ -247,7 +249,7 @@ export interface PhaseSample {
 }
 
 export interface NavigationSample {
-  measurementThrottling?: import('../../pipeline/run-metadata').MeasurementThrottling;
+  measurementThrottling: MeasurementThrottling;
   duration: number;
   phases: PhaseSample[];
   metadata: Record<string, unknown>;
@@ -256,16 +258,36 @@ export interface NavigationSample {
   accessibilityScore?: number;
 }
 
+export function throttlingFromLighthouseSettings(
+  { throttlingMethod: method, throttling }: Pick<RunnerResult['lhr']['configSettings'], 'throttlingMethod' | 'throttling'>,
+): MeasurementThrottling {
+  const engine = 'Lighthouse';
+  switch (method) {
+    case 'provided':
+      return { engine, method, network: {} };
+    case 'simulate': {
+      const { cpuSlowdownMultiplier, rttMs, throughputKbps } = throttling;
+      return { engine, method, cpuSlowdownMultiplier, network: { rttMs, throughputKbps } };
+    }
+    case 'devtools': {
+      const { cpuSlowdownMultiplier, requestLatencyMs, downloadThroughputKbps, uploadThroughputKbps } = throttling;
+      return { engine, method, cpuSlowdownMultiplier, network: { requestLatencyMs, downloadThroughputKbps, uploadThroughputKbps } };
+    }
+  }
+}
+
 // Build a worker NavigationSample, omitting accessibilityScore only when absent
 // (null) so a real worst-case 0 still rides through.
 export function makeNavigationSample(
   phases: PhaseSample[],
   accessibilityScore: number | null,
+  measurementThrottling: MeasurementThrottling,
 ): NavigationSample {
   return {
     metadata: {},
     duration: 0,
     phases,
+    measurementThrottling,
     ...(accessibilityScore != null ? { accessibilityScore } : {}),
   };
 }

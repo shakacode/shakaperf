@@ -158,30 +158,29 @@ async function runPerfPhase(
   const numberOfMeasurements = config.statisticalAnalysis
     ? ctx.config.perf.numberOfMeasurements
     : config.numberOfMeasurements;
-  ctx.recordMeasurementOptions?.({ numberOfMeasurements });
+  ctx.recordMeasurementOptions({ numberOfMeasurements });
   const sampleGroups = await measureTest(
     benchmarks,
     numberOfMeasurements,
     pool,
     { testKey: perfSamplerKey(ctx.testAndViewportId, config) },
   );
-  for (const { group, samples } of sampleGroups) {
-    for (const sample of samples) {
-      if (sample.measurementThrottling) ctx.recordMeasurementThrottling?.({ ...sample.measurementThrottling, side: group });
-    }
+  const firstSample = sampleGroups[0]?.samples[0];
+  if (config.statisticalAnalysis && !firstSample) {
+    throw new Error(
+      `No measurements were collected.\nCONTROL: ${ctx.controlURL}\nEXPERIMENT: ${ctx.experimentURL}`,
+    );
   }
+  if (firstSample) {
+    ctx.recordMeasurementOptions({ throttling: firstSample.measurementThrottling });
+  }
+
   const results = sampleGroups.map(({ group, samples }) => ({
     group,
     set: group,
     samples,
     meta: samples.length > 0 ? samples[0].metadata : {},
   }));
-
-  if (config.statisticalAnalysis && !results[0]?.samples[0]) {
-    throw new Error(
-      `No measurements were collected.\nCONTROL: ${ctx.controlURL}\nEXPERIMENT: ${ctx.experimentURL}`,
-    );
-  }
 
   if (config.saveArtifacts) {
     // The timeline pass appends the frames-to-review section to both profile

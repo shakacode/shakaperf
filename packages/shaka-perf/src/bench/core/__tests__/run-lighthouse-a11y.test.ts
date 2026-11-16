@@ -8,7 +8,7 @@
 import { describe, it, expect } from '@jest/globals';
 import type { RunnerResult } from 'lighthouse';
 import { accessibilityScoreFromLhr } from '../run-lighthouse';
-import { makeNavigationSample } from '../lighthouse-config';
+import { makeNavigationSample, throttlingFromLighthouseSettings } from '../lighthouse-config';
 
 type Lhr = RunnerResult['lhr'];
 
@@ -38,17 +38,40 @@ describe('accessibilityScoreFromLhr', () => {
   });
 });
 
+describe('throttlingFromLighthouseSettings', () => {
+  const throttling = {
+    rttMs: 42, throughputKbps: 800, requestLatencyMs: 123,
+    downloadThroughputKbps: 1400, uploadThroughputKbps: 600, cpuSlowdownMultiplier: 7,
+  };
+
+  it('records the network settings active for each resolved Lighthouse method', () => {
+    expect(throttlingFromLighthouseSettings({ throttlingMethod: 'simulate', throttling })).toEqual({
+      engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 7, network: { rttMs: 42, throughputKbps: 800 },
+    });
+    expect(throttlingFromLighthouseSettings({ throttlingMethod: 'devtools', throttling })).toEqual({
+      engine: 'Lighthouse', method: 'devtools', cpuSlowdownMultiplier: 7,
+      network: { requestLatencyMs: 123, downloadThroughputKbps: 1400, uploadThroughputKbps: 600 },
+    });
+    expect(throttlingFromLighthouseSettings({ throttlingMethod: 'provided', throttling })).toEqual({
+      engine: 'Lighthouse', method: 'provided', network: {},
+    });
+  });
+});
+
 describe('makeNavigationSample', () => {
+  const throttling = { engine: 'Lighthouse', method: 'provided', network: {} };
+
   it('carries a worst-case score of 0 (not dropped by the conditional spread)', () => {
-    expect(makeNavigationSample([], 0).accessibilityScore).toBe(0);
+    expect(makeNavigationSample([], 0, throttling).accessibilityScore).toBe(0);
   });
 
   it('keeps a real score', () => {
-    expect(makeNavigationSample([], 95).accessibilityScore).toBe(95);
+    expect(makeNavigationSample([], 95, throttling).accessibilityScore).toBe(95);
   });
 
   it('omits the field when there is no score (null -> compare samples)', () => {
-    const sample = makeNavigationSample([], null);
+    const sample = makeNavigationSample([], null, throttling);
+    expect(sample.measurementThrottling).toEqual(throttling);
     expect(sample.accessibilityScore).toBeUndefined();
     expect('accessibilityScore' in sample).toBe(false);
   });
