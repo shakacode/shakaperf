@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
@@ -64,9 +65,9 @@ describe('accessibility report UI filters', () => {
           },
           children: React.createElement(AccessibilityArtifactView, {
             measurements: [{
+              ...executionFixture(),
               latestRun: true,
               measurement: result,
-              viewport: DESKTOP_VIEWPORT,
             }],
           }),
         },
@@ -82,6 +83,7 @@ describe('accessibility report UI filters', () => {
     const html = renderToStaticMarkup(
       React.createElement(AccessibilityArtifactView, {
         measurements: [{
+          ...executionFixture(),
           latestRun: true,
           measurement: accessibilityResult({
             effectiveConfig: {
@@ -94,7 +96,6 @@ describe('accessibility report UI filters', () => {
               violation('color-contrast', ['wcag2aa', 'cat.color']),
             ],
           }),
-          viewport: DESKTOP_VIEWPORT,
         }],
       }),
     );
@@ -152,11 +153,11 @@ describe('accessibility report UI filters', () => {
     const html = renderToStaticMarkup(
       React.createElement(AccessibilityArtifactView, {
         measurements: [{
+          ...executionFixture(),
           latestRun: true,
           measurement: accessibilityResult({
             violations: [violation('button-name', ['wcag2a'])],
           }),
-          viewport: DESKTOP_VIEWPORT,
         }],
       }),
     );
@@ -246,9 +247,9 @@ function reportData(accessibility: AccessibilityResult): ReportData {
       runId: 'run-1',
       viewportArtifactPaths: [],
       outcomes: [{
+        ...executionFixture(),
         kind: 'ok',
         stage: 'accessibility',
-        viewport: DESKTOP_VIEWPORT,
         measurement: accessibility,
       }],
     }],

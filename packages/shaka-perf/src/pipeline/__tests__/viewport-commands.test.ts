@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from './fixtures/execution';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -285,7 +286,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     for (const test of [narrowed, active]) {
       for (const label of ['desktop', 'phone']) {
         mirrorCoverageToNycOutput(coverage, store().resultsRoot, unitIdForTest(test, label));
-        store().writeOutcome(test, label, { kind: 'ok', stage: 'code_coverage' });
+        store().writeOutcome(test, label, { ...executionFixture(), kind: 'ok', stage: 'code_coverage' });
       }
     }
     const mirrors = path.join(store().resultsRoot, '.nyc_output');

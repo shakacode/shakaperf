@@ -5,9 +5,10 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../../../pipeline/__tests__/fixtures/execution';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
+import { PHONE_VIEWPORT } from 'shaka-shared';
 import type { PerfArtifact } from '../../perf';
 import { PerfArtifactView } from '../perf-report';
 
@@ -38,14 +39,14 @@ describe('PerfArtifactView', () => {
       title: 'Performance',
       measurements: [
         {
+          ...executionFixture({ viewport: PHONE_VIEWPORT }),
           latestRun: true,
           measurement: perfWithMetrics([metric('LCP', 'vitals'), metric('js', 'diagnostics')]),
-          viewport: PHONE_VIEWPORT,
         },
         {
+          ...executionFixture(),
           latestRun: true,
           measurement: perfWithMetrics([{ ...metric('FCP', 'vitals'), direction: 'none' }]),
-          viewport: DESKTOP_VIEWPORT,
         },
       ],
     }));
@@ -65,9 +66,9 @@ describe('PerfArtifactView', () => {
     const html = renderToStaticMarkup(createElement(PerfArtifactView, {
       title: 'Performance',
       measurements: [{
+        ...executionFixture(),
         latestRun: true,
         measurement: { timelinePreviewHref: previewHref },
-        viewport: DESKTOP_VIEWPORT,
       }],
     }));
 

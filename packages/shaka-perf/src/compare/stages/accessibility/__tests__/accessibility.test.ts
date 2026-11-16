@@ -35,6 +35,7 @@ jest.mock('sharp', () => jest.fn(() => ({
   metadata: jest.fn(async () => ({ width: 100, height: 80 })),
 })));
 
+import { executionFixture } from '../../../../pipeline/__tests__/fixtures/execution';
 import {
   compareScans,
   projectCompareResultForReport,
@@ -178,11 +179,11 @@ describe('accessibility compare classification', () => {
 
     // An empty element here would render as a blank section inside an
     // otherwise empty card; null lets the report drop both.
-    expect(stage.renderArtifacts([{ measurement, latestRun: true, viewport: DESKTOP_VIEWPORT }])).toBeNull();
+    expect(stage.renderArtifacts([{ ...executionFixture(), measurement, latestRun: true }])).toBeNull();
     expect(stage.renderArtifacts([{
+      ...executionFixture(),
       measurement: { ...measurement, findings: [compareFinding({ ruleId: 'button-name', tags: [] })] },
       latestRun: true,
-      viewport: DESKTOP_VIEWPORT,
     }])).not.toBeNull();
   });
 
