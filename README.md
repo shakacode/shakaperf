@@ -105,11 +105,22 @@ The `shaka-perf-find-bugs` skill turns twin-servers into a QA rig: agents use th
 
 use skill `/deploy shaka-perf shaka-shared`
 
-## License
-[![License: ShakaPerf License](https://img.shields.io/badge/license-ShakaPerf%20License-blue.svg)](./LICENSE.md) 
+## Free & Pro
+[![License: ShakaPerf License 2.0](https://img.shields.io/badge/license-ShakaPerf%20License%202.0-blue.svg)](./LICENSE.md)
 
-TL;DR: free for orgs under 10 people, $1M revenue, and $1M raised, and for charities, schools, and hospitals at any size. Otherwise a [subscription](https://shakaperf.com/pricing).
+**Free for your organization's first year**, for every use: local runs, CI, PR checks, coding agents, private code.
 
-Registration is free, optional, and encouraged for every organization:
-[shakaperf.com/license](https://shakaperf.com/license). Questions:
+**Tell us you use it.** If you are still using ShakaPerf after 30 days, register at
+[shakaperf.com/license](https://shakaperf.com/license). It is free and takes a minute. Nothing phones home.
+
+**ShakaPerf will become paid.** After the first year you need [ShakaStack Pro](https://shakaperf.com/pricing)
+unless you can answer yes to all three: fewer than 10 people, under US $1M revenue in the last twelve
+months, under US $1M raised ever (counting affiliates). Charities, educational institutions and hospitals
+stay free at any size.
+
+**Do not resell it.** No selling, no rebranded fork, no hosted service for others. Forks for
+contributing, internal patches and paid client work are fine.
+
+The [license](./LICENSE.md) that ships with a version never changes. Version 2.0 starts with release
+0.8.0; earlier releases keep the terms they shipped with. Questions:
 [contact@shakacode.com](mailto:contact@shakacode.com).

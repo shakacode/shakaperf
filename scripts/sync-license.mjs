@@ -16,13 +16,28 @@
 // `yarn npm publish` (Yarn does not run npm's `prepublishOnly`). Yarn sets the
 // cwd to the workspace directory, which is where the copy lands.
 
-import { copyFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { copyFileSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = join(repoRoot, 'LICENSE.md');
 const target = resolve(process.cwd(), 'LICENSE.md');
+
+const licenseSha256 = '3e0ceb2dd946312349bff739a26d3797402ab82be0ac6ff92573708d4dc2def3';
+const firstVersion = { 'shaka-perf': [0, 8], 'shaka-shared': [0, 8], 'shaka-bundle-size': [0, 1] };
+
+if (createHash('sha256').update(readFileSync(source)).digest('hex') !== licenseSha256) {
+  throw new Error('LICENSE.md does not match the digest in scripts/sync-license.mjs');
+}
+
+const pkg = JSON.parse(readFileSync(resolve(process.cwd(), 'package.json'), 'utf8'));
+const [major, minor] = pkg.version.split('.').map(Number);
+const [firstMajor, firstMinor] = firstVersion[pkg.name] ?? [0, 0];
+if (major < firstMajor || (major === firstMajor && minor < firstMinor)) {
+  throw new Error(`${pkg.name} ${pkg.version} is older than the first release of this license`);
+}
 
 copyFileSync(source, target);
 

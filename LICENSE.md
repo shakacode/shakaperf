@@ -1,34 +1,57 @@
 # The ShakaPerf License
 
-The ShakaPerf License, version 1.0 — an application of ShakaCode
-Trust-Based Commercial Licensing.
+The ShakaPerf License, version 2.0.
 
 Copyright (c) 2026 ShakaCode LLC, a Hawaii limited liability company
 ("ShakaCode").
 
+SPDX-License-Identifier: LicenseRef-ShakaPerf-2.0
+
 ## Plain-language summary (informative, not part of the terms)
 
-ShakaPerf is source-available and trust-based: no license keys, no
-activation, nothing phones home. Reading, studying, evaluating, education,
-personal projects, and open-source work are free for everyone. Production
-use — including CI, PR checks, and coding-agent workflows — is also free
-if you can answer yes to all three questions: *Do fewer than 10 people
-work for your organization (counting all affiliates)? Was its revenue in
-the last twelve months under US $1M? Has it raised under US $1M in outside
-capital, ever?* Charities, educational institutions, and hospitals are
-free at any size. If any answer is no and you are none of those,
-production use requires a
-paid subscription — see https://shakaperf.com/pricing. Registration is
-free, optional, and open to everyone (Section 8). Once a version ships
-under these terms, those terms govern that version permanently.
+ShakaPerf is source-available and trust-based: no license key, no
+activation, no telemetry, no lockout. Nothing phones home.
+
+- **Free for your first year.** Every use is free for twelve months from
+  the day your organization first uses ShakaPerf: local runs, CI, pull
+  request checks, coding agents, private code, client work. The year is
+  counted once per organization, including all affiliates. It does not
+  restart for a new version, person, team, product, or subsidiary.
+- **Tell us you use it.** If your organization is still using ShakaPerf
+  after 30 days, register at https://shakaperf.com/license. It is free and
+  takes a minute. The software never checks it.
+- **ShakaPerf will become paid.** We say so now, so nobody is surprised.
+  After your first year, your organization needs a paid plan (today that is
+  ShakaStack Pro) unless you can answer yes to all three questions: *Do
+  fewer than 10 people work for your organization (counting all
+  affiliates)? Was its revenue in the last twelve months under US $1M? Has
+  it raised under US $1M in outside capital, ever?* Charities, educational
+  institutions, and hospitals stay free at any size. Personal projects,
+  education, and public open source projects stay free too.
+- **Do not resell it.** You may not sell ShakaPerf, publish a rebranded or
+  competing fork, or run it as a hosted service for others. Forking to
+  contribute, patching it for your own use, and using it in paid client
+  work are all fine.
+- **Released versions keep their terms.** Later versions of ShakaPerf may
+  ship under different terms, including paid ones. The terms that came with
+  the version you have never change.
+
+Paid support and cloud services may be offered separately. Questions:
+contact@shakacode.com.
 
 ## 1. Acceptance
 
-By using the software, you agree to these terms. If you use the software
-on behalf of an organization, you represent that you have authority to
-bind that organization, and "you" includes it.
+By using, copying, modifying, or distributing the Software, you agree to
+these terms. If you do so for an organization, you represent that you have
+authority to bind that organization, and "you" includes it.
 
 ## 2. Definitions
+
+**"Software"** means ShakaPerf as ShakaCode distributes it with this file:
+the packages and source code in the release this file ships with. It
+includes every copy, every modified version, and every work derived from
+its source code, whoever made it and however it was made, including a
+translation or adaptation produced with an automated tool or an AI model.
 
 **"Control"** means ownership of more than 50% of the voting interests of
 an entity, or the power to direct its management or policies, by contract
@@ -36,7 +59,18 @@ or otherwise.
 
 **"Your organization"** means you together with every entity that Controls
 you, that you Control, or that is under common Control with you. Teams,
-departments, and other sub-units are not separate organizations.
+departments, and other sub-units are not separate organizations. An entity
+formed or used mainly to obtain a new Free Period is part of the
+organization that Controls it or that mainly benefits from its use of the
+Software.
+
+**"Use for your organization"** means any use of the Software by your
+organization, or by anyone else at its request or on its behalf, for
+example an employee, a contractor, an agency, a continuous integration
+service, a scheduled job, or an automated or semi-autonomous agent. It
+does not matter whether a person starts, supervises, or approves each run.
+
+**"Free Period"** is defined in Section 4.
 
 **"Small Organization"** means an organization for which all of the
 following are true, counted across the entire organization as defined
@@ -49,10 +83,10 @@ b. its total gross revenue, measured over the twelve months ending with
    the most recently completed calendar quarter, was less than
    US $1,000,000; and
 c. it has received less than US $1,000,000 in aggregate outside capital
-   over its lifetime — equity, tokens, convertible instruments, venture or
-   investor debt, accelerator funding, and grants or donations (other than
+   over its lifetime (equity, tokens, convertible instruments, venture or
+   investor debt, accelerator funding, and grants or donations, other than
    academic research or charitable grants to accredited academic or
-   nonprofit institutions) — from sources other than its own operating
+   nonprofit institutions) from sources other than its own operating
    revenue and its founders' personal funds. Ordinary-course bank and
    trade credit do not count.
 
@@ -69,221 +103,354 @@ other institution whose principal purpose is teaching or academic
 research, whether public or private, including its libraries, research
 institutes, and teaching hospitals.
 
-**"Hospital"** means an institution licensed to provide inpatient
-medical care to the public, whether public, non-profit, or private,
-including its clinics and medical research units.
+**"Hospital"** means an institution licensed to provide inpatient medical
+care to the public, whether public, non-profit, or private, including its
+clinics and medical research units.
 
 Charity, Educational Institution, and Hospital status belongs to the
-qualifying entity and to affiliates that qualify on their own; it does
-not extend to for-profit affiliates, spin-offs, or commercial ventures
-that are not themselves one of these.
+qualifying entity and to affiliates that qualify on their own. It does not
+extend to for-profit affiliates, spin-offs, or commercial ventures that
+are not themselves one of these.
 
-**"Automated workflow"** means any execution of the software initiated by
-software or by an automated or semi-autonomous agent — whether or not a
-human initiates, supervises, or approves individual runs — including
-continuous integration or delivery pipelines, scheduled or recurring jobs,
-and automated pull-request or merge checks. A human personally running the
-software interactively is not an automated workflow.
+**"Paid Plan"** means any one of the following, while it is active and
+held by or for your organization:
 
-**"Production use"** means any use of the software other than a free use
-under Section 4.
+a. a ShakaStack Pro subscription, which covers ShakaPerf for the whole
+   organization with no limit on its size;
+b. any other paid subscription, support plan, or cloud plan that ShakaCode
+   states in writing, in its published plan description or in your order,
+   covers use of ShakaPerf under this license; or
+c. a separate written agreement with ShakaCode that covers the Software.
 
-**"Subscription"** means an active paid ShakaPerf subscription of the tier
-applicable to your organization under ShakaCode's published pricing
-(https://shakaperf.com/pricing) or a separate written agreement with
-ShakaCode. Supporter memberships are not Subscriptions and grant no
-production-use rights.
+A registration, a sponsorship, a donation, or a supporter membership is
+appreciated but is not a Paid Plan.
+
+**"Version line"** means the releases of the Software that share the same
+major and minor version numbers (for example, every 0.8.x release).
 
 ## 3. Copyright grant
 
 ShakaCode grants you a non-exclusive, worldwide, royalty-free license to
-use, copy, modify, and create derivative works of the software, and to
+use, copy, modify, and create derivative works of the Software, and to
 distribute copies and derivative works, in each case only as allowed by
 these terms.
 
-## 4. Free uses
+## 4. The Free Period: one free year for every organization
 
-The following uses are free of charge for anyone, at any organization
-size:
+**What it is.** The Free Period is the twelve months that start on the day
+described under "When it starts" below. During the Free Period, every
+use of the Software by or for your organization is free of charge,
+whatever the organization's size: local runs, continuous integration, pull
+request checks, scheduled jobs, coding-agent workflows, private
+repositories, internal reports, and work for clients. Only Sections 5 and
+7 limit it.
 
-a. reading and studying the source code;
-b. evaluating the software — by any means, including automated and
-   agent-assisted evaluation — for up to 45 days per organization (not per
-   version, person, or installation), solely to decide whether to adopt
-   it;
-c. education and training of people, tutorials, demonstrations, and
+**Counted once.** Each organization has one Free Period, for all time. It
+does not restart, pause, or extend for:
+
+a. a new version, release, or package of the Software, or a modified
+   version or fork of it;
+b. a new person, team, department, project, product, repository, machine,
+   pipeline, or installation;
+c. a new, renamed, reorganized, or successor entity, subsidiary, or
+   affiliate;
+d. a break in use, however long; or
+e. a later version of this license, unless that version expressly says so.
+
+If organizations combine, the earliest start date among them applies to
+the combined organization.
+
+**When it starts.** The Free Period starts on the first day of any Use for
+your organization of a release governed by this version 2.0 or by a later
+version of this license. It starts whether or not you have registered
+(Section 5), and whether or not the people involved had read these terms.
+A use that Section 6(b) to (f) keeps free does not start it. Use of an
+earlier release under that release's own terms does not start or shorten
+it. If
+you cannot establish the exact day, use the earliest day you can
+reasonably establish, for example the first commit that added the Software
+to one of your repositories.
+
+**It replaces the evaluation period.** This version has no separate
+evaluation period. The 45 day evaluation in version 1.0 applies only to
+releases governed by version 1.0.
+
+## 5. Tell us you use it: registration
+
+In return for the Free Period, ShakaCode asks one thing: let us know that
+you use ShakaPerf.
+
+If your organization still uses the Software 30 days after its Free Period
+started, register your organization at https://shakaperf.com/license, or
+by email to contact@shakacode.com, within 60 days of that start.
+Registration is free of charge. One registration covers your whole
+organization. It asks for the organization's name and website, a contact
+person and a working email address, and when you started. ShakaCode uses
+registrations to know who uses ShakaPerf, to tell you about changes to its
+terms and plans, and to get in touch with you about your use.
+
+Registration is not activation. The Software contains no license key, no
+activation, and no usage telemetry, it never checks whether you have
+registered, and it runs the same either way. Registering late cures a
+missed registration in full. Registration does not start, delay, restart,
+or extend the Free Period, and it is not a Paid Plan.
+
+Individuals using the Software only for personal and hobby projects do not
+need to register, and are welcome to.
+
+You must not misrepresent your organization, its size or status, or its
+use of the Software in a registration or in any statement to ShakaCode.
+
+## 6. After the Free Period
+
+After the Free Period ends, Use for your organization requires a Paid
+Plan, unless one of the following applies. These uses stay free of charge
+with no time limit:
+
+a. your organization is a Small Organization, a Charity, an Educational
+   Institution, or a Hospital;
+b. reading and studying the source code;
+c. personal and hobby projects of an individual, not done for an employer,
+   a client, or a business;
+d. education and training of people, tutorials, demonstrations, and
    academic research, in each case not directed at developing or operating
-   your organization's own products or services, and not including
-   training or operating machine-learning models or automated agents;
-d. personal and hobby projects;
-e. developing, testing, and supporting a public open-source project
+   your organization's own products or services;
+e. developing, testing, and supporting a public open source project
    distributed under a license approved by the Open Source Initiative,
-   where the software is run on that project's own publicly available code
+   where the Software is run on that project's own publicly available code
    and primarily for that project's benefit, and not for the development
-   or operation of a proprietary product or service;
-f. generating reports published where the public can access them at a
-   discoverable location for at least one year, provided the publication
-   visibly attributes ShakaCode with a working link, and provided the
-   generation is not part of an Automated workflow or of any workflow that
-   gates software development or release.
+   or operation of a proprietary product or service; or
+f. developing and testing changes that you contribute or propose to
+   ShakaPerf itself.
 
-In addition, **all production use is free of charge for a Small
-Organization, a Charity, an Educational Institution, or a Hospital —
-including use in private repositories, CI, pull-request checks, and
-coding-agent workflows — at any size.** If your organization is one of
-these, nothing in Section 5 applies to you.
+Everything else is paid use after the Free Period, including continuous
+integration, pull request checks, coding-agent workflows, runs started by
+hand, runs on private code, and runs against any environment.
 
-## 5. Paid uses
+**Grace periods.** If your organization stops being a Small Organization
+after its Free Period has ended, its use stays licensed for 60 days after
+the change. If a required Paid Plan expires or is terminated, your use
+stays licensed for 30 days while you renew or wind down.
 
-Production use by an organization that is not a Small Organization, a
-Charity, an Educational Institution, or a Hospital requires a
-Subscription. This includes, without limitation: ongoing use in private
-repositories beyond the Section 4(b) evaluation window, Automated
-workflows, coding-agent or agent-assisted development workflows,
-performance-regression gates, privately hosted or internal reports, and
-services or deliverables built on the software.
+**Client work.** Agencies, consultants, and contractors may use the
+Software in paid work for clients and may charge for that work. Use on a
+client's applications or code at the client's request is Use for the
+client's organization, not for yours: the client's Free Period, its status
+under (a), or its Paid Plan decides whether that use is free. You may rely
+on a client's written statement about these facts. Use for your own
+business is Use for your organization.
 
-In any conflict between Section 4 and this Section 5, use described in
-this Section 5 is production use and is not a free use under Section 4(b),
-(c), or (f).
+**Trust and true-up.** These terms are enforced by trust, not technology.
+You are responsible for determining in good faith whether your use needs a
+Paid Plan. If you find in good faith that past use needed one, getting the
+Paid Plan within 60 days of finding out is full compliance, and no back
+payment is owed for the good-faith period. If your organization used the
+Software without a Paid Plan and without a good-faith basis for treating
+that use as free, ShakaCode may require payment of the applicable fees for
+the period of that use, up to 24 months.
 
-**Client work.** If you use the software to deliver work for a client, the
-use is attributed to the organization whose business the work ultimately
-serves, traced through any intermediaries. That organization's status
-determines whether the use is free or paid, and any required Subscription
-must be held by, or purchased for the benefit of and identifying, that
-organization. You may rely on a client's written self-certification of its
-status.
+## 7. No resale, no commercial forks, no hosted offering
 
-## 6. Subscriptions
+Unless you have a separate written agreement with ShakaCode, you may not:
 
-A Subscription is governed by the subscription terms, order form, or other
-agreement under which it is purchased; if that agreement conflicts with
-these terms, that agreement controls. If a required Subscription expires
-or is terminated, your production use remains licensed for 30 days while
-you renew or wind down. ShakaCode and you may enter a separate written
-agreement that supplements or supersedes these terms.
+a. sell, rent, lease, or license the Software for a fee, or otherwise
+   charge anyone for the Software itself or for access to it;
+b. distribute, publish, or offer the Software under another name or brand,
+   as a separate product or project, or as a replacement for or competitor
+   to ShakaPerf, whether or not you charge for it;
+c. provide the Software or its functionality to third parties as a hosted,
+   managed, embedded, or bundled offering, for example a service or
+   platform that runs performance comparisons, visual regression checks,
+   or audits on other organizations' applications; or
+d. remove, alter, or obscure these terms or any copyright, license, or
+   attribution notice in the Software.
 
-## 7. No hosted or embedded offering
+To be clear, all of the following are allowed:
 
-You may not provide the software or its performance-analysis functionality
-to third parties as a hosted, managed, embedded, or bundled offering
-without a separate written agreement with ShakaCode. Each organization on
-whose code or systems the software is run must independently qualify for
-free use or hold its own Subscription. Use within your own organization is
-not an offering to third parties.
+1. **Forks for contributing.** You may fork the Software's repository, in
+   public or in private, to prepare changes you propose to ShakaPerf, and
+   you may keep that fork.
+2. **Internal modifications.** You may modify the Software for your own
+   organization's use, and share those modifications with contractors who
+   work for you. You do not have to publish them. A modified version is
+   still the Software: these terms, including the one Free Period, apply
+   to it.
+3. **Public patches.** You may publish a modified version free of charge,
+   under these same terms, with all notices kept, clearly marked as a
+   modified version of ShakaPerf that ShakaCode does not publish or
+   support, and not presented as a separate or competing product
+   (Section 7(b)).
+4. **Open source work.** You may use the Software on open source projects
+   as Section 6(e) describes.
+5. **Client work and your own output.** You may charge for services you
+   perform with the Software, such as setup, performance work, audits, and
+   consulting (Section 6). Work that your people perform for an
+   identified client is not a hosted offering. Selling access to a service
+   that runs the Software for whoever signs up is one. Reports and other
+   output that the Software generates about your or your clients'
+   applications are not the Software, and you may use, share, and sell
+   them.
+6. **Your own products.** Using the Software to test or measure a product
+   that you sell does not make that product a prohibited offering.
 
-## 8. Trust, self-certification, and true-up
+Anyone who receives the Software or a modified version from you receives
+their license from ShakaCode under these terms. You cannot grant anyone
+more rights than these terms give you.
 
-These terms are enforced by trust, not technology: the software contains
-no license keys, activation, or usage telemetry. You are responsible for
-determining in good faith whether your use is free or paid. ShakaCode
-encourages every organization — free and paid alike — to register at
-https://shakaperf.com/license (free of charge; a verified email address
-is required). Registration is optional and is never a condition of any
-free use.
+## 8. Support, cloud, and other offerings
 
-If your organization stops qualifying as a Small Organization, your
-production use remains licensed for 60 days after the change; after that,
-continued production use requires a Subscription. No payment is owed for
-use during that window, and the obligation is not avoided by
-re-qualification within 12 months of the change.
+ShakaCode may offer paid support, hosted or cloud services (for example
+faster or managed runs), and other products and services related to
+ShakaPerf. Each is governed by its own terms. This license gives no right
+to any of them, and none of them is required for a use that this license
+allows without a Paid Plan. This license does not oblige ShakaCode to
+provide support, updates, fixes, or any service.
 
-If you discover in good faith that past use required a Subscription,
-purchasing the applicable Subscription within 60 days of discovery is full
-compliance, and no back payment is owed for the good-faith period. If your
-organization made production use requiring a Subscription without a
-good-faith basis for treating it as free, ShakaCode may require payment of
-the applicable subscription fees for the period of that use, up to 24
-months.
+## 9. What will change, and what will not
 
-You must not misrepresent your organization, its size or status, or your
-license status in any registration or in the software's output.
+**ShakaPerf will become a paid product.** ShakaCode states this now so
+that nobody is surprised later:
 
-## 9. Redistribution, notices, and attribution
+a. under this version, use after the Free Period already requires a Paid
+   Plan where Section 6 says so;
+b. later releases of the Software may ship under different terms,
+   including terms under which more organizations pay, payment starts
+   sooner, or the Free Period is shorter or absent. Using such a release
+   means accepting the terms that ship with it; and
+c. ShakaCode may change its plans and prices. A change does not add a fee
+   to a service period you have already paid for.
 
-Copies and derivative works must be licensed under these same terms and
-must retain these terms, all copyright and attribution notices, and the
-SPDX identifier. For free uses, you may not remove, disable, or obscure
-the license-status and attribution content of generated reports, and
-reports shared beyond the person who generated them must retain that
-content. Choosing not to generate reports, or filtering logs, is not a
-violation. Paid Subscriptions may include the right to customize or
-suppress report attribution as stated in the subscription terms.
+**What will not change.** The terms delivered with a release of the
+Software govern that release permanently. ShakaCode cannot change them
+afterwards, and no later version of this license applies to a release you
+already have unless you choose to accept it. Patch and security releases
+of a Version line stay under that line's terms. Later Version lines may be
+offered under different terms.
 
-## 10. Patents
+This Section does not suspend, delay, or weaken any term of this version.
+These terms bind you from your first use. The permanence of a release's
+terms does not extend a Free Period or a Paid Plan: use that needs a Paid
+Plan under Section 6 needs one for as long as the use continues, on any
+release.
+
+**Earlier releases.** Releases of the Software published before this
+version keep the terms they shipped with. If you have such a release, you
+may choose to use it under this version 2.0 instead, from the day you
+choose. If you do, all of these terms apply to that use, and it counts as
+use of a release governed by this version.
+
+## 10. Notices and redistribution
+
+Copies and modified versions that you distribute, as far as Section 7
+allows, must be licensed under these same terms and must keep these terms,
+all copyright and attribution notices, and the SPDX identifier.
+
+## 11. Patents
 
 ShakaCode grants you a license under any patent claims it can license that
-are necessarily infringed by the software, only for uses allowed by these
+are necessarily infringed by the Software, only for uses allowed by these
 terms. This patent license ends immediately if you or your organization
 initiate a patent claim (excluding counterclaims and cross-claims filed in
 response to a patent claim first brought against you) alleging that the
-software infringes a patent.
+Software infringes a patent.
 
-## 11. Trademarks
+## 12. Trademarks
 
 These terms grant no rights in ShakaCode's or ShakaPerf's names, logos, or
-trademarks, except for the attribution required by these terms and
-truthful factual references.
+trademarks, except for the notices these terms require and truthful
+factual references, such as "a modified version of ShakaPerf".
 
-## 12. Per-version terms, breach, and cure
-
-These terms apply per version: the terms delivered with a version of the
-software govern that version permanently, and patch and security releases
-of a version line remain under that line's terms. Later versions may be
-offered under different terms.
+## 13. Breach and cure
 
 If you breach these terms, your license ends automatically 30 days after
-ShakaCode provides written notice of the breach, unless you cure it within
-that period; upon cure, your license is reinstated retroactively. Curing
-continued production use during a lapsed Subscription includes payment of
-the applicable fees for the lapsed period.
+ShakaCode gives you written notice of the breach, unless you cure it
+within that period. On cure, your license is reinstated retroactively.
+Curing a missed registration means registering. Curing use that needed a
+Paid Plan means getting the Paid Plan and paying the applicable fees for
+the period of that use that Section 6 does not forgive.
 
-## 13. Disclaimer and limitation of liability
+## 14. Disclaimer and limitation of liability
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 PURPOSE, TITLE, AND NON-INFRINGEMENT. TO THE MAXIMUM EXTENT PERMITTED BY
 LAW, SHAKACODE WILL NOT BE LIABLE FOR ANY INDIRECT, SPECIAL, INCIDENTAL,
 OR CONSEQUENTIAL DAMAGES ARISING FROM OR RELATED TO THE SOFTWARE OR THESE
-TERMS, AND SHAKACODE'S TOTAL LIABILITY WILL NOT EXCEED THE AMOUNTS YOU
-PAID SHAKACODE FOR THE SOFTWARE IN THE TWELVE MONTHS BEFORE THE CLAIM
-AROSE.
+TERMS, AND SHAKACODE'S TOTAL LIABILITY WILL NOT EXCEED THE GREATER OF
+US $100 AND THE AMOUNTS YOU PAID SHAKACODE FOR THE SOFTWARE IN THE TWELVE
+MONTHS BEFORE THE CLAIM AROSE.
 
-## 14. Assignment, governing law, and miscellaneous
+## 15. Assignment, governing law, and miscellaneous
 
-You may assign these terms, together with any active Subscription, to a
+You may assign these terms, together with any active Paid Plan, to a
 successor in connection with a merger, acquisition, or sale of
-substantially all assets, upon notice to ShakaCode; these terms are
-otherwise non-transferable. These terms are governed by the laws of the
-State of Hawaii, USA, excluding its conflict-of-law rules, with exclusive
+substantially all assets, upon notice to ShakaCode. An assignment does not
+give the successor a new Free Period. These terms are otherwise
+non-transferable. These terms are governed by the laws of the State of
+Hawaii, USA, excluding its conflict-of-law rules, with exclusive
 jurisdiction and venue in the state and federal courts located in
 Honolulu, Hawaii. If a provision of these terms is unenforceable, the
-remainder stays in effect. These terms, together with any subscription
-agreement, are the entire agreement about the software.
+remainder stays in effect. These terms, together with the terms of any
+Paid Plan, are the entire agreement about the Software. If a Paid Plan's
+terms conflict with these terms, the Paid Plan's terms control for the
+organization that holds it.
 
-## 15. Questions and commercial licensing
+## 16. Questions and plans
 
-contact@shakacode.com · https://shakaperf.com/pricing ·
+contact@shakacode.com, registration at https://shakaperf.com/license, Free
+& Pro at https://shakaperf.com/pricing, released license texts at
 https://github.com/shakacode/commercial-licensing
 
 ## Machine-readable summary (informative)
 
 ```yaml
-license_name: The ShakaPerf License 1.0
+license_name: The ShakaPerf License 2.0
+spdx_identifier: LicenseRef-ShakaPerf-2.0
 type: source-available, trust-based
-free_production_use_if_all:
-  max_org_headcount_fte: 10        # exclusive; whole control group
-  max_ttm_revenue_usd: 1000000     # exclusive; trailing 12 months
-  max_lifetime_outside_capital_usd: 1000000  # exclusive
-free_production_use_if_any:
-  - charity                        # recognized charitable / public-benefit org, any size
-  - educational_institution        # school, college, university, any size
-  - hospital                       # licensed inpatient care provider, any size
-always_free: [read, study, evaluate_45_days, education, personal, oss_support, attributed_public_reports_non_automated]
-enforcement: trust  # no keys, no telemetry; registration optional
+free_period:
+  length_months: 12
+  starts: first use by or for the organization, affiliates included
+  covers: every use, including ci, pr_checks, coding_agents, private_code, client_work
+  per: organization            # once, for all time
+  restarts_for: []             # not version, person, team, product, subsidiary, or break in use
+  starts_without_registration: true
+  replaces: evaluate_45_days   # from version 1.0
+registration:
+  required: true               # if still in use 30 days after first use
+  due_days_after_first_use: 60
+  url: https://shakaperf.com/license
+  cost: free
+  checked_by_software: false
+after_free_period:
+  paid_plan_required_unless: [small_organization, charity, educational_institution, hospital]
+  small_organization_if_all:
+    max_org_headcount_fte: 10        # exclusive; whole control group
+    max_ttm_revenue_usd: 1000000     # exclusive; trailing 12 months
+    max_lifetime_outside_capital_usd: 1000000  # exclusive
+  always_free: [read, study, personal, education, oss_projects, contributing_to_shakaperf]
+  paid_plan: [ShakaStack Pro, other plan designated by ShakaCode, written agreement]
+  outgrow_free_line_grace_days: 60
+  paid_plan_lapse_grace_days: 30
+not_allowed: [sell_or_charge_for_the_software, rebranded_or_competing_fork, hosted_or_embedded_offering, remove_notices]
+allowed: [fork_to_contribute, internal_modifications, public_patches_under_same_terms, paid_client_work, selling_your_own_reports]
+future: later versions may ship under paid terms; this version's terms never change
 per_version_terms: true
-pricing_url: https://shakaperf.com/pricing
+version_line: major.minor
+enforcement: trust             # no keys, no activation, no telemetry, no lockout
+separate_offerings: [paid_support, cloud]   # own terms, optional
+plans_url: https://shakaperf.com/pricing
 register_url: https://shakaperf.com/license
 contact: contact@shakacode.com
 ```
+
+## Version history (informative)
+
+Version 2.0 replaces version 1.0 for the releases of ShakaPerf that ship
+with this text. Version 1.0 charged organizations above the free line
+after a 45 day evaluation. Version 2.0 gives every organization one free
+year, asks for registration, forbids resale and commercial forks, and says
+plainly that ShakaPerf will become paid. The free line, the trust model,
+and the rule that a released version keeps its terms carry over. Releases
+shipped under version 1.0 or under the MIT License remain under those
+terms. Every released text is archived byte for byte at
+https://github.com/shakacode/commercial-licensing/tree/main/license/archive
