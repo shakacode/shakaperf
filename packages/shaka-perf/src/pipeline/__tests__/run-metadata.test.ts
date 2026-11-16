@@ -28,7 +28,7 @@ describe('source artifacts at the persistence boundary', () => {
   };
   const source = "abTest('Homepage', {}, async () => {});";
   const metadata: MeasurementMetadata = {
-    command: 'shaka-perf compare', measuredAt: '2026-11-04T10:00:00Z',
+    measuredAt: '2026-11-04T10:00:00Z',
     targets: [],
   };
   let dir: string;

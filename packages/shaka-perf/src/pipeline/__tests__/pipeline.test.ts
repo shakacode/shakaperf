@@ -331,8 +331,8 @@ describe('runPipeline', () => {
     expect(result.testResults[0]!.outcomes.every((outcome) => !outcome.executionDetails.measurementMetadata)).toBe(true);
     for (const outcome of result.testResults[0]!.outcomes) {
       expect(outcome.executionDetails).toEqual(outcome.kind === 'skipped'
-        ? { runId: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourceHref: null, recoveredAfterRetries: false }
-        : { runId: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourceHref: null, taskRetries: 0, taskRetryLimit: 0, recoveredAfterRetries: false });
+        ? { runId: expect.any(String), command: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourceHref: null, recoveredAfterRetries: false }
+        : { runId: expect.any(String), command: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourceHref: null, taskRetries: 0, taskRetryLimit: 0, recoveredAfterRetries: false });
     }
     if (mode === 'derived') expect(run).toHaveBeenCalled();
     else expect(run).not.toHaveBeenCalled();
@@ -493,7 +493,7 @@ describe('runPipeline', () => {
     expect(measured.length).toBeGreaterThan(0);
     for (const outcome of measured) {
       expect(outcome.kind).toBe(exhausted ? 'error' : 'ok');
-      expect(outcome.executionDetails).toEqual({ runId: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourceHref: derived ? null : expect.any(String), taskRetries: 1, taskRetryLimit: 1, recoveredAfterRetries: !exhausted, measurementMetadata: derived ? undefined : expect.objectContaining({ targets: expect.any(Array) }) });
+      expect(outcome.executionDetails).toEqual({ runId: expect.any(String), command: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourceHref: derived ? null : expect.any(String), taskRetries: 1, taskRetryLimit: 1, recoveredAfterRetries: !exhausted, measurementMetadata: derived ? undefined : expect.objectContaining({ targets: expect.any(Array) }) });
       if (derived) expect(outcome.executionDetails.measurementMetadata).toBeUndefined();
       else {
         expect(outcome.executionDetails.measurementMetadata?.targets.map(({ side }) => side)).toEqual(['control', 'experiment']);
@@ -535,8 +535,8 @@ describe('runPipeline', () => {
       const initialPipeline = pipeline();
       const first = await runWithFrozenTest({ cwd, tests: [configuredTest], categories: 'visreg', skipReport: true }, initialPipeline);
       const before = first.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.kind === 'ok')!;
+      expect(before.executionDetails.command).toBe('shaka-perf compare --categories visreg');
       expect(before.executionDetails.measurementMetadata).toEqual(expect.objectContaining({
-        command: 'shaka-perf compare --categories visreg',
         targets: [
           { side: 'control', url: 'http://control.test/', commit },
           { side: 'experiment', url: 'http://experiment.test/', commit },
@@ -556,7 +556,7 @@ describe('runPipeline', () => {
       const second = await runWithFrozenTest({ cwd, tests: [configuredTest], categories: 'perf', restartFromStage: 'perf', skipReport: true }, nextPipeline);
       expect(second.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.executionDetails.viewport.label === before.executionDetails.viewport.label)?.executionDetails.measurementMetadata).toEqual(before.executionDetails.measurementMetadata);
       const perf = second.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.kind === 'ok')!;
-      expect(perf.executionDetails.measurementMetadata?.command).toContain('--restart-from-stage perf');
+      expect(perf.executionDetails.command).toContain('--restart-from-stage perf');
       expect(perf.executionDetails.measurementMetadata?.numberOfMeasurements).toBe(7);
       expect(perf.executionDetails.measurementMetadata).not.toHaveProperty('compareRetries');
       expect(perf.executionDetails.runId).not.toBe(before.executionDetails.runId);

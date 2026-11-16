@@ -6,7 +6,7 @@
  */
 
 import { MeasurementRecorder } from './measurement-recorder';
-import { captureMeasurementStartMetadata, type MeasurementInvocation } from './measurement-start-metadata';
+import { captureMeasurementStartMetadata } from './measurement-start-metadata';
 import { measurementCommand } from './run-metadata';
 import type { MeasurementMetadata } from './run-metadata';
 import * as path from 'path';
@@ -78,7 +78,7 @@ import type { StageSelection } from './pipeline';
 import { testIdForTest, unitIdForTest } from './unit-id';
 import { burnDisplayName, expandTestsForBurn } from './burn';
 import { ArtifactStore, type ArtifactPath } from './artifact-store';
-import type { Outcome, OutcomeKind, ErrorInfo } from './outcome';
+import type { Outcome, OutcomeKind, ErrorInfo, ExecutionDetails } from './outcome';
 import { findFailureArtifacts, findLastAnnotation } from '../stage/stage-failure';
 import { colorizedLogPrefix, testSourcePrefix } from '../visreg/core/util/testContext';
 import { attachStickyStatus, formatPoolProgress } from '../bench/cli/commands/compare/sticky-status';
@@ -119,6 +119,8 @@ function shardKey(
 function resultsRootFor(cwd: string, pipeline: Pipeline): string {
   return path.resolve(cwd, pipeline.artifactRoot ?? '.', `${pipeline.name}-results`);
 }
+
+type RunInvocation = Pick<ExecutionDetails, 'runId' | 'command'>;
 
 interface WorkUnit {
   test: AbTestDefinition;
@@ -665,13 +667,9 @@ async function runConfiguredPipelineWithSelection(
       }
     }
   }
-  let runId: string | undefined;
+  let invocation: RunInvocation | undefined;
   if (!runtime.reportOnly) {
-    runId = new Date(startedAt).toISOString();
-    const invocation = {
-      command: measurementCommand(),
-      sides: pipeline.measurementSides,
-    };
+    invocation = { runId: new Date(startedAt).toISOString(), command: measurementCommand() };
     installConsoleCapture();
     const sticky = attachStickyStatus();
     const runtimePools = new Map<PipelineWorkerPool, RuntimeWorkerPool>();
@@ -734,8 +732,8 @@ async function runConfiguredPipelineWithSelection(
             units,
             store,
             runtime: stageRuntime,
-            runId,
             invocation,
+            measurementSides: pipeline.measurementSides,
             unitUrlOptions: runtime,
             config: runtime.config,
             stageIndex: executableStages.indexOf(step.stage) + 1,
@@ -758,7 +756,7 @@ async function runConfiguredPipelineWithSelection(
       sticky.dispose();
     }
     persistCliSkippedStageOutcomes(
-      runId,
+      invocation,
       store,
       preservedViewportSelection
         ? testsSelectedForMeasurement.filter((test) => measuredTestIds.has(testIdForTest(test)))
@@ -790,7 +788,7 @@ async function runConfiguredPipelineWithSelection(
         store,
         categories,
         reportedStages,
-        measuredRunIdForTest: measuredTestIds.has(testIdForTest(test)) ? runId : undefined,
+        invocationForTest: measuredTestIds.has(testIdForTest(test)) ? invocation : undefined,
         viewportsFilter: preservedViewportSelection,
         config: runtime.config,
       });
@@ -969,8 +967,8 @@ interface ScheduleStageExecutionOptions {
   units: readonly WorkUnit[];
   store: ArtifactStore;
   runtime: StageRuntime;
-  runId: string;
-  invocation: MeasurementInvocation;
+  invocation: RunInvocation;
+  measurementSides: Pipeline['measurementSides'];
   unitUrlOptions: {
     readonly controlURL: string;
     readonly experimentURL: string;
@@ -989,8 +987,8 @@ function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecu
     units,
     store,
     runtime,
-    runId,
     invocation,
+    measurementSides,
     unitUrlOptions,
     config,
     stageIndex,
@@ -1035,8 +1033,8 @@ function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecu
         unit,
         store,
         runtime,
-        runId,
         invocation,
+        measurementSides,
         unitUrlOptions,
         config,
         progress,
@@ -1065,8 +1063,8 @@ interface ExecuteStageForUnitOptions {
   unit: WorkUnit;
   store: ArtifactStore;
   runtime: StageRuntime;
-  runId: string;
-  invocation: MeasurementInvocation;
+  invocation: RunInvocation;
+  measurementSides: Pipeline['measurementSides'];
   unitUrlOptions: {
     readonly controlURL: string;
     readonly experimentURL: string;
@@ -1087,8 +1085,8 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     unit,
     store,
     runtime,
-    runId,
     invocation,
+    measurementSides,
     unitUrlOptions,
     config,
     progress,
@@ -1118,7 +1116,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     progress.error += 1;
     persistStageOutcome(store, unit, logger, {
       kind: 'error',
-      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, recoveredAfterRetries: false },
+      executionDetails: { ...invocation, viewport: unit.viewport, testSourceHref: unit.testSourceHref, recoveredAfterRetries: false },
       stage: stage.name,
       error: errorInfo(err),
     });
@@ -1131,7 +1129,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const reason = !viewportApplies
       ? `${unit.viewport.label} not in ${stage.category}.viewports`
       : `${stage.name} does not apply to ${unit.viewport.label}`;
-    persistStageOutcome(store, unit, logger, skippedOutcome(stage.name, reason, runId, unit.viewport));
+    persistStageOutcome(store, unit, logger, skippedOutcome(stage.name, reason, invocation, unit.viewport));
     progress.skipped += 1;
     renderSticky();
     return;
@@ -1198,7 +1196,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   const taskLimits = runtimePool.taskLimits(ctx.config);
   try {
     if (stage.measuresApplication) {
-      measurementStart = await captureMeasurementStartMetadata(invocation, {
+      measurementStart = await captureMeasurementStartMetadata(measurementSides, {
         control: ctx.controlURL,
         experiment: ctx.experimentURL,
       });
@@ -1229,7 +1227,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       stage: stage.name,
       measurement,
       executionDetails: {
-        runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref,
+        ...invocation, viewport: unit.viewport, testSourceHref: unit.testSourceHref,
         measurementMetadata: measurementStart && recorder.snapshot(measurementStart),
         taskRetries: recorder.taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0,
       },
@@ -1242,7 +1240,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     outcome = {
       kind: 'error',
       executionDetails: {
-        runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref,
+        ...invocation, viewport: unit.viewport, testSourceHref: unit.testSourceHref,
         measurementMetadata: measurementStart && recorder.snapshot(measurementStart),
         taskRetries: recorder.taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false,
       },
@@ -1287,7 +1285,7 @@ function reportedStagesFor(pipeline: Pipeline, stageSelection: StageSelection): 
 }
 
 function persistCliSkippedStageOutcomes(
-  runId: string,
+  invocation: RunInvocation,
   store: ArtifactStore,
   tests: AbTestDefinition[],
   stageSelection: StageSelection,
@@ -1304,7 +1302,7 @@ function persistCliSkippedStageOutcomes(
     for (const { stage, reason } of skippedStages) {
       for (const viewport of viewports) {
         if (viewportsFilter && !viewportsFilter.includes(viewport.label)) continue;
-        store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason, runId, viewport));
+        store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason, invocation, viewport));
       }
     }
   }
@@ -1497,7 +1495,7 @@ function resultBytes(result: Omit<TestResult, 'chips' | 'sorts'> | TestResult): 
 }
 
 interface BuildTestResultOpts {
-  measuredRunIdForTest: string | undefined;
+  invocationForTest: RunInvocation | undefined;
   test: AbTestDefinition;
   pipeline: Pipeline;
   cwd: string;
@@ -1530,18 +1528,18 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
     store,
     categories,
     reportedStages,
-    measuredRunIdForTest,
+    invocationForTest,
     config,
   } = opts;
 
   // A testTypes opt-out does not go through the stage loop because the runner
   // pre-filters those work units, so persist its skipped outcomes here.
-  if (measuredRunIdForTest !== undefined) {
+  if (invocationForTest !== undefined) {
     for (const testType of categories) {
       const categoryStages = pipeline.stages.filter((stage) => stage.category === testType);
       if (!testRunsForType(test, testType)) {
         persistSkippedOutcomesForStages(
-          measuredRunIdForTest,
+          invocationForTest,
           store,
           test,
           categoryStages,
@@ -1665,12 +1663,12 @@ function newestRunId(outcomes: readonly Outcome[]): string | null {
   return newest;
 }
 
-function skippedOutcome(stage: StageName, reason: string, runId: string, viewport: Viewport): Outcome {
-  return { kind: 'skipped', stage, reason, executionDetails: { runId, viewport, testSourceHref: null, recoveredAfterRetries: false } };
+function skippedOutcome(stage: StageName, reason: string, invocation: RunInvocation, viewport: Viewport): Outcome {
+  return { kind: 'skipped', stage, reason, executionDetails: { ...invocation, viewport, testSourceHref: null, recoveredAfterRetries: false } };
 }
 
 function persistSkippedOutcomesForStages(
-  runId: string,
+  invocation: RunInvocation,
   store: ArtifactStore,
   test: AbTestDefinition,
   stages: readonly Stage[],
@@ -1682,7 +1680,7 @@ function persistSkippedOutcomesForStages(
     for (const viewport of viewportsForCategory(config, stage.category)) {
       if (viewportsFilter && !viewportsFilter.includes(viewport.label)) continue;
       if (store.readOutcome(test, viewport.label, stage.name)) continue;
-      store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason, runId, viewport));
+      store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason, invocation, viewport));
     }
   }
 }

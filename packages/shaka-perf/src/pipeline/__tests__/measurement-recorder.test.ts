@@ -8,7 +8,7 @@
 import { MeasurementRecorder } from '../measurement-recorder';
 
 it('keeps start metadata, reported samples, and returned snapshots independent', () => {
-  const start = { command: 'compare', measuredAt: 'start', targets: [] };
+  const start = { measuredAt: 'start', targets: [] };
   const settings = { engine: 'Lighthouse', method: 'simulate', network: { rttMs: 80 } };
   const recorder = new MeasurementRecorder();
   recorder.recordOptions({ throttling: settings, numberOfMeasurements: 2 });
