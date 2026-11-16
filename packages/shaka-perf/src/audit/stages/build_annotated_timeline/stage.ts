@@ -9,7 +9,7 @@ import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { ArrowSpec, FrameAnnotation } from '../../../bench/core';
 import type { Viewport } from '../../../config';
-import type { Outcome } from '../../../pipeline/outcome';
+import type { OutcomeKind } from '../../../pipeline/outcome';
 import type { WorkerPool } from '../../../pipeline/worker-pool';
 import {
   emptyMachineReadableSummary,
@@ -129,8 +129,8 @@ export class BuildAnnotatedTimelineStage implements Stage<BuildAnnotatedTimeline
     screencastHref: true,
   };
 
-  applies(_test: AbTestDefinition, _viewport: Viewport, priorOutcomes: ReadonlyMap<StageName, Outcome>): boolean {
-    return priorOutcomes.get('audit')?.kind === 'ok';
+  applies(_test: AbTestDefinition, _viewport: Viewport, priorOutcomeKinds: ReadonlyMap<StageName, OutcomeKind>): boolean {
+    return priorOutcomeKinds.get('audit') === 'ok';
   }
 
   async run(ctx: TestContext, pool: WorkerPool): Promise<BuildAnnotatedTimelineResult> {

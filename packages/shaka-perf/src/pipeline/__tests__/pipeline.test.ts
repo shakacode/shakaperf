@@ -547,6 +547,7 @@ describe('runPipeline', () => {
       process.argv = ['node', 'shaka-perf', 'compare', '--categories', 'perf', '--restart-from-stage', 'perf'];
       const nextPipeline = pipeline();
       const perfStage = nextPipeline.stages.find((entry) => entry.name === 'perf')!;
+      perfStage.applies = (_test, _viewport, priorOutcomeKinds) => priorOutcomeKinds.get('visreg') === 'ok';
       const nextRun = perfStage.run;
       perfStage.run = async (ctx, pool) => {
         ctx.recordMeasurementOptions({ numberOfMeasurements: ctx.config.perf.numberOfMeasurements });

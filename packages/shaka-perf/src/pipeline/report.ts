@@ -658,7 +658,6 @@ export function writeMachineReport(
           viewport: outcome.executionDetails.viewport,
           artifacts: store.scopeFor(test, viewport.label),
           logger: new ReportSummaryLogger(),
-          priorOutcomes: new Map(),
           runtime,
           controlURL: resolveUrl(
             test.startingPath,

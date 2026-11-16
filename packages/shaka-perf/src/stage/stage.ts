@@ -11,7 +11,7 @@ import type { AbTestDefinition, TestType } from 'shaka-shared';
 import type { AbTestsConfig, Viewport } from '../config';
 import type { ArtifactScope } from '../pipeline/artifact-store';
 import type { MeasurementOptions } from '../pipeline/run-metadata';
-import type { Outcome, ExecutionDetails } from '../pipeline/outcome';
+import type { Outcome, OutcomeKind, ExecutionDetails } from '../pipeline/outcome';
 import type { WorkerPool } from '../pipeline/worker-pool';
 import type { CdpPorts } from '../troubleshoot/debug-session';
 
@@ -93,7 +93,6 @@ export interface StageRenderContext {
   readonly experimentURL: string;
   readonly artifacts: ArtifactScope;
   readonly logger: StageLogger;
-  readonly priorOutcomes: ReadonlyMap<StageName, Outcome>;
   readonly runtime: StageRuntime;
 }
 
@@ -111,9 +110,7 @@ export interface TestContext extends StageRenderContext {
    * Read an earlier stage's full result (its `measurement`) for this same
    * test+viewport. Stages run sequentially per unit, so any stage registered
    * before this one has already persisted its outcome by the time `run` is
-   * called. The in-memory `priorOutcomes` is deliberately lean (`.kind` only,
-   * to keep memory down), so this is how a consequent stage gets the actual
-   * data of a previous stage. Returns `undefined` if that stage didn't run,
+   * called. Returns `undefined` if that stage didn't run,
    * errored, or produced no measurement. `M` is the prior stage's result type,
    * supplied by the caller (e.g. `readPriorResult<AuditResult>('audit')`).
    */
@@ -165,7 +162,7 @@ export interface Stage<M = unknown> {
    * first, e.g. the audit AI summary.
    */
   readonly renderingPriority?: number;
-  applies(test: AbTestDefinition, viewport: Viewport, priorOutcomes: ReadonlyMap<StageName, Outcome>): boolean;
+  applies(test: AbTestDefinition, viewport: Viewport, priorOutcomeKinds: ReadonlyMap<StageName, OutcomeKind>): boolean;
   run(ctx: TestContext, pool: WorkerPool): Promise<M>;
   machineReadableSummary(measurement: M, ctx: StageRenderContext): JsonValue;
   /**
