@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../../pipeline/__tests__/fixtures/execution';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -44,11 +45,13 @@ describe('reusable compare results', () => {
     const resultsRoot = path.join(cwd, 'compare-results');
     const store = new ArtifactStore(resultsRoot);
     store.writeOutcome(test, DESKTOP_VIEWPORT.label, {
+      ...executionFixture(),
       kind: 'ok',
       stage: 'visreg',
       measurement: [{ diffImage: 'diff.png' }],
     });
     store.writeOutcome(test, DESKTOP_VIEWPORT.label, {
+      ...executionFixture(),
       kind: 'ok',
       stage: 'accessibility',
       measurement: { findings: [{ ruleId: 'button-name', status: 'new' }] },

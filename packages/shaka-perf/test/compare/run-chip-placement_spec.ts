@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import fs from 'node:fs';
@@ -74,8 +75,8 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained', ex
       controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test', code: null,
       durationMs: 0, measuredAt: 0, runId: LATEST, chips: [], sorts: [], viewportArtifactPaths: [],
       outcomes: examples.flatMap(({ stage, measurement }) => [
-        { kind: 'ok' as const, stage, measurement, viewport: DESKTOP_VIEWPORT, runId: OLD },
-        { kind: 'ok' as const, stage, measurement, viewport: PHONE_VIEWPORT, runId: LATEST },
+        { ...executionFixture({ runId: OLD }), kind: 'ok' as const, stage, measurement },
+        { ...executionFixture({ viewport: PHONE_VIEWPORT, runId: LATEST }), kind: 'ok' as const, stage, measurement },
       ]),
     }],
   };
@@ -166,8 +167,8 @@ describe('contextual old-run chips', () => {
     try {
       for (const { stage, measurement, heading } of examples) {
         const artifact = renderPersistedStageArtifacts(pipeline, {}, stage, [
-          { measurement, viewport: DESKTOP_VIEWPORT, latestRun: false },
-          { measurement, viewport: PHONE_VIEWPORT, latestRun: true },
+          { ...executionFixture(), measurement, latestRun: false },
+          { ...executionFixture({ viewport: PHONE_VIEWPORT }), measurement, latestRun: true },
         ]);
         await page.setContent(renderToStaticMarkup(artifact));
         expect(await page.locator('.stage-artifact__title').count()).toBe(1);

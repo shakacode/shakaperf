@@ -5,9 +5,10 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../../../pipeline/__tests__/fixtures/execution';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { DESKTOP_VIEWPORT } from 'shaka-shared';
+
 import { AuditStage, type AuditResult } from '../stage';
 
 describe('AuditStage self-contained report stripping', () => {
@@ -61,7 +62,7 @@ describe('AuditStage artifact card', () => {
 function render(measurement: AuditResult): string {
   return renderToStaticMarkup(
     createElement('div', null, new AuditStage({}).renderArtifacts([
-      { measurement, viewport: DESKTOP_VIEWPORT, latestRun: true },
+      { ...executionFixture(), measurement, latestRun: true },
     ])),
   );
 }

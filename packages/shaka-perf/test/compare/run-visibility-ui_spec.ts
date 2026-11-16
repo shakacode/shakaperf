@@ -5,12 +5,13 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium, type Browser } from 'playwright';
-import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
+import { PHONE_VIEWPORT } from 'shaka-shared';
 import { renderReportHtml, type ReportData, type TestResult } from '../../src/pipeline/report';
 
 import { stageSection } from '../../report-shell/src/components/OutcomeSlot';
@@ -27,15 +28,14 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained'): R
     chips: [{ tag: id === 'Older' ? 'broken' : 'passed', text: id === 'Older' ? 'broken' : 'passed', color: 'gray', sortingWeight: 0 }],
     sorts: [], viewportArtifactPaths: [],
     outcomes: [
-      { kind: 'error', stage: 'accessibility', viewport: DESKTOP_VIEWPORT, runId,
+      { ...executionFixture({ runId }), kind: 'error', stage: 'accessibility',
         error: { message: 'Saved result' } },
-      ...(id === 'Older' ? [{ kind: 'error' as const, stage: 'accessibility' as const,
-        viewport: PHONE_VIEWPORT, runId: '2026-09-30T00:00:00.000Z',
+      ...(id === 'Older' ? [{ ...executionFixture({ viewport: PHONE_VIEWPORT, runId: '2026-09-30T00:00:00.000Z' }), kind: 'error' as const, stage: 'accessibility' as const,
         error: { message: 'Another old run' } }] : []),
-      ...(mixed ? [{ kind: 'error' as const, stage: 'accessibility' as const, viewport: PHONE_VIEWPORT,
-        runId: OLD, error: { message: 'Older phone result' } },
-        { kind: 'error' as const, stage: pipelineName === 'audit' ? 'audit' as const : 'visreg' as const,
-          viewport: DESKTOP_VIEWPORT, runId: OLD, error: { message: 'Older stage result' } }] : []),
+      ...(mixed ? [{ ...executionFixture({ viewport: PHONE_VIEWPORT, runId: OLD }), kind: 'error' as const, stage: 'accessibility' as const,
+        error: { message: 'Older phone result' } },
+        { ...executionFixture({ runId: OLD }), kind: 'error' as const, stage: pipelineName === 'audit' ? 'audit' as const : 'visreg' as const,
+          error: { message: 'Older stage result' } }] : []),
     ],
   });
   return {
@@ -62,14 +62,15 @@ describe('latest measurement run visibility', () => {
     const render = jest.spyOn(pipelineArtifacts, 'renderPersistedStageArtifacts').mockReturnValue('artifact');
     const data = fixture('compare', 'full');
     const outcomes = [LATEST, OLD].map((runId) => ({
-      kind: 'ok' as const, stage: 'accessibility' as const, viewport: DESKTOP_VIEWPORT,
-      runId, measurement: { runId },
+      ...executionFixture({ runId }),
+      kind: 'ok' as const, stage: 'accessibility' as const,
+      measurement: { runId },
     }));
     try {
       stageSection(data.meta, outcomes, LATEST);
       expect(render).toHaveBeenLastCalledWith('compare', {}, 'accessibility', [
-        { measurement: { runId: LATEST }, outcome: outcomes[0], viewport: DESKTOP_VIEWPORT, latestRun: true },
-        { measurement: { runId: OLD }, outcome: outcomes[1], viewport: DESKTOP_VIEWPORT, latestRun: false },
+        { ...executionFixture(), measurement: { runId: LATEST }, outcome: outcomes[0], latestRun: true },
+        { ...executionFixture(), measurement: { runId: OLD }, outcome: outcomes[1], latestRun: false },
       ]);
       stageSection(data.meta, outcomes, null);
       expect(render.mock.calls.at(-1)?.[3].map((entry) => entry.latestRun)).toEqual([true, true]);

@@ -5,9 +5,10 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../../pipeline/__tests__/fixtures/execution';
 import { createElement, type ComponentType } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { DESKTOP_VIEWPORT } from 'shaka-shared';
+
 import type { ReportData as PipelineReportData, TestResult } from '../../../pipeline/report';
 import type { BisectReportModel, BisectReportTarget } from '../report-model';
 
@@ -122,10 +123,10 @@ describe('bisect report App rendering', () => {
       ...reportTest(),
       measuredAt: null,
       outcomes: [{
+        ...executionFixture(),
         kind: 'skipped',
         stage: 'visreg',
         reason: 'fixture skip',
-        viewport: DESKTOP_VIEWPORT,
       }],
     }];
 
@@ -185,10 +186,10 @@ describe('bisect report App rendering', () => {
       ...reportTest(),
       measuredAt: null,
       outcomes: [{
+        ...executionFixture(),
         kind: 'skipped',
         stage: 'visreg',
         reason: 'fixture skip',
-        viewport: DESKTOP_VIEWPORT,
       }],
     }];
 
@@ -377,10 +378,10 @@ function testResult({
     measuredAt: Date.UTC(2026, 6, 13),
     runId: null,
     outcomes: stages.map((stage) => ({
+      ...executionFixture(),
       kind: 'error' as const,
       stage,
       error: { message: `${stage} failed` },
-      viewport: DESKTOP_VIEWPORT,
     })),
     viewportArtifactPaths: [],
   };
