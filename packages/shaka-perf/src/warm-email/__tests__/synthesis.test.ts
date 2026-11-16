@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../pipeline/__tests__/fixtures/execution';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -67,6 +68,7 @@ describe('synthesizeSite', () => {
     }));
     fs.mkdirSync(path.join(dir, 'home-phone'));
     fs.writeFileSync(path.join(dir, 'home-phone', 'agent-readiness.json'), JSON.stringify({
+      ...executionFixture(),
       kind: 'ok',
       stage: 'agent-readiness',
       measurement: agentReadinessResult(),
@@ -89,6 +91,7 @@ describe('synthesizeSite', () => {
     }));
     fs.mkdirSync(path.join(dir, 'home-phone'));
     fs.writeFileSync(path.join(dir, 'home-phone', 'agent-readiness.json'), JSON.stringify({
+      ...executionFixture(),
       kind: 'ok',
       stage: 'agent-readiness',
       measurement: agentReadinessResult(signals({ textSample: 'A useful sentence survives synthesis for later consumers.' })),

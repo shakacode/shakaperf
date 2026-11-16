@@ -5,9 +5,10 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { DESKTOP_VIEWPORT } from 'shaka-shared';
+
 import { OutcomeSlot } from '../../report-shell/src/components/OutcomeSlot';
 import type { ReportMeta, ReportOutcome } from '../../src/pipeline/report';
 
@@ -18,9 +19,9 @@ const META = {
 
 function renderFailureMedia(media: string): string {
   const outcome = {
+    ...executionFixture(),
     kind: 'error',
     stage: 'visreg',
-    viewport: DESKTOP_VIEWPORT,
     error: { message: 'boom' },
     failure: { media },
   } as unknown as ReportOutcome;

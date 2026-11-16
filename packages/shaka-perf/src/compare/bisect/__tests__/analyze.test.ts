@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../../pipeline/__tests__/fixtures/execution';
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
 import { assertNoPipelineErrors, discoverTargets, evaluateTargetsAtCommitFromTestResults } from '../analyze';
 import type { BisectTarget, TargetEvaluationAtCommit } from '../types';
@@ -35,9 +36,9 @@ function testResult(
     outcomes: [
       ...(includeVisualAndPerf ? [
         {
+          ...executionFixture({ viewport }),
           kind: 'ok' as const,
           stage: 'visreg',
-          viewport,
           measurement: [{
             selector: '[data-cy="hero-section"]',
             controlImage: 'control.png',
@@ -51,9 +52,9 @@ function testResult(
           }],
         },
         {
+          ...executionFixture({ viewport }),
           kind: 'ok' as const,
           stage: 'perf',
-          viewport,
           measurement: {
             metrics: [{
               label: 'TBT',
@@ -73,9 +74,9 @@ function testResult(
         },
       ] : []),
       {
+        ...executionFixture({ viewport }),
         kind: 'ok' as const,
         stage: 'accessibility',
-        viewport,
         measurement: accessibilityResult(accessibilityStatus),
       },
     ],
@@ -256,9 +257,9 @@ describe('bisect regression analysis', () => {
   it('rejects mixed valid and error outcomes before analysis', () => {
     const result = testResult();
     result.outcomes.push({
+      ...executionFixture({ viewport: PHONE_VIEWPORT }),
       kind: 'error',
       stage: 'visreg',
-      viewport: PHONE_VIEWPORT,
       error: { message: 'phone capture failed' },
     });
 

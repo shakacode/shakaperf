@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../pipeline/__tests__/fixtures/execution';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -264,6 +265,7 @@ function entry(result: AccessibilityCompareResult) {
     viewport: DESKTOP_VIEWPORT,
     measurement: result,
     outcome: {
+      ...executionFixture(),
       kind: 'ok' as const,
       stage: 'accessibility',
       measurement: result,

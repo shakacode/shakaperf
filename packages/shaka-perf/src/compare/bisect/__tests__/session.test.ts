@@ -5,7 +5,8 @@
  * License in LICENSE.md.
  */
 
-import { DESKTOP_VIEWPORT, type AbTestDefinition } from 'shaka-shared';
+import { executionFixture } from '../../../pipeline/__tests__/fixtures/execution';
+import { type AbTestDefinition } from 'shaka-shared';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -94,9 +95,9 @@ function resultWithVisualDiff(diffImage: string | null): TestResult {
     runId: null,
     viewportArtifactPaths: [],
     outcomes: [{
+      ...executionFixture(),
       kind: 'ok',
       stage: 'visreg',
-      viewport: DESKTOP_VIEWPORT,
       measurement: [{
         selector: 'document',
         controlImage: 'control.png',
@@ -128,9 +129,9 @@ function resultForTest(
 function resultWithVisualDiffAndError(diffImage: string | null): TestResult {
   const result = resultWithVisualDiff(diffImage);
   result.outcomes.push({
+    ...executionFixture(),
     kind: 'error',
     stage: 'visreg',
-    viewport: DESKTOP_VIEWPORT,
     error: { message: 'capture failed after one selector succeeded' },
   });
   return result;

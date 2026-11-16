@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import { createServer, type Server } from 'node:http';
 import { chromium, type Browser, type Page } from 'playwright';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
@@ -156,8 +157,9 @@ function testResult(id: string, runId: string): TestResult {
     code: null, chips: [], sorts: [], durationMs: 1000,
     measuredAt: 1_790_000_000_000, runId, viewportArtifactPaths: [],
     outcomes: [{
-      kind: 'error', stage: 'visreg', viewport: DESKTOP_VIEWPORT,
-      error: { message: 'Screenshot capture failed' }, runId,
+      ...executionFixture({ runId }),
+      kind: 'error', stage: 'visreg',
+      error: { message: 'Screenshot capture failed' },
     }],
   };
 }

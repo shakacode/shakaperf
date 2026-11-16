@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -458,6 +459,7 @@ function reportTest(
     runId: null,
     outcomes: stages.map((stage) => stage === 'visreg' && id === 'homepage-card'
       ? ({
+        ...executionFixture(),
         kind: 'ok' as const,
         stage,
         measurement: [{
@@ -471,13 +473,12 @@ function reportTest(
           diffBbox: null,
           savedByRetries: false,
         }],
-        viewport: DESKTOP_VIEWPORT,
       })
       : ({
+        ...executionFixture(),
         kind: 'error' as const,
         stage,
         error: { message: `${stage} fixture outcome` },
-        viewport: DESKTOP_VIEWPORT,
       })),
     viewportArtifactPaths: [],
   };
