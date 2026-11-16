@@ -7,13 +7,8 @@
 
 import { measuredCommit, type MeasurementSide, type MeasurementMetadata } from './run-metadata';
 
-export interface MeasurementInvocation {
-  readonly command: string;
-  readonly sides: readonly MeasurementSide[];
-}
-
 export async function captureMeasurementStartMetadata(
-  { command, sides }: MeasurementInvocation,
+  sides: readonly MeasurementSide[],
   urls: Readonly<Record<MeasurementSide, string>>,
 ): Promise<MeasurementMetadata> {
   const measuredAt = new Date().toISOString();
@@ -21,5 +16,5 @@ export async function captureMeasurementStartMetadata(
     const url = urls[side];
     return { side, url, commit: await measuredCommit(url) };
   }));
-  return { command, measuredAt, targets };
+  return { measuredAt, targets };
 }

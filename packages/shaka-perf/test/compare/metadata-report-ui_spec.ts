@@ -177,8 +177,9 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
   });
 
   it('copies the newest saved command even when outcomes arrive in reverse time order', async () => {
-    const latest = data.tests[0]!.outcomes[1]!.executionDetails.measurementMetadata!;
-    latest.command = `shaka-perf ${pipeline} --filter 'Homepage' --categories accessibility`;
+    const latest = data.tests[0]!.outcomes[1]!;
+    const command = `shaka-perf ${pipeline} --filter 'Homepage' --categories accessibility`;
+    latest.executionDetails = { ...latest.executionDetails, command };
     data.tests[0]!.outcomes.reverse();
     await page.reload();
     await page.evaluate(() => {
@@ -187,10 +188,10 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     const metadata = page.locator('[data-report-test-id="homepage"] .card__metadata');
     await metadata.locator('summary').first().click();
     await metadata.getByRole('button', { name: 'command', exact: true }).click();
-    expect(await metadata.getByLabel('Latest command').inputValue()).toBe(latest.command);
+    expect(await metadata.getByLabel('Latest command').inputValue()).toBe(command);
     await metadata.getByRole('button', { name: 'Copy command' }).click();
     await page.waitForFunction(() => document.body.dataset.copied !== undefined);
-    expect(await page.locator('body').getAttribute('data-copied')).toBe(latest.command);
+    expect(await page.locator('body').getAttribute('data-copied')).toBe(command);
     const legacy = page.locator('[data-report-test-id="legacy"] .card__metadata');
     await legacy.locator('summary').first().click();
     expect(await legacy.getByText('Latest command', { exact: true }).count()).toBe(0);

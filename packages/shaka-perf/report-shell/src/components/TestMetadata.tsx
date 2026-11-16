@@ -6,6 +6,7 @@
  */
 
 import { useId, useState, type ReactNode } from 'react';
+import type { ExecutionDetails } from '../../../src/pipeline/outcome';
 import { SourceText } from './SourceText';
 import type { ReportMeta, TestResult } from '../types';
 import { MeasurementCommand, RunCommits } from './RunDetails';
@@ -33,8 +34,8 @@ function formatMeasuredAt(measuredAt: number | null): string | null {
   return `${pluralize(days, 'day')} ${pluralize(hours, 'hour')} ago`;
 }
 
-export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExpanded, defaultExpanded = false, variant = 'card', actions, children, testSourceHref }: {
-  testSourceHref: string | null;
+export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExpanded, defaultExpanded = false, variant = 'card', actions, children, executionDetails }: {
+  executionDetails: ExecutionDetails | undefined;
   meta: ReportMeta;
   test: TestResult;
   expanded?: boolean;
@@ -50,13 +51,11 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
   const panelId = useId();
   const viewports = [...new Set(test.outcomes.map((outcome) => outcome.executionDetails.viewport.label))];
   const troubleshoot = pipelineTroubleshootCommands(meta, test.name, viewports);
-  // Outcome order follows stages/viewports, not measurement chronology.
-  const latest = test.outcomes.flatMap(({ executionDetails }) => executionDetails.measurementMetadata ?? [])
-    .sort((a, b) => (Date.parse(b.measuredAt) || 0) - (Date.parse(a.measuredAt) || 0))[0];
+  const testSourceHref = executionDetails?.testSourceHref ?? null;
   const sections = [
-    { id: 'command', label: 'command', content: latest ? <>
+    { id: 'command', label: 'command', content: executionDetails?.measurementMetadata ? <>
       <div className="run-details__label">Latest command</div>
-      <MeasurementCommand key={latest.command} command={latest.command} compact />
+      <MeasurementCommand key={executionDetails.command} command={executionDetails.command} compact />
     </> : null },
     { id: 'source', label: 'test source', content: <SourceText key={testSourceHref} href={testSourceHref} /> },
     { id: 'troubleshoot', label: 'troubleshoot', content: troubleshoot.length ? <pre className="card__code">{troubleshoot.join('\n')}</pre> : null },

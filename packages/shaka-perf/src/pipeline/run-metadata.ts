@@ -27,7 +27,6 @@ export interface MeasurementThrottling {
   network: Record<string, number>;
 }
 export interface MeasurementMetadata {
-  command: string;
   measuredAt: string;
   targets: MeasurementTarget[];
   throttling?: MeasurementThrottling;
