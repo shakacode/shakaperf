@@ -68,7 +68,6 @@ function chipsFor(result: AccessibilityResult) {
       audit: [],
       accessibility: [{
         stage: 'accessibility',
-        viewport: DESKTOP_VIEWPORT,
         measurement: result,
         outcome: {
           ...executionFixture(),

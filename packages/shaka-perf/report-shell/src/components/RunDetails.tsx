@@ -7,15 +7,16 @@
 
 import { useRef, useState } from 'react';
 import type { ReportOutcome } from '../types';
-import type { LoadedRunMetadata } from '../../../src/pipeline/run-metadata';
+import type { ExecutionDetails } from '../../../src/pipeline/outcome';
+import type { RunMetadata } from '../../../src/pipeline/run-metadata';
 
 export function savedRunDetails(outcomes: readonly ReportOutcome[]) {
   const groups = new Map<string, Entry[]>();
   for (const outcome of outcomes) {
     if (!outcome.runMetadata) continue;
-    const label = outcome.viewport.label;
+    const label = outcome.executionDetails.viewport.label;
     const entries = groups.get(label) ?? [];
-    entries.push({ stage: outcome.stage, metadata: outcome.runMetadata });
+    entries.push({ stage: outcome.stage, metadata: outcome.runMetadata, executionDetails: outcome.executionDetails });
     groups.set(label, entries);
   }
   return [...groups];
@@ -60,7 +61,7 @@ export function MeasurementCommand({ command, compact = false, autoSize = false,
   );
 }
 
-type Entry = { stage: string; metadata: LoadedRunMetadata };
+type Entry = { stage: string; metadata: RunMetadata; executionDetails: ExecutionDetails };
 
 function groupValues<T, V>(items: readonly T[], select: (item: T) => V) {
   const groups = new Map<string, { value: V; items: T[] }>();
@@ -78,13 +79,13 @@ function unique(values: string[]) { return [...new Set(values)]; }
 
 function Scope({ items, entries, runs, always = false }: { items: Entry[]; entries: Entry[]; runs: string[]; always?: boolean }) {
   if (!always && new Set(items).size === entries.length) return null;
-  const scopes = groupValues(items, ({ stage, metadata }) => [metadata.runId, stage]);
+  const scopes = groupValues(items, ({ stage, executionDetails }) => [executionDetails.runId, stage]);
   return <span className="run-details__scope">{scopes.map(({ value: [runId, stage], items }) =>
-    `${runs.length > 1 ? `Run ${runs.indexOf(runId!) + 1} / ` : ''}${stage} · ${unique(items.map((item) => item.metadata.viewport.label)).join(', ')}`,
+    `${runs.length > 1 ? `Run ${runs.indexOf(runId!) + 1} / ` : ''}${stage} · ${unique(items.map((item) => item.executionDetails.viewport.label)).join(', ')}`,
   ).join(' / ')}</span>;
 }
 
-function CommitDetails({ commit }: { commit: Pick<NonNullable<LoadedRunMetadata['targets'][number]['commit']>, 'sha' | 'message'> }) {
+function CommitDetails({ commit }: { commit: Pick<NonNullable<RunMetadata['targets'][number]['commit']>, 'sha' | 'message'> }) {
   const [subject = '', ...body] = commit.message.split('\n');
   const heading = <><code title={commit.sha}>{commit.sha.slice(0, 8)}</code><span>{subject || (body.join('\n').trim() ? 'Commit message' : 'Empty commit message')}</span></>;
   if (!body.join('\n').trim()) return <div className="run-details__commit"><div className="run-details__commit-heading">{heading}</div></div>;
@@ -98,7 +99,7 @@ function CommitDetails({ commit }: { commit: Pick<NonNullable<LoadedRunMetadata[
 
 export function RunCommits({ outcomes, side }: { outcomes: readonly ReportOutcome[]; side?: 'control' | 'experiment' }) {
   const entries = savedRunDetails(outcomes).flatMap(([, items]) => items);
-  const runs = unique(entries.map(({ metadata }) => metadata.runId));
+  const runs = unique(entries.map(({ executionDetails }) => executionDetails.runId));
   const targets = entries.flatMap((entry) => entry.metadata.targets.map((target) => ({ entry, target })));
   const commits = groupValues(targets, ({ target }) => ({
     commit: target.commit ? { sha: target.commit.sha, message: target.commit.message } : null,

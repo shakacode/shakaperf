@@ -84,7 +84,6 @@ export type Status =
   | 'skipped';
 
 export type ReportOutcome = Outcome & {
-  viewport: Viewport;
   /** Saved result outside the current measurement configuration; revealed by Show old runs. */
   outsideCurrentConfig?: boolean;
 };
@@ -412,7 +411,7 @@ function inlineArtifactPaths(
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
         key,
-        key === 'runMetadata' ? item : inlineArtifactPaths(item, resultsRoot, artifactDictionary),
+        key === 'runMetadata' || key === 'executionDetails' ? item : inlineArtifactPaths(item, resultsRoot, artifactDictionary),
       ]),
     );
   }
@@ -471,7 +470,7 @@ function collectArtifactPaths(
     for (const [key, item] of Object.entries(value)) {
       // Metadata paths are provenance, not display assets. Source text is
       // already resolved once into TestResult.code by the report builder.
-      if (key === 'runMetadata') continue;
+      if (key === 'runMetadata' || key === 'executionDetails') continue;
       collectArtifactPaths(item, resultsRoot, artifactPaths);
     }
   }
@@ -645,8 +644,6 @@ export function writeMachineReport(
       startingPath: test.startingPath,
       viewport: {
         label: viewport.label,
-        width: viewport.width,
-        height: viewport.height,
       },
       chips: chipsByTest.get(test) ?? [],
       outcomes: outcomes.map((outcome) => ({
@@ -656,9 +653,10 @@ export function writeMachineReport(
         reason: outcome.reason,
         logs: outcome.logs,
         runMetadata: outcome.runMetadata,
+        executionDetails: outcome.executionDetails,
         summary: machineSummaryForOutcome(stagesByName, outcome, {
           test,
-          viewport,
+          viewport: outcome.executionDetails.viewport,
           artifacts: store.scopeFor(test, viewport.label),
           logger: new ReportSummaryLogger(),
           priorOutcomes: new Map(),

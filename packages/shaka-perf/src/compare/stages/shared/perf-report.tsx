@@ -41,7 +41,7 @@ export function PerfArtifactView({
   const perfs = measurements
     .map((entry) => ({
       perf: entry.measurement,
-      viewportLabel: entry.viewport.label,
+      viewportLabel: entry.executionDetails.viewport.label,
       latestRun: entry.latestRun,
     }))
     .filter(({ perf }) => hasRenderableData(perf));

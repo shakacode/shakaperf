@@ -31,8 +31,8 @@ export function CodeCoverageArtifactView({
       <StageArtifactTitle title="code coverage" />
       <div className="stage-stack">
         {measurements.map((entry, index) => (
-          <div key={`${entry.viewport.label}-${index}`} className="stage-stack__viewport coverage-preview">
-            <ReportHeading className="stage-section__head" level={5} title={entry.viewport.label} badge={<OldRunChip latestRun={entry.latestRun} />} />
+          <div key={`${entry.executionDetails.viewport.label}-${index}`} className="stage-stack__viewport coverage-preview">
+            <ReportHeading className="stage-section__head" level={5} title={entry.executionDetails.viewport.label} badge={<OldRunChip latestRun={entry.latestRun} />} />
             <CoveragePreview measurement={entry.measurement} />
           </div>
         ))}

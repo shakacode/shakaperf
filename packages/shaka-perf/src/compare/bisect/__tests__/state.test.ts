@@ -242,7 +242,7 @@ describe('persisted bad-ref report input', () => {
 
   it('writes atomically and validates the saved digest', () => {
     const filePath = path.join(rootDir, 'bad-ref-tests.json');
-    const tests = [{ id: 'homepage', name: 'Homepage', filePath: 'tests/home.abtest.ts' }];
+    const tests = [{ id: 'homepage', name: 'Homepage', filePath: 'tests/home.abtest.ts', outcomes: [] }];
 
     const sha256 = writeBadRefTestsAtomic(filePath, tests as never);
 
