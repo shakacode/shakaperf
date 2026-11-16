@@ -9,7 +9,7 @@ import type { ReactNode } from 'react';
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { PerfConfig, Viewport } from '../../../config';
-import type { Outcome } from '../../../pipeline/outcome';
+import type { OutcomeKind } from '../../../pipeline/outcome';
 import type {
   JsonValue,
   Stage,
@@ -38,7 +38,7 @@ export interface PerfEngineStageOptions<M> {
   applies?(
     test: AbTestDefinition,
     viewport: Viewport,
-    priorOutcomes: ReadonlyMap<StageName, Outcome>,
+    priorOutcomeKinds: ReadonlyMap<StageName, OutcomeKind>,
   ): boolean;
   machineReadableSummary(measurement: M, ctx: StageRenderContext): JsonValue;
 }
@@ -67,9 +67,9 @@ export class PerfEngineStage<M> implements Stage<M> {
   applies(
     test: AbTestDefinition,
     viewport: Viewport,
-    priorOutcomes: ReadonlyMap<StageName, Outcome>,
+    priorOutcomeKinds: ReadonlyMap<StageName, OutcomeKind>,
   ): boolean {
-    return this.options.applies?.(test, viewport, priorOutcomes) ?? true;
+    return this.options.applies?.(test, viewport, priorOutcomeKinds) ?? true;
   }
 
   async run(

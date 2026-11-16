@@ -510,7 +510,6 @@ function fakeContext(
       log: jest.fn(),
       flush: jest.fn(() => ''),
     },
-    priorOutcomes: new Map(),
     runtime: {
       ...runtime,
       resultsRoot: runtime.resultsRoot ?? '/tmp/shaka-test',

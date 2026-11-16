@@ -8,7 +8,7 @@
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { Viewport } from '../../../config';
-import type { Outcome } from '../../../pipeline/outcome';
+import type { OutcomeKind } from '../../../pipeline/outcome';
 import {
   type JsonValue,
   type Stage,
@@ -41,9 +41,9 @@ export class AiSummaryStage implements Stage<AiSummaryResult> {
   // Runs last, renders first.
   readonly renderingPriority = 100;
 
-  applies(_test: AbTestDefinition, _viewport: Viewport, priorOutcomes: ReadonlyMap<StageName, Outcome>): boolean {
+  applies(_test: AbTestDefinition, _viewport: Viewport, priorOutcomeKinds: ReadonlyMap<StageName, OutcomeKind>): boolean {
     // Nothing to summarise unless the audit produced metrics.
-    return priorOutcomes.get('audit')?.kind === 'ok';
+    return priorOutcomeKinds.get('audit') === 'ok';
   }
 
   async run(ctx: TestContext, pool: WorkerPool): Promise<AiSummaryResult> {
