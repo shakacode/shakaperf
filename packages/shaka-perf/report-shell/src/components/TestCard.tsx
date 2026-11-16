@@ -176,6 +176,7 @@ export function TestCard({
   }, [expanded]);
   const storageKey = reviewedKey(meta, test);
   const [reviewed, setReviewed] = useState(() => readReviewed(storageKey));
+  const latestSourceHref = latestMeasuredSourceHref(test.outcomes);
   const logs = logsForTest(test, visibleStages);
   const groups = outcomeGroups(test, visibleStages);
   const chips = [...test.chips].sort(compareChips);
@@ -248,7 +249,7 @@ export function TestCard({
           </div>
         </details>
 
-        <TestMetadata meta={meta} test={test} testSourceHref={latestMeasuredSourceHref(test.outcomes)} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} actions={<>
+        <TestMetadata meta={meta} test={test} testSourceHref={latestSourceHref} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} actions={<>
             {logs.length > 0 ? (
               <button
                 type="button"
@@ -293,7 +294,7 @@ export function TestCard({
         open={logsOpen}
         onClose={() => setLogsOpen(false)}
         title={<span className="ui-dialog__title-text">measurement logs · {test.name}</span>}
-        meta={<TestMetadata meta={meta} test={test} testSourceHref={null} defaultExpanded variant="dialog" />}
+        meta={<TestMetadata meta={meta} test={test} testSourceHref={latestSourceHref} defaultExpanded variant="dialog" />}
       >
         <div className="card-logs">
           {logs.map((log, index) => (

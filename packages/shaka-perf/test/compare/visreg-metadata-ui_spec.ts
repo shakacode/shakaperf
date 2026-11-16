@@ -172,6 +172,11 @@ describe('visual preview metadata', () => {
       await dialog.getByRole('button', { name: 'test source', exact: true }).click();
       await dialog.locator('.card__code').filter({ hasText: "abTest('Homepage'" }).waitFor();
       expect(await dialog.getByRole('combobox').count()).toBe(0);
+      await dialog.getByRole('button', { name: 'logs', exact: true }).click();
+      const logs = page.getByRole('dialog', { name: 'measurement logs' });
+      await logs.getByRole('button', { name: 'test source', exact: true }).click();
+      await logs.locator('.card__code').filter({ hasText: 'newer phone source' }).waitFor();
+      await logs.getByRole('button', { name: 'close', exact: true }).click();
       await dialog.getByRole('button', { name: 'close', exact: true }).click();
       await page.locator('.artifact-card--single').nth(1).getByRole('button').click();
       dialog = page.getByRole('dialog');
