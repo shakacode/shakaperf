@@ -40,7 +40,6 @@ function fixture() {
   }, {
     ...saved,
     stage: 'perf',
-    measurement: { metrics: [] },
     executionDetails: { ...saved.executionDetails, runId: '2026-10-21T20:54:53.891Z', measurementMetadata: {
       ...saved.executionDetails.measurementMetadata!,
       measuredAt: '2026-10-21T20:54:53.891Z',
@@ -50,6 +49,7 @@ function fixture() {
         commit: { sha: 'abcdef1234567890', message: 'Unrelated newer perf commit', source: 'fixture' },
       })),
     } },
+    measurement: { metrics: [] },
   }];
   data.tests = [test];
   return data;
@@ -71,11 +71,21 @@ describe('visual preview metadata', () => {
         const test = responseData.tests[0]!;
         const desktop = test.outcomes[0]!;
         const measurement = desktop.measurement as Record<string, unknown>[];
-        test.outcomes.push({
+        const phoneRunId = '2026-10-22T00:00:00Z';
+        const phoneSource = 'newer phone source <script>window.sourceExecuted=true</script>';
+        const phone = {
           ...desktop,
-          executionDetails: { ...desktop.executionDetails, testSourceHref: params.has('missing') ? null : 'data:text/plain;charset=utf-8,' + encodeURIComponent('older phone source <script>window.sourceExecuted=true</script>'), viewport: PHONE_VIEWPORT, runId: '2026-01-01T00:00:00Z', recoveredAfterRetries: false, taskRetries: 0, taskRetryLimit: 8 },
+          executionDetails: {
+            ...desktop.executionDetails, measurementMetadata: { ...desktop.executionDetails.measurementMetadata!, measuredAt: phoneRunId }, runId: phoneRunId, viewport: PHONE_VIEWPORT,
+            testSourceHref: params.has('missing') ? null : 'data:text/plain;charset=utf-8,' + encodeURIComponent(phoneSource),
+            recoveredAfterRetries: false, taskRetries: 0, taskRetryLimit: 8,
+          },
           measurement: [{ ...measurement[0], compareAttempts: 1, savedByRetries: false }],
-        });
+        };
+        test.outcomes = [desktop, phone, {
+          kind: 'skipped', stage: 'perf', reason: 'Not selected',
+          executionDetails: { ...desktop.executionDetails, measurementMetadata: undefined, runId: '2026-10-23T00:00:00Z', testSourceHref: null },
+        }];
       }
       if (params.has('perf')) {
         responseData.tests[0]!.outcomes[0]!.stage = 'perf-low-noise';
@@ -148,17 +158,15 @@ describe('visual preview metadata', () => {
       await page.close();
     }
   });
-  it.each(['full', 'self-contained'])('selects card snapshots and scopes dialog source in %s reports', async mode => {
+  it.each(['full', 'self-contained'])('shows the latest measured card source and each preview’s own source in %s reports', async mode => {
     const page = await browser.newPage();
     try {
       await page.goto(`${url}?mixed=1&mode=${mode}`);
       const cardMetadata = page.locator('.card__metadata-row > .card__metadata');
       await cardMetadata.locator('summary').click();
       await cardMetadata.getByRole('button', { name: 'test source', exact: true }).click();
-      const selector = cardMetadata.getByRole('combobox', { name: 'Source snapshot' });
-      expect(await selector.locator('option').count()).toBe(2);
-      await selector.selectOption({ index: 1 });
-      await cardMetadata.locator('.card__code').filter({ hasText: 'older phone source' }).waitFor();
+      expect(await cardMetadata.getByRole('combobox').count()).toBe(0);
+      await cardMetadata.locator('.card__code').filter({ hasText: 'newer phone source' }).waitFor();
       await page.locator('.artifact-card--single').nth(0).getByRole('button').click();
       let dialog = page.getByRole('dialog');
       await dialog.getByRole('button', { name: 'test source', exact: true }).click();
@@ -168,9 +176,12 @@ describe('visual preview metadata', () => {
       await page.locator('.artifact-card--single').nth(1).getByRole('button').click();
       dialog = page.getByRole('dialog');
       await dialog.getByRole('button', { name: 'test source', exact: true }).click();
-      await dialog.locator('.card__code').filter({ hasText: 'older phone source <script>' }).waitFor();
+      await dialog.locator('.card__code').filter({ hasText: 'newer phone source <script>' }).waitFor();
       expect(await page.evaluate(() => (window as unknown as { sourceExecuted?: boolean }).sourceExecuted)).toBeUndefined();
       await page.goto(`${url}?mixed=1&missing=1&mode=${mode}`);
+      await cardMetadata.locator('summary').click();
+      await cardMetadata.getByRole('button', { name: 'test source', exact: true }).click();
+      expect(await cardMetadata.textContent()).toContain('No source snapshot was captured.');
       await page.locator('.artifact-card--single').nth(1).getByRole('button').click();
       dialog = page.getByRole('dialog');
       await dialog.getByRole('button', { name: 'test source', exact: true }).click();
@@ -205,7 +216,7 @@ describe('visual preview metadata', () => {
 
   it('does not borrow a newer sibling result for a legacy visual artifact', async () => {
     const outcome = data.tests[0]!.outcomes[0]!;
-    outcome.executionDetails = { ...outcome.executionDetails, measurementMetadata: undefined };
+    outcome.executionDetails = { ...outcome.executionDetails, measurementMetadata: undefined, testSourceHref: null };
     const page = await browser.newPage();
     try {
       await page.goto(url);
@@ -214,7 +225,8 @@ describe('visual preview metadata', () => {
       expect(await metadata.getByRole('button', { name: 'command', exact: true }).count()).toBe(0);
       expect(await metadata.locator('.card__target-commits').allTextContents()).toEqual(['', '']);
       expect(await metadata.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(0);
-      expect(await metadata.getByRole('button', { name: 'test source', exact: true }).isVisible()).toBe(true);
+      await metadata.getByRole('button', { name: 'test source', exact: true }).click();
+      expect(await metadata.textContent()).toContain('No source snapshot was captured.');
     } finally {
       await page.close();
     }

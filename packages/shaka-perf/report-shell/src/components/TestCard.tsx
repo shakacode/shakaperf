@@ -50,6 +50,16 @@ function logsForTest(test: TestResult, visibleStages: ReadonlySet<string>): LogE
   return logs;
 }
 
+function latestMeasuredSourceHref(outcomes: readonly ReportOutcome[]): string | null {
+  let newest: ReportOutcome | undefined;
+  for (const outcome of outcomes) {
+    if (outcome.executionDetails.measurementMetadata && (!newest || outcome.executionDetails.runId > newest.executionDetails.runId)) {
+      newest = outcome;
+    }
+  }
+  return newest?.executionDetails.testSourceHref ?? null;
+}
+
 function outcomeGroups(test: TestResult, visibleStages: ReadonlySet<string>): ReportOutcome[][] {
   const groups: ReportOutcome[][] = [];
   const byStage = new Map<string, ReportOutcome[]>();
@@ -238,7 +248,7 @@ export function TestCard({
           </div>
         </details>
 
-        <TestMetadata meta={meta} test={test} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} actions={<>
+        <TestMetadata meta={meta} test={test} testSourceHref={latestMeasuredSourceHref(test.outcomes)} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} actions={<>
             {logs.length > 0 ? (
               <button
                 type="button"
@@ -258,7 +268,7 @@ export function TestCard({
               renderMetadata={(fields, outcome) => {
                 const selected = test.outcomes.find((candidate) => candidate === outcome);
                 const scopedTest = { ...test, outcomes: selected ? [selected] : [] };
-                return <TestMetadata meta={meta} test={scopedTest} executionDetails={outcome?.executionDetails} defaultExpanded variant="dialog" actions={logs.length > 0 ? (
+                return <TestMetadata meta={meta} test={scopedTest} testSourceHref={outcome?.executionDetails.testSourceHref ?? null} defaultExpanded variant="dialog" actions={logs.length > 0 ? (
                   <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button>
                 ) : null}>
                   {fields}
@@ -283,7 +293,7 @@ export function TestCard({
         open={logsOpen}
         onClose={() => setLogsOpen(false)}
         title={<span className="ui-dialog__title-text">measurement logs · {test.name}</span>}
-        meta={<TestMetadata meta={meta} test={test} defaultExpanded variant="dialog" />}
+        meta={<TestMetadata meta={meta} test={test} testSourceHref={null} defaultExpanded variant="dialog" />}
       >
         <div className="card-logs">
           {logs.map((log, index) => (
