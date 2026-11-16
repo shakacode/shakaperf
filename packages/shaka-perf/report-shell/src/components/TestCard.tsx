@@ -7,7 +7,6 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
-import { latestMeasuredExecution } from '../../../src/pipeline/outcome';
 import { TestMetadata } from './TestMetadata';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
@@ -49,6 +48,16 @@ function logsForTest(test: TestResult, visibleStages: ReadonlySet<string>): LogE
   }
   logs.sort((a, b) => a.sortKey - b.sortKey || a.label.localeCompare(b.label));
   return logs;
+}
+
+function latestMeasuredExecution(outcomes: readonly ReportOutcome[]) {
+  let latest: ReportOutcome['executionDetails'] | undefined;
+  for (const { executionDetails } of outcomes) {
+    if (executionDetails.measurementMetadata && (!latest || executionDetails.runId > latest.runId)) {
+      latest = executionDetails;
+    }
+  }
+  return latest;
 }
 
 function outcomeGroups(test: TestResult, visibleStages: ReadonlySet<string>): ReportOutcome[][] {

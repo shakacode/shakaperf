@@ -51,16 +51,6 @@ export interface Outcome {
   logs?: string;
 }
 
-export function latestMeasuredExecution(outcomes: readonly Pick<Outcome, 'executionDetails'>[]): ExecutionDetails | undefined {
-  let latest: ExecutionDetails | undefined;
-  for (const { executionDetails } of outcomes) {
-    if (executionDetails.measurementMetadata && (!latest || executionDetails.runId > latest.runId)) {
-      latest = executionDetails;
-    }
-  }
-  return latest;
-}
-
 /** Read the current saved outcome contract without legacy conversions. */
 export function parseOutcome(json: string): Outcome {
   return JSON.parse(json) as Outcome;
