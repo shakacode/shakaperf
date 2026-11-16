@@ -137,9 +137,9 @@ export function createComparePipeline(input: ComparePipelineConfig) {
         statisticalAnalysis: false,
       },
       machineReadableSummary: emptyMachineReadableSummary,
-      applies(_test, _viewport, priorOutcomes) {
-        const visreg = priorOutcomes.get('visreg');
-        return visreg == null || visreg.kind === 'skipped';
+      applies(_test, _viewport, priorOutcomeKinds) {
+        const visregKind = priorOutcomeKinds.get('visreg');
+        return visregKind === undefined || visregKind === 'skipped';
       },
     }));
     pipeline.runStage(parallelWorkerPool, new PerfEngineStage<PerfResult>({
@@ -155,9 +155,9 @@ export function createComparePipeline(input: ComparePipelineConfig) {
         statisticalAnalysis: true,
       },
       machineReadableSummary: emptyMachineReadableSummary,
-      applies(_test, _viewport, priorOutcomes) {
-        return priorOutcomes.get('visreg')?.kind !== 'error' &&
-          priorOutcomes.get('perf-warmup')?.kind !== 'error';
+      applies(_test, _viewport, priorOutcomeKinds) {
+        return priorOutcomeKinds.get('visreg') !== 'error' &&
+          priorOutcomeKinds.get('perf-warmup') !== 'error';
       },
     }));
     pipeline.waitForAllTasksFinishAndDispose(parallelWorkerPool);
@@ -176,10 +176,10 @@ export function createComparePipeline(input: ComparePipelineConfig) {
         statisticalAnalysis: false,
       },
       machineReadableSummary: lowNoisePerfSummary,
-      applies(_test, _viewport, priorOutcomes) {
-        return priorOutcomes.get('visreg')?.kind !== 'error' &&
-          priorOutcomes.get('perf-warmup')?.kind !== 'error' &&
-          priorOutcomes.get('perf')?.kind !== 'error';
+      applies(_test, _viewport, priorOutcomeKinds) {
+        return priorOutcomeKinds.get('visreg') !== 'error' &&
+          priorOutcomeKinds.get('perf-warmup') !== 'error' &&
+          priorOutcomeKinds.get('perf') !== 'error';
       },
     }));
     pipeline.waitForAllTasksFinishAndDispose(singleThreadedWorkerPool);

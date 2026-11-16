@@ -77,18 +77,20 @@ it('automatically persists original metadata and reuses it unchanged in every re
     const store = new ArtifactStore(path.join(cwd, 'compare-results'));
     expect(execFile).toHaveBeenCalled();
     for (const outcome of result.testResults[0]!.outcomes) {
-      expect(outcome.runMetadata).not.toHaveProperty('viewport');
-    expect(outcome.executionDetails.viewport.width).toBeGreaterThan(0);
-      expect(store.readOutcome(test, outcome.executionDetails.viewport.label, 'visreg')?.runMetadata).toEqual(outcome.runMetadata);
-      expect(outcome.runMetadata?.targets.every((target) => target.commit?.sha === deployed.sha)).toBe(true);
-      expect(outcome.runMetadata?.targets[0]?.commit?.message).toBe(message);
-      expect(outcome.runMetadata?.targets[0]?.url).toBe(`${url}/cart?mode=demo#anchor`);
-      expect(outcome.runMetadata?.command).toContain(targetUrl);
-      expect(outcome.runMetadata).not.toHaveProperty('throttling');
+      expect(outcome.executionDetails.measurementMetadata).not.toHaveProperty('viewport');
+      expect(Object.keys(outcome.executionDetails.measurementMetadata!).sort()).toEqual(['command', 'measuredAt', 'targets']);
+      expect(outcome).not.toHaveProperty('runMetadata');
+      expect(outcome.executionDetails.viewport.width).toBeGreaterThan(0);
+      expect(store.readOutcome(test, outcome.executionDetails.viewport.label, 'visreg')?.executionDetails.measurementMetadata).toEqual(outcome.executionDetails.measurementMetadata);
+      expect(outcome.executionDetails.measurementMetadata?.targets.every((target) => target.commit?.sha === deployed.sha)).toBe(true);
+      expect(outcome.executionDetails.measurementMetadata?.targets[0]?.commit?.message).toBe(message);
+      expect(outcome.executionDetails.measurementMetadata?.targets[0]?.url).toBe(`${url}/cart?mode=demo#anchor`);
+      expect(outcome.executionDetails.measurementMetadata?.command).toContain(targetUrl);
+      expect(outcome.executionDetails.measurementMetadata).not.toHaveProperty('throttling');
     }
     for (const file of ['report.json', 'full-report.html', 'self-contained-performance-report.html']) {
       const content = fs.readFileSync(path.join(cwd, 'compare-results', file), 'utf8');
-      expect(content).toContain('runMetadata');
+      expect(content).toContain('measurementMetadata');
       expect(content).toContain(targetUrl);
       expect(content).toContain('demo-session');
       expect(content).toContain('demo-auth');

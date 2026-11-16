@@ -117,7 +117,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
   });
 
   it('preserves saved commit variants, their scopes, and expandable messages', async () => {
-    const old = data.tests[0]!.outcomes[0]!.runMetadata!.targets[0]!;
+    const old = data.tests[0]!.outcomes[0]!.executionDetails.measurementMetadata!.targets[0]!;
     old.commit = { ...old.commit!, sha: 'abcdef1234567890', message: 'Earlier subject\n\nEarlier body' };
     await page.reload();
     const metadata = page.locator('[data-report-test-id="homepage"] .card__metadata');
@@ -177,7 +177,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
   });
 
   it('copies the newest saved command even when outcomes arrive in reverse time order', async () => {
-    const latest = data.tests[0]!.outcomes[1]!.runMetadata!;
+    const latest = data.tests[0]!.outcomes[1]!.executionDetails.measurementMetadata!;
     latest.command = `shaka-perf ${pipeline} --filter 'Homepage' --categories accessibility`;
     data.tests[0]!.outcomes.reverse();
     await page.reload();

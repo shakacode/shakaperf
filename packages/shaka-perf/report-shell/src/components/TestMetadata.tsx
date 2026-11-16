@@ -49,7 +49,7 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
   const viewports = [...new Set(test.outcomes.map((outcome) => outcome.executionDetails.viewport.label))];
   const troubleshoot = pipelineTroubleshootCommands(meta, test.name, viewports);
   // Outcome order follows stages/viewports, not measurement chronology.
-  const latest = test.outcomes.flatMap((outcome) => outcome.runMetadata ? [outcome.runMetadata] : [])
+  const latest = test.outcomes.flatMap(({ executionDetails }) => executionDetails.measurementMetadata ?? [])
     .sort((a, b) => (Date.parse(b.measuredAt) || 0) - (Date.parse(a.measuredAt) || 0))[0];
   const sections = [
     { id: 'command', label: 'command', content: latest ? <>

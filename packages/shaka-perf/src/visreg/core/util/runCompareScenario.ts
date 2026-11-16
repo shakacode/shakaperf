@@ -86,7 +86,7 @@ async function processCompareView (
   // Per-selector cross-matching and crash-resume live in there too; it hands
   // back one outcome per selector for us to turn into a report entry.
   const outcomes = await runCompareAttempts(
-    { captureScreenshot, captureFailure: runtime.captureFailure, onAttempt: runtime.onAttempt },
+    { captureScreenshot, captureFailure: runtime.captureFailure },
     { browser, config, viewport, scenario, scenarioLabelSafe, pixelmatchThreshold },
   );
 

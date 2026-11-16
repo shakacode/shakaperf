@@ -26,7 +26,6 @@ function fixture() {
     ...saved,
     stage: 'visreg',
     executionDetails: { ...saved.executionDetails, recoveredAfterRetries: true, taskRetries: 1, taskRetryLimit: 2 },
-    runMetadata: { ...saved.runMetadata! },
     measurement: [{
       selector: 'document', controlImage: image, experimentImage: image,
       diffImage: null, misMatchPercentage: 0, savedByRetries: true,
@@ -36,15 +35,15 @@ function fixture() {
     ...saved,
     stage: 'perf',
     measurement: { metrics: [] },
-    runMetadata: {
-      ...saved.runMetadata!,
+    executionDetails: { ...saved.executionDetails, runId: '2026-10-21T20:54:53.891Z', measurementMetadata: {
+      ...saved.executionDetails.measurementMetadata!,
       measuredAt: '2026-10-21T20:54:53.891Z',
       command: 'shaka-perf compare --categories perf --filter Homepage',
-      targets: saved.runMetadata!.targets.map((target) => ({
+      targets: saved.executionDetails.measurementMetadata!.targets.map((target) => ({
         ...target,
         commit: { sha: 'abcdef1234567890', message: 'Unrelated newer perf commit', source: 'fixture' },
       })),
-    },
+    } },
   }];
   data.tests = [test];
   return data;
@@ -119,7 +118,8 @@ describe('visual preview metadata', () => {
     }
   });
   it('does not borrow a newer sibling result for a legacy visual artifact', async () => {
-    delete data.tests[0]!.outcomes[0]!.runMetadata;
+    const outcome = data.tests[0]!.outcomes[0]!;
+    outcome.executionDetails = { ...outcome.executionDetails, measurementMetadata: undefined };
     const page = await browser.newPage();
     try {
       await page.goto(url);

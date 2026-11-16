@@ -26,22 +26,16 @@ export interface MeasurementThrottling {
   cpuSlowdownMultiplier?: number;
   network: Record<string, number>;
 }
-export interface RunMetadata {
+export interface MeasurementMetadata {
   command: string;
   measuredAt: string;
-  stages: string[];
-  categories: string[];
   targets: MeasurementTarget[];
   throttling?: MeasurementThrottling;
   /** Effective Lighthouse samples requested per measured side. */
   numberOfMeasurements?: number;
-  /** Effective visual comparison retry budget, after runtime overrides. */
-  compareRetries?: number;
-  /** Actual visual comparison attempts started across worker retries. */
-  compareAttempts?: number;
 }
 
-export type MeasurementOptions = Pick<RunMetadata, 'numberOfMeasurements' | 'compareRetries' | 'compareAttempts' | 'throttling'>;
+export type MeasurementOptions = Pick<MeasurementMetadata, 'numberOfMeasurements' | 'throttling'>;
 
 /** Reconstruct the measurement invocation without changing any argument values. */
 export function measurementCommand(argv: readonly string[] = process.argv.slice(2)): string {
