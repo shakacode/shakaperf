@@ -40,10 +40,9 @@ function fixture() {
   }, {
     ...saved,
     stage: 'perf',
-    executionDetails: { ...saved.executionDetails, runId: '2026-10-21T20:54:53.891Z', measurementMetadata: {
+    executionDetails: { ...saved.executionDetails, runId: '2026-10-21T20:54:53.891Z', command: 'shaka-perf compare --categories perf --filter Homepage', measurementMetadata: {
       ...saved.executionDetails.measurementMetadata!,
       measuredAt: '2026-10-21T20:54:53.891Z',
-      command: 'shaka-perf compare --categories perf --filter Homepage',
       targets: saved.executionDetails.measurementMetadata!.targets.map((target) => ({
         ...target,
         commit: { sha: 'abcdef1234567890', message: 'Unrelated newer perf commit', source: 'fixture' },
@@ -76,7 +75,7 @@ describe('visual preview metadata', () => {
         const phone = {
           ...desktop,
           executionDetails: {
-            ...desktop.executionDetails, measurementMetadata: { ...desktop.executionDetails.measurementMetadata!, measuredAt: phoneRunId }, runId: phoneRunId, viewport: PHONE_VIEWPORT,
+            ...desktop.executionDetails, measurementMetadata: { ...desktop.executionDetails.measurementMetadata!, measuredAt: '2026-01-01T00:00:00Z' }, runId: phoneRunId, command: 'shaka-perf compare --viewport phone', viewport: PHONE_VIEWPORT,
             testSourceHref: params.has('missing') ? null : 'data:text/plain;charset=utf-8,' + encodeURIComponent(phoneSource),
             recoveredAfterRetries: false, taskRetries: 0, taskRetryLimit: 8,
           },
@@ -84,7 +83,7 @@ describe('visual preview metadata', () => {
         };
         test.outcomes = [desktop, phone, {
           kind: 'skipped', stage: 'perf', reason: 'Not selected',
-          executionDetails: { ...desktop.executionDetails, measurementMetadata: undefined, runId: '2026-10-23T00:00:00Z', testSourceHref: null },
+          executionDetails: { ...desktop.executionDetails, measurementMetadata: undefined, command: 'skipped invocation', runId: '2026-10-23T00:00:00Z', testSourceHref: null },
         }];
       }
       if (params.has('perf')) {
@@ -164,6 +163,8 @@ describe('visual preview metadata', () => {
       await page.goto(`${url}?mixed=1&mode=${mode}`);
       const cardMetadata = page.locator('.card__metadata-row > .card__metadata');
       await cardMetadata.locator('summary').click();
+      await cardMetadata.getByRole('button', { name: 'command', exact: true }).click();
+      expect(await cardMetadata.getByLabel('Latest command').inputValue()).toBe('shaka-perf compare --viewport phone');
       await cardMetadata.getByRole('button', { name: 'test source', exact: true }).click();
       expect(await cardMetadata.getByRole('combobox').count()).toBe(0);
       await cardMetadata.locator('.card__code').filter({ hasText: 'newer phone source' }).waitFor();
@@ -174,6 +175,8 @@ describe('visual preview metadata', () => {
       expect(await dialog.getByRole('combobox').count()).toBe(0);
       await dialog.getByRole('button', { name: 'logs', exact: true }).click();
       const logs = page.getByRole('dialog', { name: 'measurement logs' });
+      await logs.getByRole('button', { name: 'command', exact: true }).click();
+      expect(await logs.getByLabel('Latest command').inputValue()).toBe('shaka-perf compare --viewport phone');
       await logs.getByRole('button', { name: 'test source', exact: true }).click();
       await logs.locator('.card__code').filter({ hasText: 'newer phone source' }).waitFor();
       await logs.getByRole('button', { name: 'close', exact: true }).click();

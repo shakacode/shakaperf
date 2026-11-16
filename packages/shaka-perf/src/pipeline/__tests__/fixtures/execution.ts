@@ -12,6 +12,7 @@ export function executionFixture(overrides: Partial<ExecutionDetails> = {}): { e
   return {
     executionDetails: {
       runId: 'fixture-run',
+      command: 'shaka-perf compare',
       viewport: DESKTOP_VIEWPORT,
       testSourceHref: null,
       recoveredAfterRetries: false,

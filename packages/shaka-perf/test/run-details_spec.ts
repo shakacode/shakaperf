@@ -14,10 +14,9 @@ import { reportDataForMode } from '../src/pipeline/report';
 it.each(['full', 'self-contained'] as const)('retains metadata verbatim in the %s report variant', (mode) => {
   const data = runDetailsFixture('compare');
   const metadata = data.tests[0]!.outcomes[0]!.executionDetails.measurementMetadata!;
-  metadata.command = 'some-artifact.json';
   metadata.numberOfMeasurements = 7;
   const selected = data.tests[0]!.outcomes[0]!;
-  selected.executionDetails = { ...selected.executionDetails, taskRetries: 2 };
+  selected.executionDetails = { ...selected.executionDetails, command: 'some-artifact.json', taskRetries: 2 };
   const executionDetails = structuredClone(selected.executionDetails);
   const report = reportDataForMode(data, mode, [], '/unused', { 'some-artifact.json': 'data:application/json;base64,e30=' });
   expect(report.tests[0]!.outcomes[0]!.executionDetails.measurementMetadata).toEqual(metadata);

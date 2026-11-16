@@ -93,7 +93,7 @@ describe('reportDataForMode', () => {
     fs.writeFileSync(path.join(resultsRoot, asset), '{"ok":true}');
     const data = { meta: { title: asset }, tests: [{ filePath: asset, outcomes: [{
       kind: 'ok', stage: 'visreg',
-      ...executionFixture({ runId: asset, measurementMetadata: { command: asset } }),
+      ...executionFixture({ runId: asset, command: asset }),
       measurement: { runMetadata: asset, executionDetails: asset },
     }] }] } as unknown as ReportData;
     const dictionary = await buildSelfContainedArtifactDictionary(data, resultsRoot);
@@ -101,7 +101,7 @@ describe('reportDataForMode', () => {
     const packaged = reportDataForMode(data, 'self-contained', [], resultsRoot, dictionary);
     expect(packaged.meta.title).toBe(asset);
     expect(packaged.tests[0]!.filePath).toBe(asset);
-    expect(packaged.tests[0]!.outcomes[0]!.executionDetails.measurementMetadata).toBe(data.tests[0]!.outcomes[0]!.executionDetails.measurementMetadata);
+    expect(packaged.tests[0]!.outcomes[0]!.executionDetails.command).toBe(asset);
     expect(packaged.tests[0]!.outcomes[0]!.executionDetails.runId).toBe(asset);
     expect(packaged.tests[0]!.outcomes[0]!.measurement).toEqual({ runMetadata: dictionary[asset], executionDetails: dictionary[asset] });
   });
@@ -131,7 +131,7 @@ describe('reportDataForMode', () => {
       meta: { reportMode: 'full' },
       tests: [{
         name: 'Checkout',
-        outcomes: [{ executionDetails: { viewport: { label: 'tablet' }, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
+        outcomes: [{ executionDetails: { command: 'shaka-perf compare', viewport: { label: 'tablet' }, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'error',
           stage: 'visreg',
           failure: { media: mediaPath },
@@ -200,7 +200,7 @@ describe('reportDataForMode', () => {
       meta: { reportMode: 'self-contained' },
       tests: [{
         name: 'Checkout',
-        outcomes: [{ executionDetails: { viewport: { label: 'tablet' }, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
+        outcomes: [{ executionDetails: { command: 'shaka-perf compare', viewport: { label: 'tablet' }, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok',
           stage: 'accessibility',
           measurement: {
