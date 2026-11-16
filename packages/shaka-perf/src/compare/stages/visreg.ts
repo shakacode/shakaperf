@@ -73,13 +73,8 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
       // even when --keep-old-results or --restart-from-stage retains artifacts.
       // Reset ONCE, outside the retried task: its attempts share the fresh pools.
       resetVisregScreenshots(ctx.artifacts.dir);
-      // Keep the count outside the retried task so a recovered invocation
-      // does not overwrite attempts started before the error.
-      let compareAttempts = 0;
       return pool.submit(
-        async () => runVisregUnit(ctx, config, () => {
-          ctx.recordMeasurementOptions({ compareAttempts: ++compareAttempts });
-        }),
+        () => runVisregUnit(ctx, config),
         { key: ctx.testAndViewportId },
       );
     },

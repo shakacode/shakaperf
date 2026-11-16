@@ -7,7 +7,7 @@
 
 import { executionFixture } from './fixtures/execution';
 import { measurementCommand } from '../run-metadata';
-import type { RunMetadata } from '../run-metadata';
+import type { MeasurementMetadata } from '../run-metadata';
 import { type AbTestDefinition } from 'shaka-shared';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -27,9 +27,9 @@ describe('source artifacts at the persistence boundary', () => {
     testFn: async () => {},
   };
   const source = "abTest('Homepage', {}, async () => {});";
-  const metadata: RunMetadata = {
+  const metadata: MeasurementMetadata = {
     command: 'shaka-perf compare', measuredAt: '2026-11-04T10:00:00Z',
-    stages: ['visreg'], categories: ['visreg'], targets: [],
+    targets: [],
   };
   let dir: string;
   let store: ArtifactStore;
@@ -43,10 +43,10 @@ describe('source artifacts at the persistence boundary', () => {
     expect(store.writeTestSource(test, 'desktop', source)).toBe(testSourceHref);
     expect(fs.statSync(file).mtimeMs).toBe(mtime);
     for (const stage of ['visreg', 'perf'] as const) {
-      store.writeOutcome(test, 'desktop', { ...executionFixture({ testSourceHref }), kind: 'ok', stage, runMetadata: metadata });
+      store.writeOutcome(test, 'desktop', { ...executionFixture({ testSourceHref, measurementMetadata: metadata }), kind: 'ok', stage });
       const saved = JSON.parse(fs.readFileSync(path.join(store.unitDirForViewport(test, 'desktop'), `${stage}.json`), 'utf8'));
       expect(saved.executionDetails).toMatchObject({ testSourceHref });
-      expect(saved.runMetadata).not.toHaveProperty('testSourceHref');
+      expect(saved.executionDetails.measurementMetadata).not.toHaveProperty('testSourceHref');
     }
     expect(store.readTextArtifact(testSourceHref)).toBe(source);
     expect(fs.readdirSync(store.artifactsDirForViewport(test, 'desktop'))).toEqual([path.basename(testSourceHref)]);
@@ -59,7 +59,7 @@ describe('source artifacts at the persistence boundary', () => {
 
   it('keeps measured outcomes readable when their source artifact is missing', () => {
     const testSourceHref = store.writeTestSource(test, 'desktop', source);
-    store.writeOutcome(test, 'desktop', { ...executionFixture({ testSourceHref }), kind: 'ok', stage: 'visreg', runMetadata: metadata });
+    store.writeOutcome(test, 'desktop', { ...executionFixture({ testSourceHref, measurementMetadata: metadata }), kind: 'ok', stage: 'visreg' });
     fs.unlinkSync(path.join(dir, testSourceHref));
     expect(store.readOutcome(test, 'desktop', 'visreg')?.kind).toBe('ok');
     expect(store.readOutcome(test, 'desktop', 'visreg')?.executionDetails.testSourceHref).toBe(testSourceHref);
