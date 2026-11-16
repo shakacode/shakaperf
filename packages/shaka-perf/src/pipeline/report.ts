@@ -411,7 +411,7 @@ function inlineArtifactPaths(
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
         key,
-        key === 'runMetadata' || key === 'executionDetails' ? item : inlineArtifactPaths(item, resultsRoot, artifactDictionary),
+        key === 'executionDetails' ? item : inlineArtifactPaths(item, resultsRoot, artifactDictionary),
       ]),
     );
   }
@@ -470,7 +470,7 @@ function collectArtifactPaths(
     for (const [key, item] of Object.entries(value)) {
       // Metadata paths are provenance, not display assets. Source text is
       // already resolved once into TestResult.code by the report builder.
-      if (key === 'runMetadata' || key === 'executionDetails') continue;
+      if (key === 'executionDetails') continue;
       collectArtifactPaths(item, resultsRoot, artifactPaths);
     }
   }
@@ -652,7 +652,6 @@ export function writeMachineReport(
         error: outcome.error,
         reason: outcome.reason,
         logs: outcome.logs,
-        runMetadata: outcome.runMetadata,
         executionDetails: outcome.executionDetails,
         summary: machineSummaryForOutcome(stagesByName, outcome, {
           test,

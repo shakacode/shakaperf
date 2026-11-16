@@ -306,10 +306,9 @@ describe('runPipeline', () => {
     const measured = result.testResults[0]!.outcomes.filter((outcome) => outcome.kind === 'ok');
     expect(measured.length).toBeGreaterThan(0);
     for (const outcome of measured) {
-      expect(outcome.runMetadata?.targets).toHaveLength(2);
-      expect(outcome.runMetadata).not.toHaveProperty('viewport');
+      expect(outcome.executionDetails.measurementMetadata?.targets).toHaveLength(2);
+      expect(outcome.executionDetails.measurementMetadata).not.toHaveProperty('viewport');
     expect(outcome.executionDetails.viewport.width).toBeGreaterThan(0);
-      expect(outcome.runMetadata).not.toHaveProperty('throttling');
     }
   });
 
@@ -318,7 +317,7 @@ describe('runPipeline', () => {
     const result = await runWithFrozenTest({ categories: 'visreg', skipReport: true });
     const failed = result.testResults[0]!.outcomes.find((outcome) => outcome.kind === 'error');
     expect(failed?.error?.message).toContain('target lookup failed');
-    expect(failed).not.toHaveProperty('runMetadata');
+    expect(failed?.executionDetails.measurementMetadata).toBeUndefined();
   });
 
   it.each(['derived', 'not-applicable'] as const)('excludes %s stages from automatic metadata capture', async (mode) => {
@@ -329,7 +328,7 @@ describe('runPipeline', () => {
     jest.mocked(measuredCommit).mockClear();
     const result = await runWithFrozenTest({ categories: 'visreg', skipReport: true }, selected);
     expect(measuredCommit).not.toHaveBeenCalled();
-    expect(result.testResults[0]!.outcomes.every((outcome) => !outcome.runMetadata)).toBe(true);
+    expect(result.testResults[0]!.outcomes.every((outcome) => !outcome.executionDetails.measurementMetadata)).toBe(true);
     for (const outcome of result.testResults[0]!.outcomes) {
       expect(outcome.executionDetails).toEqual(outcome.kind === 'skipped'
         ? { runId: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourceHref: null, recoveredAfterRetries: false }
@@ -346,7 +345,7 @@ describe('runPipeline', () => {
     const result = await runWithFrozenTest({ categories: 'visreg', skipReport: true }, selected);
     expect(readTestSource).not.toHaveBeenCalled();
     expect(result.hasFailures).toBe(false);
-    expect(result.testResults[0]!.outcomes.every((outcome) => !outcome.runMetadata)).toBe(true);
+    expect(result.testResults[0]!.outcomes.every((outcome) => !outcome.executionDetails.measurementMetadata)).toBe(true);
   });
 
   it('does not require source for tests excluded by the requested viewport', async () => {
@@ -401,7 +400,6 @@ describe('runPipeline', () => {
       expect(measured.length).toBeGreaterThan(0);
       for (const outcome of measured) {
         expect(outcome.kind).toBe(failed ? 'error' : 'ok');
-        const metadata = store.readOutcome(test, outcome.executionDetails.viewport.label, 'visreg')?.runMetadata;
         expect(outcome.executionDetails.testSourceHref).toBeTruthy();
         expect(store.readTextArtifact(outcome.executionDetails.testSourceHref!)).toBe(source);
       }
@@ -432,7 +430,7 @@ describe('runPipeline', () => {
       clock.mockReturnValue(Date.parse('2026-10-20T11:00:00Z'));
       const second = await runWithFrozenTest({ cwd, tests: [test], restartFromStage: 'perf', skipReport: true });
       const outcomes = second.testResults[0]!.outcomes;
-      expect(outcomes.find((o) => o.stage === 'visreg')?.runMetadata).toEqual(original.runMetadata);
+      expect(outcomes.find((o) => o.stage === 'visreg')?.executionDetails.measurementMetadata).toEqual(original.executionDetails.measurementMetadata);
       const store = new ArtifactStore(second.resultsRoot);
       const originalPath = original.executionDetails.testSourceHref!;
       const changedPath = outcomes.find((o) => o.stage === 'perf')!.executionDetails.testSourceHref!;
@@ -459,7 +457,7 @@ describe('runPipeline', () => {
       const retained = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
       expect(retained.testResults[0]!.code).toBe(changed);
       for (const outcome of outcomes) {
-        if (outcome.runMetadata && outcome.executionDetails.runId !== original.executionDetails.runId) {
+        if (outcome.executionDetails.measurementMetadata && outcome.executionDetails.runId !== original.executionDetails.runId) {
           fs.rmSync(path.join(second.resultsRoot, outcome.executionDetails.testSourceHref!), { force: true });
         }
       }
@@ -484,7 +482,7 @@ describe('runPipeline', () => {
     selected.stages[0]!.run = async (ctx, pool) => {
       let attempts = 0;
       return pool.submit(async () => {
-        ctx.recordMeasurementOptions({ compareAttempts: ++attempts });
+        attempts++;
         if (attempts === 1 || exhausted) throw new Error('temporary failure');
         return {};
       });
@@ -495,11 +493,10 @@ describe('runPipeline', () => {
     expect(measured.length).toBeGreaterThan(0);
     for (const outcome of measured) {
       expect(outcome.kind).toBe(exhausted ? 'error' : 'ok');
-      expect(outcome.executionDetails).toEqual({ runId: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourceHref: derived ? null : expect.any(String), taskRetries: 1, taskRetryLimit: 1, recoveredAfterRetries: !exhausted });
-      if (derived) expect(outcome.runMetadata).toBeUndefined();
+      expect(outcome.executionDetails).toEqual({ runId: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourceHref: derived ? null : expect.any(String), taskRetries: 1, taskRetryLimit: 1, recoveredAfterRetries: !exhausted, measurementMetadata: derived ? undefined : expect.objectContaining({ targets: expect.any(Array) }) });
+      if (derived) expect(outcome.executionDetails.measurementMetadata).toBeUndefined();
       else {
-        expect(outcome.runMetadata?.compareAttempts).toBe(2);
-        expect(outcome.runMetadata?.targets.map(({ side }) => side)).toEqual(['control', 'experiment']);
+        expect(outcome.executionDetails.measurementMetadata?.targets.map(({ side }) => side)).toEqual(['control', 'experiment']);
       }
     }
   });
@@ -520,7 +517,7 @@ describe('runPipeline', () => {
         && outcome.executionDetails.viewport.label === saved.executionDetails.viewport.label)!;
       expect(retained.executionDetails).toEqual(saved.executionDetails);
       expect(retained).not.toHaveProperty('viewport');
-      expect(retained.runMetadata).not.toHaveProperty('viewport');
+      expect(retained.executionDetails.measurementMetadata).not.toHaveProperty('viewport');
     } finally {
       fs.rmSync(cwd, { recursive: true, force: true });
     }
@@ -536,24 +533,16 @@ describe('runPipeline', () => {
     try {
       process.argv = ['node', 'shaka-perf', 'compare', '--categories', 'visreg'];
       const initialPipeline = pipeline();
-      const visreg = initialPipeline.stages[0]!;
-      const initialRun = visreg.run;
-      visreg.run = async (ctx, pool) => {
-        ctx.recordMeasurementOptions({ compareRetries: ctx.config.visreg.compareRetries, compareAttempts: 2 });
-        return initialRun(ctx, pool);
-      };
       const first = await runWithFrozenTest({ cwd, tests: [configuredTest], categories: 'visreg', skipReport: true }, initialPipeline);
       const before = first.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.kind === 'ok')!;
-      expect(before.runMetadata).toEqual(expect.objectContaining({
+      expect(before.executionDetails.measurementMetadata).toEqual(expect.objectContaining({
         command: 'shaka-perf compare --categories visreg',
-        compareRetries: 2, compareAttempts: 2,
-        stages: ['visreg'], categories: ['visreg'],
         targets: [
           { side: 'control', url: 'http://control.test/', commit },
           { side: 'experiment', url: 'http://experiment.test/', commit },
         ],
       }));
-      expect(Date.parse(before.runMetadata!.measuredAt)).not.toBeNaN();
+      expect(Date.parse(before.executionDetails.measurementMetadata!.measuredAt)).not.toBeNaN();
       clock.mockReturnValue(Date.parse('2026-10-20T11:00:00Z'));
       process.argv = ['node', 'shaka-perf', 'compare', '--categories', 'perf', '--restart-from-stage', 'perf'];
       const nextPipeline = pipeline();
@@ -564,11 +553,11 @@ describe('runPipeline', () => {
         return nextRun(ctx, pool);
       };
       const second = await runWithFrozenTest({ cwd, tests: [configuredTest], categories: 'perf', restartFromStage: 'perf', skipReport: true }, nextPipeline);
-      expect(second.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.executionDetails.viewport.label === before.executionDetails.viewport.label)?.runMetadata).toEqual(before.runMetadata);
+      expect(second.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.executionDetails.viewport.label === before.executionDetails.viewport.label)?.executionDetails.measurementMetadata).toEqual(before.executionDetails.measurementMetadata);
       const perf = second.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.kind === 'ok')!;
-      expect(perf.runMetadata?.command).toContain('--restart-from-stage perf');
-      expect(perf.runMetadata?.numberOfMeasurements).toBe(7);
-      expect(perf.runMetadata).not.toHaveProperty('compareRetries');
+      expect(perf.executionDetails.measurementMetadata?.command).toContain('--restart-from-stage perf');
+      expect(perf.executionDetails.measurementMetadata?.numberOfMeasurements).toBe(7);
+      expect(perf.executionDetails.measurementMetadata).not.toHaveProperty('compareRetries');
       expect(perf.executionDetails.runId).not.toBe(before.executionDetails.runId);
       jest.mocked(measuredCommit).mockClear();
       process.argv = ['node', 'shaka-perf', 'compare', '--report-only'];
@@ -577,8 +566,8 @@ describe('runPipeline', () => {
       const report = await runWithFrozenTest({ cwd, reportOnly: true, controlURL: 'http://changed.test', experimentURL: 'http://changed-again.test' }, reusedPipeline);
       for (const engine of engines) expect(engine).not.toHaveBeenCalled();
       expect(measuredCommit).not.toHaveBeenCalled();
-      expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.executionDetails.viewport.label === before.executionDetails.viewport.label)?.runMetadata).toEqual(before.runMetadata);
-      expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.executionDetails.viewport.label === perf.executionDetails.viewport.label)?.runMetadata).toEqual(perf.runMetadata);
+      expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.executionDetails.viewport.label === before.executionDetails.viewport.label)?.executionDetails.measurementMetadata).toEqual(before.executionDetails.measurementMetadata);
+      expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.executionDetails.viewport.label === perf.executionDetails.viewport.label)?.executionDetails.measurementMetadata).toEqual(perf.executionDetails.measurementMetadata);
       clock.mockReturnValue(Date.parse('2026-10-20T12:00:00Z'));
       const replaced = await runWithFrozenTest({ cwd, categories: 'visreg', keepOldResults: true, skipReport: true });
       const latest = replaced.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.kind === 'ok')!;
@@ -606,9 +595,9 @@ describe('runPipeline', () => {
       config: { shared: { experimentURL: 'https://user:password@deployment.test' } },
     }] }, { ...selected, measurementSides: ['experiment'] });
     const outcome = result.testResults[0]!.outcomes.find((o) => o.kind === 'ok')!;
-    expect(outcome.runMetadata?.targets).toEqual([{ side: 'experiment', url: 'https://user:password@deployment.test/cart?token=secret', commit: null }]);
-    expect(outcome.runMetadata?.throttling).toEqual({ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } });
-    expect(outcome.runMetadata).not.toHaveProperty('viewport');
+    expect(outcome.executionDetails.measurementMetadata?.targets).toEqual([{ side: 'experiment', url: 'https://user:password@deployment.test/cart?token=secret', commit: null }]);
+    expect(outcome.executionDetails.measurementMetadata?.throttling).toEqual({ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } });
+    expect(outcome.executionDetails.measurementMetadata).not.toHaveProperty('viewport');
     expect(outcome.executionDetails.viewport.width).toBeGreaterThan(0);
   });
 

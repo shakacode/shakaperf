@@ -8,7 +8,7 @@
 import { MeasurementRecorder } from './measurement-recorder';
 import { captureMeasurementStartMetadata, type MeasurementInvocation } from './measurement-start-metadata';
 import { measurementCommand } from './run-metadata';
-import type { RunMetadata } from './run-metadata';
+import type { MeasurementMetadata } from './run-metadata';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
@@ -670,8 +670,6 @@ async function runConfiguredPipelineWithSelection(
     runId = new Date(startedAt).toISOString();
     const invocation = {
       command: measurementCommand(),
-      stages: stageSelection.stageNames,
-      categories,
       sides: pipeline.measurementSides,
     };
     installConsoleCapture();
@@ -1149,7 +1147,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   // contract so stages don't need to special-case its absence.
   const [raceCancellation] = cancellableRace();
   const recorder = new MeasurementRecorder();
-  let measurementStart: RunMetadata | undefined;
+  let measurementStart: MeasurementMetadata | undefined;
   const ctx: TestContext = {
     recordMeasurementOptions: (options) => recorder.recordOptions(options),
     test: unit.test,
@@ -1234,9 +1232,12 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     outcome = {
       kind: 'ok',
       stage: stage.name,
-      ...(measurementStart ? recorder.snapshot(measurementStart) : {}),
       measurement,
-      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, taskRetries: recorder.taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
+      executionDetails: {
+        runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref,
+        measurementMetadata: measurementStart && recorder.snapshot(measurementStart),
+        taskRetries: recorder.taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0,
+      },
     };
   } catch (err) {
     // Walk the cause chain, don't instanceof: a stage that throws from inside a
@@ -1245,9 +1246,12 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const failure = findFailureArtifacts(err);
     outcome = {
       kind: 'error',
-      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, taskRetries: recorder.taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
+      executionDetails: {
+        runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref,
+        measurementMetadata: measurementStart && recorder.snapshot(measurementStart),
+        taskRetries: recorder.taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false,
+      },
       stage: stage.name,
-      ...(measurementStart ? recorder.snapshot(measurementStart) : {}),
       error: errorInfo(err),
       ...(failure ? { failure } : {}),
     };
@@ -1320,8 +1324,8 @@ function persistCliSkippedStageOutcomes(
 }
 
 function leanPriorOutcome(outcome: Outcome): Outcome {
-  const lean: Outcome = { kind: outcome.kind, stage: outcome.stage, executionDetails: outcome.executionDetails };
-  return lean;
+  const { measurementMetadata, ...executionDetails } = outcome.executionDetails;
+  return { kind: outcome.kind, stage: outcome.stage, executionDetails };
 }
 
 interface ExpandWorkUnitsOptions {
@@ -1683,7 +1687,7 @@ function newestRunId(outcomes: readonly Outcome[]): string | null {
 function savedTestSource(outcomes: readonly Outcome[], store: ArtifactStore): string | null {
   let newest: Outcome | undefined;
   for (const outcome of outcomes) {
-    if (outcome.runMetadata && (!newest || outcome.executionDetails.runId > newest.executionDetails.runId)) newest = outcome;
+    if (outcome.executionDetails.measurementMetadata && (!newest || outcome.executionDetails.runId > newest.executionDetails.runId)) newest = outcome;
   }
   // Unavailable snapshots must not borrow today's or an older run's source.
   if (typeof newest?.executionDetails.testSourceHref === 'string') {

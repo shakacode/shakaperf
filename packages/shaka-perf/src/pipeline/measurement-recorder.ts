@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import type { MeasurementOptions, RunMetadata } from './run-metadata';
+import type { MeasurementOptions, MeasurementMetadata } from './run-metadata';
 
 export class MeasurementRecorder {
   private readonly options: MeasurementOptions = {};
@@ -23,7 +23,7 @@ export class MeasurementRecorder {
     Object.assign(this.options, structuredClone(options));
   }
 
-  snapshot(measurementStart: RunMetadata): { runMetadata: RunMetadata } {
-    return { runMetadata: { ...measurementStart, ...structuredClone(this.options) } };
+  snapshot(start: MeasurementMetadata): MeasurementMetadata {
+    return { ...start, ...structuredClone(this.options) };
   }
 }

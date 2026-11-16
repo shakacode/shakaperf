@@ -13,17 +13,21 @@ import { reportDataForMode } from '../src/pipeline/report';
 
 it.each(['full', 'self-contained'] as const)('retains metadata verbatim in the %s report variant', (mode) => {
   const data = runDetailsFixture('compare');
-  const metadata = data.tests[0]!.outcomes[0]!.runMetadata!;
+  const metadata = data.tests[0]!.outcomes[0]!.executionDetails.measurementMetadata!;
   metadata.command = 'some-artifact.json';
   metadata.numberOfMeasurements = 7;
-  metadata.compareRetries = 2;
+  const selected = data.tests[0]!.outcomes[0]!;
+  selected.executionDetails = { ...selected.executionDetails, taskRetries: 2 };
+  const executionDetails = structuredClone(selected.executionDetails);
   const report = reportDataForMode(data, mode, [], '/unused', { 'some-artifact.json': 'data:application/json;base64,e30=' });
-  expect(report.tests[0]!.outcomes[0]!.runMetadata).toEqual(metadata);
+  expect(report.tests[0]!.outcomes[0]!.executionDetails.measurementMetadata).toEqual(metadata);
+  expect(report.tests[0]!.outcomes[0]!.executionDetails).toEqual(executionDetails);
+  expect(selected.executionDetails).toEqual(executionDetails);
 });
 
 it('keeps commit-message body whitespace in the expandable details', () => {
   const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(0, 1);
-  outcomes[0]!.runMetadata!.targets[0]!.commit!.message = 'Subject\n\n  Indented body\n\n';
+  outcomes[0]!.executionDetails.measurementMetadata!.targets[0]!.commit!.message = 'Subject\n\n  Indented body\n\n';
   const html = renderToStaticMarkup(createElement(RunCommits, { outcomes }));
   expect(html.match(/<summary>/g)).toHaveLength(1);
   expect(html).toContain('  Indented body\n\n</pre>');
@@ -31,7 +35,7 @@ it('keeps commit-message body whitespace in the expandable details', () => {
 
 it.each(['Subject', 'Subject\n\n', ''])('does not expand a commit without body content: %p', (message) => {
   const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(0, 1);
-  outcomes[0]!.runMetadata!.targets[0]!.commit!.message = message;
+  outcomes[0]!.executionDetails.measurementMetadata!.targets[0]!.commit!.message = message;
   const html = renderToStaticMarkup(createElement(RunCommits, { outcomes }));
   expect(html).not.toContain('<summary>');
   expect(html).toContain('>1e04e038<');

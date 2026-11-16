@@ -6,7 +6,7 @@
  */
 
 import type { Viewport } from '../config';
-import type { RunMetadata } from './run-metadata';
+import type { MeasurementMetadata } from './run-metadata';
 import type { StageName } from '../stage/stage';
 import type { StageFailureArtifacts } from '../stage/stage-failure';
 
@@ -25,6 +25,7 @@ export interface ErrorInfo {
 }
 
 export interface ExecutionDetails {
+  readonly measurementMetadata?: MeasurementMetadata;
   readonly runId: string;
   readonly viewport: Viewport;
   readonly testSourceHref: string | null;
@@ -47,7 +48,6 @@ export interface Outcome {
   failure?: StageFailureArtifacts;
   reason?: string;
   logs?: string;
-  runMetadata?: RunMetadata;
 }
 
 /** Read the current saved outcome contract without legacy conversions. */

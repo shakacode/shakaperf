@@ -40,7 +40,6 @@ export function resetVisregScreenshots(unitArtifactsDir: string): void {
 export async function runVisregUnit(
   ctx: TestContext,
   stageConfig: VisregStageConfig,
-  onAttempt: () => void,
 ): Promise<VisregResult> {
   console.log(
     'Loading every test page on both the control server and the experiment server, taking a screenshot of each once the page has settled, and comparing the two screenshots pixel-by-pixel. ' +
@@ -77,7 +76,6 @@ export async function runVisregUnit(
   // resolved the dir for this test, viewport and `--burn` instance. Never
   // rebuild the path: doing so is what let burn drift the engine's output away
   // from where we read it back.
-  ctx.recordMeasurementOptions({ compareRetries: visregConfig.compareRetries });
   const unitArtifactsDir = ctx.artifacts.dir;
   const configPath = writeTempVisregConfig(visregConfig, unitArtifactsDir);
 
@@ -90,7 +88,6 @@ export async function runVisregUnit(
       testPathPattern: testPathPatternForSingleTest(ctx.test, testPathPattern),
       filter: exactTestNameFilter(ctx.test.name),
     }, {
-      onAttempt,
       captureFailure: async (err, page, isControl) => {
         const media = await captureFailureScreenshot(
           ctx.artifacts,
