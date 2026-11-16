@@ -76,7 +76,7 @@ function loadTestResult(
       test.experimentPathOverride ?? test.startingPath,
       test.config?.shared?.experimentURL ?? options.experimentURL,
     ),
-    code: null,
+
     chips: [],
     sorts: [],
     durationMs: 0,

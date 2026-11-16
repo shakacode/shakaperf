@@ -79,7 +79,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     const source = metadata.getByRole('button', { name: 'test source' });
     expect(await source.getAttribute('aria-expanded')).toBe('false');
     await source.click();
-    expect(await metadata.getByText("abTest('Homepage'", { exact: false }).isVisible()).toBe(true);
+    await metadata.getByText("abTest('Homepage'", { exact: false }).waitFor({ state: 'visible' });
     await metadata.getByRole('button', { name: 'artifact paths' }).click();
     expect(await metadata.getByText('desktop: results/homepage-desktop').isVisible()).toBe(true);
     expect(await card.locator('.card__body').getByRole('button', { name: /source|paths|troubleshoot/ }).count()).toBe(0);

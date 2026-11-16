@@ -451,7 +451,7 @@ function reportTest(
     startingPath: `/${fileStem}`,
     controlUrl: `http://control.test/${fileStem}`,
     experimentUrl: `http://experiment.test/${fileStem}`,
-    code: null,
+
     chips: [],
     sorts: [],
     durationMs: 1_000,

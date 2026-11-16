@@ -20,7 +20,7 @@ function testResult(id: string, filePath: string, name: string): TestResult {
     startingPath: '/',
     controlUrl: 'http://control.test/',
     experimentUrl: 'http://experiment.test/',
-    code: null,
+
     chips: [],
     sorts: [],
     durationMs: 0,

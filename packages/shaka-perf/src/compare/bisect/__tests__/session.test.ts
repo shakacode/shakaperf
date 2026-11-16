@@ -87,7 +87,7 @@ function resultWithVisualDiff(diffImage: string | null): TestResult {
     startingPath: '/',
     controlUrl: 'http://control.test/',
     experimentUrl: 'http://experiment.test/',
-    code: null,
+
     chips: [],
     sorts: [],
     durationMs: 0,
@@ -132,6 +132,7 @@ function resultWithVisualDiffAndError(diffImage: string | null): TestResult {
     ...executionFixture(),
     kind: 'error',
     stage: 'visreg',
+
     error: { message: 'capture failed after one selector succeeded' },
   });
   return result;
