@@ -10,45 +10,8 @@ import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../t
 import { TestMetadata } from './TestMetadata';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
-import { AnsiLog, firstElapsedSeconds } from './AnsiLog';
-import { Dialog, StageArtifactProvider } from '../../../src/pipeline/stage-report-components';
-
-interface LogEntry {
-  label: string;
-  body: string;
-  /**
-   * Sort key for chronological ordering. The runner stamps every log line
-   * with a `<X.Ys>` elapsed tag; we pull the first one as the section's
-   * start time. Skipped/empty bodies fall back to `+Infinity` so they
-   * always sink to the bottom rather than steal the top slot with a 0.
-   */
-  sortKey: number;
-}
-
-function logsForTest(test: TestResult, visibleStages: ReadonlySet<string>): LogEntry[] {
-  const logs: LogEntry[] = [];
-  for (const outcome of test.outcomes) {
-    if (!visibleStages.has(outcome.stage)) continue;
-    const titleSuffix = ` · ${outcome.executionDetails.viewport.label}`;
-    if (outcome.logs) {
-      const sortKey = firstElapsedSeconds(outcome.logs);
-      logs.push({
-        label: `${outcome.stage}${titleSuffix}`,
-        body: outcome.logs,
-        sortKey: sortKey ?? Number.POSITIVE_INFINITY,
-      });
-    }
-    if (outcome.kind === 'skipped') {
-      logs.push({
-        label: `${outcome.stage} skipped${titleSuffix}`,
-        body: outcome.reason ?? 'skipped',
-        sortKey: Number.POSITIVE_INFINITY,
-      });
-    }
-  }
-  logs.sort((a, b) => a.sortKey - b.sortKey || a.label.localeCompare(b.label));
-  return logs;
-}
+import { TestLogsButton } from './TestLogsButton';
+import { StageArtifactProvider } from '../../../src/pipeline/stage-report-components';
 
 function latestMeasuredExecution(outcomes: readonly ReportOutcome[]) {
   let latest: ReportOutcome['executionDetails'] | undefined;
@@ -151,7 +114,6 @@ export function TestCard({
    */
   dimmed?: boolean;
 }) {
-  const [logsOpen, setLogsOpen] = useState(false);
   const [localExpanded, setLocalExpanded] = useState(true);
   const expanded = sharedExpanded ?? localExpanded;
   const [localTagsExpanded, setLocalTagsExpanded] = useState(true);
@@ -177,10 +139,17 @@ export function TestCard({
   const storageKey = reviewedKey(meta, test);
   const [reviewed, setReviewed] = useState(() => readReviewed(storageKey));
   const latestExecutionDetails = latestMeasuredExecution(test.outcomes);
-  const logs = logsForTest(test, visibleStages);
   const groups = outcomeGroups(test, visibleStages);
   const chips = [...test.chips].sort(compareChips);
   const mixedRuns = new Set(test.outcomes.map((outcome) => outcome.executionDetails.runId === latestRunId)).size > 1;
+
+  const logsButton = (
+    <TestLogsButton
+      test={test}
+      visibleStages={visibleStages}
+      metadata={<TestMetadata meta={meta} test={test} executionDetails={latestExecutionDetails} defaultExpanded variant="dialog" />}
+    />
+  );
 
   return (
     <article
@@ -249,18 +218,7 @@ export function TestCard({
           </div>
         </details>
 
-        <TestMetadata meta={meta} test={test} executionDetails={latestExecutionDetails} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} actions={<>
-            {logs.length > 0 ? (
-              <button
-                type="button"
-                className="card__logs-button"
-                onClick={() => setLogsOpen(true)}
-                aria-haspopup="dialog"
-              >
-                logs
-              </button>
-            ) : null}
-        </>} />
+        <TestMetadata meta={meta} test={test} executionDetails={latestExecutionDetails} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} actions={logsButton} />
 
         {reviewed ? null : (
           <div className="card__body">
@@ -269,9 +227,7 @@ export function TestCard({
               renderMetadata={(fields, outcome) => {
                 const selected = test.outcomes.find((candidate) => candidate === outcome);
                 const scopedTest = { ...test, outcomes: selected ? [selected] : [] };
-                return <TestMetadata meta={meta} test={scopedTest} executionDetails={outcome?.executionDetails} defaultExpanded variant="dialog" actions={logs.length > 0 ? (
-                  <button type="button" className="card__logs-button" onClick={() => setLogsOpen(true)} aria-haspopup="dialog">logs</button>
-                ) : null}>
+                return <TestMetadata meta={meta} test={scopedTest} executionDetails={outcome?.executionDetails} defaultExpanded variant="dialog" actions={logsButton}>
                   {fields}
                 </TestMetadata>;
               }}
@@ -289,26 +245,6 @@ export function TestCard({
           </div>
         )}
       </div>
-
-      {logsOpen ? <Dialog
-        open={logsOpen}
-        onClose={() => setLogsOpen(false)}
-        title={<span className="ui-dialog__title-text">measurement logs · {test.name}</span>}
-        meta={<TestMetadata meta={meta} test={test} executionDetails={latestExecutionDetails} defaultExpanded variant="dialog" />}
-      >
-        <div className="card-logs">
-          {logs.map((log, index) => (
-            <section key={`${log.label}-${index}`} className="card-logs__section">
-              <div className="card-logs__label">{log.label}</div>
-              <AnsiLog
-                text={log.body}
-                className="error-log"
-                errorClassName="error-log__line--error"
-              />
-            </section>
-          ))}
-        </div>
-      </Dialog> : null}
     </article>
   );
 }

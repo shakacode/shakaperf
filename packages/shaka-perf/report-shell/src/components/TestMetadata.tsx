@@ -7,9 +7,10 @@
 
 import { useId, useState, type ReactNode } from 'react';
 import type { ExecutionDetails } from '../../../src/pipeline/outcome';
-import { SourceText } from './SourceText';
+import { SourceText } from '../../../src/report-ui/SourceText';
 import type { ReportMeta, TestResult } from '../types';
-import { MeasurementCommand, RunCommits } from './RunDetails';
+import { MeasurementCommand } from '../../../src/report-ui/MeasurementCommand';
+import { RunCommits } from './RunDetails';
 import { pipelineTroubleshootCommands, renderPipelineTestCardUrls } from '../../../src/pipeline/pipeline-artifacts';
 
 // Full-word units so "12m" isn't mistaken for "12 months" — especially
@@ -106,7 +107,7 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
         </div> : null}
       </div>
     </details>
-    {actions ? <div className="card__actions">{actions}</div> : null}
+    {actions}
     </div>
   );
 }
