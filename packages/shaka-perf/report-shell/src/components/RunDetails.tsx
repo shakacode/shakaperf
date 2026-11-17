@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { useRef, useState } from 'react';
+import { CommitDetails } from '../../../src/report-ui/CommitDetails';
 import type { ReportOutcome } from '../types';
 import type { ExecutionDetails } from '../../../src/pipeline/outcome';
 import type { MeasurementMetadata } from '../../../src/pipeline/run-metadata';
@@ -20,45 +20,6 @@ export function savedRunDetails(outcomes: readonly ReportOutcome[]) {
     groups.set(label, entries);
   }
   return [...groups];
-}
-
-export function MeasurementCommand({ command, compact = false, autoSize = false, label }: {
-  command: string;
-  compact?: boolean;
-  autoSize?: boolean;
-  label?: string;
-}) {
-  const [status, setStatus] = useState('Copy command');
-  const field = useRef<HTMLTextAreaElement>(null);
-  const code = useRef<HTMLPreElement>(null);
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(command);
-      setStatus('Copied');
-    } catch {
-      if (code.current) {
-        code.current.focus();
-        const range = document.createRange();
-        range.selectNodeContents(code.current);
-        const selection = window.getSelection();
-        selection?.removeAllRanges();
-        selection?.addRange(range);
-      } else {
-        field.current?.focus();
-        field.current?.select();
-      }
-      setStatus('Command selected — copy manually');
-    }
-  }
-  return (
-    <div className={`run-details__command${compact ? ' run-details__command--compact' : ''}${autoSize ? ' run-details__command--auto-size' : ''}`}>
-      {autoSize
-        ? <pre aria-label={label ?? 'Measurement command'} ref={code} tabIndex={0}><code>{command}</code></pre>
-        : <textarea aria-label={label ?? (compact ? 'Latest command' : 'Measurement command')} ref={field} value={command} readOnly rows={compact ? 1 : 2} />}
-      <button type="button" onClick={copy} aria-label="Copy command" title={status}>{compact ? 'Copy' : status}</button>
-      {compact || autoSize ? <span className="run-details__copy-status" role="status">{status === 'Copy command' ? '' : status}</span> : null}
-    </div>
-  );
 }
 
 type Entry = { stage: string; metadata: MeasurementMetadata; executionDetails: ExecutionDetails };
@@ -83,18 +44,6 @@ function Scope({ items, entries, runs, always = false }: { items: Entry[]; entri
   return <span className="run-details__scope">{scopes.map(({ value: [runId, stage], items }) =>
     `${runs.length > 1 ? `Run ${runs.indexOf(runId!) + 1} / ` : ''}${stage} · ${unique(items.map((item) => item.executionDetails.viewport.label)).join(', ')}`,
   ).join(' / ')}</span>;
-}
-
-function CommitDetails({ commit }: { commit: Pick<NonNullable<MeasurementMetadata['targets'][number]['commit']>, 'sha' | 'message'> }) {
-  const [subject = '', ...body] = commit.message.split('\n');
-  const heading = <><code title={commit.sha}>{commit.sha.slice(0, 8)}</code><span>{subject || (body.join('\n').trim() ? 'Commit message' : 'Empty commit message')}</span></>;
-  if (!body.join('\n').trim()) return <div className="run-details__commit"><div className="run-details__commit-heading">{heading}</div></div>;
-  return <details className="run-details__commit">
-    <summary>{heading}</summary>
-    <div className="run-details__commit-body">
-      <pre>{body.join('\n')}</pre>
-    </div>
-  </details>;
 }
 
 export function RunCommits({ outcomes, side }: { outcomes: readonly ReportOutcome[]; side?: 'control' | 'experiment' }) {
