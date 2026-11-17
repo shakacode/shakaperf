@@ -18,13 +18,15 @@ are not restricted.
 7. **Surface breaking changes in the release.** When the Unreleased section had entries, annotate that package's tag with the list of them so the change is visible at release time, not just in the file (see steps 5–6). The list is mechanical — one line per `###` heading of the stamped section, no rewording, no verbatim body text. Tag a release with no breaking changes as a lightweight tag as before.
 8. **STOP THE DEPLOYMENT if the shrinkwrap refresh moves anything but the released versions.** A tag ships whatever `npm install` re-resolved (step 5c) straight to consumers, unreviewed. Report it and wait for the human — don't commit, don't tag, don't fix it.
 
+9. **A release whose `LICENSE.md` changes is a minor bump, never a patch.** The first release under The ShakaPerf License 2.0 is `shaka-perf` 0.8.0 and `shaka-shared` 0.8.0; `shaka-bundle-size` is 0.1.0.
+
 ## Steps
 
 1. Ask which packages to deploy (if not specified via $ARGUMENTS). Valid packages: shaka-shared, shaka-perf, shaka-bundle-size.
 
    Start from a fresh `main` (`git checkout main && git pull`) and create the release branch: `git checkout -b deploy/<package>@<version>` (use the shared version when several ship together).
 
-2. For each package, read its `packages/<name>/package.json` to get the current version, then bump the patch version. When `shaka-shared` and `shaka-perf` ship together, bump `shaka-perf`'s patch and set `shaka-shared` to the same version (rule 6). Leave `shaka-perf`'s `"shaka-shared"` pin alone — step 5c bumps it. Then run `yarn install` and commit the `yarn.lock` change together with the bump: the exact pin only resolves to the workspace while the workspace version matches it, so after the bump Yarn fetches the old `shaka-shared` from npm and splits its lock entry. Without that commit, `yarn install --immutable` in the publish workflow rejects the tag (this failed the `shaka-shared@0.3.0` publish once).
+2. For each package, read its `packages/<name>/package.json` to get the current version, then bump the patch version unless rule 9 applies. When `shaka-shared` and `shaka-perf` ship together, bump `shaka-perf`'s patch (its minor when rule 9 applies) and set `shaka-shared` to the same version (rule 6). Leave `shaka-perf`'s `"shaka-shared"` pin alone — step 5c bumps it. Then run `yarn install` and commit the `yarn.lock` change together with the bump: the exact pin only resolves to the workspace while the workspace version matches it, so after the bump Yarn fetches the old `shaka-shared` from npm and splits its lock entry. Without that commit, `yarn install --immutable` in the publish workflow rejects the tag (this failed the `shaka-shared@0.3.0` publish once).
 
 3. Update [BREAKING_CHANGES.md](../../BREAKING_CHANGES.md): if its **Unreleased** section has any entries, rename that heading to `## <package>@<version>` (or the shared version being released) with today's date, and update the "Current version:" line at the bottom to the versions just bumped. If **Unreleased** is empty, only update the "Current version:" line. Include this edit in the version-bump commit.
 
