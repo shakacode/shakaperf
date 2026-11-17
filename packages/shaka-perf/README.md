@@ -57,10 +57,9 @@ yarn shaka-perf servers start-servers
 
 ## Free & Pro
 
-ShakaPerf is source-available under [The ShakaPerf License 2.0](../../LICENSE.md). Every use is free for
-your organization's first year. Please register at https://shakaperf.com/license. After the first year,
-organizations that cannot answer yes to all three questions (fewer than 10 people, under US $1M revenue
-in the last twelve months, under US $1M raised ever) need ShakaStack Pro: https://shakaperf.com/pricing.
-Do not resell ShakaPerf, publish a rebranded fork, or host it for others.
-
-Questions: [contact@shakacode.com](mailto:contact@shakacode.com).
+ShakaPerf is source-available under [The ShakaPerf License 2.0](../../LICENSE.md) and free for
+everyone, for any use, including CI, coding agents and client work. It will become paid, not before
+16 November 2027 and with at least 90 days of notice at https://shakaperf.com/license. Do not resell
+it, run it as a hosted service for others, or publish a rebranded or competing version. Please
+register your organization at https://shakaperf.com/license (free and optional). Paid support:
+contact@shakacode.com.

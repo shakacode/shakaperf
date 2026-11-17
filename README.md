@@ -108,19 +108,19 @@ use skill `/deploy shaka-perf shaka-shared`
 ## Free & Pro
 [![License: ShakaPerf License 2.0](https://img.shields.io/badge/license-ShakaPerf%20License%202.0-blue.svg)](./LICENSE.md)
 
-**Free for your organization's first year**, for every use: local runs, CI, PR checks, coding agents, private code.
+**Free for everyone**, for any use: local runs, CI, PR checks, coding agents, private code and paid
+client work. No size limit, no trial clock, nothing to sign. Nothing phones home.
 
-**Tell us you use it.** If you are still using ShakaPerf after 30 days, register at
-[shakaperf.com/license](https://shakaperf.com/license). It is free and takes a minute. Nothing phones home.
+**ShakaPerf will become paid.** ShakaCode will not ask anyone to pay before 16 November 2027, and
+publishes any change of the terms at least 90 days ahead at
+[shakaperf.com/license](https://shakaperf.com/license).
 
-**ShakaPerf will become paid.** After the first year you need [ShakaStack Pro](https://shakaperf.com/pricing)
-unless you can answer yes to all three: fewer than 10 people, under US $1M revenue in the last twelve
-months, under US $1M raised ever (counting affiliates). Charities, educational institutions and hospitals
-stay free at any size.
+**Do not resell it.** No selling, no hosted service for others, no rebranded or competing version.
+Forks for contributing, internal patches and paid client work are fine.
 
-**Do not resell it.** No selling, no rebranded fork, no hosted service for others. Forks for
-contributing, internal patches and paid client work are fine.
+**Tell us you use it.** Please register your organization at
+[shakaperf.com/license](https://shakaperf.com/license). It is free, optional, and never checked by the
+software. Paid support: [contact@shakacode.com](mailto:contact@shakacode.com).
 
-The [license](./LICENSE.md) that ships with a version never changes. Version 2.0 starts with release
-0.8.0; earlier releases keep the terms they shipped with. Questions:
-[contact@shakacode.com](mailto:contact@shakacode.com).
+The [ShakaPerf License 2.0](./LICENSE.md) starts with release 0.8.0; earlier releases keep the terms
+they shipped with.

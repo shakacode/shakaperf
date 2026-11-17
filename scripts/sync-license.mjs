@@ -25,7 +25,7 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = join(repoRoot, 'LICENSE.md');
 const target = resolve(process.cwd(), 'LICENSE.md');
 
-const licenseSha256 = '3e0ceb2dd946312349bff739a26d3797402ab82be0ac6ff92573708d4dc2def3';
+const licenseSha256 = 'ddb1d2c9155bf3c5f3bdd3ec1be89d9b853426bb32cc418c8bd41cdf18bf0c7c';
 const firstVersion = { 'shaka-perf': [0, 8], 'shaka-shared': [0, 8], 'shaka-bundle-size': [0, 1] };
 
 if (createHash('sha256').update(readFileSync(source)).digest('hex') !== licenseSha256) {
