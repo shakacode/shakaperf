@@ -14,12 +14,11 @@ import { reportDataForMode } from '../src/pipeline/report';
 it.each(['full', 'self-contained'] as const)('retains metadata verbatim in the %s report variant', (mode) => {
   const data = runDetailsFixture('compare');
   const metadata = data.tests[0]!.outcomes[0]!.executionDetails.measurementMetadata!;
-  metadata.numberOfMeasurements = 7;
   const selected = data.tests[0]!.outcomes[0]!;
-  selected.executionDetails = { ...selected.executionDetails, command: 'some-artifact.json', taskRetries: 2 };
+  selected.executionDetails = { ...selected.executionDetails, command: 'some-artifact.json', measurementMetadata: { ...metadata, numberOfMeasurements: 7 }, taskRetries: 2 };
   const executionDetails = structuredClone(selected.executionDetails);
   const report = reportDataForMode(data, mode, [], '/unused', { 'some-artifact.json': 'data:application/json;base64,e30=' });
-  expect(report.tests[0]!.outcomes[0]!.executionDetails.measurementMetadata).toEqual(metadata);
+  expect(report.tests[0]!.outcomes[0]!.executionDetails.measurementMetadata).toEqual(selected.executionDetails.measurementMetadata);
   expect(report.tests[0]!.outcomes[0]!.executionDetails).toEqual(executionDetails);
   expect(selected.executionDetails).toEqual(executionDetails);
 });
@@ -36,4 +35,11 @@ it.each(['Subject', 'Subject\n\n', ''])('does not expand a commit without body c
   const html = renderToStaticMarkup(createElement(CommitDetails, { commit }));
   expect(html).not.toContain('<summary>');
   expect(html).toContain('>1e04e038<');
+});
+
+it('escapes commit text', () => {
+  const commit = { sha: 'abcdef123456', message: '<script>control</script>' };
+  const html = renderToStaticMarkup(createElement(CommitDetails, { commit }));
+  expect(html).toContain('&lt;script&gt;control&lt;/script&gt;');
+  expect(html).not.toContain('<script>');
 });
