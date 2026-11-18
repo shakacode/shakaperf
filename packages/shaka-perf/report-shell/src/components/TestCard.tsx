@@ -218,7 +218,14 @@ export function TestCard({
           </div>
         </details>
 
-        <TestMetadata meta={meta} test={test} executionDetails={latestExecutionDetails} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} actions={logsButton} />
+        <TestMetadata
+          meta={meta}
+          test={test}
+          executionDetails={latestExecutionDetails}
+          expanded={metadataExpanded}
+          onToggleExpanded={onToggleMetadata}
+          actions={logsButton}
+        />
 
         {reviewed ? null : (
           <div className="card__body">
@@ -227,9 +234,18 @@ export function TestCard({
               renderMetadata={(fields, outcome) => {
                 const selected = test.outcomes.find((candidate) => candidate === outcome);
                 const scopedTest = { ...test, outcomes: selected ? [selected] : [] };
-                return <TestMetadata meta={meta} test={scopedTest} executionDetails={outcome?.executionDetails} defaultExpanded variant="dialog" actions={logsButton}>
-                  {fields}
-                </TestMetadata>;
+                return (
+                  <TestMetadata
+                    meta={meta}
+                    test={scopedTest}
+                    executionDetails={outcome?.executionDetails}
+                    defaultExpanded
+                    variant="dialog"
+                    actions={logsButton}
+                  >
+                    {fields}
+                  </TestMetadata>
+                );
               }}
             >
               {groups.map((outcomes, index) => (
