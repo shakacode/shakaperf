@@ -16,7 +16,7 @@ export function reviewedKey(meta: ReportMeta, test: TestResult): string {
     outcome.executionDetails.viewport.label,
     outcome.executionDetails.viewport.width,
     outcome.executionDetails.viewport.height,
-    outcome.executionDetails.runId ?? test.runId ?? test.measuredAt ?? meta.generatedAt,
+    outcome.executionDetails.runId,
   ])).sort();
   return `shaka-perf:reviewed:v2:${JSON.stringify([
     meta.cwd, meta.pipelineName, test.id, outcomes,

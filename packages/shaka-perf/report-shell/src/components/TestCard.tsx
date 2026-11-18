@@ -7,22 +7,13 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
-import { TestMetadata } from './TestMetadata';
+import { TestReportProvider } from '../../../src/report-ui/test-report-context';
+import { pipelineTestTargets } from '../../../src/pipeline/pipeline-artifacts';
+import { TestSummaryMetadata } from './TestMetadata';
 import { ReviewedCheckbox, useReviewed } from './ReviewedCheckbox';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
 import { TestLogsButton } from './TestLogsButton';
-import { StageArtifactProvider } from '../../../src/pipeline/stage-report-components';
-
-function latestMeasuredExecution(outcomes: readonly ReportOutcome[]) {
-  let latest: ReportOutcome['executionDetails'] | undefined;
-  for (const { executionDetails } of outcomes) {
-    if (executionDetails.measurementMetadata && (!latest || executionDetails.runId > latest.runId)) {
-      latest = executionDetails;
-    }
-  }
-  return latest;
-}
 
 function outcomeGroups(test: TestResult, visibleStages: ReadonlySet<string>): ReportOutcome[][] {
   const groups: ReportOutcome[][] = [];
@@ -106,102 +97,82 @@ export function TestCard({
     return () => cancelAnimationFrame(frame);
   }, [expanded]);
   const { reviewed, updateReviewed } = useReviewed(meta, test);
-  const latestExecutionDetails = latestMeasuredExecution(test.outcomes);
   const groups = outcomeGroups(test, visibleStages);
   const chips = [...test.chips].sort(compareChips);
   const mixedRuns = new Set(test.outcomes.map((outcome) => outcome.executionDetails.runId === latestRunId)).size > 1;
 
-  const logsButton = (
-    <TestLogsButton
-      test={test}
-      visibleStages={visibleStages}
-      metadata={<TestMetadata meta={meta} test={test} executionDetails={latestExecutionDetails} defaultExpanded variant="dialog" />}
-    />
-  );
+  const reportValue = {
+    meta,
+    test: {
+      name: test.name,
+      filePath: test.filePath,
+      viewportArtifactPaths: test.viewportArtifactPaths,
+    },
+    targets: pipelineTestTargets(meta, test),
+  };
 
   return (
-    <article
-      className="card"
-      data-report-test-id={test.id}
-      data-chip-color={chips[0]?.color ?? 'gray'}
-      data-dimmed={dimmed ? 'true' : undefined}
-      data-reviewed={reviewed ? 'true' : undefined}
-      data-collapsed={expanded ? undefined : 'true'}
-      tabIndex={-1}
-      style={{ animationDelay: `${animationDelayMs}ms` }}
-    >
-      <div className="card__head">
-        <div>
-          <h3 className="card__title">
-            <button
-              type="button"
-              className="card__title-toggle"
-              ref={titleRef}
-              aria-expanded={expanded}
-              aria-controls={contentId}
-              onClick={() => {
-                titleRef.current?.focus({ preventScroll: true });
-                scrollPending.current = !expanded;
-                if (onToggleExpanded) onToggleExpanded();
-                else setLocalExpanded((previous) => !previous);
-              }}
-            >
-              <span className="card__title-caret" aria-hidden="true" />
-              <span>{test.name}</span>
-            </button>
-          </h3>
-        </div>
-        <ReviewedCheckbox reviewed={reviewed} onChange={updateReviewed} />
-      </div>
-
-      <div id={contentId} hidden={!expanded}>
-        <details className="card__disclosure card__tags" open={tagsExpanded}>
-          <summary onClick={(event) => {
-            event.preventDefault();
-            if (onToggleTags) onToggleTags();
-            else setLocalTagsExpanded((previous) => !previous);
-          }}>Tags</summary>
-          <div className="card__tag-list">
-            {oldRun ? (
-              <span className="pill pill--gray">
-                <span className="pill__label">old run</span>
-              </span>
-            ) : null}
-            {chips.map((chip) => (
-              <Pill key={`${chip.tag}:${chip.text}`} chip={chip} />
-            ))}
+    <TestReportProvider value={reportValue}>
+      <article
+        className="card"
+        data-report-test-id={test.id}
+        data-chip-color={chips[0]?.color ?? 'gray'}
+        data-dimmed={dimmed ? 'true' : undefined}
+        data-reviewed={reviewed ? 'true' : undefined}
+        data-collapsed={expanded ? undefined : 'true'}
+        tabIndex={-1}
+        style={{ animationDelay: `${animationDelayMs}ms` }}
+      >
+        <div className="card__head">
+          <div>
+            <h3 className="card__title">
+              <button
+                type="button"
+                className="card__title-toggle"
+                ref={titleRef}
+                aria-expanded={expanded}
+                aria-controls={contentId}
+                onClick={() => {
+                  titleRef.current?.focus({ preventScroll: true });
+                  scrollPending.current = !expanded;
+                  if (onToggleExpanded) onToggleExpanded();
+                  else setLocalExpanded((previous) => !previous);
+                }}
+              >
+                <span className="card__title-caret" aria-hidden="true" />
+                <span>{test.name}</span>
+              </button>
+            </h3>
           </div>
-        </details>
+          <ReviewedCheckbox reviewed={reviewed} onChange={updateReviewed} />
+        </div>
 
-        <TestMetadata
-          meta={meta}
-          test={test}
-          executionDetails={latestExecutionDetails}
-          expanded={metadataExpanded}
-          onToggleExpanded={onToggleMetadata}
-          actions={logsButton}
-        />
+        <div id={contentId} hidden={!expanded}>
+          <details className="card__disclosure card__tags" open={tagsExpanded}>
+            <summary onClick={(event) => {
+              event.preventDefault();
+              if (onToggleTags) onToggleTags();
+              else setLocalTagsExpanded((previous) => !previous);
+            }}>Tags</summary>
+            <div className="card__tag-list">
+              {oldRun ? (
+                <span className="pill pill--gray">
+                  <span className="pill__label">old run</span>
+                </span>
+              ) : null}
+              {chips.map((chip) => (
+                <Pill key={`${chip.tag}:${chip.text}`} chip={chip} />
+              ))}
+            </div>
+          </details>
 
-        {reviewed ? null : (
-          <div className="card__body">
-            <StageArtifactProvider
-              test={{ ...test, pipelineName: meta.pipelineName, pipelineConfig: meta.pipelineConfig }}
-              renderMetadata={(fields, outcome) => {
-                const selected = test.outcomes.find((candidate) => candidate === outcome);
-                const scopedTest = { ...test, outcomes: selected ? [selected] : [] };
-                return (
-                  <TestMetadata
-                    meta={meta}
-                    test={scopedTest}
-                    executionDetails={outcome?.executionDetails}
-                    defaultExpanded
-                    variant="dialog"
-                  >
-                    {fields}
-                  </TestMetadata>
-                );
-              }}
-            >
+          <div className="card__metadata-row card__metadata-row--card">
+            <TestSummaryMetadata test={test} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} />
+            <TestLogsButton test={test} visibleStages={visibleStages} />
+          </div>
+
+          {reviewed ? null : (
+            <div className="card__body">
               {groups.map((outcomes, index) => (
                 <OutcomeSlot
                   key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
@@ -211,10 +182,10 @@ export function TestCard({
                   showRunChips={showViewportRunChips && mixedRuns}
                 />
               ))}
-            </StageArtifactProvider>
-          </div>
-        )}
-      </div>
-    </article>
+            </div>
+          )}
+        </div>
+      </article>
+    </TestReportProvider>
   );
 }
