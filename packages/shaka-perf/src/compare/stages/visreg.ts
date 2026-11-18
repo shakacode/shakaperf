@@ -47,6 +47,9 @@ export interface VisregArtifact {
    * retries)" chip.
    */
   savedByRetries: boolean;
+  /** Per-selector attempts; absent in older saved results. */
+  compareAttempts?: number;
+  compareRetries?: number;
 }
 
 export type VisregResult = VisregArtifact[];
