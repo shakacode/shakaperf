@@ -127,7 +127,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     const target = metadata.locator('.card__targets > div').first();
     expect(await target.getByText('abcdef12', { exact: true }).count()).toBe(0);
     expect(await target.getByText('1e04e038', { exact: true }).count()).toBe(1);
-    await target.locator('.run-details__commit summary').press('Enter');
+    await target.locator('.target-commit summary').press('Enter');
     expect(await target.getByText('Latest body', { exact: true }).isVisible()).toBe(true);
     await metadata.getByRole('button', { name: 'command', exact: true }).click();
     await metadata.getByRole('button', { name: 'test source', exact: true }).click();
