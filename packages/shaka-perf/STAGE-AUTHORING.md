@@ -49,7 +49,7 @@ bundling native deps like `sharp`, `playwright`, and `lighthouse`.
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { Viewport } from '../../../config';
-import type { Outcome } from '../../../pipeline/outcome';
+import type { OutcomeKind } from '../../../pipeline/outcome';
 import type { WorkerPool } from '../../../pipeline/worker-pool';
 import {
   emptyMachineReadableSummary,
@@ -69,8 +69,12 @@ export class MyStage implements Stage<MyResult> {
 
   constructor(private readonly config: MyStageConfig) {}
 
-  applies(_test: AbTestDefinition, _viewport: Viewport, priorOutcomes: ReadonlyMap<StageName, Outcome>): boolean {
-    return priorOutcomes.get('audit')?.kind === 'ok';
+  applies(
+    _test: AbTestDefinition,
+    _viewport: Viewport,
+    priorOutcomeKinds: ReadonlyMap<StageName, OutcomeKind>,
+  ): boolean {
+    return priorOutcomeKinds.get('audit') === 'ok';
   }
 
   async run(ctx: TestContext, pool: WorkerPool): Promise<MyResult> {
@@ -102,12 +106,12 @@ Field-by-field:
 - **`description`** — one-liner shown in `>>> <name> · <description>`
   banner and the report.
 
-- **`applies(test, viewport, priorOutcomes)`** — called once per unit
+- **`applies(test, viewport, priorOutcomeKinds)`** — called once per unit
   before `run`. Returning `false` produces a `skipped` outcome with a
   framework-supplied reason. Use this for cross-stage dependencies:
   ```ts
-  applies(_test, _viewport, priorOutcomes) {
-    return priorOutcomes.get('audit')?.kind === 'ok';
+  applies(_test, _viewport, priorOutcomeKinds) {
+    return priorOutcomeKinds.get('audit') === 'ok';
   }
   ```
   Per-test category opt-outs (`testTypes: [...]`) and viewport filters
@@ -403,7 +407,7 @@ format.
 
 - Stages run on a per-unit chain, so a stage failure for unit K does
   **not** block other units. Subsequent stages on unit K skip
-  themselves via `priorOutcomes`.
+  themselves via `priorOutcomeKinds`.
 - A submission whose `key` gets `pool.cancel(key, reason)`'d rejects
   immediately. In-flight task bodies that thread
   `raceCancellation` (the second arg to the `WorkerTask` signature)
@@ -435,3 +439,47 @@ See `.claude/skills/review-architecture/SKILL.md`.
 - [ ] `yarn build` is clean.
 - [ ] The watchdog stays silent on a realistic test run, or the
   warnings are tracked as follow-up TODOs.
+
+## Shared dialog metadata and recovery badges
+
+Keep `run()` results as typed domain measurements with artifact paths. Stage
+renderers may arrange specialized content, but must supply metadata as plain
+`fields: Readonly<Record<string, string>>` to `DetailedArtifactDialog`. Do not
+pass metadata JSX or build metadata disclosure markup in a stage.
+
+The runner records the invocation command, task retries, and recovery on `outcome.executionDetails`.
+Measuring stages also have `executionDetails.measurementMetadata` with saved
+targets, timing, and any sampling settings reported by the engine. Every `StageRenderEntry`
+receives that same object as `executionDetails`; no report-time extraction is needed.
+Pass the entry’s execution details to the preview. The preview opens its own dialog and supplies the stage fields. The dialog reads the test name, paths, and target links from the enclosing test card.
+
+```tsx
+<DetailedArtifactDialog
+  href={measurement.imageHref}
+  label="Screenshot"
+  fields={{ selector: measurement.selector }}
+  executionDetails={entry.executionDetails}
+/>
+```
+
+Shared components render task retries and metadata fields. Use `RecoveryBadges`
+with `taskRecovered={entry.executionDetails.recoveredAfterRetries}` and the domain's
+comparison-recovery boolean where a preview needs recovery labels. Keep card-chip
+policy in the pipeline chip builder, not stage report components. Do not pass full
+outcomes or look up another viewport's execution details. Do not infer execution facts from current configuration.
+
+Execution context is owned by the runner: `executionDetails` contains `runId`,
+`testSourceHref`, `viewport`, retry usage, and recovery state. Report entries and
+shared components receive the same object. Do not copy these fields onto outcomes,
+run metadata, or render entries. Source paths are null when no snapshot was captured.
+Visual comparison counts remain measurement data.
+
+Saved outcomes must use the current contract. There is no legacy normalization or
+fallback to another run or the current configuration. Regenerate outdated results.
+
+Source snapshots are referenced by `executionDetails.testSourceHref`; there is no
+card-level source copy. Report packaging embeds source text explicitly in both modes
+so source viewing works from `file://`. Dialogs use their execution's reference;
+cards offer a selector when their executions reference different snapshots.
+Artifact collection and inlining traverse measurements and failure media only.
+Execution context and measurement details are never recursively scanned.
