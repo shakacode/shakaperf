@@ -60,6 +60,7 @@ function CoveragePreview({ entry }: { entry: StageRenderEntry<CodeCoverageResult
         <div className="coverage-preview__media">
           <DetailedArtifactDialog
             executionDetails={entry.executionDetails}
+            title={`${entry.executionDetails.viewport.label} code coverage screenshot`}
             image
                     href={m.screenshotHref}
             label="page the visibility map describes"
@@ -120,12 +121,22 @@ function CoveragePreview({ entry }: { entry: StageRenderEntry<CodeCoverageResult
         <FullReportOnly>
           <div className="artifact-links">
             {m.visibilityMapHref ? (
-              <DetailedArtifactDialog executionDetails={entry.executionDetails} href={m.visibilityMapHref} label="visibility-map.txt">
+              <DetailedArtifactDialog
+                executionDetails={entry.executionDetails}
+                href={m.visibilityMapHref}
+                label="visibility-map.txt"
+                title={`${entry.executionDetails.viewport.label} visibility map`}
+              >
                 visibility-map.txt
               </DetailedArtifactDialog>
             ) : null}
             {m.coverageHref ? (
-              <DetailedArtifactDialog executionDetails={entry.executionDetails} href={m.coverageHref} label="coverage.json">
+              <DetailedArtifactDialog
+                executionDetails={entry.executionDetails}
+                href={m.coverageHref}
+                label="coverage.json"
+                title={`${entry.executionDetails.viewport.label} code coverage`}
+              >
                 coverage.json
               </DetailedArtifactDialog>
             ) : null}
