@@ -32,7 +32,7 @@ export function ArtifactMetadataFields({ fields, executionDetails }: ArtifactMet
       {fields && Object.keys(fields).length > 0 ? (
         <dl className="ui-dialog__meta">
           {Object.entries(fields).map(([label, value]) => (
-            <div key={label}>
+            <div key={label} className={value.length > 40 ? 'ui-dialog__meta-wide' : undefined}>
               <dt>{label}</dt>
               <dd className="ui-dialog__meta-break">{value}</dd>
             </div>
