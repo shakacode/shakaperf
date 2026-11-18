@@ -21,8 +21,6 @@ import {
   type SideBySideFrames,
   type SideBySideInteraction,
 } from '../../../bench/core/side-by-side-frames';
-import type { ExecutionDetails } from '../../../pipeline/outcome';
-import { ArtifactDialog } from '../../../report-ui/ArtifactDialog';
 
 const SPEEDS = [0.1, 0.25, 0.5, 1, 2, 3, 5, 10] as const;
 const CHANGED_PIXEL_THRESHOLD = 8;
@@ -169,28 +167,6 @@ function paintDiff(
 
 function formatSeconds(ms: number): string {
   return `${(ms / 1000).toFixed(2)}s`;
-}
-
-export function FramePlayerButton({ href, executionDetails }: {
-  href: string;
-  executionDetails: ExecutionDetails;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <button type="button" onClick={() => setOpen(true)}>play frames</button>
-      {open ? (
-        <ArtifactDialog
-          title="frames side by side"
-          variant="wide"
-          executionDetails={executionDetails}
-          onClose={() => setOpen(false)}
-        >
-          <FramePlayer href={href} />
-        </ArtifactDialog>
-      ) : null}
-    </>
-  );
 }
 
 type Loaded = {
