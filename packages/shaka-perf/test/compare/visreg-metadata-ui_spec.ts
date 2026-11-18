@@ -134,9 +134,7 @@ describe('visual preview metadata', () => {
         const summary = metadata.locator('summary').first();
         const label = (await summary.locator(':scope > span').first().boundingBox())!;
         const source = (await summary.locator('.card__path').boundingBox())!;
-        const logs = (await dialog.locator('.card__actions').getByRole('button', { name: 'logs', exact: true }).boundingBox())!;
         expect(Math.abs(label.y - source.y)).toBeLessThan(3);
-        expect(Math.abs(label.y - logs.y)).toBeLessThan(3);
       }
       // Test-level URLs remain shared; source is scoped to this execution.
       expect(await metadata.locator('.card__targets a').allTextContents()).toEqual([
@@ -148,7 +146,9 @@ describe('visual preview metadata', () => {
       }
       await metadata.getByRole('button', { name: 'test source', exact: true }).click();
       expect(await metadata.locator('.card__code').textContent()).toContain("abTest('Homepage'");
-      await dialog.locator('.card__actions').getByRole('button', { name: 'logs', exact: true }).click();
+      expect(await dialog.getByRole('button', { name: 'logs', exact: true }).count()).toBe(0);
+      await dialog.getByRole('button', { name: 'close', exact: true }).click();
+      await page.getByRole('button', { name: 'logs', exact: true }).click();
       const logs = page.getByRole('dialog', { name: 'measurement logs' });
       await logs.waitFor();
       expect(await logs.locator('.card-logs').textContent()).toContain('Measurement completed');
@@ -173,14 +173,15 @@ describe('visual preview metadata', () => {
       await dialog.getByRole('button', { name: 'test source', exact: true }).click();
       await dialog.locator('.card__code').filter({ hasText: "abTest('Homepage'" }).waitFor();
       expect(await dialog.getByRole('combobox').count()).toBe(0);
-      await dialog.getByRole('button', { name: 'logs', exact: true }).click();
+      expect(await dialog.getByRole('button', { name: 'logs', exact: true }).count()).toBe(0);
+      await dialog.getByRole('button', { name: 'close', exact: true }).click();
+      await page.getByRole('button', { name: 'logs', exact: true }).click();
       const logs = page.getByRole('dialog', { name: 'measurement logs' });
       await logs.getByRole('button', { name: 'command', exact: true }).click();
       expect(await logs.getByLabel('Latest command').inputValue()).toBe('shaka-perf compare --viewport phone');
       await logs.getByRole('button', { name: 'test source', exact: true }).click();
       await logs.locator('.card__code').filter({ hasText: 'newer phone source' }).waitFor();
       await logs.getByRole('button', { name: 'close', exact: true }).click();
-      await dialog.getByRole('button', { name: 'close', exact: true }).click();
       await page.locator('.artifact-card--single').nth(1).getByRole('button').click();
       dialog = page.getByRole('dialog');
       await dialog.getByRole('button', { name: 'test source', exact: true }).click();
