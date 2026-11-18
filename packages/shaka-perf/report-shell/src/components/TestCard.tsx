@@ -241,7 +241,6 @@ export function TestCard({
                     executionDetails={outcome?.executionDetails}
                     defaultExpanded
                     variant="dialog"
-                    actions={logsButton}
                   >
                     {fields}
                   </TestMetadata>
