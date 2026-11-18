@@ -476,7 +476,12 @@ describe('runPipeline', () => {
     }
   });
 
-  it.each([[false, false], [true, false], [false, true], [true, true]])('saves worker retries (exhausted: %p, derived: %p)', async (exhausted, derived) => {
+  it.each([
+    [false, false],
+    [true, false],
+    [false, true],
+    [true, true],
+  ])('saves worker retries (exhausted: %p, derived: %p)', async (exhausted, derived) => {
     const selected = pipeline();
     Object.assign(selected.stages[0]!, { measuresApplication: !derived });
     selected.stages[0]!.run = async (ctx, pool) => {
@@ -493,7 +498,18 @@ describe('runPipeline', () => {
     expect(measured.length).toBeGreaterThan(0);
     for (const outcome of measured) {
       expect(outcome.kind).toBe(exhausted ? 'error' : 'ok');
-      expect(outcome.executionDetails).toEqual({ runId: expect.any(String), command: expect.any(String), viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }), testSourceHref: derived ? null : expect.any(String), taskRetries: 1, taskRetryLimit: 1, recoveredAfterRetries: !exhausted, measurementMetadata: derived ? undefined : expect.objectContaining({ targets: expect.any(Array) }) });
+      expect(outcome.executionDetails).toEqual({
+        runId: expect.any(String),
+        command: expect.any(String),
+        viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }),
+        testSourceHref: derived ? null : expect.any(String),
+        taskRetries: 1,
+        taskRetryLimit: 1,
+        recoveredAfterRetries: !exhausted,
+        measurementMetadata: derived
+          ? undefined
+          : expect.objectContaining({ targets: expect.any(Array) }),
+      });
       if (derived) expect(outcome.executionDetails.measurementMetadata).toBeUndefined();
       else {
         expect(outcome.executionDetails.measurementMetadata?.targets.map(({ side }) => side)).toEqual(['control', 'experiment']);

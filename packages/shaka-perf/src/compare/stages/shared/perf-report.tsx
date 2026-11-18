@@ -74,15 +74,22 @@ function PerfViewportBlock({ perf, viewportLabel, latestRun }: PerfRow) {
   const hasSignificantMetrics = significantMetrics(perf).length > 0;
   const hasNoDifference = hasNoDifferenceMetrics(perf);
   return (
-    <section className="stage-stack__viewport perf-viewport" aria-label={`${viewportLabel} performance`}>
-      <ReportSection sectionKey={`${section ?? "perf"}:viewport:${viewportLabel}`} title={`${viewportLabel} performance`} badge={<OldRunChip latestRun={latestRun} />} nested>
-
-      <PerfBody
-        perf={perf}
-        hasNoDifference={hasNoDifference}
-        hasSignificantMetrics={hasSignificantMetrics}
-        viewportLabel={viewportLabel}
-      />
+    <section
+      className="stage-stack__viewport perf-viewport"
+      aria-label={`${viewportLabel} performance`}
+    >
+      <ReportSection
+        sectionKey={`${section ?? 'perf'}:viewport:${viewportLabel}`}
+        title={`${viewportLabel} performance`}
+        badge={<OldRunChip latestRun={latestRun} />}
+        nested
+      >
+        <PerfBody
+          perf={perf}
+          hasNoDifference={hasNoDifference}
+          hasSignificantMetrics={hasSignificantMetrics}
+          viewportLabel={viewportLabel}
+        />
       </ReportSection>
     </section>
   );

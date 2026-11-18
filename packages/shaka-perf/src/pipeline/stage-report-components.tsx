@@ -39,7 +39,12 @@ export function ArtifactScope({ outcome, children }: { outcome?: Outcome; childr
 
 export function ArtifactDialogTitle({ title }: { title: ReactNode }) {
   const test = useContext(StageArtifactContext);
-  return <span className="ui-dialog__title-text">{title}{test ? <> · {test.name}</> : null}</span>;
+  return (
+    <span className="ui-dialog__title-text">
+      {title}
+      {test ? <> · {test.name}</> : null}
+    </span>
+  );
 }
 
 /** Wrap stage-specific fields in the shell's shared metadata disclosure. */
@@ -51,7 +56,10 @@ export function ArtifactMetadata({ children }: { children?: ReactNode }) {
   return (
     <details className="card__disclosure card__metadata" open>
       <summary>Metadata</summary>
-      <div className="card__metadata-content">{test ? <TestMeta test={test} /> : null}{children}</div>
+      <div className="card__metadata-content">
+        {test ? <TestMeta test={test} /> : null}
+        {children}
+      </div>
     </details>
   );
 }
@@ -194,9 +202,22 @@ export function DetailedArtifactDialog({
           open={open}
           onClose={() => setOpen(false)}
           title={<ArtifactDialogTitle title={title} />}
-          meta={meta ?? <ArtifactMetadata>{extra ? <dl className="ui-dialog__meta">{extra}</dl> : null}</ArtifactMetadata>}
+          meta={
+            meta ?? (
+              <ArtifactMetadata>
+                {extra ? <dl className="ui-dialog__meta">{extra}</dl> : null}
+              </ArtifactMetadata>
+            )
+          }
         >
-          {body ?? (image ? <ImageViewport><img src={href} alt={label} /></ImageViewport> : <iframe className="artifact-dialog__frame" src={href} title={label} />)}
+          {body ??
+            (image ? (
+              <ImageViewport>
+                <img src={href} alt={label} />
+              </ImageViewport>
+            ) : (
+              <iframe className="artifact-dialog__frame" src={href} title={label} />
+            ))}
         </Dialog>
       ) : null}
     </>

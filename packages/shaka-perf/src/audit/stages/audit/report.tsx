@@ -92,23 +92,25 @@ function MetricTable({
   if (metrics.length === 0 && !hasArtifacts(audit)) return null;
   return (
     <div className="stage-section">
-      <ReportSection sectionKey={`audit:viewport:${viewportLabel}`} title={`${viewportLabel} performance`} badge={<OldRunChip latestRun={latestRun} />} nested>
-
-      <div style={METRIC_COLUMNS_STYLE}>
-        {GROUPS.map((group) => {
-          const groupMetrics = metrics.filter((metric) => metric.group === group.id);
-          if (groupMetrics.length === 0) return null;
-          return (
-            <MetricGroupColumn key={group.id} title={group.label} metrics={groupMetrics} />
-          );
-        })}
-        {audit.lighthouseHref ? (
-          <FullReportOnly>
-            <LighthouseColumn audit={audit} />
-          </FullReportOnly>
-        ) : null}
-      </div>
-      <ArtifactLinks audit={audit} />
+      <ReportSection
+        sectionKey={`audit:viewport:${viewportLabel}`}
+        title={`${viewportLabel} performance`}
+        badge={<OldRunChip latestRun={latestRun} />}
+        nested
+      >
+        <div style={METRIC_COLUMNS_STYLE}>
+          {GROUPS.map((group) => {
+            const groupMetrics = metrics.filter((metric) => metric.group === group.id);
+            if (groupMetrics.length === 0) return null;
+            return <MetricGroupColumn key={group.id} title={group.label} metrics={groupMetrics} />;
+          })}
+          {audit.lighthouseHref ? (
+            <FullReportOnly>
+              <LighthouseColumn audit={audit} />
+            </FullReportOnly>
+          ) : null}
+        </div>
+        <ArtifactLinks audit={audit} />
       </ReportSection>
     </div>
   );
