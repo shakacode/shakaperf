@@ -58,3 +58,20 @@ describe('troubleshoot commands', () => {
       .toBe(`shaka-perf troubleshoot --filter '^Homepage$' --viewport desktop`);
   });
 });
+
+describe('pipeline test targets', () => {
+  const test = { controlUrl: 'https://control/cart', experimentUrl: 'https://experiment/cart' };
+
+  it('returns both compare URLs in display order', () => {
+    expect(comparePipelineReport.testTargets(test)).toEqual([
+      { side: 'control', label: 'control', href: test.controlUrl },
+      { side: 'experiment', label: 'experiment', href: test.experimentUrl },
+    ]);
+  });
+
+  it('labels the audit URL', () => {
+    expect(auditPipelineReport.testTargets(test)).toEqual([
+      { side: 'experiment', label: 'url', href: test.experimentUrl },
+    ]);
+  });
+});

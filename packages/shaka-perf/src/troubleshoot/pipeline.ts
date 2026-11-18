@@ -22,8 +22,7 @@ import type { AbTestsConfig } from '../config';
 const NO_REPORT: PipelineReport = {
   reportLabel: 'Troubleshoot',
   renderHeaderUrls: () => null,
-  renderTestCardUrls: () => null,
-  renderDialogMetaUrls: () => null,
+  testTargets: () => [],
 };
 
 export const troubleshootPipelineMetadata = {
