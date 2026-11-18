@@ -9,7 +9,8 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 import { useReportSection } from './report-section';
 import { ReportHeading, type ReportHeadingProps } from './report-heading';
 import { ImageViewport } from './image-viewport';
-import { renderPipelineDialogMetaUrls } from './pipeline-artifacts';
+import { TargetLink } from '../report-ui/TargetLink';
+import { pipelineTestTargets } from './pipeline-artifacts';
 import type { Outcome } from './outcome';
 
 import { Dialog } from '../report-ui/Dialog';
@@ -100,7 +101,9 @@ export function TestMeta({
 }
 
 function TestMetaUrls({ test }: { test: StageArtifactTestMeta }) {
-  return <>{renderPipelineDialogMetaUrls(test)}</>;
+  return pipelineTestTargets(test, test).map(target => (
+    <TargetLink key={target.side} target={target} className="ui-dialog__meta-break" />
+  ));
 }
 
 export function useStageArtifactTest(): StageArtifactTestMeta | null {
