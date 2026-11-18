@@ -106,6 +106,7 @@ export const REPORT_TOOLTIP_CSS = `
 
 /* Render outside the card so the container and report grid cannot clip it. */
 .report-tooltip {
+  white-space: pre-line;
   position: fixed;
   z-index: 2000;
   width: min(330px, calc(100vw - 24px));
