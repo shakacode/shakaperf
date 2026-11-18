@@ -55,7 +55,7 @@ function mockPipeline(name: 'compare' | 'audit') {
     name, description: name,
     measurementSides: name === 'compare' ? ['control', 'experiment'] : ['experiment'],
     derivedResultsDirs: [{ path: 'derived', unitFiles: (unitId) => [`${unitId}.json`] }],
-    report: { reportLabel: name, renderHeaderUrls: () => null, renderTestCardUrls: () => null, renderDialogMetaUrls: () => null },
+    report: { reportLabel: name, renderHeaderUrls: () => null, testTargets: () => [] },
   }, (builder) => {
     const pool = builder.registerWorkerPool(1);
     for (const category of categories) {

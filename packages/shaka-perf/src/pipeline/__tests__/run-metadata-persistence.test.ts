@@ -59,7 +59,7 @@ it('automatically persists original metadata and reuses it unchanged in every re
     } });
     const pipeline = createPipeline({
       name: 'compare', description: 'Metadata persistence fixture', measurementSides: ['control', 'experiment'],
-      report: { reportLabel: 'compare', renderHeaderUrls: () => null, renderTestCardUrls: () => null, renderDialogMetaUrls: () => null },
+      report: { reportLabel: 'compare', renderHeaderUrls: () => null, testTargets: () => [] },
     }, (builder) => {
       const pool = builder.registerWorkerPool(1);
       builder.runStage(pool, {

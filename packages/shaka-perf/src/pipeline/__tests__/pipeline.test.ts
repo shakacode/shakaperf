@@ -104,8 +104,7 @@ function pipeline(): Pipeline {
     report: {
       reportLabel: 'Test',
       renderHeaderUrls: () => null,
-      renderTestCardUrls: () => null,
-      renderDialogMetaUrls: () => null,
+      testTargets: () => [],
       troubleshootCommand: (testName, viewportLabel) =>
         `run-me --filter '${testName}' --viewport ${viewportLabel}`,
     },
@@ -154,8 +153,7 @@ function allPipelineStages(observedUrls: ObservedStageUrls[]): Pipeline {
     report: {
       reportLabel: 'All pipeline stages',
       renderHeaderUrls: () => null,
-      renderTestCardUrls: () => null,
-      renderDialogMetaUrls: () => null,
+      testTargets: () => [],
     },
   }, (builder) => {
     const pool = builder.registerWorkerPool(1);
@@ -1085,8 +1083,7 @@ describe('per-side visreg failures', () => {
       report: {
         reportLabel: 'Test',
         renderHeaderUrls: () => null,
-        renderTestCardUrls: () => null,
-        renderDialogMetaUrls: () => null,
+        testTargets: () => [],
       },
     }, (builder) => {
       const pool = builder.registerWorkerPool(1);
@@ -1297,8 +1294,7 @@ describe('per-test task limits reach the pool', () => {
       report: {
         reportLabel: 'Test',
         renderHeaderUrls: () => null,
-        renderTestCardUrls: () => null,
-        renderDialogMetaUrls: () => null,
+        testTargets: () => [],
       },
     }, (builder) => {
       const pool = builder.registerWorkerPool(2);
