@@ -128,6 +128,8 @@ interface VisregPair {
   };
   error?: string | null;
   savedByRetries?: boolean;
+  compareAttempts?: number;
+  compareRetries?: number;
 }
 
 interface VisregPerTestReport {
@@ -224,6 +226,8 @@ export function readVisregArtifacts(opts: ReadVisregArtifactsOptions): VisregArt
       threshold,
       diffBbox: scan?.bbox ?? null,
       savedByRetries: pair.savedByRetries ?? false,
+      compareAttempts: pair.compareAttempts,
+      compareRetries: pair.compareRetries,
     });
   }
 
