@@ -517,11 +517,7 @@ export function AccessibilityCompareArtifactView({
       <div className="stage-stack">
         {rows.map((entry) => (
           <div key={entry.executionDetails.viewport.label} className="stage-stack__viewport">
-            <AccessibilityCompareViewport
-              result={entry.measurement}
-              viewportLabel={entry.executionDetails.viewport.label}
-              latestRun={entry.latestRun}
-            />
+            <AccessibilityCompareViewport entry={entry} />
           </div>
         ))}
       </div>
@@ -530,14 +526,12 @@ export function AccessibilityCompareArtifactView({
 }
 
 function AccessibilityCompareViewport({
-  result,
-  viewportLabel,
-  latestRun,
+  entry,
 }: {
-  result: AccessibilityCompareResult;
-  viewportLabel: string;
-  latestRun: boolean;
+  entry: StageRenderEntry<AccessibilityCompareResult>;
 }) {
+  const { measurement: result, latestRun } = entry;
+  const viewportLabel = entry.executionDetails.viewport.label;
   return (
     <div className="stage-section">
       <ReportHeading className="stage-section__head" level={5} title={viewportLabel} badge={<OldRunChip latestRun={latestRun} />} />
@@ -564,7 +558,8 @@ function AccessibilityCompareViewport({
               className="a11y-compare-card__inspect"
               href={result.comparisonArtifactHref ?? '#'}
               label={`${viewportLabel} accessibility comparison`}
-              extra={<CompareDialogMeta result={result} viewportLabel={viewportLabel} />}
+              fields={compareDialogFields(result, viewportLabel)}
+              executionDetails={entry.executionDetails}
               body={<CompareFindingsDialog result={result} viewportLabel={viewportLabel} />}
             >
               inspect
@@ -582,37 +577,17 @@ function AccessibilityCompareViewport({
   );
 }
 
-function CompareDialogMeta({
-  result,
-  viewportLabel,
-}: {
-  result: AccessibilityCompareResult;
-  viewportLabel: string;
-}) {
-  return (
-    <>
-      <div>
-        <dt>viewport</dt>
-        <dd>{viewportLabel}</dd>
-      </div>
-      <div>
-        <dt>new</dt>
-        <dd>{result.summary.new}</dd>
-      </div>
-      <div>
-        <dt>fixed</dt>
-        <dd>{result.summary.fixed}</dd>
-      </div>
-      <div>
-        <dt>changed</dt>
-        <dd>{result.summary.changed}</dd>
-      </div>
-      <div>
-        <dt>unchanged</dt>
-        <dd>{result.summary.unchanged}</dd>
-      </div>
-    </>
-  );
+export function compareDialogFields(
+  result: AccessibilityCompareResult,
+  viewportLabel: string,
+): Readonly<Record<string, string>> {
+  return {
+    viewport: viewportLabel,
+    new: String(result.summary.new),
+    fixed: String(result.summary.fixed),
+    changed: String(result.summary.changed),
+    unchanged: String(result.summary.unchanged),
+  };
 }
 
 function CompareFindingsDialog({

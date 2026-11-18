@@ -5,131 +5,38 @@
  * License in LICENSE.md.
  */
 
-import { useId, useState, type ReactNode } from 'react';
-import type { ExecutionDetails } from '../../../src/pipeline/outcome';
+import type { ReportOutcome, TestResult } from '../types';
+import { pipelineTroubleshootCommands } from '../../../src/pipeline/pipeline-artifacts';
+import { MetadataPanel, type PanelLayout } from '../../../src/report-ui/MetadataPanel';
 import { TargetLink } from '../../../src/report-ui/TargetLink';
-import { SourceText } from '../../../src/report-ui/SourceText';
-import type { ReportMeta, TestResult } from '../types';
-import { MeasurementCommand } from '../../../src/report-ui/MeasurementCommand';
+import { useTestReport } from '../../../src/report-ui/test-report-context';
 import { RunCommits } from './RunDetails';
-import {
-  pipelineTroubleshootCommands,
-  pipelineTestTargets,
-} from '../../../src/pipeline/pipeline-artifacts';
 
-// Full-word units so "12m" isn't mistaken for "12 months" — especially
-// relevant in merged --report-only views where artifacts can be weeks old.
-function pluralize(n: number, unit: string): string {
-  return `${n} ${unit}${n === 1 ? '' : 's'}`;
-}
-
-function formatMeasuredAt(measuredAt: number | null): string | null {
-  if (measuredAt == null) return 'never measured';
-  const diffMs = Date.now() - measuredAt;
-  if (diffMs < 0) return 'just now';
-  const totalHours = Math.floor(diffMs / (60 * 60 * 1000));
-  const days = Math.floor(totalHours / 24);
-  const hours = totalHours % 24;
-  if (diffMs < 60 * 60 * 1000) {
-    const mins = Math.max(1, Math.floor(diffMs / (60 * 1000)));
-    return `${pluralize(mins, 'minute')} ago`;
+function latestMeasuredExecution(outcomes: readonly ReportOutcome[]) {
+  let latest: ReportOutcome['executionDetails'] | undefined;
+  for (const { executionDetails } of outcomes) {
+    if (executionDetails.measurementMetadata && (!latest || executionDetails.runId > latest.runId)) {
+      latest = executionDetails;
+    }
   }
-  if (days === 0) return `${pluralize(hours, 'hour')} ago`;
-  if (hours === 0) return `${pluralize(days, 'day')} ago`;
-  return `${pluralize(days, 'day')} ${pluralize(hours, 'hour')} ago`;
+  return latest;
 }
 
-export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExpanded, defaultExpanded = false, variant = 'card', actions, children, executionDetails }: {
-  executionDetails: ExecutionDetails | undefined;
-  meta: ReportMeta;
-  test: TestResult;
-  expanded?: boolean;
-  onToggleExpanded?: () => void;
-  defaultExpanded?: boolean;
-  variant?: 'card' | 'dialog';
-  actions?: ReactNode;
-  children?: ReactNode;
-}) {
-  const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
-  const expanded = sharedExpanded ?? localExpanded;
-  const [activeSection, setActiveSection] = useState<string | null>(null);
-  const panelId = useId();
-  const viewports = [...new Set(test.outcomes.map((outcome) => outcome.executionDetails.viewport.label))];
-  const troubleshoot = pipelineTroubleshootCommands(meta, test.name, viewports);
-  const testSourceHref = executionDetails?.testSourceHref ?? null;
-  const sections = [
-    { id: 'command', label: 'command', content: executionDetails?.measurementMetadata ? <>
-      <div className="run-details__label">Latest command</div>
-      <MeasurementCommand key={executionDetails.command} command={executionDetails.command} compact />
-    </> : null },
-    { id: 'source', label: 'test source', content: <SourceText key={testSourceHref} href={testSourceHref} /> },
-    { id: 'troubleshoot', label: 'troubleshoot', content: troubleshoot.length ? <pre className="card__code">{troubleshoot.join('\n')}</pre> : null },
-    { id: 'artifacts', label: 'artifact paths', content: test.viewportArtifactPaths?.length ? <pre className="card__code">{test.viewportArtifactPaths.map(({ viewport, path }) => `${viewport}: ${path}`).join('\n')}</pre> : null },
-  ].filter((section) => section.content !== null);
-  const active = sections.find((section) => section.id === activeSection);
-  const provenance = <span className="card__metadata-provenance">
-    <span className="card__path" title={test.filePath}>{test.filePath}</span>
-    <span className="card__measured-at" title="mtime of the freshest per-test artifact on disk">
-      <span aria-hidden="true">· </span>updated {formatMeasuredAt(test.measuredAt)}
-    </span>
-  </span>;
+export function TestSummaryMetadata({ test, ...layout }: PanelLayout & { test: TestResult }) {
+  const { meta, targets } = useTestReport();
+  const { outcomes, measuredAt } = test;
+  const viewports = [...new Set(outcomes.map(outcome => outcome.executionDetails.viewport.label))];
   return (
-    <div className={`card__metadata-row card__metadata-row--${variant}`}>
-      <details
-        className={`card__disclosure card__metadata card__metadata--${variant}`}
-        open={expanded}
-      >
-        <summary
-          onClick={(event) => {
-            event.preventDefault();
-            if (onToggleExpanded) onToggleExpanded();
-            else setLocalExpanded((previous) => !previous);
-          }}
-        >
-          <span>Metadata</span>
-          {variant === 'dialog' ? provenance : null}
-        </summary>
-        <div className="card__metadata-content">
-          {variant === 'card' ? provenance : null}
-          <dl className="card__urls card__targets" aria-label="URLs">
-            {pipelineTestTargets(meta, test).map(target => (
-              <TargetLink key={target.side} target={target}>
-                <RunCommits outcomes={test.outcomes} side={target.side} />
-              </TargetLink>
-            ))}
-          </dl>
-          {children}
-          {sections.length ? (
-            <div>
-              <div className="card__metadata-controls" aria-label="Metadata sections">
-                {sections.map(({ id, label }) => (
-                  <button
-                    key={id}
-                    id={`${panelId}-${id}`}
-                    type="button"
-                    className="card__code-toggle"
-                    aria-label={label}
-                    aria-expanded={active?.id === id}
-                    aria-controls={panelId}
-                    onClick={() => setActiveSection((previous) => (previous === id ? null : id))}
-                  >
-                    {active?.id === id ? '▾' : '▸'} {label}
-                  </button>
-                ))}
-              </div>
-              <div
-                id={panelId}
-                className="card__metadata-panel"
-                hidden={!active}
-                aria-labelledby={active ? `${panelId}-${active.id}` : undefined}
-              >
-                {active?.content}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </details>
-      {actions}
-    </div>
+    <MetadataPanel
+      {...layout}
+      measuredAt={measuredAt}
+      executionDetails={latestMeasuredExecution(outcomes)}
+      troubleshoot={pipelineTroubleshootCommands(meta, test.name, viewports)}
+      targetLinks={targets.map(target => (
+        <TargetLink key={target.side} target={target}>
+          <RunCommits outcomes={outcomes} side={target.side} />
+        </TargetLink>
+      ))}
+    />
   );
 }
