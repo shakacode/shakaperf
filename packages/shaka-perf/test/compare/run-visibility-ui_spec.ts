@@ -28,9 +28,18 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained'): R
     chips: [{ tag: id === 'Older' ? 'broken' : 'passed', text: id === 'Older' ? 'broken' : 'passed', color: 'gray', sortingWeight: 0 }],
     sorts: [], viewportArtifactPaths: [],
     outcomes: [
-      { ...executionFixture({ runId }), kind: 'error', stage: 'accessibility',
-        error: { message: 'Saved result' } },
-      ...(id === 'Older' ? [{ ...executionFixture({ viewport: PHONE_VIEWPORT, runId: '2026-09-30T00:00:00.000Z' }), kind: 'error' as const, stage: 'accessibility' as const,
+      {
+        ...executionFixture({ runId }),
+        kind: 'error',
+        stage: 'accessibility',
+        error: { message: 'Saved result' },
+      },
+      ...(id === 'Older'
+        ? [
+            {
+              ...executionFixture({ viewport: PHONE_VIEWPORT, runId: '2026-09-30T00:00:00.000Z' }),
+              kind: 'error' as const,
+              stage: 'accessibility' as const,
 
         error: { message: 'Another old run' } }] : []),
       ...(mixed ? [{ ...executionFixture({ viewport: PHONE_VIEWPORT, runId: OLD }), kind: 'error' as const, stage: 'accessibility' as const,

@@ -71,43 +71,59 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
   </span>;
   return (
     <div className={`card__metadata-row card__metadata-row--${variant}`}>
-    <details className={`card__disclosure card__metadata card__metadata--${variant}`} open={expanded}>
-      <summary onClick={(event) => {
-        event.preventDefault();
-        if (onToggleExpanded) onToggleExpanded();
-        else setLocalExpanded((previous) => !previous);
-      }}>
-        <span>Metadata</span>
-        {variant === 'dialog' ? provenance : null}
-      </summary>
-      <div className="card__metadata-content">
-        {variant === 'card' ? provenance : null}
-        <dl className="card__urls card__targets" aria-label="URLs">
-          {renderPipelineTestCardUrls(meta, test, (side) => <RunCommits outcomes={test.outcomes} side={side} />)}
-        </dl>
-        {children}
-        {sections.length ? <div>
-          <div className="card__metadata-controls" aria-label="Metadata sections">
-            {sections.map(({ id, label }) => <button
-              key={id}
-              id={`${panelId}-${id}`}
-              type="button"
-              className="card__code-toggle"
-              aria-label={label}
-              aria-expanded={active?.id === id}
-              aria-controls={panelId}
-              onClick={() => setActiveSection((previous) => previous === id ? null : id)}
-            >
-              {active?.id === id ? '▾' : '▸'} {label}
-            </button>)}
-          </div>
-          <div id={panelId} className="card__metadata-panel" hidden={!active} aria-labelledby={active ? `${panelId}-${active.id}` : undefined}>
-            {active?.content}
-          </div>
-        </div> : null}
-      </div>
-    </details>
-    {actions}
+      <details
+        className={`card__disclosure card__metadata card__metadata--${variant}`}
+        open={expanded}
+      >
+        <summary
+          onClick={(event) => {
+            event.preventDefault();
+            if (onToggleExpanded) onToggleExpanded();
+            else setLocalExpanded((previous) => !previous);
+          }}
+        >
+          <span>Metadata</span>
+          {variant === 'dialog' ? provenance : null}
+        </summary>
+        <div className="card__metadata-content">
+          {variant === 'card' ? provenance : null}
+          <dl className="card__urls card__targets" aria-label="URLs">
+            {renderPipelineTestCardUrls(meta, test, (side) => (
+              <RunCommits outcomes={test.outcomes} side={side} />
+            ))}
+          </dl>
+          {children}
+          {sections.length ? (
+            <div>
+              <div className="card__metadata-controls" aria-label="Metadata sections">
+                {sections.map(({ id, label }) => (
+                  <button
+                    key={id}
+                    id={`${panelId}-${id}`}
+                    type="button"
+                    className="card__code-toggle"
+                    aria-label={label}
+                    aria-expanded={active?.id === id}
+                    aria-controls={panelId}
+                    onClick={() => setActiveSection((previous) => (previous === id ? null : id))}
+                  >
+                    {active?.id === id ? '▾' : '▸'} {label}
+                  </button>
+                ))}
+              </div>
+              <div
+                id={panelId}
+                className="card__metadata-panel"
+                hidden={!active}
+                aria-labelledby={active ? `${panelId}-${active.id}` : undefined}
+              >
+                {active?.content}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </details>
+      {actions}
     </div>
   );
 }
