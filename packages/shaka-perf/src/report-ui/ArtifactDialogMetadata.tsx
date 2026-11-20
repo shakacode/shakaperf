@@ -9,7 +9,7 @@ import type { ExecutionDetails } from '../pipeline/outcome';
 import { pipelineTroubleshootCommands } from '../pipeline/pipeline-artifacts';
 import { ArtifactMetadataFields } from './ArtifactMetadataFields';
 import { TestMetadataSection } from './TestMetadataSection';
-import { useTestCard } from './test-card-context';
+import { useTestCard } from './TestCardProvider';
 
 export function ArtifactDialogMetadata({ executionDetails, fields }: {
   executionDetails: ExecutionDetails;
