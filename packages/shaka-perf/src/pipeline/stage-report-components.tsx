@@ -17,35 +17,6 @@ export { ArtifactMetadataFields } from '../report-ui/ArtifactMetadataFields';
 
 export { ReportHeading } from './report-heading';
 
-export function RecoveryBadges({
-  taskRecovered,
-  comparisonRecovered,
-}: {
-  taskRecovered: boolean;
-  comparisonRecovered: boolean;
-}) {
-  return (
-    <>
-      {taskRecovered ? (
-        <span
-          className="artifact-card__image-label artifact-card__image-label--flaky"
-          title="A task failed, then succeeded on retry."
-        >
-          flaky
-        </span>
-      ) : null}
-      {comparisonRecovered ? (
-        <span
-          className="artifact-card__image-label artifact-card__image-label--unstable"
-          title="Screenshots differed initially, then matched on retry."
-        >
-          unstable
-        </span>
-      ) : null}
-    </>
-  );
-}
-
 // Whole-test warnings and bisect reports suppress repeated viewport warnings,
 // without changing the freshness metadata supplied to stage renderers.
 const StageRunChipsContext = createContext(true);

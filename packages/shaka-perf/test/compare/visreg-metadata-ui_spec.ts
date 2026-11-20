@@ -115,7 +115,7 @@ describe('visual preview metadata', () => {
     try {
       await page.goto(url);
       const preview = page.locator('.artifact-card--single');
-      expect(await preview.locator('.artifact-card__image-labels').allTextContents()).toEqual(['no diffflakyunstable']);
+      expect(await preview.locator('.artifact-card__media').innerText()).toBe('');
       await preview.getByRole('button').click();
       const dialog = page.getByRole('dialog');
       const metadata = dialog.locator('.card__metadata');
@@ -191,7 +191,6 @@ describe('visual preview metadata', () => {
       dialog = page.getByRole('dialog');
       expect(await dialog.locator('dt').allTextContents()).not.toContain('error retries');
       expect(await dialog.getByText('1/3', { exact: true }).isVisible()).toBe(true);
-      expect(await cards.nth(1).locator('.artifact-card__image-labels').textContent()).toBe('no diff');
     } finally {
       await page.close();
     }

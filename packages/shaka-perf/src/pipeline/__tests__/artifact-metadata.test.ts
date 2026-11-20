@@ -8,7 +8,7 @@
 import { executionFixture } from './fixtures/execution';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ArtifactMetadataFields, RecoveryBadges } from '../stage-report-components';
+import { ArtifactMetadataFields } from '../stage-report-components';
 import { visualComparisonFields } from '../../compare/stages/visreg/report';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import type { VisregArtifact } from '../../compare/stages/visreg';
@@ -32,15 +32,6 @@ it('omits unused execution rows and preserves unknown recovery counts', () => {
   expect(renderToStaticMarkup(createElement(ArtifactMetadataFields, {
     ...executionFixture({ recoveredAfterRetries: true }),
   }))).toContain('?/? · recovered');
-});
-
-it.each([
-  [false, false, []], [true, false, ['flaky']],
-  [false, true, ['unstable']], [true, true, ['flaky', 'unstable']],
-] as const)('renders recovery badges from facts (%s, %s)', (taskRecovered, comparisonRecovered, labels) => {
-  const html = renderToStaticMarkup(createElement(RecoveryBadges, { taskRecovered, comparisonRecovered }));
-  expect(html.includes('>flaky<')).toBe(labels.some(label => label === 'flaky'));
-  expect(html.includes('>unstable<')).toBe(labels.some(label => label === 'unstable'));
 });
 
 it('formats selector counts without borrowing execution counts', () => {
