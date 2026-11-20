@@ -9,61 +9,12 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 import { useReportSection } from './report-section';
 import { ReportHeading, type ReportHeadingProps } from './report-heading';
 import { ImageViewport } from './image-viewport';
-import { TargetLink } from '../report-ui/TargetLink';
-import { pipelineTestTargets } from './pipeline-artifacts';
-import type { Outcome } from './outcome';
+import type { ExecutionDetails } from './outcome';
+import { ArtifactDialog } from '../report-ui/ArtifactDialog';
+export { Dialog } from '../report-ui/Dialog';
+export { ArtifactMetadataFields } from '../report-ui/ArtifactMetadataFields';
 
-import { Dialog } from '../report-ui/Dialog';
-
-export { Dialog };
 export { ReportHeading } from './report-heading';
-
-export interface StageArtifactTestMeta {
-  readonly name: string;
-  readonly filePath: string;
-  readonly startingPath: string;
-  readonly controlUrl: string;
-  readonly experimentUrl: string;
-  readonly pipelineName?: string;
-  readonly pipelineConfig?: unknown;
-}
-
-const StageArtifactContext = createContext<StageArtifactTestMeta | null>(null);
-type ArtifactMetadataRenderer = (extra: ReactNode, outcome?: Outcome) => ReactNode;
-const ArtifactMetadataContext = createContext<ArtifactMetadataRenderer | null>(null);
-const ArtifactOutcomeContext = createContext<Outcome | undefined>(undefined);
-
-/** Bind metadata to the result that produced this artifact, including legacy results. */
-export function ArtifactScope({ outcome, children }: { outcome?: Outcome; children: ReactNode }) {
-  return <ArtifactOutcomeContext.Provider value={outcome}>{children}</ArtifactOutcomeContext.Provider>;
-}
-
-export function ArtifactDialogTitle({ title }: { title: ReactNode }) {
-  const test = useContext(StageArtifactContext);
-  return (
-    <span className="ui-dialog__title-text">
-      {title}
-      {test ? <> · {test.name}</> : null}
-    </span>
-  );
-}
-
-/** Wrap stage-specific fields in the shell's shared metadata disclosure. */
-export function ArtifactMetadata({ children }: { children?: ReactNode }) {
-  const renderMetadata = useContext(ArtifactMetadataContext);
-  const outcome = useContext(ArtifactOutcomeContext);
-  const test = useContext(StageArtifactContext);
-  if (renderMetadata) return renderMetadata(children, outcome);
-  return (
-    <details className="card__disclosure card__metadata" open>
-      <summary>Metadata</summary>
-      <div className="card__metadata-content">
-        {test ? <TestMeta test={test} /> : null}
-        {children}
-      </div>
-    </details>
-  );
-}
 
 // Whole-test warnings and bisect reports suppress repeated viewport warnings,
 // without changing the freshness metadata supplied to stage renderers.
@@ -75,55 +26,6 @@ export function OldRunChip({ latestRun }: { latestRun: boolean }) {
   return visible && latestRun === false
     ? <span className="pill pill--gray old-run-chip">old run</span>
     : null;
-}
-
-export function TestMeta({
-  test,
-  extra,
-}: {
-  test: StageArtifactTestMeta;
-  extra?: ReactNode;
-}) {
-  return (
-    <dl className="ui-dialog__meta">
-      <div>
-        <dt>test</dt>
-        <dd>{test.name}</dd>
-      </div>
-      <div>
-        <dt>file</dt>
-        <dd>{test.filePath}</dd>
-      </div>
-      {extra}
-      <TestMetaUrls test={test} />
-    </dl>
-  );
-}
-
-function TestMetaUrls({ test }: { test: StageArtifactTestMeta }) {
-  return pipelineTestTargets(test, test).map(target => (
-    <TargetLink key={target.side} target={target} className="ui-dialog__meta-break" />
-  ));
-}
-
-export function useStageArtifactTest(): StageArtifactTestMeta | null {
-  return useContext(StageArtifactContext);
-}
-
-export function StageArtifactProvider({
-  children,
-  test,
-  renderMetadata,
-}: {
-  children: ReactNode;
-  test: StageArtifactTestMeta;
-  renderMetadata: ArtifactMetadataRenderer;
-}) {
-  return (
-    <StageArtifactContext.Provider value={test}>
-      <ArtifactMetadataContext.Provider value={renderMetadata}>{children}</ArtifactMetadataContext.Provider>
-    </StageArtifactContext.Provider>
-  );
 }
 
 export function StageArtifact({ children }: { children: ReactNode }) {
@@ -162,8 +64,8 @@ export function DetailedArtifactDialog({
   body,
   children,
   className,
-  extra,
-  meta,
+  fields,
+  executionDetails,
   href,
   label,
   title = label,
@@ -179,13 +81,13 @@ export function DetailedArtifactDialog({
    * CSS file keyed by class name.
    */
   className?: string;
-  extra?: ReactNode;
-  meta?: ReactNode;
   href: string;
   label: string;
   title?: ReactNode;
   variant?: 'preview';
   image?: boolean;
+  fields?: Readonly<Record<string, string>>;
+  executionDetails: ExecutionDetails;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -200,18 +102,12 @@ export function DetailedArtifactDialog({
         </button>
       )}
       {open ? (
-        <Dialog
+        <ArtifactDialog
           image={image}
-          open={open}
           onClose={() => setOpen(false)}
-          title={<ArtifactDialogTitle title={title} />}
-          meta={
-            meta ?? (
-              <ArtifactMetadata>
-                {extra ? <dl className="ui-dialog__meta">{extra}</dl> : null}
-              </ArtifactMetadata>
-            )
-          }
+          title={title}
+          executionDetails={executionDetails}
+          fields={fields}
         >
           {body ??
             (image ? (
@@ -221,7 +117,7 @@ export function DetailedArtifactDialog({
             ) : (
               <iframe className="artifact-dialog__frame" src={href} title={label} />
             ))}
-        </Dialog>
+        </ArtifactDialog>
       ) : null}
     </>
   );

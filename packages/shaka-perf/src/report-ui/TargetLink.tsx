@@ -5,18 +5,26 @@
  * License in LICENSE.md.
  */
 
-import type { ReactNode } from 'react';
 import type { TestTarget } from '../pipeline/pipeline';
+import type { MeasuredCommit } from '../pipeline/run-metadata';
+import { CommitDetails } from './CommitDetails';
 
-export function TargetLink({ target, children, className }: { target: TestTarget; children?: ReactNode; className?: string }) {
+export function TargetLink({ target, commit }: {
+  target: TestTarget;
+  commit?: MeasuredCommit | null;
+}) {
   return (
     <div>
       <dt>{target.label}</dt>
-      <dd className={className}>
+      <dd>
         <a href={target.href} target="_blank" rel="noreferrer">
           {target.href}
         </a>
-        {children}
+        {commit ? (
+          <div className="card__target-commits">
+            <CommitDetails commit={commit} />
+          </div>
+        ) : null}
       </dd>
     </div>
   );

@@ -52,22 +52,16 @@ export function AuditArtifactView({
 }: {
   measurements: readonly StageRenderEntry<AuditResult>[];
 }) {
-  const rows = measurements
-    .map((entry) => ({
-      audit: entry.measurement,
-      viewportLabel: entry.executionDetails.viewport.label,
-      latestRun: entry.latestRun,
-    }))
-    .filter(({ audit }) => hasRenderableData(audit));
+  const rows = measurements.filter(({ measurement }) => hasRenderableData(measurement));
   if (rows.length === 0) return null;
 
   return (
     <StageArtifact>
       <StageArtifactTitle title="audit" />
       <div className="stage-stack">
-        {rows.map((row, index) => (
-          <div key={`${row.viewportLabel}-${index}`} className="stage-stack__viewport">
-            <AuditBody audit={row.audit} viewportLabel={row.viewportLabel} latestRun={row.latestRun} />
+        {rows.map((entry, index) => (
+          <div key={`${entry.executionDetails.viewport.label}-${index}`} className="stage-stack__viewport">
+            <MetricTable entry={entry} />
           </div>
         ))}
       </div>
@@ -75,19 +69,9 @@ export function AuditArtifactView({
   );
 }
 
-function AuditBody({ audit, viewportLabel, latestRun }: { audit: AuditResult; viewportLabel: string; latestRun: boolean }) {
-  return <MetricTable audit={audit} viewportLabel={viewportLabel} latestRun={latestRun} />;
-}
-
-function MetricTable({
-  audit,
-  viewportLabel,
-  latestRun,
-}: {
-  audit: AuditResult;
-  viewportLabel: string;
-  latestRun: boolean;
-}) {
+function MetricTable({ entry }: { entry: StageRenderEntry<AuditResult> }) {
+  const { measurement: audit, latestRun } = entry;
+  const viewportLabel = entry.executionDetails.viewport.label;
   const metrics = audit.metrics ?? [];
   if (metrics.length === 0 && !hasArtifacts(audit)) return null;
   return (
@@ -106,11 +90,11 @@ function MetricTable({
           })}
           {audit.lighthouseHref ? (
             <FullReportOnly>
-              <LighthouseColumn audit={audit} />
+              <LighthouseColumn entry={entry} />
             </FullReportOnly>
           ) : null}
         </div>
-        <ArtifactLinks audit={audit} />
+        <ArtifactLinks entry={entry} />
       </ReportSection>
     </div>
   );
@@ -119,7 +103,8 @@ function MetricTable({
 // The single-side halves of compare's "profile diff" / "network diff" — the
 // profile timeline this stage renders, and the network log every run already
 // wrote but nothing surfaced.
-function ArtifactLinks({ audit }: { audit: AuditResult }) {
+function ArtifactLinks({ entry }: { entry: StageRenderEntry<AuditResult> }) {
+  const audit = entry.measurement;
   const links = [
     audit.performanceProfileHref ? ['performance profile', audit.performanceProfileHref] : null,
     audit.networkActivityHref ? ['network activity', audit.networkActivityHref] : null,
@@ -129,7 +114,7 @@ function ArtifactLinks({ audit }: { audit: AuditResult }) {
     <FullReportOnly>
       <div className="artifact-links">
         {links.map(([label, href]) => (
-          <DetailedArtifactDialog key={label} href={href} label={label}>
+          <DetailedArtifactDialog executionDetails={entry.executionDetails} key={label} href={href} label={label}>
             {label}
           </DetailedArtifactDialog>
         ))}
@@ -161,11 +146,13 @@ function MetricGroupColumn({ title, metrics }: { title: string; metrics: readonl
   );
 }
 
-function LighthouseColumn({ audit }: { audit: AuditResult }) {
+function LighthouseColumn({ entry }: { entry: StageRenderEntry<AuditResult> }) {
+  const audit = entry.measurement;
   if (!audit.lighthouseHref) return null;
   return (
     <div style={METRIC_COLUMN_STYLE}>
       <DetailedArtifactDialog
+        executionDetails={entry.executionDetails}
         href={audit.lighthouseHref}
         label="Lighthouse report"
         variant="preview"

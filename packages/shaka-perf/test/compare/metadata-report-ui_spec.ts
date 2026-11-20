@@ -116,21 +116,33 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     await verifyLayout();
   });
 
-  it('preserves saved commit variants, their scopes, and expandable messages', async () => {
+  it('shows only the latest measured commit and preserves its expandable message', async () => {
     const old = data.tests[0]!.outcomes[0]!.executionDetails.measurementMetadata!.targets[0]!;
-    old.commit = { ...old.commit!, sha: 'abcdef1234567890', message: 'Earlier subject\n\nEarlier body' };
+    old.commit!.sha = 'abcdef1234567890';
+    const latest = data.tests[0]!.outcomes[1]!.executionDetails.measurementMetadata!.targets[0]!;
+    latest.commit!.message = 'Latest subject\n\nLatest body';
     await page.reload();
     const metadata = page.locator('[data-report-test-id="homepage"] .card__metadata');
     await metadata.locator('summary').first().click();
     const target = metadata.locator('.card__targets > div').first();
-    expect(await target.getByText('abcdef12', { exact: true }).count()).toBe(1);
+    expect(await target.getByText('abcdef12', { exact: true }).count()).toBe(0);
     expect(await target.getByText('1e04e038', { exact: true }).count()).toBe(1);
-    expect(await target.locator('.run-details__scope').first().textContent()).toContain('Run 1');
     await target.locator('.run-details__commit summary').press('Enter');
-    expect(await target.getByText('Earlier body', { exact: true }).isVisible()).toBe(true);
+    expect(await target.getByText('Latest body', { exact: true }).isVisible()).toBe(true);
     await metadata.getByRole('button', { name: 'command', exact: true }).click();
     await metadata.getByRole('button', { name: 'test source', exact: true }).click();
-    expect(await target.getByText('Earlier body', { exact: true }).isVisible()).toBe(true);
+    expect(await target.getByText('Latest body', { exact: true }).isVisible()).toBe(true);
+  });
+
+  it('shows only the URL when the latest measurement has no commit for that side', async () => {
+    const latest = data.tests[0]!.outcomes[1]!.executionDetails.measurementMetadata!.targets[0]!;
+    latest.commit = null;
+    await page.reload();
+    const metadata = page.locator('[data-report-test-id="homepage"] .card__metadata');
+    await metadata.locator('summary').first().click();
+    const target = metadata.locator('.card__targets dd').first();
+    expect(await target.textContent()).toBe(await target.getByRole('link').textContent());
+    expect(await target.locator('.card__target-commits').count()).toBe(0);
   });
 
   it.each([1280, 390])('collapses all cards from a title and preserves nested state at %i px', async (width) => {

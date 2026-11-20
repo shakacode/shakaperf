@@ -15,6 +15,7 @@ import { createServer, type Server } from 'node:http';
 import { chromium, type Browser } from 'playwright';
 import type { ArtifactPath } from '../../src/pipeline/artifact-store';
 import { renderReportHtml, writeReport } from '../../src/pipeline/report';
+import { renderSideBySideFramesScript } from '../../src/bench/core/side-by-side-frames';
 import { runDetailsFixture } from '../../src/pipeline/__tests__/fixtures/run-details';
 
 jest.setTimeout(60_000);
@@ -90,6 +91,10 @@ describe('visual preview metadata', () => {
         responseData.tests[0]!.outcomes[0]!.stage = 'perf-low-noise';
         responseData.tests[0]!.outcomes[0]!.measurement = {
           controlLighthouseHref: 'data:text/html,<p>saved Lighthouse report</p>',
+          framesHref: 'data:text/javascript,' + encodeURIComponent(renderSideBySideFramesScript({
+            control: [{ timeMs: 0, src: image }], experiment: [{ timeMs: 0, src: image }],
+            interactions: { control: [], experiment: [] },
+          })),
         };
       }
       const html = renderReportHtml(responseData);
@@ -151,6 +156,7 @@ describe('visual preview metadata', () => {
       await page.getByRole('button', { name: 'logs', exact: true }).click();
       const logs = page.getByRole('dialog', { name: 'measurement logs' });
       await logs.waitFor();
+      expect(await logs.getByRole('button', { name: 'logs', exact: true }).count()).toBe(0);
       expect(await logs.locator('.card-logs').textContent()).toContain('Measurement completed');
 
     } finally {
@@ -199,6 +205,43 @@ describe('visual preview metadata', () => {
     } finally { await page.close(); }
   });
 
+  it('uses the clicked card and selector for metadata', async () => {
+    const second = structuredClone(data.tests[0]!);
+    second.id = 'checkout';
+    second.name = 'Checkout';
+    second.filePath = 'ab-tests/checkout.abtest.ts';
+    second.controlUrl = 'https://checkout.example/control';
+    second.experimentUrl = 'https://checkout.example/experiment';
+    second.viewportArtifactPaths = [{ viewport: 'desktop', path: 'results/checkout/desktop' }];
+    second.outcomes.forEach(outcome => { delete outcome.logs; });
+    const outcome = second.outcomes[0]!;
+    const [image] = outcome.measurement as Record<string, unknown>[];
+    outcome.measurement = ['#header', '#footer'].map(selector => ({ ...image, selector }));
+    data.tests.push(second);
+
+    const page = await browser.newPage();
+    try {
+      await page.goto(url);
+      const card = page.locator('[data-report-test-id="checkout"]');
+      expect(await card.getByRole('button', { name: 'logs', exact: true }).count()).toBe(0);
+      for (const selector of ['#header', '#footer']) {
+        const trigger = card.locator('.artifact-card--single').filter({ hasText: selector }).getByRole('button');
+        await trigger.click();
+        const dialog = page.getByRole('dialog');
+        expect(await dialog.locator('.ui-dialog__title').textContent()).toContain(selector + ' · Checkout');
+        expect(await dialog.locator('.card__path').textContent()).toBe(second.filePath);
+        expect(await dialog.locator('.card__targets a').allTextContents()).toEqual([second.controlUrl, second.experimentUrl]);
+        expect(await dialog.locator('dt').filter({ hasText: /^selector$/ }).locator('..').locator('dd').textContent()).toBe(selector);
+        await dialog.getByRole('button', { name: 'artifact paths' }).click();
+        expect(await dialog.locator('.card__code').textContent()).toContain('results/checkout/desktop');
+        await page.keyboard.press('Escape');
+        await dialog.waitFor({ state: 'hidden' });
+      }
+    } finally {
+      await page.close();
+    }
+  });
+
   it('opens execution source directly from disk in both report modes', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'shaka-source-browser-'));
     const page = await browser.newPage();
@@ -223,6 +266,66 @@ describe('visual preview metadata', () => {
     }
   });
 
+  it('uses shared metadata and execution facts in performance dialogs', async () => {
+    const page = await browser.newPage();
+    try {
+      await page.goto(`${url}?perf=1`);
+      await page.getByRole('button', { name: 'control lh', exact: true }).click();
+      const dialog = page.getByRole('dialog');
+      expect(await dialog.locator('.card__metadata').textContent()).toContain('1/2 · recovered');
+      await dialog.getByRole('button', { name: 'test source', exact: true }).click();
+      expect(await dialog.locator('.card__code').textContent()).toContain("abTest('Homepage'");
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('uses the frame recording’s execution when opening the custom player', async () => {
+    const page = await browser.newPage();
+    try {
+      await page.goto(`${url}?perf=1`);
+      await page.getByRole('button', { name: 'play frames' }).click();
+      const dialog = page.getByRole('dialog', { name: 'frames side by side · Homepage' });
+      await dialog.getByRole('slider', { name: 'time' }).waitFor();
+      expect(await dialog.getByRole('button', { name: 'logs', exact: true }).count()).toBe(0);
+      await dialog.getByRole('button', { name: 'command', exact: true }).click();
+      expect(await dialog.getByLabel('Latest command').inputValue()).toContain('--categories perf,accessibility');
+      expect(await dialog.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(0);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('keeps the older phone run’s metadata after a newer desktop run', async () => {
+    const phone = data.tests[0]!.outcomes[0]!;
+    phone.executionDetails = {
+      ...phone.executionDetails, viewport: PHONE_VIEWPORT, command: 'shaka-perf compare --viewport phone',
+      testSourceHref: 'data:text/plain,older%20phone%20source',
+    };
+    const page = await browser.newPage();
+    try {
+      await page.clock.setFixedTime(new Date('2026-10-22T20:54:53.891Z'));
+      await page.goto(url);
+      await page.locator('.artifact-card--single').getByRole('button').click();
+      const panel = page.getByRole('dialog').locator('.card__metadata');
+      expect(await panel.locator('.card__measured-at').textContent()).toContain('2 days ago');
+      expect(await panel.locator('.ui-dialog__meta').first().textContent()).toContain('1/2 · recovered');
+      expect(await panel.locator('.card__target-commits').allTextContents()).toEqual([
+        expect.stringContaining('1e04e038'), expect.stringContaining('1e04e038'),
+      ]);
+      expect(await panel.textContent()).not.toContain('Unrelated newer perf commit');
+      await panel.getByRole('button', { name: 'troubleshoot' }).click();
+      expect(await panel.locator('.card__code').textContent()).toContain('phone');
+      expect(await panel.locator('.card__code').textContent()).not.toContain('desktop');
+      await panel.getByRole('button', { name: 'command', exact: true }).click();
+      expect(await panel.getByRole('textbox').inputValue()).toBe(phone.executionDetails.command);
+      await panel.getByRole('button', { name: 'test source' }).click();
+      await panel.locator('.card__code').filter({ hasText: 'older phone source' }).waitFor();
+    } finally {
+      await page.close();
+    }
+  });
+
   it('does not borrow a newer sibling result for a legacy visual artifact', async () => {
     const outcome = data.tests[0]!.outcomes[0]!;
     outcome.executionDetails = { ...outcome.executionDetails, measurementMetadata: undefined, testSourceHref: null };
@@ -232,7 +335,8 @@ describe('visual preview metadata', () => {
       await page.locator('.artifact-card--single').getByRole('button').click();
       const metadata = page.getByRole('dialog').locator('.card__metadata');
       expect(await metadata.getByRole('button', { name: 'command', exact: true }).count()).toBe(0);
-      expect(await metadata.locator('.card__target-commits').allTextContents()).toEqual(['', '']);
+      expect(await metadata.locator('.card__measured-at').textContent()).toContain('never measured');
+      expect(await metadata.locator('.card__target-commits').count()).toBe(0);
       expect(await metadata.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(0);
       await metadata.getByRole('button', { name: 'test source', exact: true }).click();
       expect(await metadata.textContent()).toContain('No source snapshot was captured.');
@@ -270,6 +374,7 @@ describe('visual preview metadata', () => {
       expect(await dialog.locator('.ui-dialog__title').innerText()).toBe('measurement logs · Homepage');
       const metadata = dialog.locator('.card__metadata');
       expect(await metadata.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(2);
+      expect(await metadata.getByText('1e04e038', { exact: true }).count()).toBe(0);
       await metadata.getByRole('button', { name: 'command', exact: true }).click();
       expect(await metadata.getByLabel('Latest command').inputValue()).toBe('shaka-perf compare --categories perf --filter Homepage');
     } finally {

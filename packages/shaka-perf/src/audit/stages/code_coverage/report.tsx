@@ -41,7 +41,7 @@ export function CodeCoverageArtifactView({
               title={entry.executionDetails.viewport.label}
               badge={<OldRunChip latestRun={entry.latestRun} />}
             />
-            <CoveragePreview measurement={entry.measurement} />
+            <CoveragePreview entry={entry} />
           </div>
         ))}
       </div>
@@ -49,7 +49,8 @@ export function CodeCoverageArtifactView({
   );
 }
 
-function CoveragePreview({ measurement: m }: { measurement: CodeCoverageResult }) {
+function CoveragePreview({ entry }: { entry: StageRenderEntry<CodeCoverageResult> }) {
+  const m = entry.measurement;
   const percent = m.totalStatements > 0
     ? Math.round((m.coveredStatements / m.totalStatements) * 100)
     : 0;
@@ -58,6 +59,7 @@ function CoveragePreview({ measurement: m }: { measurement: CodeCoverageResult }
       {m.screenshotHref ? (
         <div className="coverage-preview__media">
           <DetailedArtifactDialog
+            executionDetails={entry.executionDetails}
             image
                     href={m.screenshotHref}
             label="page the visibility map describes"
@@ -118,12 +120,12 @@ function CoveragePreview({ measurement: m }: { measurement: CodeCoverageResult }
         <FullReportOnly>
           <div className="artifact-links">
             {m.visibilityMapHref ? (
-              <DetailedArtifactDialog href={m.visibilityMapHref} label="visibility-map.txt">
+              <DetailedArtifactDialog executionDetails={entry.executionDetails} href={m.visibilityMapHref} label="visibility-map.txt">
                 visibility-map.txt
               </DetailedArtifactDialog>
             ) : null}
             {m.coverageHref ? (
-              <DetailedArtifactDialog href={m.coverageHref} label="coverage.json">
+              <DetailedArtifactDialog executionDetails={entry.executionDetails} href={m.coverageHref} label="coverage.json">
                 coverage.json
               </DetailedArtifactDialog>
             ) : null}

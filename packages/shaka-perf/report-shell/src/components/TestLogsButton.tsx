@@ -5,9 +5,10 @@
  * License in LICENSE.md.
  */
 
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import type { TestResult } from '../types';
 import { Dialog } from '../../../src/report-ui/Dialog';
+import { TestSummaryMetadata } from './TestSummaryMetadata';
 import { AnsiLog, firstElapsedSeconds } from './AnsiLog';
 
 interface LogEntry {
@@ -47,10 +48,9 @@ function logsForTest(test: TestResult, visibleStages: ReadonlySet<string>): LogE
   return logs;
 }
 
-export function TestLogsButton({ test, visibleStages, metadata }: {
+export function TestLogsButton({ test, visibleStages }: {
   test: TestResult;
   visibleStages: ReadonlySet<string>;
-  metadata: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const logs = logsForTest(test, visibleStages);
@@ -72,7 +72,7 @@ export function TestLogsButton({ test, visibleStages, metadata }: {
           open
           onClose={() => setOpen(false)}
           title={<span className="ui-dialog__title-text">measurement logs · {test.name}</span>}
-          meta={metadata}
+          meta={<TestSummaryMetadata test={test} defaultExpanded variant="dialog" />}
         >
           <div className="card-logs">
             {logs.map((log, index) => (
