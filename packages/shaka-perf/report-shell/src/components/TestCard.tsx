@@ -7,7 +7,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
-import { TestReportProvider } from '../../../src/report-ui/test-report-context';
+import { TestCardProvider } from '../../../src/report-ui/test-card-context';
 import { pipelineTestTargets } from '../../../src/pipeline/pipeline-artifacts';
 import { TestSummaryMetadata } from './TestMetadata';
 import { ReviewedCheckbox, useReviewed } from './ReviewedCheckbox';
@@ -101,7 +101,7 @@ export function TestCard({
   const chips = [...test.chips].sort(compareChips);
   const mixedRuns = new Set(test.outcomes.map((outcome) => outcome.executionDetails.runId === latestRunId)).size > 1;
 
-  const reportValue = {
+  const testCardData = {
     meta,
     test: {
       name: test.name,
@@ -112,7 +112,7 @@ export function TestCard({
   };
 
   return (
-    <TestReportProvider value={reportValue}>
+    <TestCardProvider value={testCardData}>
       <article
         className="card"
         data-report-test-id={test.id}
@@ -186,6 +186,6 @@ export function TestCard({
           )}
         </div>
       </article>
-    </TestReportProvider>
+    </TestCardProvider>
   );
 }

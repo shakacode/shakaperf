@@ -11,13 +11,13 @@ import { ArtifactMetadataFields } from './ArtifactMetadataFields';
 import { CommitDetails } from './CommitDetails';
 import { MetadataPanel } from './MetadataPanel';
 import { TargetLink } from './TargetLink';
-import { useTestReport } from './test-report-context';
+import { useTestCard } from './test-card-context';
 
 export function ArtifactMetadata({ executionDetails, fields }: {
   executionDetails: ExecutionDetails;
   fields?: Readonly<Record<string, string>>;
 }) {
-  const { meta, test, targets } = useTestReport();
+  const { meta, test, targets } = useTestCard();
   const measurement = executionDetails.measurementMetadata;
   return (
     <MetadataPanel
