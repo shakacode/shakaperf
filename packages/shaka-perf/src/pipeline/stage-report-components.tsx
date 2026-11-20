@@ -5,13 +5,14 @@
  * License in LICENSE.md.
  */
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ComponentProps, type ReactNode } from 'react';
 import { useReportSection } from './report-section';
 import { ReportHeading, type ReportHeadingProps } from './report-heading';
 import { ImageViewport } from './image-viewport';
-import type { ExecutionDetails } from './outcome';
-import { ArtifactDialog } from '../report-ui/ArtifactDialog';
-export { Dialog } from '../report-ui/Dialog';
+import { ArtifactDialogMetadata } from '../report-ui/ArtifactDialogMetadata';
+import { Dialog } from '../report-ui/Dialog';
+import { useTestCard } from '../report-ui/TestCardProvider';
+export { Dialog };
 export { ArtifactMetadataFields } from '../report-ui/ArtifactMetadataFields';
 
 export { ReportHeading } from './report-heading';
@@ -60,35 +61,40 @@ export function StageNote({ body, label }: { body: string; label?: string }) {
   );
 }
 
+function ArtifactDialogTitle({ children }: { children: ReactNode }) {
+  const { test } = useTestCard();
+  return (
+    <span className="ui-dialog__title-text">
+      {children} · {test.name}
+    </span>
+  );
+}
+
+type DialogProps = ComponentProps<typeof Dialog>;
+
+type DetailedArtifactDialogProps = Pick<DialogProps, 'title' | 'image'> &
+  ComponentProps<typeof ArtifactDialogMetadata> & {
+    href: string;
+    label: string;
+    children?: ReactNode;
+    body?: ReactNode;
+    className?: string;
+    variant?: 'preview';
+    dialogVariant?: DialogProps['variant'];
+  };
+
 export function DetailedArtifactDialog({
-  body,
-  children,
-  className,
-  fields,
-  executionDetails,
   href,
   label,
   title = label,
+  children,
+  body,
+  className,
   variant,
-  image = false,
-}: {
-  body?: ReactNode;
-  children?: ReactNode;
-  /**
-   * Escape hatch for one-off layout classes (visreg's image-grid button, …).
-   * For the recurring "preview tile" styling, use `variant="preview"` instead
-   * so the styles travel with the component rather than living in a global
-   * CSS file keyed by class name.
-   */
-  className?: string;
-  href: string;
-  label: string;
-  title?: ReactNode;
-  variant?: 'preview';
-  image?: boolean;
-  fields?: Readonly<Record<string, string>>;
-  executionDetails: ExecutionDetails;
-}) {
+  dialogVariant,
+  image,
+  ...metadataProps
+}: DetailedArtifactDialogProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -102,12 +108,13 @@ export function DetailedArtifactDialog({
         </button>
       )}
       {open ? (
-        <ArtifactDialog
+        <Dialog
+          open
           image={image}
+          variant={dialogVariant}
           onClose={() => setOpen(false)}
-          title={title}
-          executionDetails={executionDetails}
-          fields={fields}
+          title={<ArtifactDialogTitle>{title}</ArtifactDialogTitle>}
+          meta={<ArtifactDialogMetadata {...metadataProps} />}
         >
           {body ??
             (image ? (
@@ -117,7 +124,7 @@ export function DetailedArtifactDialog({
             ) : (
               <iframe className="artifact-dialog__frame" src={href} title={label} />
             ))}
-        </ArtifactDialog>
+        </Dialog>
       ) : null}
     </>
   );

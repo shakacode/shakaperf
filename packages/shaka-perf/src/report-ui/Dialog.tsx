@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { ImageSizeContext } from '../pipeline/image-viewport';
 
 interface DialogProps {
@@ -31,11 +31,14 @@ export function Dialog({
   const titleId = useId();
   const [imageSize, setImageSize] = useState<'fit' | 'actual'>('fit');
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (open && !el.open) el.showModal();
     else if (!open && el.open) el.close();
+    return () => {
+      if (el.open) el.close();
+    };
   }, [open]);
 
   useEffect(() => {
