@@ -115,11 +115,13 @@ export function visualComparisonFields({
     mismatch: `${artifact.misMatchPercentage.toFixed(2)}%`,
   };
   const { visualComparisonCount, visualComparisonLimit } = artifact;
-  if (visualComparisonCount !== undefined) {
-    const limit = visualComparisonLimit === undefined ? '' : `/${visualComparisonLimit}`;
-    const recovery = artifact.savedByRetries ? ' · matched on retry' : '';
-    fields['visual comparisons'] = `${visualComparisonCount}${limit}${recovery}`;
-  }
+  if (visualComparisonCount === undefined) return fields;
+
+  let comparisonText = String(visualComparisonCount);
+  if (visualComparisonLimit !== undefined) comparisonText += `/${visualComparisonLimit}`;
+  if (artifact.savedByRetries) comparisonText += ' · matched on retry';
+
+  fields['visual comparisons'] = comparisonText;
   return fields;
 }
 
