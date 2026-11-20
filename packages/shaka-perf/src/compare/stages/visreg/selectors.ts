@@ -18,19 +18,3 @@ export function visualChangeCount(measurement: VisregResult | null | undefined):
 export function hasSavedByRetries(measurement: VisregResult): boolean {
   return measurement.some((artifact) => artifact.savedByRetries);
 }
-
-export interface SavedVisualComparisonCounts {
-  visualComparisonCount?: number;
-  visualComparisonLimit?: number;
-  /** Names used by earlier saved measurements. */
-  compareAttempts?: number;
-  compareRetries?: number;
-}
-
-export function readVisualComparisonCounts(saved: SavedVisualComparisonCounts) {
-  return {
-    visualComparisonCount: saved.visualComparisonCount ?? saved.compareAttempts,
-    visualComparisonLimit: saved.visualComparisonLimit ??
-      (saved.compareRetries === undefined ? undefined : saved.compareRetries + 1),
-  };
-}

@@ -83,20 +83,6 @@ describe('readVisregArtifacts', function () {
     });
   });
 
-  it('reads the count and retry budget from older engine reports', async () => {
-    await withTempResultsRoot(async resultsRoot => {
-      writePerTestReport(resultsRoot, 'legacy', {
-        tests: [{ pair: { compareAttempts: 1, compareRetries: 0 } }],
-      });
-      const result = readVisregArtifacts({
-        artifacts: new ArtifactScope(path.join(resultsRoot, 'legacy', 'artifacts'), resultsRoot),
-        viewport: DESKTOP,
-      });
-      assert.strictEqual(result?.artifacts[0].visualComparisonCount, 1);
-      assert.strictEqual(result?.artifacts[0].visualComparisonLimit, 1);
-    });
-  });
-
   it('marks no visual change when neither a diff image nor a pixelmatch diff is present', async function () {
     await withTempResultsRoot(async (resultsRoot) => {
       writePerTestReport(resultsRoot, 'homepage__desktop', {
