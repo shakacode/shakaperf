@@ -1331,6 +1331,11 @@ input {
   white-space: pre-line;
 }
 
+.pill .report-tooltip__trigger {
+  text-transform: inherit;
+  letter-spacing: inherit;
+}
+
 .pill__sep {
   text-transform: uppercase;
   white-space: pre;
