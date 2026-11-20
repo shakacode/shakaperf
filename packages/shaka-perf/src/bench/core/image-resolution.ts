@@ -122,18 +122,19 @@ export async function collectImageResolutionMeasurements(
   if (candidates.length === 0) return [];
   // Let the browser account for ancestor clipping, including root overflow and positioned images.
   // Intersection only decides visibility: a partially clipped image still needs its full painted size.
-  const intersections = await new Promise<Map<Element, boolean>>(resolve => {
+  const observeIntersections = (targets: HTMLImageElement[]) => new Promise<Map<Element, boolean>>(resolve => {
     const visible = new Map<Element, boolean>();
     const observer = new IntersectionObserver(entries => {
       for (const entry of entries) {
         visible.set(entry.target, entry.intersectionRect.width > 0 && entry.intersectionRect.height > 0);
       }
-      if (visible.size === candidates.length) finish();
+      if (visible.size === targets.length) finish();
     });
     const finish = () => { clearTimeout(timer); observer.disconnect(); resolve(visible); };
     const timer = setTimeout(finish, Math.max(0, deadline - performance.now()));
-    for (const { element } of candidates) observer.observe(element);
+    for (const element of targets) observer.observe(element);
   });
+  const intersections = await observeIntersections(candidates.map(({ element }) => element));
   const waitForLoad = (element: HTMLImageElement) => new Promise<void>(resolve => {
     const finish = () => {
       clearTimeout(timer);
@@ -176,6 +177,18 @@ export async function collectImageResolutionMeasurements(
       if (!loaded) return undefined;
       measurement = loaded;
       if (!element.complete) measurement.reason = 'Image did not finish loading before the time limit.';
+      else if (element.naturalWidth && element.naturalHeight) {
+        // A load handler can change ancestor clipping without changing the image's own box.
+        const currentVisibility = await observeIntersections([element]);
+        if (currentVisibility.get(element) === false) return undefined;
+        if (!currentVisibility.has(element)) {
+          measurement.reason = 'Image visibility could not be measured before the time limit.';
+          return measurement;
+        }
+        const current = snapshot(element);
+        if (!current) return undefined;
+        measurement = current;
+      }
     }
     const unconfirmedRaster = allowUnconfirmedRasterSources && !measurement.src.startsWith('data:') &&
       !nonRasterSources.has(measurement.src.split('#', 1)[0]!) &&

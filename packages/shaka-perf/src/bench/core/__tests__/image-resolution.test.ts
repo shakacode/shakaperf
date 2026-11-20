@@ -206,6 +206,41 @@ describe('current rendered image measurement in Chromium', () => {
     } finally { await page.close(); }
   });
 
+  it('refreshes clipping after a pending image loads while retaining the full size of a partially clipped image', async () => {
+    const page = await browser.newPage();
+    const pending: Route[] = [];
+    await page.route('https://example.test/*.png', route => { pending.push(route); });
+    try {
+      await page.setContent(`
+        <style>.box { position:absolute;top:20px;height:300px } img { width:300px;height:300px;object-fit:cover }</style>
+        <div class="box" style="left:20px"><img id="fully-clipped" src="https://example.test/full.png"
+          onload="this.parentElement.style.height='0';this.parentElement.style.overflow='hidden'"></div>
+        <div class="box" style="left:350px"><img id="partial" src="https://example.test/partial.png"
+          onload="this.parentElement.style.height='25px';this.parentElement.style.overflow='hidden'"></div>
+        <img id="ready" style="position:absolute;left:20px;top:350px;width:100px;height:50px"
+          src="data:image/png;base64,${png.toString('base64')}">
+      `, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => {
+        const original = window.createImageBitmap;
+        window.createImageBitmap = ((image: HTMLImageElement) => {
+          if (image.id === 'ready') document.documentElement.dataset.readyMeasured = 'yes';
+          return original(image);
+        }) as typeof createImageBitmap;
+      });
+      const collecting = page.evaluate(collectImageResolutionMeasurements, [
+        'https://example.test/full.png', 'https://example.test/partial.png',
+      ]);
+      // Releasing only after a ready bitmap starts ensures the first visibility pass saw both images.
+      await page.waitForFunction(() => document.documentElement.dataset.readyMeasured === 'yes');
+      expect(pending).toHaveLength(2);
+      await Promise.all(pending.map(route => route.fulfill({ contentType: 'image/png', body: png })));
+      const result = evaluateImageResolution(await collecting, config);
+      expect(result.images.map(image => image.label)).toEqual(['img#partial', 'img#ready']);
+      expect(result.images[0]).toMatchObject({ requiredWidth: 600, requiredHeight: 300, status: 'undersized' });
+      expect(result).toMatchObject({ undersized: 1, oversized: 1, unknown: 0 });
+    } finally { await page.close(); }
+  }, 15_000);
+
   it('bounds bitmap concurrency while a stalled bitmap leaves ready images measurable', async () => {
     const page = await browser.newPage();
     try {
