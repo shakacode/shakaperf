@@ -8,6 +8,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
 import { TestMetadata } from './TestMetadata';
+import { ReviewedCheckbox, useReviewed } from './ReviewedCheckbox';
 import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
 import { TestLogsButton } from './TestLogsButton';
@@ -37,38 +38,6 @@ function outcomeGroups(test: TestResult, visibleStages: ReadonlySet<string>): Re
     group.push(outcome);
   }
   return groups;
-}
-
-// Tie review to the saved results, not the report that happens to display them.
-// Include every stage/viewport: a partial rerun can replace just one outcome.
-export function reviewedKey(meta: ReportMeta, test: TestResult): string {
-  const outcomes = test.outcomes.map((outcome) => JSON.stringify([
-    outcome.stage,
-    outcome.executionDetails.viewport.label,
-    outcome.executionDetails.viewport.width,
-    outcome.executionDetails.viewport.height,
-    outcome.executionDetails.runId ?? test.runId ?? test.measuredAt ?? meta.generatedAt,
-  ])).sort();
-  return `shaka-perf:reviewed:v2:${JSON.stringify([
-    meta.cwd, meta.pipelineName, test.id, outcomes,
-  ])}`;
-}
-
-function readReviewed(key: string): boolean {
-  try {
-    return window.localStorage.getItem(key) === '1';
-  } catch {
-    return false;
-  }
-}
-
-function writeReviewed(key: string, reviewed: boolean): void {
-  try {
-    if (reviewed) window.localStorage.setItem(key, '1');
-    else window.localStorage.removeItem(key);
-  } catch {
-    // Storage blocked (private window, file:// quirks): the mark lasts the session.
-  }
 }
 
 function compareChips(a: ChipDescriptor, b: ChipDescriptor): number {
@@ -136,8 +105,7 @@ export function TestCard({
     });
     return () => cancelAnimationFrame(frame);
   }, [expanded]);
-  const storageKey = reviewedKey(meta, test);
-  const [reviewed, setReviewed] = useState(() => readReviewed(storageKey));
+  const { reviewed, updateReviewed } = useReviewed(meta, test);
   const latestExecutionDetails = latestMeasuredExecution(test.outcomes);
   const groups = outcomeGroups(test, visibleStages);
   const chips = [...test.chips].sort(compareChips);
@@ -183,20 +151,7 @@ export function TestCard({
             </button>
           </h3>
         </div>
-        <div className="card__pills">
-          <label className="card__reviewed">
-            <input
-              type="checkbox"
-              checked={reviewed}
-              onChange={(e) => {
-                const checked = e.target.checked;
-                writeReviewed(storageKey, checked);
-                setReviewed(checked);
-              }}
-            />
-            reviewed
-          </label>
-        </div>
+        <ReviewedCheckbox reviewed={reviewed} onChange={updateReviewed} />
       </div>
 
       <div id={contentId} hidden={!expanded}>
