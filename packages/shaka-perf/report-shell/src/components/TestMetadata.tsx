@@ -9,7 +9,7 @@ import type { ReportOutcome, TestResult } from '../types';
 import { pipelineTroubleshootCommands } from '../../../src/pipeline/pipeline-artifacts';
 import { MetadataPanel, type PanelLayout } from '../../../src/report-ui/MetadataPanel';
 import { TargetLink } from '../../../src/report-ui/TargetLink';
-import { useTestReport } from '../../../src/report-ui/test-report-context';
+import { useTestCard } from '../../../src/report-ui/test-card-context';
 import { RunCommits } from './RunDetails';
 
 function latestMeasuredExecution(outcomes: readonly ReportOutcome[]) {
@@ -23,7 +23,7 @@ function latestMeasuredExecution(outcomes: readonly ReportOutcome[]) {
 }
 
 export function TestSummaryMetadata({ test, ...layout }: PanelLayout & { test: TestResult }) {
-  const { meta, targets } = useTestReport();
+  const { meta, targets } = useTestCard();
   const { outcomes, measuredAt } = test;
   const viewports = [...new Set(outcomes.map(outcome => outcome.executionDetails.viewport.label))];
   return (

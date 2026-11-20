@@ -9,7 +9,7 @@ import { useId, useState, type ReactNode } from 'react';
 import type { ExecutionDetails } from '../pipeline/outcome';
 import { SourceText } from './SourceText';
 import { MeasurementCommand } from './MeasurementCommand';
-import { useTestReport } from './test-report-context';
+import { useTestCard } from './test-card-context';
 
 // Full-word units so "12m" isn't mistaken for "12 months" — especially
 // relevant in merged --report-only views where artifacts can be weeks old.
@@ -52,7 +52,7 @@ export function MetadataPanel({
   executionDetails, measuredAt, troubleshoot, targetLinks, children,
   expanded: sharedExpanded, onToggleExpanded, defaultExpanded = false, variant = 'card',
 }: MetadataPanelProps) {
-  const { test } = useTestReport();
+  const { test } = useTestCard();
   const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
   const expanded = sharedExpanded ?? localExpanded;
   const [activeSection, setActiveSection] = useState<string | null>(null);

@@ -8,7 +8,7 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { ArtifactMetadata } from './ArtifactMetadata';
 import { Dialog } from './Dialog';
-import { useTestReport } from './test-report-context';
+import { useTestCard } from './test-card-context';
 
 type ArtifactDialogProps =
   Omit<ComponentProps<typeof Dialog>, 'open' | 'meta'> &
@@ -17,7 +17,7 @@ type ArtifactDialogProps =
   };
 
 export function ArtifactDialog({ title, executionDetails, fields, ...dialogProps }: ArtifactDialogProps) {
-  const { test } = useTestReport();
+  const { test } = useTestCard();
   return (
     <Dialog
       {...dialogProps}

@@ -9,17 +9,17 @@ import { createContext, useContext } from 'react';
 import type { TestTarget } from '../pipeline/pipeline';
 import type { ReportMeta, TestResult } from '../pipeline/report';
 
-interface TestReportValue {
+interface TestCardData {
   meta: ReportMeta;
   test: Pick<TestResult, 'name' | 'filePath' | 'viewportArtifactPaths'>;
   targets: readonly TestTarget[];
 }
 
-const TestReportContext = createContext<TestReportValue | null>(null);
-export const TestReportProvider = TestReportContext.Provider;
+const TestCardContext = createContext<TestCardData | null>(null);
+export const TestCardProvider = TestCardContext.Provider;
 
-export function useTestReport() {
-  const value = useContext(TestReportContext);
-  if (value === null) throw new Error('useTestReport must be used inside a TestReportProvider');
+export function useTestCard() {
+  const value = useContext(TestCardContext);
+  if (value === null) throw new Error('useTestCard must be used inside a TestCardProvider');
   return value;
 }
