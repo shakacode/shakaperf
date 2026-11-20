@@ -2,6 +2,13 @@
 
 Thank you for helping improve ShakaPerf.
 
+## Formatting edited code in VS Code
+
+Open [shakaperf.code-workspace](./shakaperf.code-workspace) and install the recommended
+Prettier extension. When you save JS, JSX, TS, or TSX, VS Code passes the ranges Git
+marks as modified to Prettier. Prettier can expand a range to a complete statement.
+If Git supplies no ranges, VS Code skips formatting on save.
+
 ## Licensing and contributions
 
 ShakaPerf is distributed under The ShakaPerf License (see
