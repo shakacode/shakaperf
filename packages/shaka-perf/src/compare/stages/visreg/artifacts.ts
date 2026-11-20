@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { readVisualComparisonCounts, type SavedVisualComparisonCounts } from './selectors';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PNG } from 'pngjs';
@@ -113,7 +114,7 @@ function scanDiffPng(
   };
 }
 
-interface VisregPair {
+interface VisregPair extends SavedVisualComparisonCounts {
   reference?: string;
   test?: string;
   diffImage?: string | null;
@@ -128,8 +129,6 @@ interface VisregPair {
   };
   error?: string | null;
   savedByRetries?: boolean;
-  compareAttempts?: number;
-  compareRetries?: number;
 }
 
 interface VisregPerTestReport {
@@ -226,8 +225,7 @@ export function readVisregArtifacts(opts: ReadVisregArtifactsOptions): VisregArt
       threshold,
       diffBbox: scan?.bbox ?? null,
       savedByRetries: pair.savedByRetries ?? false,
-      compareAttempts: pair.compareAttempts,
-      compareRetries: pair.compareRetries,
+      ...readVisualComparisonCounts(pair),
     });
   }
 

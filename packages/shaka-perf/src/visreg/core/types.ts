@@ -205,9 +205,9 @@ export interface TestPair {
    */
   savedByRetries?: boolean;
   /** Capture-and-compare attempts for this selector in the completed invocation. */
-  compareAttempts?: number;
-  /** Effective visual retry budget used for this selector. */
-  compareRetries?: number;
+  visualComparisonCount?: number;
+  /** Maximum capture-and-compare rounds, including the first. */
+  visualComparisonLimit?: number;
   status?: string;
   testFile?: string;
   testLine?: number;

@@ -64,11 +64,11 @@ export interface CompareSelectorOutcome {
   testFrame: PoolFrame;
   /** Matched, but not by a single clean capture pair (retried or crash-resumed frames). */
   savedByRetries: boolean;
-  compareAttempts: number;
+  visualComparisonCount: number;
 }
 
 interface SelectorRun {
-  compareAttempts: number;
+  visualComparisonCount: number;
   selector: string;
   testPair: TestPair;
   pool: ScreenshotPool;
@@ -223,7 +223,7 @@ export async function runCompareAttempts(
           path.basename(testPair.test, engineTools.OUTPUT_FORMAT_SUFFIX),
         );
         return {
-          compareAttempts: 0,
+          visualComparisonCount: 0,
           selector,
           testPair,
           pool,
@@ -236,7 +236,7 @@ export async function runCompareAttempts(
     }
 
     for (const run of runs) {
-      if (!run.done) run.compareAttempts = attempt + 1;
+      if (!run.done) run.visualComparisonCount = attempt + 1;
     }
 
     const activeSides = new Set<ComparisonSide>();
@@ -305,7 +305,7 @@ export async function runCompareAttempts(
       // Clean = the single first capture pair matched. Anything that needed a
       // second frame (a retry or a crash-resumed leftover) was saved by retries.
       savedByRetries: result.pass && (run.control.length > 1 || run.experiment.length > 1),
-      compareAttempts: run.compareAttempts,
+      visualComparisonCount: run.visualComparisonCount,
     };
   });
 }

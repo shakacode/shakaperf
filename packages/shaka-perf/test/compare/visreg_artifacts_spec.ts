@@ -52,8 +52,8 @@ describe('readVisregArtifacts', function () {
             viewportLabel: 'desktop',
             selector: 'document',
             mismatchThreshold: 0.01,
-            compareAttempts: 3,
-            compareRetries: 2,
+            visualComparisonCount: 3,
+            visualComparisonLimit: 3,
             diff: { misMatchPercentage: '0.00', isSameDimensions: false },
             diffImage: 'failed_diff_homepage_desktop.txt',
           },
@@ -78,8 +78,22 @@ describe('readVisregArtifacts', function () {
       );
       assert.strictEqual(hasVisualChange(artifactSet.artifacts), true);
       assert.strictEqual(visualChangeCount(artifactSet.artifacts), 1);
-      assert.strictEqual(artifactSet.artifacts[0].compareAttempts, 3);
-      assert.strictEqual(artifactSet.artifacts[0].compareRetries, 2);
+      assert.strictEqual(artifactSet.artifacts[0].visualComparisonCount, 3);
+      assert.strictEqual(artifactSet.artifacts[0].visualComparisonLimit, 3);
+    });
+  });
+
+  it('reads the count and retry budget from older engine reports', async () => {
+    await withTempResultsRoot(async resultsRoot => {
+      writePerTestReport(resultsRoot, 'legacy', {
+        tests: [{ pair: { compareAttempts: 1, compareRetries: 0 } }],
+      });
+      const result = readVisregArtifacts({
+        artifacts: new ArtifactScope(path.join(resultsRoot, 'legacy', 'artifacts'), resultsRoot),
+        viewport: DESKTOP,
+      });
+      assert.strictEqual(result?.artifacts[0].visualComparisonCount, 1);
+      assert.strictEqual(result?.artifacts[0].visualComparisonLimit, 1);
     });
   });
 
@@ -109,8 +123,8 @@ describe('readVisregArtifacts', function () {
       assert.strictEqual(artifactSet.artifacts[0].diffImage, null);
       assert.strictEqual(hasVisualChange(artifactSet.artifacts), false);
       assert.strictEqual(visualChangeCount(artifactSet.artifacts), 0);
-      assert.strictEqual(artifactSet.artifacts[0].compareAttempts, undefined);
-      assert.strictEqual(artifactSet.artifacts[0].compareRetries, undefined);
+      assert.strictEqual(artifactSet.artifacts[0].visualComparisonCount, undefined);
+      assert.strictEqual(artifactSet.artifacts[0].visualComparisonLimit, undefined);
     });
   });
 });

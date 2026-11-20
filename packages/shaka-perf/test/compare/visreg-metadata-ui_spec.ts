@@ -36,7 +36,7 @@ function fixture() {
     measurement: [{
       selector: 'document', controlImage: image, experimentImage: image,
       diffImage: null, misMatchPercentage: 0, savedByRetries: true,
-      compareAttempts: 2, compareRetries: 2,
+      visualComparisonCount: 2, visualComparisonLimit: 3,
     }],
   }, {
     ...saved,
@@ -80,7 +80,7 @@ describe('visual preview metadata', () => {
             testSourceHref: params.has('missing') ? null : 'data:text/plain;charset=utf-8,' + encodeURIComponent(phoneSource),
             recoveredAfterRetries: false, taskRetries: 0, taskRetryLimit: 8,
           },
-          measurement: [{ ...measurement[0], compareAttempts: 1, savedByRetries: false }],
+          measurement: [{ ...measurement[0], visualComparisonCount: 1, savedByRetries: false }],
         };
         test.outcomes = [desktop, phone, {
           kind: 'skipped', stage: 'perf', reason: 'Not selected',
