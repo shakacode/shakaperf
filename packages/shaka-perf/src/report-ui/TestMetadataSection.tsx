@@ -67,7 +67,7 @@ export function TestMetadataSection({
       label: 'command',
       content: executionDetails?.measurementMetadata ? (
         <>
-          <div className="run-details__label">Latest command</div>
+          <div className="metadata-label">Latest command</div>
           <MeasurementCommand
             key={executionDetails.command}
             command={executionDetails.command}
