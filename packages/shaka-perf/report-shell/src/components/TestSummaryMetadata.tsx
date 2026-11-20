@@ -7,10 +7,8 @@
 
 import type { ReportOutcome, TestResult } from '../types';
 import { pipelineTroubleshootCommands } from '../../../src/pipeline/pipeline-artifacts';
-import { MetadataPanel, type PanelLayout } from '../../../src/report-ui/MetadataPanel';
-import { TargetLink } from '../../../src/report-ui/TargetLink';
+import { TestMetadataSection, type TestMetadataDisplayOptions } from '../../../src/report-ui/TestMetadataSection';
 import { useTestCard } from '../../../src/report-ui/test-card-context';
-import { RunCommits } from './RunDetails';
 
 function latestMeasuredExecution(outcomes: readonly ReportOutcome[]) {
   let latest: ReportOutcome['executionDetails'] | undefined;
@@ -22,21 +20,16 @@ function latestMeasuredExecution(outcomes: readonly ReportOutcome[]) {
   return latest;
 }
 
-export function TestSummaryMetadata({ test, ...layout }: PanelLayout & { test: TestResult }) {
-  const { meta, targets } = useTestCard();
+export function TestSummaryMetadata({ test, ...layout }: TestMetadataDisplayOptions & { test: TestResult }) {
+  const { meta } = useTestCard();
   const { outcomes, measuredAt } = test;
   const viewports = [...new Set(outcomes.map(outcome => outcome.executionDetails.viewport.label))];
   return (
-    <MetadataPanel
+    <TestMetadataSection
       {...layout}
       measuredAt={measuredAt}
       executionDetails={latestMeasuredExecution(outcomes)}
       troubleshoot={pipelineTroubleshootCommands(meta, test.name, viewports)}
-      targetLinks={targets.map(target => (
-        <TargetLink key={target.side} target={target}>
-          <RunCommits outcomes={outcomes} side={target.side} />
-        </TargetLink>
-      ))}
     />
   );
 }

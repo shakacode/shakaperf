@@ -6,13 +6,13 @@
  */
 
 import type { ComponentProps, ReactNode } from 'react';
-import { ArtifactMetadata } from './ArtifactMetadata';
+import { ArtifactDialogMetadata } from './ArtifactDialogMetadata';
 import { Dialog } from './Dialog';
 import { useTestCard } from './test-card-context';
 
 type ArtifactDialogProps =
   Omit<ComponentProps<typeof Dialog>, 'open' | 'meta'> &
-  ComponentProps<typeof ArtifactMetadata> & {
+  ComponentProps<typeof ArtifactDialogMetadata> & {
     title: ReactNode;
   };
 
@@ -23,7 +23,7 @@ export function ArtifactDialog({ title, executionDetails, fields, ...dialogProps
       {...dialogProps}
       open
       title={<span className="ui-dialog__title-text">{title} · {test.name}</span>}
-      meta={<ArtifactMetadata executionDetails={executionDetails} fields={fields} />}
+      meta={<ArtifactDialogMetadata executionDetails={executionDetails} fields={fields} />}
     />
   );
 }
