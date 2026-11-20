@@ -8,7 +8,7 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { ArtifactDialogMetadata } from './ArtifactDialogMetadata';
 import { Dialog } from './Dialog';
-import { useTestCard } from './test-card-context';
+import { useTestCard } from './TestCardProvider';
 
 type ArtifactDialogProps =
   Omit<ComponentProps<typeof Dialog>, 'open' | 'meta'> &

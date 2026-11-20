@@ -10,7 +10,7 @@ import type { ExecutionDetails } from '../pipeline/outcome';
 import { TargetLink } from './TargetLink';
 import { SourceText } from './SourceText';
 import { MeasurementCommand } from './MeasurementCommand';
-import { useTestCard } from './test-card-context';
+import { useTestCard } from './TestCardProvider';
 
 // Full-word units so "12m" isn't mistaken for "12 months" — especially
 // relevant in merged --report-only views where artifacts can be weeks old.
