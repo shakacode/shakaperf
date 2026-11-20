@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import type { TestResult } from '../types';
 import { Dialog } from '../../../src/report-ui/Dialog';
-import { TestSummaryMetadata } from './TestMetadata';
+import { TestSummaryMetadata } from './TestSummaryMetadata';
 import { AnsiLog, firstElapsedSeconds } from './AnsiLog';
 
 interface LogEntry {

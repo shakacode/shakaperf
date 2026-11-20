@@ -336,7 +336,7 @@ describe('visual preview metadata', () => {
       const metadata = page.getByRole('dialog').locator('.card__metadata');
       expect(await metadata.getByRole('button', { name: 'command', exact: true }).count()).toBe(0);
       expect(await metadata.locator('.card__measured-at').textContent()).toContain('never measured');
-      expect(await metadata.locator('.card__target-commits').allTextContents()).toEqual(['', '']);
+      expect(await metadata.locator('.card__target-commits').count()).toBe(0);
       expect(await metadata.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(0);
       await metadata.getByRole('button', { name: 'test source', exact: true }).click();
       expect(await metadata.textContent()).toContain('No source snapshot was captured.');
@@ -374,6 +374,7 @@ describe('visual preview metadata', () => {
       expect(await dialog.locator('.ui-dialog__title').innerText()).toBe('measurement logs · Homepage');
       const metadata = dialog.locator('.card__metadata');
       expect(await metadata.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(2);
+      expect(await metadata.getByText('1e04e038', { exact: true }).count()).toBe(0);
       await metadata.getByRole('button', { name: 'command', exact: true }).click();
       expect(await metadata.getByLabel('Latest command').inputValue()).toBe('shaka-perf compare --categories perf --filter Homepage');
     } finally {

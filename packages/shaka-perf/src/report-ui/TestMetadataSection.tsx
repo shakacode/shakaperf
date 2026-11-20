@@ -7,6 +7,7 @@
 
 import { useId, useState, type ReactNode } from 'react';
 import type { ExecutionDetails } from '../pipeline/outcome';
+import { TargetLink } from './TargetLink';
 import { SourceText } from './SourceText';
 import { MeasurementCommand } from './MeasurementCommand';
 import { useTestCard } from './test-card-context';
@@ -33,26 +34,28 @@ function formatMeasuredAt(measuredAt: number | null): string | null {
   return `${pluralize(days, 'day')} ${pluralize(hours, 'hour')} ago`;
 }
 
-export interface PanelLayout {
+export interface TestMetadataDisplayOptions {
   expanded?: boolean;
   onToggleExpanded?: () => void;
   defaultExpanded?: boolean;
   variant?: 'card' | 'dialog';
 }
 
-interface MetadataPanelProps extends PanelLayout {
+interface TestMetadataSectionProps extends TestMetadataDisplayOptions {
   executionDetails?: ExecutionDetails;
   measuredAt: number | null;
   troubleshoot: readonly string[];
-  targetLinks: ReactNode;
   children?: ReactNode;
 }
 
-export function MetadataPanel({
-  executionDetails, measuredAt, troubleshoot, targetLinks, children,
+export function TestMetadataSection({
+  executionDetails, measuredAt, troubleshoot, children,
   expanded: sharedExpanded, onToggleExpanded, defaultExpanded = false, variant = 'card',
-}: MetadataPanelProps) {
-  const { test } = useTestCard();
+}: TestMetadataSectionProps) {
+  const { test, targets } = useTestCard();
+  const commitsBySide = new Map(
+    executionDetails?.measurementMetadata?.targets.map(({ side, commit }) => [side, commit]),
+  );
   const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
   const expanded = sharedExpanded ?? localExpanded;
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -121,7 +124,9 @@ export function MetadataPanel({
       <div className="card__metadata-content">
         {variant === 'card' ? fileAndTime : null}
         <dl className="card__urls card__targets" aria-label="URLs">
-          {targetLinks}
+          {targets.map(target => (
+            <TargetLink key={target.side} target={target} commit={commitsBySide.get(target.side)} />
+          ))}
         </dl>
         {children}
         {sections.length ? (
