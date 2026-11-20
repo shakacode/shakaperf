@@ -47,6 +47,9 @@ export interface VisregArtifact {
    * retries)" chip.
    */
   savedByRetries: boolean;
+  /** Capture-and-compare rounds for this selector, including the first. */
+  visualComparisonCount?: number;
+  visualComparisonLimit?: number;
 }
 
 export type VisregResult = VisregArtifact[];

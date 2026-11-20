@@ -64,9 +64,11 @@ export interface CompareSelectorOutcome {
   testFrame: PoolFrame;
   /** Matched, but not by a single clean capture pair (retried or crash-resumed frames). */
   savedByRetries: boolean;
+  visualComparisonCount: number;
 }
 
 interface SelectorRun {
+  visualComparisonCount: number;
   selector: string;
   testPair: TestPair;
   pool: ScreenshotPool;
@@ -178,7 +180,7 @@ export async function runCompareAttempts(
 
   // All comparison tuning is read straight off the effective config (the compare
   // stage already merged `config.visreg` and wrote it into the bridge config).
-  const maxRetries = config.compareRetries ?? 0;
+  const maxRetries = config.compareRetries;
   const retryDelayMs = config.compareRetryDelay ?? 5000;
   const maxNumDiffPixels = config.maxNumDiffPixels;
   const compareOpts = { maxNumDiffPixels, pixelmatchThreshold };
@@ -221,6 +223,7 @@ export async function runCompareAttempts(
           path.basename(testPair.test, engineTools.OUTPUT_FORMAT_SUFFIX),
         );
         return {
+          visualComparisonCount: 0,
           selector,
           testPair,
           pool,
@@ -259,6 +262,7 @@ export async function runCompareAttempts(
 
     for (const run of runs) {
       if (run.done) continue;
+      run.visualComparisonCount = attempt + 1;
       const refBuffer = refCaptures.get(run.selector)!;
       const testBuffer = testCaptures.get(run.selector)!;
 
@@ -298,6 +302,7 @@ export async function runCompareAttempts(
       // Clean = the single first capture pair matched. Anything that needed a
       // second frame (a retry or a crash-resumed leftover) was saved by retries.
       savedByRetries: result.pass && (run.control.length > 1 || run.experiment.length > 1),
+      visualComparisonCount: run.visualComparisonCount,
     };
   });
 }

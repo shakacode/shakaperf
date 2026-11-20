@@ -92,6 +92,8 @@ async function processCompareView (
 
   for (const outcome of outcomes) {
     const { selector, testPair, result, refFrame, testFrame } = outcome;
+    testPair.visualComparisonCount = outcome.visualComparisonCount;
+    testPair.visualComparisonLimit = config.compareRetries + 1;
 
     const refAnalysis = analyzeWhitePixels(refFrame.buffer);
     const testAnalysis = analyzeWhitePixels(testFrame.buffer);

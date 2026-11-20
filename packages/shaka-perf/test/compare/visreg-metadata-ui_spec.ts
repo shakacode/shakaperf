@@ -36,7 +36,7 @@ function fixture() {
     measurement: [{
       selector: 'document', controlImage: image, experimentImage: image,
       diffImage: null, misMatchPercentage: 0, savedByRetries: true,
-      compareAttempts: 2, compareRetries: 2,
+      visualComparisonCount: 2, visualComparisonLimit: 3,
     }],
   }, {
     ...saved,
@@ -80,7 +80,7 @@ describe('visual preview metadata', () => {
             testSourceHref: params.has('missing') ? null : 'data:text/plain;charset=utf-8,' + encodeURIComponent(phoneSource),
             recoveredAfterRetries: false, taskRetries: 0, taskRetryLimit: 8,
           },
-          measurement: [{ ...measurement[0], compareAttempts: 1, savedByRetries: false }],
+          measurement: [{ ...measurement[0], visualComparisonCount: 1, savedByRetries: false }],
         };
         test.outcomes = [desktop, phone, {
           kind: 'skipped', stage: 'perf', reason: 'Not selected',
@@ -151,6 +151,20 @@ describe('visual preview metadata', () => {
       }
       await metadata.getByRole('button', { name: 'test source', exact: true }).click();
       expect(await metadata.locator('.card__code').textContent()).toContain("abTest('Homepage'");
+      expect(
+        await metadata
+          .locator('dl > div')
+          .filter({ has: page.locator('dt', { hasText: 'visual comparisons' }) })
+          .locator('dd')
+          .textContent(),
+      ).toBe('2/3 · matched on retry');
+      expect(
+        await metadata
+          .locator('dl > div')
+          .filter({ has: page.locator('dt', { hasText: 'error retries' }) })
+          .locator('dd')
+          .textContent(),
+      ).toBe('1/2 · recovered');
       expect(await dialog.getByRole('button', { name: 'logs', exact: true }).count()).toBe(0);
       await dialog.getByRole('button', { name: 'close', exact: true }).click();
       await page.getByRole('button', { name: 'logs', exact: true }).click();

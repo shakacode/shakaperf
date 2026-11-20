@@ -122,8 +122,8 @@ function makeDeps(produce: Produce, consoleBySide: ConsoleBySide = {}) {
   return { deps, sleeps, createSide, counts: () => ({ created, disposed, captureCalls }) };
 }
 
-function run(deps: CompareAttemptsDeps, config: DecoratedCompareConfig): Promise<CompareSelectorOutcome[]> {
-  const scenario = { label: 'S', url: 'http://x/test', referenceUrl: 'http://x/ref' } as unknown as Scenario;
+function run(deps: CompareAttemptsDeps, config: DecoratedCompareConfig, selectors?: string[]): Promise<CompareSelectorOutcome[]> {
+  const scenario = { label: 'S', url: 'http://x/test', referenceUrl: 'http://x/ref', selectors } as unknown as Scenario;
   const viewport = { label: 'desktop', vIndex: 0 } as unknown as Viewport;
   return runCompareAttempts(deps, {
     browser: {} as unknown as Browser,
@@ -140,6 +140,7 @@ it('attempt 0 clean match: passes without retrying, not flagged saved-by-retries
   expect(outcomes).toHaveLength(1);
   expect(outcomes[0].result.pass).toBe(true);
   expect(outcomes[0].savedByRetries).toBe(false);
+  expect(outcomes[0].visualComparisonCount).toBe(1);
   // One attempt only: two fresh sides built and torn down, no backoff sleeps.
   expect(counts()).toEqual({ created: 2, disposed: 2, captureCalls: 2 });
   expect(sleeps).toEqual([]);
@@ -152,9 +153,25 @@ it('mismatch then match on retry: passes and is flagged saved-by-retries', async
 
   expect(outcomes[0].result.pass).toBe(true);
   expect(outcomes[0].savedByRetries).toBe(true);
+  expect(outcomes[0].visualComparisonCount).toBe(2);
   // Two attempts, each with its OWN fresh pair (created === disposed === 4).
   expect(counts()).toMatchObject({ created: 4, disposed: 4 });
   expect(sleeps).toEqual([10]); // one backoff before the single retry
+});
+
+it('keeps a clean selector at one attempt while another selector retries', async () => {
+  const { deps } = makeDeps(() => png(BLUE));
+  let changedCaptures = 0;
+  deps.captureScreenshot = async (_page, selector) => {
+    if (selector === '.clean') return png(GREEN);
+    const capture = changedCaptures++;
+    // Both sides capture once per attempt. Vary the image on each retry.
+    return png(capture % 2 === 0 ? RED : BLUE, Math.floor(capture / 2) + 1);
+  };
+  const outcomes = await run(deps, makeConfig({ compareRetries: 2 }), ['.clean', '.changed']);
+  expect(outcomes.map(({ selector, visualComparisonCount }) => ({ selector, visualComparisonCount }))).toEqual([
+    { selector: '.clean', visualComparisonCount: 1 }, { selector: '.changed', visualComparisonCount: 3 },
+  ]);
 });
 
 it('persistent mismatch: spends the retry budget, returns the closest pair with a diff', async () => {

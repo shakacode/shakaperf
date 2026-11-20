@@ -204,6 +204,10 @@ export interface TestPair {
    * the "Flaky (saved by retries)" chip.
    */
   savedByRetries?: boolean;
+  /** Capture-and-compare attempts for this selector in the completed invocation. */
+  visualComparisonCount?: number;
+  /** Maximum capture-and-compare rounds, including the first. */
+  visualComparisonLimit?: number;
   status?: string;
   testFile?: string;
   testLine?: number;

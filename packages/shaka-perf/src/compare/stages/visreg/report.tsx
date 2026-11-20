@@ -114,6 +114,14 @@ export function visualComparisonFields({
     selector: artifact.selector,
     mismatch: `${artifact.misMatchPercentage.toFixed(2)}%`,
   };
+  const { visualComparisonCount, visualComparisonLimit } = artifact;
+  if (visualComparisonCount === undefined) return fields;
+
+  let comparisonText = String(visualComparisonCount);
+  if (visualComparisonLimit !== undefined) comparisonText += `/${visualComparisonLimit}`;
+  if (artifact.savedByRetries) comparisonText += ' · matched on retry';
+
+  fields['visual comparisons'] = comparisonText;
   return fields;
 }
 
