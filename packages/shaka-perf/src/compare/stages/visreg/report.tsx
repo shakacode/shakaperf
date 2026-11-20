@@ -10,7 +10,6 @@ import type { StageRenderEntry } from '../../../stage/stage';
 import type { VisregArtifact, VisregResult } from '../visreg';
 import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, ReportHeading, OldRunChip, StageNote } from '../../../pipeline/stage-report-components';
 import { ImageViewport } from '../../../pipeline/image-viewport';
-import { readVisualComparisonCounts } from './selectors';
 import { Scrubber } from './scrubber';
 
 export function VisregArtifactView({
@@ -115,7 +114,7 @@ export function visualComparisonFields({
     selector: artifact.selector,
     mismatch: `${artifact.misMatchPercentage.toFixed(2)}%`,
   };
-  const { visualComparisonCount, visualComparisonLimit } = readVisualComparisonCounts(artifact);
+  const { visualComparisonCount, visualComparisonLimit } = artifact;
   if (visualComparisonCount === undefined) {
     if (artifact.savedByRetries) fields['visual comparisons'] = 'Matched after retrying · comparison count unavailable';
   } else if (visualComparisonCount > 1) {
