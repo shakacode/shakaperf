@@ -5,10 +5,12 @@
  * License in LICENSE.md.
  */
 
+import { useId, useState } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { PerfArtifact, PerfMetric, PerfMetricGroup } from '../perf';
 import {
   DetailedArtifactDialog,
+  ArtifactMetadataFields,
   StageArtifact,
   StageArtifactTitle,
   ReportHeading,
@@ -18,7 +20,11 @@ import {
 import { FullReportOnly } from '../../../pipeline/report-mode';
 import { performanceMetadataFields } from '../perf/metadata-fields';
 import { FramePlayer } from './frame-player';
-import { ReportSection, useReportSection } from '../../../pipeline/report-section';
+import {
+  ReportSection,
+  useReportSection,
+  useReportSectionExpanded,
+} from '../../../pipeline/report-section';
 
 const GROUPS: PerfMetricGroup[] = ['vitals', 'diagnostics'];
 
@@ -63,6 +69,18 @@ function PerfViewportBlock({ entry }: { entry: StageRenderEntry<PerfArtifact> })
   const { measurement: perf, latestRun } = entry;
   const viewportLabel = entry.executionDetails.viewport.label;
   const section = useReportSection();
+  const sectionKey = `${section ?? 'perf'}:viewport:${viewportLabel}`;
+  const expanded = useReportSectionExpanded(sectionKey);
+  const viewport = entry.executionDetails.viewport;
+  const { throttling, ...measurementFields } = performanceMetadataFields(
+    entry.executionDetails.measurementMetadata,
+  );
+  const fields =
+    throttling === undefined ? measurementFields : { throttling, ...measurementFields };
+  const hasSettings = Object.keys(fields).length > 0;
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsVisible = showSettings && expanded;
+  const settingsId = useId();
   const hasSignificantMetrics = significantMetrics(perf).length > 0;
   const hasNoDifference = hasNoDifferenceMetrics(perf);
   return (
@@ -71,11 +89,39 @@ function PerfViewportBlock({ entry }: { entry: StageRenderEntry<PerfArtifact> })
       aria-label={`${viewportLabel} performance`}
     >
       <ReportSection
-        sectionKey={`${section ?? 'perf'}:viewport:${viewportLabel}`}
+        sectionKey={sectionKey}
         title={`${viewportLabel} performance`}
-        badge={<OldRunChip latestRun={latestRun} />}
+        badge={
+          <>
+            {settingsVisible ? (
+              <span className="perf-viewport__dimensions">
+                {viewport.width} × {viewport.height}
+              </span>
+            ) : null}
+            <OldRunChip latestRun={latestRun} />
+          </>
+        }
+        actions={
+          hasSettings && expanded ? (
+            <button
+              type="button"
+              className="perf-run-settings-toggle"
+              aria-expanded={settingsVisible}
+              aria-controls={settingsId}
+              onClick={() => setShowSettings(previous => !previous)}
+            >
+              {showSettings ? 'hide metadata' : 'show metadata'}
+            </button>
+          ) : null
+        }
         nested
       >
+        {hasSettings ? (
+          <div id={settingsId} className="perf-run-settings" hidden={!settingsVisible}>
+            <ArtifactMetadataFields fields={fields} />
+          </div>
+        ) : null}
+
         <PerfBody
           entry={entry}
           hasNoDifference={hasNoDifference}
