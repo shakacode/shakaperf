@@ -45,8 +45,9 @@ it('formats selector counts without borrowing execution counts', () => {
     entry: { measurement: [value], latestRun: true,
       ...executionFixture({ taskRetries: 3, taskRetryLimit: 5, recoveredAfterRetries: true }) },
   });
-  expect(fields(artifact)['visual comparisons']).toBeUndefined();
+  expect(fields(artifact)['visual comparisons']).toBe('1/5');
+  expect(fields({ ...artifact, visualComparisonLimit: undefined })['visual comparisons']).toBe('1');
   expect(fields({ ...artifact, visualComparisonCount: 3, savedByRetries: true })['visual comparisons']).toBe('3/5 · matched on retry');
-  expect(fields({ ...artifact, visualComparisonCount: undefined, savedByRetries: true })['visual comparisons']).toContain('count unavailable');
+  expect(fields({ ...artifact, visualComparisonCount: undefined, savedByRetries: true })['visual comparisons']).toBeUndefined();
   expect(fields({ ...artifact, visualComparisonCount: undefined })['visual comparisons']).toBeUndefined();
 });

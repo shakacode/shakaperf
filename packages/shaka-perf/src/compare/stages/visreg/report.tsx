@@ -115,10 +115,10 @@ export function visualComparisonFields({
     mismatch: `${artifact.misMatchPercentage.toFixed(2)}%`,
   };
   const { visualComparisonCount, visualComparisonLimit } = artifact;
-  if (visualComparisonCount === undefined) {
-    if (artifact.savedByRetries) fields['visual comparisons'] = 'Matched after retrying · comparison count unavailable';
-  } else if (visualComparisonCount > 1) {
-    fields['visual comparisons'] = `${visualComparisonCount}/${visualComparisonLimit ?? '?'}${artifact.savedByRetries ? ' · matched on retry' : ''}`;
+  if (visualComparisonCount !== undefined) {
+    const limit = visualComparisonLimit === undefined ? '' : `/${visualComparisonLimit}`;
+    const recovery = artifact.savedByRetries ? ' · matched on retry' : '';
+    fields['visual comparisons'] = `${visualComparisonCount}${limit}${recovery}`;
   }
   return fields;
 }
