@@ -38,6 +38,7 @@ const withBrowserConsole = (browserConsole: unknown) =>
 describe('audit image resolution config', () => {
   it('defaults to reporting images outside the configured resolution range', () => {
     expect(buildAbTestsConfig(baseConfig()).audit.imageResolution).toEqual({
+      enabled: true,
       minRatio: 0.9,
       maxRatio: 2,
       failOnUndersized: false,
@@ -54,10 +55,16 @@ describe('audit image resolution config', () => {
       config: { audit: { imageResolution: { minRatio: 1 } } },
     });
     expect(effective.audit.imageResolution).toEqual({
+      enabled: true,
       minRatio: 1,
       maxRatio: 3,
       failOnUndersized: true,
     });
+  });
+
+  it('allows disabling image checks while retaining thresholds', () => {
+    expect(buildAbTestsConfig(baseConfig({ audit: { imageResolution: { enabled: false } } })).audit.imageResolution)
+      .toEqual({ enabled: false, minRatio: 0.9, maxRatio: 2, failOnUndersized: false });
   });
 
   it.each([

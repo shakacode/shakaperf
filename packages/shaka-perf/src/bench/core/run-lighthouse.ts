@@ -14,7 +14,7 @@ import { extractLcpRawTraceTimestamp, extractTestAnnotationMarks } from './extra
 import { saveNetworkActivity, analyzeNetworkResources } from './network-activity';
 import { countMainThreadTasks } from './main-thread-tasks';
 import { runPatchedLighthouse } from './patched-lighthouse';
-import type { ImageResolutionConfig } from './image-resolution';
+import type { ImageResolutionConfig, ImageResolutionCheck } from './image-resolution';
 import { summarizePerformanceProfile } from './summarize-performance-profile';
 import type { Group } from '../../pipeline/log-prefix-format';
 
@@ -35,7 +35,7 @@ export async function runLighthouse(
   saveArtifacts: boolean = true,
   canStopTracking: Promise<void> = Promise.resolve(),
   imageResolution?: ImageResolutionConfig,
-): Promise<{ phases: PhaseSample[], runnerResult: RunnerResult }> {
+): Promise<{ phases: PhaseSample[], runnerResult: RunnerResult; imageResolution?: ImageResolutionCheck }> {
   // Lighthouse's own `maxWaitForLoad` caps wait-for-fully-loaded, and
   // `withRaceTimeout` in the sampling worker pool kills hung runs at the
   // runner level. No third backstop here — one knob per level.
@@ -148,5 +148,14 @@ export async function runLighthouse(
     });
   }
 
-  return { phases: results, runnerResult };
+  let imageCheck: ImageResolutionCheck | undefined;
+  if (imageResolution) {
+    const artifact = runnerResult.artifacts.ShakaImageResolution;
+    imageCheck = artifact && !(artifact instanceof Error) ? artifact : {
+      status: 'unavailable',
+      reason: artifact instanceof Error ? artifact.message : 'Lighthouse did not return image resolution measurements.',
+      failOnUndersized: imageResolution.failOnUndersized,
+    };
+  }
+  return { phases: results, runnerResult, ...(imageCheck ? { imageResolution: imageCheck } : {}) };
 }

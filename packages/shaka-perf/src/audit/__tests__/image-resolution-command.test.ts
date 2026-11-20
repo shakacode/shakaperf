@@ -100,6 +100,60 @@ describe('audit image resolution failure policy', () => {
     expect(process.exitCode).toBeUndefined();
   });
 
+  it('keeps speed results and fails only a required check when image collection is unavailable', async () => {
+    const store = new ArtifactStore(path.join(cwd, 'audit-results'));
+    const unavailable = {
+      status: 'unavailable' as const, reason: 'Image collector timed out.', failOnUndersized: false,
+    };
+    const saved = {
+      metrics: [{ label: 'LCP', value: 1000, unit: 'ms', display: '1 s', group: 'vitals' as const }],
+      imageResolution: unavailable,
+    };
+    store.writeOutcome(test, 'desktop', { kind: 'ok', stage: 'audit', measurement: saved });
+    await run('--report-only');
+    expect(process.exitCode).toBeUndefined();
+    await run('--report-only', '--fail-on-undersized-images');
+    expect(process.exitCode).toBe(1);
+    const report = JSON.parse(fs.readFileSync(path.join(cwd, 'audit-results', 'report.json'), 'utf8'));
+    expect(report.tests[0].outcomes[0]).toMatchObject({
+      kind: 'ok', summary: { imageResolution: { status: 'unavailable', reason: unavailable.reason } },
+    });
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('missing image resolution measurements'));
+  });
+
+  it('enforces the saved per-test strict policy for an unavailable image check', async () => {
+    jest.mocked(runAuditStage).mockResolvedValue({
+      metrics: [], imageResolution: { status: 'unavailable', reason: 'Image check failed.', failOnUndersized: true },
+    });
+    await run();
+    expect(process.exitCode).toBe(1);
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('missing image resolution measurements'));
+  });
+
+  it('treats an individual unknown image as informational even under the strict flag', async () => {
+    const image = {
+      src: '/icon.svg', label: 'img', status: 'unknown' as const, reason: 'Vector image.', fit: 'contain',
+      boxWidth: 100, boxHeight: 100, naturalWidth: 100, naturalHeight: 100, devicePixelRatio: 1,
+    };
+    jest.mocked(runAuditStage).mockResolvedValue({
+      metrics: [], imageResolution: { images: [image], undersized: 0, oversized: 0, unknown: 1, failOnUndersized: true },
+    });
+    await run('--fail-on-undersized-images');
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('requires a fresh check when replaying a disabled result with the strict flag', async () => {
+    const store = new ArtifactStore(path.join(cwd, 'audit-results'));
+    store.writeOutcome(test, 'desktop', {
+      kind: 'ok', stage: 'audit', measurement: { metrics: [], imageResolution: { status: 'disabled', failOnUndersized: false } },
+    });
+    await run('--report-only');
+    expect(process.exitCode).toBeUndefined();
+    await run('--report-only', '--fail-on-undersized-images');
+    expect(process.exitCode).toBe(1);
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('missing image resolution measurements'));
+  });
+
   it.each([
     ['--categories', 'accessibility'],
     ['--skip-stages', 'audit'],

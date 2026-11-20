@@ -25,7 +25,7 @@ import type { Viewport } from 'shaka-shared';
 import { userAgentForViewport } from '../../browser-user-agent';
 import type { PlaywrightOptions } from '../../config';
 import type { WindowPlacement } from '../../troubleshoot/window-placement';
-import type { ImageResolutionConfig, ImageResolutionResult } from './image-resolution';
+import type { ImageResolutionConfig, ImageResolutionCheck } from './image-resolution';
 
 export type LighthouseConfig = Flags;
 
@@ -250,7 +250,7 @@ export interface PhaseSample {
 }
 
 export interface NavigationSample {
-  imageResolution?: ImageResolutionResult;
+  imageResolution?: ImageResolutionCheck;
   measurementThrottling?: import('../../pipeline/run-metadata').MeasurementThrottling;
   duration: number;
   phases: PhaseSample[];

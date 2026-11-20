@@ -76,7 +76,55 @@ export function AuditArtifactView({
 }
 
 function AuditBody({ audit, viewportLabel, latestRun }: { audit: AuditResult; viewportLabel: string; latestRun: boolean }) {
-  return <MetricTable audit={audit} viewportLabel={viewportLabel} latestRun={latestRun} />;
+  return <>
+    <MetricTable audit={audit} viewportLabel={viewportLabel} latestRun={latestRun} />
+    {audit.imageResolution && (
+      <ReportSection
+        sectionKey={`audit:images:${viewportLabel}`}
+        title={`${viewportLabel} image resolution`}
+        badge={<OldRunChip latestRun={latestRun} />}
+        nested
+      >
+        <ImageResolutionDetails check={audit.imageResolution} />
+      </ReportSection>
+    )}
+  </>;
+}
+
+function ImageResolutionDetails({ check }: { check: NonNullable<AuditResult['imageResolution']> }) {
+  if ('status' in check) {
+    return <p>{check.status === 'disabled' ? 'Image check disabled.' : `Image check unavailable. ${check.reason}`}</p>;
+  }
+  const findings = check.images.filter(image => image.status !== 'sufficient');
+  const counts = [
+    `${check.images.length} visible`,
+    `${check.images.length - check.unknown} checked`,
+    `${check.undersized} undersized`,
+    `${check.oversized} oversized`,
+    `${check.unknown} unknown`,
+  ];
+  return <>
+    <p>{counts.join(' · ')}</p>
+    {findings.length > 0 && (
+      <details>
+        <summary>Affected images ({findings.length})</summary>
+        <ul style={{ overflowWrap: 'anywhere' }}>
+          {findings.map((image, index) => (
+            <li key={index}>
+              <strong>{image.status}</strong> · {image.label} · {image.src.startsWith('data:') ? 'Embedded image' : image.src}
+              <div>object-fit: {image.fit} · pixel density: {image.devicePixelRatio}×</div>
+              {image.reason ? <div>{image.reason}</div> : image.requiredWidth && image.requiredHeight && (
+                <div>
+                  Source {image.sourceWidth} × {image.sourceHeight} px · required{' '}
+                  {Math.ceil(image.requiredWidth)} × {Math.ceil(image.requiredHeight)} px
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      </details>
+    )}
+  </>;
 }
 
 function MetricTable({
@@ -201,5 +249,5 @@ function hasArtifacts(audit: AuditResult): boolean {
 }
 
 function hasRenderableData(audit: AuditResult): boolean {
-  return (audit.metrics?.length ?? 0) > 0 || hasArtifacts(audit);
+  return (audit.metrics?.length ?? 0) > 0 || hasArtifacts(audit) || audit.imageResolution != null;
 }

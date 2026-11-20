@@ -310,6 +310,7 @@ export const AuditConfigSchema = z
       .optional() as z.ZodType<PerfLighthouseConfig | undefined>,
     // Source pixels / painted CSS pixels / current devicePixelRatio.
     imageResolution: z.object({
+      enabled: z.boolean().default(true),
       minRatio: z.number().finite().positive().max(1).default(0.9),
       maxRatio: z.number().finite().min(1).default(2),
       failOnUndersized: z.boolean().default(false),

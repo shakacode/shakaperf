@@ -46,7 +46,7 @@ import {
   type PhaseSample,
 } from './lighthouse-config';
 import { runLighthouse, accessibilityScoreFromLhr } from './run-lighthouse';
-import type { ImageResolutionResult } from './image-resolution';
+import type { ImageResolutionCheck } from './image-resolution';
 import { SHAKA_PERF_ANNOTATION_PREFIX } from './timeline-comparison';
 import { settleAfterTest } from '../../pipeline/settle-after-test';
 import { importPatchedLighthouse } from './patched-lighthouse';
@@ -326,7 +326,7 @@ class LighthouseWorkerSampler {
     markers: LighthouseBenchmarkOptions['markers'],
     sampleLabel: string,
     saveArtifacts: boolean,
-  ): Promise<{ phases: PhaseSample[]; accessibilityScore: number | null; measurementThrottling: import('../../pipeline/run-metadata').MeasurementThrottling | undefined; imageResolution?: ImageResolutionResult }> {
+  ): Promise<{ phases: PhaseSample[]; accessibilityScore: number | null; measurementThrottling: import('../../pipeline/run-metadata').MeasurementThrottling | undefined; imageResolution?: ImageResolutionCheck }> {
     const browser = await chromium.connectOverCDP(`http://localhost:${this.chrome!.port}`);
     let livePage: Page | null = null;
     const resultsFolder = options.resultsFolder ?? './tracerbench-results';
@@ -499,7 +499,7 @@ class LighthouseWorkerSampler {
       // kill the worker via `reportFatal`.
       void lighthousePromise.catch(() => {});
       void playwrightPromise.catch(() => {});
-      const [{ phases, runnerResult }, inp] = await Promise.race([
+      const [{ phases, runnerResult, imageResolution }, inp] = await Promise.race([
         Promise.all([lighthousePromise, playwrightPromise]),
         abortSignal,
       ]);
@@ -538,10 +538,6 @@ class LighthouseWorkerSampler {
       // Off `phases` so perf metrics stay byte-identical (null on compare).
       const accessibilityScore = accessibilityScoreFromLhr(runnerResult.lhr);
 
-      const imageResolution = runnerResult.artifacts.ShakaImageResolution;
-      if (options.imageResolution && (!imageResolution || imageResolution instanceof Error)) {
-        throw new Error('Lighthouse could not collect image resolution measurements.');
-      }
       return { phases, accessibilityScore, measurementThrottling: lighthouseThrottling(runnerResult.lhr.configSettings), imageResolution };
     } catch (err) {
       if (err instanceof Error && err.message.startsWith('[shaka-perf screencast]')) throw err;

@@ -62,7 +62,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
       'Regex/substring to filter tests by name (comma-separated for multiple), OR a path to a single .abtest.ts/.abtest.js file',
     )
     .option('--viewport <label>', VIEWPORT_OPTION_DESCRIPTION)
-    .option('--fail-on-undersized-images', 'Exit with failure when an image has fewer pixels than audit.imageResolution.minRatio allows. Requires the audit stage.', false)
+    .option('--fail-on-undersized-images', 'Enable image checking and fail on undersized images or an unavailable check. Requires the audit stage.', false)
     .option('--report-only', 'Re-render the HTML report from existing audit-results/ stage outcomes without re-running engines. Complements --skip-report for sharded CI assembly.', false)
     .option('--skip-report', 'Run the audit engine but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
     .option('--keep-old-results', 'Do not wipe audit-results/ before running. Engines still overwrite the files they produce, but unrelated artifacts from a prior run survive instead of being cleared.', false)

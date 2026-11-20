@@ -23,6 +23,8 @@ export interface ImageResolutionMeasurement {
   sourceWidth?: number;
   sourceHeight?: number;
   reason?: string;
+  /** Resolved by the gatherer using MIME responses that arrive during collection. */
+  needsMimeValidation?: true;
 }
 
 export interface ImageResolutionImage extends ImageResolutionMeasurement {
@@ -43,10 +45,23 @@ export interface ImageResolutionResult {
   failOnUndersized: boolean;
 }
 
+/** Whole-check outcomes are distinct from individual images with unknown dimensions. */
+export type ImageResolutionCheck = ImageResolutionResult | {
+  status: 'unavailable';
+  reason: string;
+  failOnUndersized: boolean;
+} | {
+  status: 'disabled';
+  failOnUndersized: false;
+};
+
 /** Runs in the page: keep all runtime dependencies inside this function. */
-export async function collectImageResolutionMeasurements(rasterUrls: string[]): Promise<ImageResolutionMeasurement[]> {
+export async function collectImageResolutionMeasurements(
+  rasterUrls: string[], allowUnconfirmedRasterSources = false, nonRasterUrls: string[] = [],
+): Promise<ImageResolutionMeasurement[]> {
   const deadline = performance.now() + 5000;
   const rasterSources = new Set(rasterUrls);
+  const nonRasterSources = new Set(nonRasterUrls);
   const elements: HTMLImageElement[] = [];
   const visit = (root: Document | ShadowRoot) => {
     elements.push(...Array.from(root.querySelectorAll('img')));
@@ -84,21 +99,25 @@ export async function collectImageResolutionMeasurements(rasterUrls: string[]): 
     }
     if (!(boxWidth > 0 && boxHeight > 0)) return undefined;
     const src = element.currentSrc;
+    let needsMimeValidation: true | undefined;
     if (!element.complete || !src || !element.naturalWidth || !element.naturalHeight) {
-      reason = 'Image is not loaded.';
-    } else if (!rasterSources.has(src.split('#', 1)[0]!) && !/^data:image\/(?:png|jpeg|webp|gif|avif|bmp|x-icon|vnd\.microsoft\.icon)(?:;|,)/i.test(src)) {
+      reason ??= 'Image is not loaded.';
+    } else if (!reason && !rasterSources.has(src.split('#', 1)[0]!) && !/^data:image\/(?:png|jpeg|webp|gif|avif|bmp|x-icon|vnd\.microsoft\.icon)(?:;|,)/i.test(src)) {
       reason = 'Image is vector or its raster format is unknown.';
+      needsMimeValidation = true;
     }
     return {
-      src, label: element.id ? `img#${element.id}` : element.alt ? `img (${element.alt})` : 'img',
+      src, label: element.id ? `img#${element.id}` : element.alt ? `img (${element.alt})` :
+        !src && element.getAttribute('src') ? `img (${element.getAttribute('src')})` : 'img',
       fit: style.objectFit, boxWidth, boxHeight,
       naturalWidth: element.naturalWidth, naturalHeight: element.naturalHeight,
       devicePixelRatio: window.devicePixelRatio, ...(reason ? { reason } : {}),
+      ...(needsMimeValidation ? { needsMimeValidation } : {}),
     };
   };
 
   // Freeze the page's current selection and layout before any asynchronous bitmap reads.
-  const snapshots = elements.map(element => ({ element, measurement: snapshot(element) }));
+  const snapshots = elements.map(element => ({ element, measurement: snapshot(element), pending: !element.complete }));
   const candidates = snapshots.filter(({ measurement }) => measurement !== undefined);
   if (candidates.length === 0) return [];
   // Let the browser account for ancestor clipping, including root overflow and positioned images.
@@ -115,31 +134,68 @@ export async function collectImageResolutionMeasurements(rasterUrls: string[]): 
     const timer = setTimeout(finish, Math.max(0, deadline - performance.now()));
     for (const { element } of candidates) observer.observe(element);
   });
-  const results: ImageResolutionMeasurement[] = [];
-  for (const { element, measurement } of snapshots) {
-    if (!measurement) continue;
-    const changed = JSON.stringify(snapshot(element)) !== JSON.stringify(measurement);
-    if (!changed && intersections.get(element) === false) continue;
-    results.push(measurement);
-    if (changed) {
-      measurement.reason = 'Image selection or layout changed during measurement.';
-      continue;
+  const waitForLoad = (element: HTMLImageElement) => new Promise<void>(resolve => {
+    const finish = () => {
+      clearTimeout(timer);
+      element.removeEventListener('load', finish);
+      element.removeEventListener('error', finish);
+      resolve();
+    };
+    const timer = setTimeout(finish, Math.max(0, deadline - performance.now()));
+    element.addEventListener('load', finish);
+    element.addEventListener('error', finish);
+    if (element.complete) finish();
+  });
+  // Download waits consume no bitmap slots. A stalled bitmap leaves the other slot available.
+  let activeBitmaps = 0;
+  const bitmapQueue: Array<() => void> = [];
+  const acquireBitmapSlot = async () => {
+    if (activeBitmaps < 2) activeBitmaps++;
+    else await new Promise<void>(resolve => bitmapQueue.push(resolve));
+  };
+  const releaseBitmapSlot = () => {
+    const next = bitmapQueue.shift();
+    if (next) next();
+    else activeBitmaps--;
+  };
+  const results = await Promise.all(snapshots.map(async ({ element, measurement: initial, pending }) => {
+    if (!initial) return undefined;
+    let measurement = initial;
+    if (!pending && JSON.stringify(snapshot(element)) !== JSON.stringify(measurement)) {
+      return { ...measurement, reason: 'Image selection or layout changed during measurement.' };
     }
-    if (measurement.reason) continue;
+    if (intersections.get(element) === false) return undefined;
     if (!intersections.has(element)) {
       measurement.reason = 'Image visibility could not be measured before the time limit.';
-      continue;
+      return measurement;
     }
-    const remaining = deadline - performance.now();
-    if (remaining <= 0) {
-      measurement.reason = 'Image measurement time limit reached.';
-      continue;
+    if (pending && measurement.reason === 'Image is not loaded.') {
+      while (!element.complete && performance.now() < deadline) await waitForLoad(element);
+      // Loading can change intrinsic dimensions, source selection and the current layout.
+      const loaded = snapshot(element);
+      if (!loaded) return undefined;
+      measurement = loaded;
+      if (!element.complete) measurement.reason = 'Image did not finish loading before the time limit.';
     }
+    const unconfirmedRaster = allowUnconfirmedRasterSources && !measurement.src.startsWith('data:') &&
+      !nonRasterSources.has(measurement.src.split('#', 1)[0]!) &&
+      measurement.needsMimeValidation === true;
+    if (measurement.reason && !unconfirmedRaster) return measurement;
     if (measurement.naturalWidth * measurement.naturalHeight > 40_000_000) {
       measurement.reason = 'Image exceeds the bitmap measurement size limit.';
-      continue;
+      return measurement;
     }
+    await acquireBitmapSlot();
     try {
+      const remaining = deadline - performance.now();
+      if (remaining <= 0) {
+        measurement.reason = 'Image measurement time limit reached.';
+        return measurement;
+      }
+      if (JSON.stringify(snapshot(element)) !== JSON.stringify(measurement)) {
+        measurement.reason = 'Image selection or layout changed during measurement.';
+        return measurement;
+      }
       // Uses the already-selected resource, including srcset density correction. No fetch or resize.
       // A timeout cannot interrupt synchronous decoding; the size guard limits ordinary large inputs.
       const bitmap = await new Promise<ImageBitmap | null>((resolve, reject) => {
@@ -153,7 +209,7 @@ export async function collectImageResolutionMeasurements(rasterUrls: string[]): 
       });
       if (!bitmap) {
         measurement.reason = 'Image measurement time limit reached.';
-        continue;
+        return measurement;
       }
       try {
         if (performance.now() > deadline) {
@@ -169,9 +225,10 @@ export async function collectImageResolutionMeasurements(rasterUrls: string[]): 
       } finally { bitmap.close(); }
     } catch {
       measurement.reason = 'Selected image bitmap could not be read.';
-    }
-  }
-  return results;
+    } finally { releaseBitmapSlot(); }
+    return measurement;
+  }));
+  return results.filter((measurement): measurement is ImageResolutionMeasurement => measurement !== undefined);
 }
 
 export function evaluateImageResolution(

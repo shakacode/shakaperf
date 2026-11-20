@@ -142,6 +142,7 @@ export default defineConfig({
     // Compare the currently displayed image's pixels with its painted size,
     // including object-fit and the current screen's pixel density.
     imageResolution: {
+      enabled: true, // Set false to skip image checks. The CLI failure flag forces them on.
       minRatio: 0.9, // Below 90% of the required pixels on either axis is undersized.
       maxRatio: 2, // Above twice the required pixels on both axes is oversized.
       failOnUndersized: false, // Or pass audit --fail-on-undersized-images.

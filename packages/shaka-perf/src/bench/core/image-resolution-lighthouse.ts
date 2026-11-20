@@ -29,6 +29,7 @@ export function imageResolutionLighthouseConfig(
   class ImageResolutionGatherer extends Gatherer {
     meta: LH.Gatherer.GathererMeta = { supportedModes: ['navigation'] };
     private rasterUrls = new Set<string>();
+    private nonRasterUrls = new Set<string>();
     private redirects = new Map<string, Set<string>>();
     private result?: ImageResolutionResult;
     private onRequest = ({ requestId, request, redirectResponse }: LH.Crdp.Network.RequestWillBeSentEvent) => {
@@ -38,14 +39,19 @@ export function imageResolutionLighthouseConfig(
       urls.add(request.url);
       this.redirects.set(requestId, urls);
     };
-    private onResponse = ({ requestId, response }: LH.Crdp.Network.ResponseReceivedEvent) => {
+    private onResponse = ({ requestId, response, type }: LH.Crdp.Network.ResponseReceivedEvent) => {
       // currentSrc retains the requested URL, even when the bitmap came through redirects.
       const urls = this.redirects.get(requestId) ?? new Set<string>();
       urls.add(response.url);
       const raster = /^image\/(?:png|jpeg|webp|gif|avif|bmp|x-icon|vnd\.microsoft\.icon|apng)$/i.test(response.mimeType);
       for (const url of urls) {
-        if (raster) this.rasterUrls.add(url);
-        else this.rasterUrls.delete(url);
+        if (raster) {
+          this.rasterUrls.add(url);
+          this.nonRasterUrls.delete(url);
+        } else {
+          this.rasterUrls.delete(url);
+          if (type === 'Image' || response.mimeType.startsWith('image/')) this.nonRasterUrls.add(url);
+        }
       }
       this.redirects.delete(requestId);
     };
@@ -56,14 +62,29 @@ export function imageResolutionLighthouseConfig(
     }
 
     async stopInstrumentation({ driver }: LH.Gatherer.Context): Promise<void> {
-      driver.defaultSession.off('Network.requestWillBeSent', this.onRequest);
-      driver.defaultSession.off('Network.responseReceived', this.onResponse);
-      this.redirects.clear();
       // This phase follows the end of tracing and precedes gatherers that alter the page.
-      const measurements = await driver.executionContext.evaluate(collectImageResolutionMeasurements, {
-        args: [[...this.rasterUrls]], useIsolation: true,
-      });
-      this.result = evaluateImageResolution(measurements, config);
+      try {
+        const measurements = await driver.executionContext.evaluate(collectImageResolutionMeasurements, {
+          args: [[...this.rasterUrls], true, [...this.nonRasterUrls]], useIsolation: true,
+        });
+        // A pending image can receive its MIME type while the collector is waiting for it.
+        for (const measurement of measurements) {
+          if (!measurement.needsMimeValidation) continue;
+          delete measurement.needsMimeValidation;
+          if (this.rasterUrls.has(measurement.src.split('#', 1)[0]!)) {
+            if (measurement.sourceWidth && measurement.sourceHeight) delete measurement.reason;
+          }
+          else {
+            delete measurement.sourceWidth;
+            delete measurement.sourceHeight;
+          }
+        }
+        this.result = evaluateImageResolution(measurements, config);
+      } finally {
+        driver.defaultSession.off('Network.requestWillBeSent', this.onRequest);
+        driver.defaultSession.off('Network.responseReceived', this.onResponse);
+        this.redirects.clear();
+      }
     }
 
     getArtifact(): ImageResolutionResult {

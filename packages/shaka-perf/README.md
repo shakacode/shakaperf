@@ -70,11 +70,12 @@ To exit with a failure when undersized images are found:
 yarn shaka-perf audit --fail-on-undersized-images
 ```
 
-Configure the thresholds in `abtests.config.ts` (these are the defaults):
+Configure the check in `abtests.config.ts` (these are the defaults):
 
 ```ts
 audit: {
   imageResolution: {
+    enabled: true,
     minRatio: 0.9,
     maxRatio: 2,
     failOnUndersized: false,
@@ -92,15 +93,24 @@ pixels. The default minimum accepts 540 × 540; set `minRatio: 1` to require the
 full resolution. With `cover`, the check includes enlargement before cropping.
 All five `object-fit` values are supported.
 
+Set `enabled: false` to skip image checking, including the wait for images.
 Set `failOnUndersized: true` to make failure the project default. Tests can
-override these settings through `config.audit.imageResolution`; the command flag
-always forces failure for undersized findings. Oversized images are informational.
+override these settings through `config.audit.imageResolution`. The command flag
+enables checking for that run even if a test disables it. Oversized images and
+individual images with unknown resolution are informational.
 The flag requires the `audit` stage and also works with `--skip-report`.
 With `--report-only`, it evaluates saved findings; older results without image
 measurements require a fresh audit.
 
-Open a test's **Lighthouse report** for the image details. Counts also appear in
-the main report, and image measurements are included in `report.json`.
+After Lighthouse stops recording speed, ShakaPerf measures ready images and
+waits for visible images that are still downloading. They share one five-second
+budget. A stalled image appears as unknown. If the whole image check fails,
+ShakaPerf keeps the speed results and reports the error. With undersized-image
+failure enabled, that error also fails the command.
+
+The main report shows how many visible images were checked. Expand the findings
+to see the affected images and why they were flagged or could not be measured.
+Measurements are also available in the Lighthouse report and `report.json`.
 The check detects insufficient pixel dimensions, not blur already present in
 the source image. SVGs, unloaded images, unsupported CSS transforms or zoom, and
 unavailable measurements are reported as unknown. CSS backgrounds, iframe

@@ -195,7 +195,8 @@ function accessibilityChips(entries: ChipStageResults<AccessibilityResult>): Chi
 }
 
 function imageResolutionChips(entries: ChipStageResults<AuditResult>, forceFailure: boolean): ChipDescriptor[] {
-  const results = entries.flatMap((entry) => entry.measurement.imageResolution ?? []);
+  const checks = entries.map(entry => entry.measurement.imageResolution);
+  const results = checks.flatMap(check => check && 'images' in check ? [check] : []);
   const undersized = results.reduce((total, result) => total + result.undersized, 0);
   const oversized = results.reduce((total, result) => total + result.oversized, 0);
   const shouldFail = results.some((result) => result.undersized > 0 && (forceFailure || result.failOnUndersized));
@@ -212,12 +213,17 @@ function imageResolutionChips(entries: ChipStageResults<AuditResult>, forceFailu
     color: 'purple',
     sortingWeight: 35,
   });
-  if (forceFailure && (entries.length === 0 || entries.some((entry) => !entry.measurement.imageResolution))) chips.push({
-    tag: 'image resolution unavailable',
-    text: 'image measurements missing — rerun audit',
-    color: 'red',
-    sortingWeight: 1,
-  });
+  const unavailable = checks.filter(check => check != null && 'status' in check && check.status === 'unavailable');
+  const missingRequired = (forceFailure && (checks.length === 0 || checks.length !== results.length))
+    || unavailable.some(check => check.failOnUndersized);
+  if (unavailable.length > 0 || missingRequired) {
+    chips.push({
+      tag: missingRequired ? 'image resolution unavailable' : 'image resolution warning',
+      text: 'image check unavailable',
+      color: missingRequired ? 'red' : 'purple',
+      sortingWeight: missingRequired ? 1 : 35,
+    });
+  }
   return chips;
 }
 

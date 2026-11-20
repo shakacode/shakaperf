@@ -6,7 +6,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
-import { chromium, type Browser } from 'playwright';
+import { chromium, type Browser, type Route } from 'playwright';
 import { PNG } from 'pngjs';
 import {
   collectImageResolutionMeasurements,
@@ -155,6 +155,81 @@ describe('current rendered image measurement in Chromium', () => {
       expect(measurements[0]!.reason).toContain('changed');
     } finally { await page.close(); }
   });
+
+  it('waits for pending images together and measures a late image at its loaded layout beside stalled and ready images', async () => {
+    const page = await browser.newPage();
+    let lateRoute!: Route;
+    let requested!: () => void;
+    const lateRequested = new Promise<void>(resolve => { requested = resolve; });
+    await page.route('https://example.test/stalled.png', () => {});
+    await page.route('https://example.test/late.png', route => { lateRoute = route; requested(); });
+    try {
+      await page.setContent(`
+        <style>img { width:100px;height:100px }</style>
+        <img src="https://example.test/stalled.png">
+        <img id="late" src="https://example.test/late.png"
+          onload="this.style.width='300px';this.style.height='300px';this.style.objectFit='cover'">
+        <img id="ready" src="data:image/png;base64,${png.toString('base64')}">
+      `, { waitUntil: 'domcontentloaded' });
+      await lateRequested;
+      const started = Date.now();
+      const collecting = page.evaluate(collectImageResolutionMeasurements, ['https://example.test/late.png']);
+      await page.evaluate(() => {}); // The collector has started before the response is released.
+      await lateRoute.fulfill({ contentType: 'image/png', body: png });
+      const result = evaluateImageResolution(await collecting, config);
+      expect(result.images.find(image => image.label === 'img#late')).toMatchObject({
+        sourceWidth: 400, sourceHeight: 200, boxWidth: 300, boxHeight: 300, fit: 'cover',
+        requiredWidth: 600, requiredHeight: 300, status: 'undersized',
+      });
+      expect(result.images.find(image => image.label === 'img#ready')!.status).not.toBe('unknown');
+      expect(result.images.find(image => image.status === 'unknown')!.label).toContain('stalled.png');
+      expect(Date.now() - started).toBeGreaterThanOrEqual(4500);
+      expect(Date.now() - started).toBeLessThan(9000);
+    } finally { await page.close(); }
+  }, 15_000);
+
+  it('measures a source loaded before the first snapshot while its MIME is unconfirmed, but skips known vectors', async () => {
+    const page = await browser.newPage();
+    await page.route('https://example.test/image.png', route => route.fulfill({ contentType: 'image/png', body: png }));
+    await page.route('https://example.test/vector.svg', route => route.fulfill({
+      contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"/>',
+    }));
+    try {
+      await page.setContent('<img src="https://example.test/image.png"><img src="https://example.test/vector.svg">');
+      const measurements: ImageResolutionMeasurement[] = await page.evaluate(collector =>
+        new Function(`return (${collector})([], true, ['https://example.test/vector.svg'])`)(),
+      collectImageResolutionMeasurements.toString());
+      expect(measurements[0]).toMatchObject({ sourceWidth: 400, sourceHeight: 200 });
+      expect(measurements[0]!.reason).toContain('raster format is unknown');
+      expect(measurements[1]!.sourceWidth).toBeUndefined();
+      expect(measurements[1]!.reason).toContain('vector');
+    } finally { await page.close(); }
+  });
+
+  it('bounds bitmap concurrency while a stalled bitmap leaves ready images measurable', async () => {
+    const page = await browser.newPage();
+    try {
+      const source = `data:image/png;base64,${png.toString('base64')}`;
+      await page.setContent(['stalled', 'ready-1', 'ready-2', 'ready-3'].map(id =>
+        `<img id="${id}" src="${source}" style="width:100px;height:100px">`).join(''));
+      await page.evaluate(() => {
+        const original = window.createImageBitmap;
+        let active = 0;
+        const state = window as typeof window & { maximumBitmapReads: number };
+        state.maximumBitmapReads = 0;
+        window.createImageBitmap = (async (image: HTMLImageElement) => {
+          active++;
+          state.maximumBitmapReads = Math.max(state.maximumBitmapReads, active);
+          if (image.id === 'stalled') return new Promise<ImageBitmap>(() => {});
+          try { return await original(image); } finally { active--; }
+        }) as typeof createImageBitmap;
+      });
+      const result = evaluateImageResolution(await page.evaluate(collectImageResolutionMeasurements, []), config);
+      expect(result.unknown).toBe(1);
+      expect(result.images.filter(image => image.label.includes('ready')).every(image => image.status !== 'unknown')).toBe(true);
+      expect(await page.evaluate(() => (window as typeof window & { maximumBitmapReads: number }).maximumBitmapReads)).toBeLessThanOrEqual(2);
+    } finally { await page.close(); }
+  }, 15_000);
 
   it('excludes fully clipped images but evaluates partially clipped images at their full painted size', async () => {
     const page = await browser.newPage();

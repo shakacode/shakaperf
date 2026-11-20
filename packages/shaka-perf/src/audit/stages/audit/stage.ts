@@ -8,7 +8,7 @@
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { PerfLighthouseConfig } from '../../../bench/core/lighthouse-config';
-import type { ImageResolutionResult } from '../../../bench/core/image-resolution';
+import type { ImageResolutionCheck } from '../../../bench/core/image-resolution';
 import {
   type JsonValue,
   type Stage,
@@ -38,7 +38,7 @@ export interface AuditMetric {
 
 export interface AuditResult {
   metrics: AuditMetric[];
-  imageResolution?: ImageResolutionResult;
+  imageResolution?: ImageResolutionCheck;
   lighthouseHref?: string;
   lighthouseThumbHref?: string;
   /** The one-sided halves of compare's "profile diff" / "network diff". */
@@ -78,12 +78,14 @@ export class AuditStage implements Stage<AuditResult> {
   machineReadableSummary(measurement: AuditResult): JsonValue {
     const resolution = measurement.imageResolution;
     if (!resolution) return {};
+    const failOnUndersized = this.config.failOnUndersizedImages === true || resolution.failOnUndersized;
+    if ('status' in resolution) return { imageResolution: { ...resolution, failOnUndersized } };
     return {
       imageResolution: {
         undersized: resolution.undersized,
         oversized: resolution.oversized,
         unknown: resolution.unknown,
-        failOnUndersized: this.config.failOnUndersizedImages === true || resolution.failOnUndersized,
+        failOnUndersized,
         images: resolution.images.map((image) => ({ ...image })),
       },
     };
