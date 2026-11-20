@@ -22,7 +22,7 @@ it.each([
     const { chromium } = require('playwright');
     const { launch } = require('chrome-launcher');
     const { runPatchedLighthouse, importPatchedLighthouse } = require(process.argv[1]);
-    const { imageResolutionLighthouseConfig } = require(process.argv[2]);
+    const { pathToFileURL } = require('node:url');
     (async () => {
       const png = PNG.sync.write(new PNG({width: 400, height: 200}));
       const source = ${JSON.stringify(source)};
@@ -59,14 +59,15 @@ it.each([
           formFactor: 'desktop', screenEmulation: {mobile: false, width: 800, height: 600, deviceScaleFactor: 2},
           throttlingMethod: 'provided', disableStorageReset: true,
         };
-        const imageResolution = {minRatio: 0.9, maxRatio: 2, failOnUndersized: true};
+        const imageResolution = {minRatio: 0.8, maxRatio: 3, failOnUndersized: true};
         let result;
         if (mode === 'late') {
           const lighthouse = await importPatchedLighthouse();
-          const config = imageResolutionLighthouseConfig(lighthouse, imageResolution);
-          const gatherer = config.artifacts.find(artifact => artifact.id === 'ShakaImageResolution').gatherer.implementation;
-          const collect = gatherer.prototype.stopInstrumentation;
-          gatherer.prototype.stopInstrumentation = function(context) {
+          const { imageResolutionLighthouseConfig } = await import(pathToFileURL(process.argv[2]).href);
+          const config = imageResolutionLighthouseConfig(imageResolution);
+          const gatherer = config.artifacts.find(artifact => artifact.id === 'ShakaImageResolution').gatherer.instance;
+          const collect = gatherer.stopInstrumentation;
+          gatherer.stopInstrumentation = function(context) {
             setTimeout(() => {
               responseDuringCollection = true;
               lateResponse.writeHead(200, {'Content-Type': 'image/png'});
@@ -117,6 +118,7 @@ it.each([
     requiredWidth: 1200, requiredHeight: 600, status: 'undersized',
   });
   expect(output.audit.score).toBe(0);
+  expect(output.audit.displayValue).toContain('Acceptable source/required pixel ratio: 0.8 to 3.');
   expect(output.audit.details.headings).toHaveLength(1);
   expect(output.audit.details.items.find((item: { url: string }) => item.url.includes(source)).subItems.items).toEqual([
     { resolution: 'img#photo · undersized · object-fit: cover' },
