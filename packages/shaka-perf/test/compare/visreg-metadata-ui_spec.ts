@@ -151,6 +151,20 @@ describe('visual preview metadata', () => {
       }
       await metadata.getByRole('button', { name: 'test source', exact: true }).click();
       expect(await metadata.locator('.card__code').textContent()).toContain("abTest('Homepage'");
+      expect(
+        await metadata
+          .locator('dl > div')
+          .filter({ has: page.locator('dt', { hasText: 'visual comparisons' }) })
+          .locator('dd')
+          .textContent(),
+      ).toBe('2/3 · matched on retry');
+      expect(
+        await metadata
+          .locator('dl > div')
+          .filter({ has: page.locator('dt', { hasText: 'error retries' }) })
+          .locator('dd')
+          .textContent(),
+      ).toBe('1/2 · recovered');
       expect(await dialog.getByRole('button', { name: 'logs', exact: true }).count()).toBe(0);
       await dialog.getByRole('button', { name: 'close', exact: true }).click();
       await page.getByRole('button', { name: 'logs', exact: true }).click();
