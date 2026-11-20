@@ -115,7 +115,7 @@ describe('visual preview metadata', () => {
     try {
       await page.goto(url);
       const preview = page.locator('.artifact-card--single');
-      expect(await preview.locator('.artifact-card__media').innerText()).toBe('');
+      expect(await preview.locator('.artifact-card__image-label').allTextContents()).toEqual(['no diff']);
       await preview.getByRole('button').click();
       const dialog = page.getByRole('dialog');
       const metadata = dialog.locator('.card__metadata');

@@ -97,9 +97,7 @@ function VisregCard({ row }: { row: VisregRow }) {
         body={<VisregDialogImages row={artifact} />}
       >
         <div className="artifact-card__media">
-          <div className="artifact-card__image">
-            <img src={artifact.controlImage} alt="no diff" loading="lazy" />
-          </div>
+          <ImageCell kind="no diff" src={artifact.controlImage} />
         </div>
       </DetailedArtifactDialog>
     </div>
