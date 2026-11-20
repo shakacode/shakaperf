@@ -114,7 +114,13 @@ function ArtifactLinks({ entry }: { entry: StageRenderEntry<AuditResult> }) {
     <FullReportOnly>
       <div className="artifact-links">
         {links.map(([label, href]) => (
-          <DetailedArtifactDialog executionDetails={entry.executionDetails} key={label} href={href} label={label}>
+          <DetailedArtifactDialog
+            executionDetails={entry.executionDetails}
+            key={label}
+            href={href}
+            label={label}
+            title={`${entry.executionDetails.viewport.label} ${label}`}
+          >
             {label}
           </DetailedArtifactDialog>
         ))}
@@ -153,6 +159,7 @@ function LighthouseColumn({ entry }: { entry: StageRenderEntry<AuditResult> }) {
     <div style={METRIC_COLUMN_STYLE}>
       <DetailedArtifactDialog
         executionDetails={entry.executionDetails}
+        title={`${entry.executionDetails.viewport.label} Lighthouse report`}
         href={audit.lighthouseHref}
         label="Lighthouse report"
         variant="preview"

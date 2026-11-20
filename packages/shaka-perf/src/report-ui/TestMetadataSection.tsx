@@ -107,7 +107,10 @@ export function TestMetadataSection({
         {test.filePath}
       </span>
       <span className="card__measured-at">
-        <span aria-hidden="true">· </span>updated {formatMeasuredAt(measuredAt)}
+        <span className="card__metadata-separator" aria-hidden="true">
+          ·{' '}
+        </span>
+        updated {formatMeasuredAt(measuredAt)}
       </span>
     </span>
   );
