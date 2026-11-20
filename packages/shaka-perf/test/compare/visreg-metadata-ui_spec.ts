@@ -300,7 +300,7 @@ describe('visual preview metadata', () => {
     try {
       await page.goto(`${url}?perf=1`);
       await page.getByRole('button', { name: 'play frames' }).click();
-      const dialog = page.getByRole('dialog', { name: 'frames side by side · Homepage' });
+      const dialog = page.getByRole('dialog', { name: /frames side by side/ });
       await dialog.getByRole('slider', { name: 'time' }).waitFor();
       expect(await dialog.getByRole('button', { name: 'logs', exact: true }).count()).toBe(0);
       await dialog.getByRole('button', { name: 'command', exact: true }).click();

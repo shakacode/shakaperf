@@ -16,6 +16,7 @@ import {
   StageNote,
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
+import { performanceMetadataFields } from '../perf/metadata-fields';
 import { FramePlayer } from './frame-player';
 import { ReportSection, useReportSection } from '../../../pipeline/report-section';
 
@@ -96,6 +97,7 @@ function PerfBody({
 }) {
   const perf = entry.measurement;
   const viewportLabel = entry.executionDetails.viewport.label;
+  const fields = performanceMetadataFields(entry.executionDetails.measurementMetadata);
   const timelinePreview = perf.timelinePreviewHref ? (
     <img
       src={perf.timelinePreviewHref}
@@ -114,10 +116,12 @@ function PerfBody({
         <div className="perf-timeline-preview">
           {perf.timelineHref ? (
             <DetailedArtifactDialog
+              fields={fields}
               executionDetails={entry.executionDetails}
               variant="preview"
               href={perf.timelineHref}
               label="timeline"
+              title={`${viewportLabel} timeline`}
             >
               {timelinePreview}
             </DetailedArtifactDialog>
@@ -192,6 +196,7 @@ function MetricRow({ metric }: { metric: PerfMetric }) {
 
 function ArtifactLinks({ entry }: { entry: StageRenderEntry<PerfArtifact> }) {
   const perf = entry.measurement;
+  const fields = performanceMetadataFields(entry.executionDetails.measurementMetadata);
   const links = [
     perf.benchReportHref ? ['bench report', perf.benchReportHref] : null,
     perf.controlLighthouseHref ? ['control lh', perf.controlLighthouseHref] : null,
@@ -207,14 +212,22 @@ function ArtifactLinks({ entry }: { entry: StageRenderEntry<PerfArtifact> }) {
           <DetailedArtifactDialog
             href={perf.framesHref}
             label="play frames"
-            title="frames side by side"
+            title={`${entry.executionDetails.viewport.label} frames side by side`}
             dialogVariant="wide"
             executionDetails={entry.executionDetails}
+            fields={fields}
             body={<FramePlayer href={perf.framesHref} />}
           />
         ) : null}
         {links.map(([label, href]) => (
-          <DetailedArtifactDialog executionDetails={entry.executionDetails} key={`${label}-${href}`} href={href} label={label}>
+          <DetailedArtifactDialog
+            fields={fields}
+            executionDetails={entry.executionDetails}
+            key={`${label}-${href}`}
+            href={href}
+            label={label}
+            title={`${entry.executionDetails.viewport.label} ${label}`}
+          >
             {label}
           </DetailedArtifactDialog>
         ))}
