@@ -180,7 +180,7 @@ export async function runCompareAttempts(
 
   // All comparison tuning is read straight off the effective config (the compare
   // stage already merged `config.visreg` and wrote it into the bridge config).
-  const maxRetries = config.compareRetries ?? 0;
+  const maxRetries = config.compareRetries;
   const retryDelayMs = config.compareRetryDelay ?? 5000;
   const maxNumDiffPixels = config.maxNumDiffPixels;
   const compareOpts = { maxNumDiffPixels, pixelmatchThreshold };
@@ -235,10 +235,6 @@ export async function runCompareAttempts(
       });
     }
 
-    for (const run of runs) {
-      if (!run.done) run.visualComparisonCount = attempt + 1;
-    }
-
     const activeSides = new Set<ComparisonSide>();
     const commonSideParams = {
       browser,
@@ -266,6 +262,7 @@ export async function runCompareAttempts(
 
     for (const run of runs) {
       if (run.done) continue;
+      run.visualComparisonCount = attempt + 1;
       const refBuffer = refCaptures.get(run.selector)!;
       const testBuffer = testCaptures.get(run.selector)!;
 
