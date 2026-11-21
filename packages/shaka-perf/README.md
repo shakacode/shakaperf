@@ -58,9 +58,10 @@ yarn shaka-perf servers start-servers
 
 ## Image resolution
 
-`shaka-perf audit` checks visible `<img>` elements after the test finishes, inside
-the existing Lighthouse run. It checks the image the browser selected, its current
-size, `object-fit`, and the current screen pixel density. It does not inspect
+`shaka-perf audit` checks `<img>` elements whose boxes overlap the current
+viewport after the test finishes, inside the existing Lighthouse run. It checks
+the image the browser selected, its current size, `object-fit`, and the current
+screen pixel density. It does not inspect
 alternative `srcset`/`picture` sources or resize the page to try other conditions.
 Each configured viewport is checked independently.
 
@@ -93,7 +94,7 @@ pixels. The default minimum accepts 540 × 540; set `minRatio: 1` to require the
 full resolution. With `cover`, the check includes enlargement before cropping.
 All five `object-fit` values are supported.
 
-Set `enabled: false` to skip image checking, including the wait for images.
+Set `enabled: false` to skip image checking.
 Set `failOnUndersized: true` to make failure the project default. Tests can
 override these settings through `config.audit.imageResolution`. The command flag
 enables checking for that run even if a test disables it. Oversized images and
@@ -102,13 +103,16 @@ The flag requires the `audit` stage and also works with `--skip-report`.
 With `--report-only`, it evaluates saved findings; older results without image
 measurements require a fresh audit.
 
-After Lighthouse stops recording speed, ShakaPerf measures ready images and
-waits for visible images that are still downloading. They share one five-second
-budget. A stalled image appears as unknown. If the whole image check fails,
-ShakaPerf keeps the speed results and reports the error. With undersized-image
-failure enabled, that error also fails the command.
+After Lighthouse stops recording speed, ShakaPerf selects the images once.
+An image partly inside the viewport is checked at its full painted size. An
+image covered by an overlay or clipped by a container can still be included.
+ShakaPerf reads the bitmap dimensions and uses the recorded image types to
+identify raster images. An image still downloading at the time of the check is
+reported as unknown. If the whole image check fails, ShakaPerf keeps the speed
+results and reports the error. With undersized-image failure enabled, that
+error also fails the command.
 
-The main report shows how many visible images were checked. Expand the findings
+The main report shows how many images were checked. Expand the findings
 to see the affected images and why they were flagged or could not be measured.
 Measurements are also available in the Lighthouse report and `report.json`.
 The check detects insufficient pixel dimensions, not blur already present in

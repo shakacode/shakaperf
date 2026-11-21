@@ -154,7 +154,6 @@ export async function runLighthouse(
     imageCheck = artifact && !(artifact instanceof Error) ? artifact : {
       status: 'unavailable',
       reason: artifact instanceof Error ? artifact.message : 'Lighthouse did not return image resolution measurements.',
-      failOnUndersized: imageResolution.failOnUndersized,
     };
   }
   return { phases: results, runnerResult, ...(imageCheck ? { imageResolution: imageCheck } : {}) };

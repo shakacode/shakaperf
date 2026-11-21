@@ -8,7 +8,6 @@
 export interface ImageResolutionConfig {
   minRatio: number;
   maxRatio: number;
-  failOnUndersized: boolean;
 }
 
 export interface ImageResolutionMeasurement {
@@ -23,8 +22,6 @@ export interface ImageResolutionMeasurement {
   sourceWidth?: number;
   sourceHeight?: number;
   reason?: string;
-  /** Resolved by the gatherer using MIME responses that arrive during collection. */
-  needsMimeValidation?: true;
 }
 
 export interface ImageResolutionImage extends ImageResolutionMeasurement {
@@ -42,244 +39,160 @@ export interface ImageResolutionResult {
   undersized: number;
   oversized: number;
   unknown: number;
-  failOnUndersized: boolean;
 }
 
 /** Whole-check outcomes are distinct from individual images with unknown dimensions. */
 export type ImageResolutionCheck = ImageResolutionResult | {
   status: 'unavailable';
   reason: string;
-  failOnUndersized: boolean;
-} | {
-  status: 'disabled';
-  failOnUndersized: false;
 };
 
-/** Runs in the page: keep all runtime dependencies inside this function. */
-export async function collectImageResolutionMeasurements(
-  rasterUrls: string[], allowUnconfirmedRasterSources = false, nonRasterUrls: string[] = [],
-): Promise<ImageResolutionMeasurement[]> {
-  const deadline = performance.now() + 5000;
-  const rasterSources = new Set(rasterUrls);
-  const nonRasterSources = new Set(nonRasterUrls);
-  const elements: HTMLImageElement[] = [];
-  const visit = (root: Document | ShadowRoot) => {
-    elements.push(...Array.from(root.querySelectorAll('img')));
-    for (const element of Array.from(root.querySelectorAll('*'))) {
-      if (element.shadowRoot) visit(element.shadowRoot);
-    }
-  };
-  visit(document);
+interface ViewportImage {
+  image: HTMLImageElement;
+  measurement: ImageResolutionMeasurement;
+}
 
-  const snapshot = (element: HTMLImageElement): ImageResolutionMeasurement | undefined => {
-    const rect = element.getBoundingClientRect();
-    const style = getComputedStyle(element);
-    if (!element.isConnected || rect.width <= 0 || rect.height <= 0 ||
-        rect.bottom <= 0 || rect.right <= 0 || rect.top >= innerHeight || rect.left >= innerWidth ||
-        style.visibility !== 'visible') return undefined;
-    let reason: string | undefined;
-    for (let ancestor: Element | null = element; ancestor;) {
-      const ancestorStyle = getComputedStyle(ancestor);
-      if (Number(ancestorStyle.opacity) === 0 || ancestorStyle.display === 'none' ||
-          ancestorStyle.contentVisibility === 'hidden') return undefined;
-      if (ancestorStyle.transform !== 'none' || ancestorStyle.scale !== 'none' ||
-          ancestorStyle.rotate !== 'none' || ancestorStyle.perspective !== 'none' ||
-          (ancestorStyle.zoom !== 'normal' && Number(ancestorStyle.zoom) !== 1)) reason = 'CSS transforms or zoom are unsupported.';
-      const root = ancestor.getRootNode();
-      ancestor = ancestor.assignedSlot ?? ancestor.parentElement ?? (root instanceof ShadowRoot ? root.host : null);
-    }
-    // Computed width/height preserve fractional layout pixels; rect includes borders and transforms.
-    let boxWidth = parseFloat(style.width);
-    let boxHeight = parseFloat(style.height);
-    if (style.boxSizing === 'border-box') {
-      boxWidth -= parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) +
-        parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
-      boxHeight -= parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) +
-        parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
-    }
-    if (!(boxWidth > 0 && boxHeight > 0)) return undefined;
-    const src = element.currentSrc;
-    let needsMimeValidation: true | undefined;
-    if (!element.complete || !src || !element.naturalWidth || !element.naturalHeight) {
-      reason ??= 'Image is not loaded.';
-    } else if (!reason && !rasterSources.has(src.split('#', 1)[0]!) && !/^data:image\/(?:png|jpeg|webp|gif|avif|bmp|x-icon|vnd\.microsoft\.icon)(?:;|,)/i.test(src)) {
-      reason = 'Image is vector or its raster format is unknown.';
-      needsMimeValidation = true;
-    }
-    return {
-      src, label: element.id ? `img#${element.id}` : element.alt ? `img (${element.alt})` :
-        !src && element.getAttribute('src') ? `img (${element.getAttribute('src')})` : 'img',
-      fit: style.objectFit, boxWidth, boxHeight,
-      naturalWidth: element.naturalWidth, naturalHeight: element.naturalHeight,
-      devicePixelRatio: window.devicePixelRatio, ...(reason ? { reason } : {}),
-      ...(needsMimeValidation ? { needsMimeValidation } : {}),
-    };
-  };
+function renderedParent(element: Element): Element | null {
+  if (element.assignedSlot) return element.assignedSlot;
+  if (element.parentElement) return element.parentElement;
+  const root = element.getRootNode();
+  return root instanceof ShadowRoot ? root.host : null;
+}
 
-  // Freeze the page's current selection and layout before any asynchronous bitmap reads.
-  const snapshots = elements.map(element => ({ element, measurement: snapshot(element), pending: !element.complete }));
-  const candidates = snapshots.filter(({ measurement }) => measurement !== undefined);
-  if (candidates.length === 0) return [];
-  // Let the browser account for ancestor clipping, including root overflow and positioned images.
-  // Intersection only decides visibility: a partially clipped image still needs its full painted size.
-  const observeIntersections = (targets: HTMLImageElement[]) => new Promise<Map<Element, boolean>>(resolve => {
-    const visible = new Map<Element, boolean>();
-    const observer = new IntersectionObserver(entries => {
-      for (const entry of entries) {
-        visible.set(entry.target, entry.intersectionRect.width > 0 && entry.intersectionRect.height > 0);
-      }
-      if (visible.size === targets.length) finish();
-    });
-    const finish = () => { clearTimeout(timer); observer.disconnect(); resolve(visible); };
-    const timer = setTimeout(finish, Math.max(0, deadline - performance.now()));
-    for (const element of targets) observer.observe(element);
-  });
-  const intersections = await observeIntersections(candidates.map(({ element }) => element));
-  const waitForLoad = (element: HTMLImageElement) => new Promise<void>(resolve => {
-    const finish = () => {
-      clearTimeout(timer);
-      element.removeEventListener('load', finish);
-      element.removeEventListener('error', finish);
-      resolve();
-    };
-    const timer = setTimeout(finish, Math.max(0, deadline - performance.now()));
-    element.addEventListener('load', finish);
-    element.addEventListener('error', finish);
-    if (element.complete) finish();
-  });
-  // Download waits consume no bitmap slots. A stalled bitmap leaves the other slot available.
-  let activeBitmaps = 0;
-  const bitmapQueue: Array<() => void> = [];
-  const acquireBitmapSlot = async () => {
-    if (activeBitmaps < 2) activeBitmaps++;
-    else await new Promise<void>(resolve => bitmapQueue.push(resolve));
+function readImageLayout(image: HTMLImageElement): ImageResolutionMeasurement | undefined {
+  const style = getComputedStyle(image);
+  if (style.visibility !== 'visible') return;
+
+  let reason: string | undefined;
+  for (let element: Element | null = image; element; element = renderedParent(element)) {
+    const ancestorStyle = element === image ? style : getComputedStyle(element);
+    if (Number(ancestorStyle.opacity) === 0 || ancestorStyle.display === 'none' ||
+        ancestorStyle.contentVisibility === 'hidden') return;
+    if (ancestorStyle.transform !== 'none' || ancestorStyle.scale !== 'none' ||
+        ancestorStyle.rotate !== 'none' || ancestorStyle.perspective !== 'none' ||
+        (ancestorStyle.zoom !== 'normal' && Number(ancestorStyle.zoom) !== 1)) {
+      reason = 'CSS transforms or zoom are unsupported.';
+    }
+  }
+
+  // object-fit uses the content box, which excludes padding and borders.
+  let boxWidth = parseFloat(style.width);
+  let boxHeight = parseFloat(style.height);
+  if (style.boxSizing === 'border-box') {
+    boxWidth -= parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) +
+      parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
+    boxHeight -= parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) +
+      parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+  }
+  if (!(boxWidth > 0 && boxHeight > 0)) return;
+  if (!image.complete || !image.currentSrc || !image.naturalWidth || !image.naturalHeight) {
+    reason ??= 'Image is not loaded.';
+  }
+
+  let label = 'img';
+  if (image.id) label = `img#${image.id}`;
+  else if (image.alt) label = `img (${image.alt})`;
+  else if (!image.currentSrc && image.getAttribute('src')) label = `img (${image.getAttribute('src')})`;
+
+  return {
+    src: image.currentSrc, label, fit: style.objectFit, boxWidth, boxHeight,
+    naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight,
+    devicePixelRatio: window.devicePixelRatio, ...(reason ? { reason } : {}),
   };
-  const releaseBitmapSlot = () => {
-    const next = bitmapQueue.shift();
-    if (next) next();
-    else activeBitmaps--;
-  };
-  const results = await Promise.all(snapshots.map(async ({ element, measurement: initial, pending }) => {
-    if (!initial) return undefined;
-    let measurement = initial;
-    if (!pending && JSON.stringify(snapshot(element)) !== JSON.stringify(measurement)) {
-      return { ...measurement, reason: 'Image selection or layout changed during measurement.' };
+}
+
+function collectImagesInViewport(root: Document | ShadowRoot): ViewportImage[] {
+  const images: ViewportImage[] = [];
+  for (const image of Array.from(root.querySelectorAll('img'))) {
+    const rect = image.getBoundingClientRect();
+    const overlapsViewport = rect.width > 0 && rect.height > 0 &&
+      rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth;
+    if (!overlapsViewport) continue;
+
+    const measurement = readImageLayout(image);
+    if (measurement) images.push({ image, measurement });
+  }
+  for (const element of Array.from(root.querySelectorAll('*'))) {
+    if (!element.shadowRoot) continue;
+    for (const image of collectImagesInViewport(element.shadowRoot)) images.push(image);
+  }
+  return images;
+}
+
+async function readBitmapDimensions(image: HTMLImageElement, measurement: ImageResolutionMeasurement): Promise<void> {
+  if (image.currentSrc !== measurement.src) {
+    measurement.reason = 'Image source changed before the bitmap was read.';
+    return;
+  }
+  const maxBitmapPixels = 40_000_000;
+  if (measurement.naturalWidth * measurement.naturalHeight > maxBitmapPixels) {
+    measurement.reason = 'Image exceeds the bitmap measurement size limit.';
+    return;
+  }
+  try {
+    const bitmap = await createImageBitmap(image);
+    measurement.sourceWidth = bitmap.width;
+    measurement.sourceHeight = bitmap.height;
+    bitmap.close();
+  } catch {
+    measurement.reason = 'Selected image bitmap could not be read.';
+  }
+}
+
+export async function collectImageResolutionMeasurements(): Promise<ImageResolutionMeasurement[]> {
+  const images = collectImagesInViewport(document);
+  const measurements: ImageResolutionMeasurement[] = [];
+  for (const { image, measurement } of images) {
+    if (!measurement.reason) await readBitmapDimensions(image, measurement);
+    measurements.push(measurement);
+  }
+  return measurements;
+}
+
+// Lighthouse evaluates the collector in Chrome. These functions go with it.
+export const imageMeasurementPageHelpers = [
+  renderedParent, readImageLayout, collectImagesInViewport, readBitmapDimensions,
+];
+
+function evaluateSingleImage(
+  measurement: ImageResolutionMeasurement, config: ImageResolutionConfig,
+): ImageResolutionImage {
+  const { boxWidth, boxHeight, naturalWidth, naturalHeight, sourceWidth, sourceHeight, devicePixelRatio } = measurement;
+  if (measurement.reason || ![boxWidth, boxHeight, naturalWidth, naturalHeight, sourceWidth, sourceHeight, devicePixelRatio]
+    .every(value => typeof value === 'number' && Number.isFinite(value) && value > 0)) {
+    return { ...measurement, status: 'unknown', reason: measurement.reason ?? 'Image dimensions are unavailable.' };
+  }
+  let paintedWidth = boxWidth;
+  let paintedHeight = boxHeight;
+  if (measurement.fit !== 'fill') {
+    const containScale = Math.min(boxWidth / naturalWidth, boxHeight / naturalHeight);
+    let scale: number;
+    switch (measurement.fit) {
+      case 'cover': scale = Math.max(boxWidth / naturalWidth, boxHeight / naturalHeight); break;
+      case 'contain': scale = containScale; break;
+      case 'none': scale = 1; break;
+      case 'scale-down': scale = Math.min(1, containScale); break;
+      default: return { ...measurement, status: 'unknown', reason: 'Unsupported object-fit value.' };
     }
-    if (intersections.get(element) === false) return undefined;
-    if (!intersections.has(element)) {
-      measurement.reason = 'Image visibility could not be measured before the time limit.';
-      return measurement;
-    }
-    if (pending && measurement.reason === 'Image is not loaded.') {
-      while (!element.complete && performance.now() < deadline) await waitForLoad(element);
-      // Loading can change intrinsic dimensions, source selection and the current layout.
-      const loaded = snapshot(element);
-      if (!loaded) return undefined;
-      measurement = loaded;
-      if (!element.complete) measurement.reason = 'Image did not finish loading before the time limit.';
-      else if (element.naturalWidth && element.naturalHeight) {
-        // A load handler can change ancestor clipping without changing the image's own box.
-        const currentVisibility = await observeIntersections([element]);
-        if (currentVisibility.get(element) === false) return undefined;
-        if (!currentVisibility.has(element)) {
-          measurement.reason = 'Image visibility could not be measured before the time limit.';
-          return measurement;
-        }
-        const current = snapshot(element);
-        if (!current) return undefined;
-        measurement = current;
-      }
-    }
-    const unconfirmedRaster = allowUnconfirmedRasterSources && !measurement.src.startsWith('data:') &&
-      !nonRasterSources.has(measurement.src.split('#', 1)[0]!) &&
-      measurement.needsMimeValidation === true;
-    if (measurement.reason && !unconfirmedRaster) return measurement;
-    if (measurement.naturalWidth * measurement.naturalHeight > 40_000_000) {
-      measurement.reason = 'Image exceeds the bitmap measurement size limit.';
-      return measurement;
-    }
-    await acquireBitmapSlot();
-    try {
-      const remaining = deadline - performance.now();
-      if (remaining <= 0) {
-        measurement.reason = 'Image measurement time limit reached.';
-        return measurement;
-      }
-      if (JSON.stringify(snapshot(element)) !== JSON.stringify(measurement)) {
-        measurement.reason = 'Image selection or layout changed during measurement.';
-        return measurement;
-      }
-      // Uses the already-selected resource, including srcset density correction. No fetch or resize.
-      // A timeout cannot interrupt synchronous decoding; the size guard limits ordinary large inputs.
-      const bitmap = await new Promise<ImageBitmap | null>((resolve, reject) => {
-        let expired = false;
-        const timer = setTimeout(() => { expired = true; resolve(null); }, remaining);
-        createImageBitmap(element).then(value => {
-          clearTimeout(timer);
-          if (expired) value.close();
-          else resolve(value);
-        }, error => { clearTimeout(timer); reject(error); });
-      });
-      if (!bitmap) {
-        measurement.reason = 'Image measurement time limit reached.';
-        return measurement;
-      }
-      try {
-        if (performance.now() > deadline) {
-          measurement.reason = 'Image measurement time limit reached.';
-        } else if (JSON.stringify(snapshot(element)) !== JSON.stringify(measurement)) {
-          measurement.reason = 'Image selection or layout changed during measurement.';
-        } else if (bitmap.width * bitmap.height > 40_000_000) {
-          measurement.reason = 'Image exceeds the bitmap measurement size limit.';
-        } else {
-          measurement.sourceWidth = bitmap.width;
-          measurement.sourceHeight = bitmap.height;
-        }
-      } finally { bitmap.close(); }
-    } catch {
-      measurement.reason = 'Selected image bitmap could not be read.';
-    } finally { releaseBitmapSlot(); }
-    return measurement;
-  }));
-  return results.filter((measurement): measurement is ImageResolutionMeasurement => measurement !== undefined);
+    paintedWidth = naturalWidth * scale;
+    paintedHeight = naturalHeight * scale;
+  }
+  const requiredWidth = paintedWidth * devicePixelRatio;
+  const requiredHeight = paintedHeight * devicePixelRatio;
+  const ratio = Math.min(sourceWidth! / requiredWidth, sourceHeight! / requiredHeight);
+  // Only absorb floating-point roundoff. User thresholds control intentional tolerance.
+  const status = ratio + 1e-6 < config.minRatio ? 'undersized' : ratio - 1e-6 > config.maxRatio ? 'oversized' : 'sufficient';
+  return { ...measurement, paintedWidth, paintedHeight, requiredWidth, requiredHeight, ratio, status };
 }
 
 export function evaluateImageResolution(
   measurements: ImageResolutionMeasurement[], config: ImageResolutionConfig,
 ): ImageResolutionResult {
-  const images = measurements.map((measurement): ImageResolutionImage => {
-    const { boxWidth, boxHeight, naturalWidth, naturalHeight, sourceWidth, sourceHeight, devicePixelRatio } = measurement;
-    if (measurement.reason || ![boxWidth, boxHeight, naturalWidth, naturalHeight, sourceWidth, sourceHeight, devicePixelRatio]
-      .every(value => typeof value === 'number' && Number.isFinite(value) && value > 0)) {
-      return { ...measurement, status: 'unknown', reason: measurement.reason ?? 'Image dimensions are unavailable.' };
-    }
-    let paintedWidth = boxWidth;
-    let paintedHeight = boxHeight;
-    if (measurement.fit !== 'fill') {
-      const containScale = Math.min(boxWidth / naturalWidth, boxHeight / naturalHeight);
-      let scale: number;
-      switch (measurement.fit) {
-        case 'cover': scale = Math.max(boxWidth / naturalWidth, boxHeight / naturalHeight); break;
-        case 'contain': scale = containScale; break;
-        case 'none': scale = 1; break;
-        case 'scale-down': scale = Math.min(1, containScale); break;
-        default: return { ...measurement, status: 'unknown', reason: 'Unsupported object-fit value.' };
-      }
-      paintedWidth = naturalWidth * scale;
-      paintedHeight = naturalHeight * scale;
-    }
-    const requiredWidth = paintedWidth * devicePixelRatio;
-    const requiredHeight = paintedHeight * devicePixelRatio;
-    const ratio = Math.min(sourceWidth! / requiredWidth, sourceHeight! / requiredHeight);
-    // Only absorb floating-point roundoff. User thresholds control intentional tolerance.
-    const status = ratio + 1e-6 < config.minRatio ? 'undersized' : ratio - 1e-6 > config.maxRatio ? 'oversized' : 'sufficient';
-    return { ...measurement, paintedWidth, paintedHeight, requiredWidth, requiredHeight, ratio, status };
-  });
-  return {
-    images,
-    undersized: images.filter(image => image.status === 'undersized').length,
-    oversized: images.filter(image => image.status === 'oversized').length,
-    unknown: images.filter(image => image.status === 'unknown').length,
-    failOnUndersized: config.failOnUndersized,
-  };
+  const result: ImageResolutionResult = { images: [], undersized: 0, oversized: 0, unknown: 0 };
+  for (const measurement of measurements) {
+    const image = evaluateSingleImage(measurement, config);
+    result.images.push(image);
+    if (image.status !== 'sufficient') result[image.status]++;
+  }
+  return result;
 }

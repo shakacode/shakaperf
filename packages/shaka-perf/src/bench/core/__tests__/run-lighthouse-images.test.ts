@@ -20,7 +20,7 @@ jest.mock('../network-activity', () => ({
 }));
 jest.mock('../main-thread-tasks', () => ({ countMainThreadTasks: () => 3 }));
 
-const config = { minRatio: 0.9, maxRatio: 2, failOnUndersized: false };
+const config = { minRatio: 0.9, maxRatio: 2 };
 
 function result(artifact: unknown): RunnerResult {
   return {
@@ -42,17 +42,7 @@ it.each([undefined, new Error('browser context closed')])('keeps speed metrics w
     expect.objectContaining({ phase: 'LCP', duration: 100_000 }),
     expect.objectContaining({ phase: 'LH Score', duration: 90 }),
   ]));
-  expect(sample).toMatchObject({ imageResolution: {
-    status: 'unavailable', failOnUndersized: false, reason: expect.any(String),
-  } });
-});
-
-it('retains strict policy on a whole-check failure for the report and CLI', async () => {
-  jest.mocked(runPatchedLighthouse).mockResolvedValue(result(new Error('browser context closed')));
-  const sample = await runLighthouse('experiment', 'https://example.test', {}, '.', false,
-    Promise.resolve(), { ...config, failOnUndersized: true });
-  expect(sample).toMatchObject({ imageResolution: { status: 'unavailable', failOnUndersized: true } });
-  expect(sample.phases.length).toBeGreaterThan(0);
+  expect(sample.imageResolution).toEqual({ status: 'unavailable', reason: expect.any(String) });
 });
 
 it('does not invent an image check for comparison runs', async () => {

@@ -6,15 +6,17 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
-import { chromium, type Browser, type Route } from 'playwright';
+import { chromium, type Browser, type Page } from 'playwright';
 import { PNG } from 'pngjs';
+import { classifyImageSources } from '../image-source-type';
 import {
   collectImageResolutionMeasurements,
   evaluateImageResolution,
+  imageMeasurementPageHelpers,
   type ImageResolutionMeasurement,
 } from '../image-resolution';
 
-const config = { minRatio: 1, maxRatio: 2, failOnUndersized: true };
+const config = { minRatio: 1, maxRatio: 2 };
 const measurement = (overrides: Partial<ImageResolutionMeasurement> = {}): ImageResolutionMeasurement => ({
   src: 'https://example.test/selected.png', label: 'img#photo', fit: 'cover',
   boxWidth: 300, boxHeight: 300, naturalWidth: 200, naturalHeight: 100,
@@ -35,7 +37,6 @@ describe('image resolution evaluation', () => {
     expect(result.images[0]!.ratio).toBeCloseTo(ratio);
     expect(result.images[0]!.requiredWidth).toBe(width * 2);
     expect(result.images[0]!.status).toBe(ratio < 1 ? 'undersized' : 'sufficient');
-    expect(result.failOnUndersized).toBe(true);
   });
 
   it('uses contain for scale-down when the intrinsic size is larger than the box', () => {
@@ -53,9 +54,9 @@ describe('image resolution evaluation', () => {
     const images = [0.79, 0.8, 1.5, 1.51].map(ratio => measurement({
       fit: 'fill', boxWidth: 100, boxHeight: 100, sourceWidth: ratio * 200, sourceHeight: ratio * 200,
     }));
-    const result = evaluateImageResolution(images, { minRatio: 0.8, maxRatio: 1.5, failOnUndersized: false });
+    const result = evaluateImageResolution(images, { minRatio: 0.8, maxRatio: 1.5 });
     expect(result.images.map(image => image.status)).toEqual(['undersized', 'sufficient', 'sufficient', 'oversized']);
-    expect(result).toMatchObject({ undersized: 1, oversized: 1, unknown: 0, failOnUndersized: false });
+    expect(result).toStrictEqual({ images: expect.any(Array), undersized: 1, oversized: 1, unknown: 0 });
   });
 
   it('keeps unsupported and unavailable measurements unknown instead of passing', () => {
@@ -68,6 +69,15 @@ describe('image resolution evaluation', () => {
     expect(result.images.every(image => image.status === 'unknown')).toBe(true);
   });
 });
+
+// Playwright sends source to the page. Include the same helper functions that Lighthouse sends.
+function measurePageImages(page: Page): Promise<ImageResolutionMeasurement[]> {
+  const helpers = imageMeasurementPageHelpers.map(helper => helper.toString()).join('\n');
+  return page.evaluate(`(() => {
+    ${helpers}
+    return (${collectImageResolutionMeasurements})();
+  })()`);
+}
 
 describe('current rendered image measurement in Chromium', () => {
   let browser: Browser;
@@ -93,15 +103,31 @@ describe('current rendered image measurement in Chromium', () => {
         </picture>
       `);
       const before = [...requests];
-      const measurements = await page.evaluate(collectImageResolutionMeasurements, ['https://example.test/two.png']);
+      const measurements = await measurePageImages(page);
       expect(measurements).toHaveLength(1);
       expect(measurements[0]).toMatchObject({
         src: 'https://example.test/two.png#display', sourceWidth: 400, sourceHeight: 200,
         naturalWidth: 200, naturalHeight: 100, boxWidth: 300.5, boxHeight: 300.25, devicePixelRatio: 2,
       });
-      expect(evaluateImageResolution(measurements, config).undersized).toBe(1);
+      const classified = classifyImageSources(measurements, new Set(requests));
+      expect(evaluateImageResolution(classified, config).undersized).toBe(1);
       expect(requests).toEqual(before);
       expect(requests).toEqual(['https://example.test/two.png']);
+    } finally { await page.close(); }
+  });
+
+  it('uses the dimensions of a successfully read bitmap even above 40 megapixels', async () => {
+    const page = await browser.newPage();
+    try {
+      await page.setContent(`<img src="data:image/png;base64,${png.toString('base64')}" width="100" height="50">`);
+      await page.evaluate(() => {
+        // Return large dimensions without allocating a 200 MB bitmap in the test.
+        window.createImageBitmap = async () => ({ width: 10_000, height: 5_000, close() {} });
+      });
+      const measurements = await measurePageImages(page);
+      expect(evaluateImageResolution(measurements, config).images[0]).toMatchObject({
+        sourceWidth: 10_000, sourceHeight: 5_000, status: 'oversized',
+      });
     } finally { await page.close(); }
   });
 
@@ -128,184 +154,97 @@ describe('current rendered image measurement in Chromium', () => {
           '<div style="transform:scale(2);transform-origin:left top"><slot></slot></div>';
       }, source);
       await page.waitForFunction(() => document.querySelector('#host')!.shadowRoot!.querySelector('img')!.complete);
-      const measurements = await page.evaluate(collectImageResolutionMeasurements, []);
-      const result = evaluateImageResolution(measurements, config);
-      expect(measurements.map(image => image.label)).toEqual([
-        'img#transform', 'img#zoom', 'img#vector', 'img#unloaded', 'img#slotted', 'img#shadow',
+      const measurements = await measurePageImages(page);
+      const classified = classifyImageSources(measurements, new Set());
+      const result = evaluateImageResolution(classified, config);
+      expect(measurements.map(image => image.label).sort()).toEqual([
+        'img#shadow', 'img#slotted', 'img#transform', 'img#unloaded', 'img#vector', 'img#zoom',
       ]);
       expect(result).toMatchObject({ unknown: 5, oversized: 1, undersized: 0 });
       expect(result.images.find(image => image.label === 'img#shadow')).toMatchObject({ sourceWidth: 400, sourceHeight: 200 });
     } finally { await page.close(); }
   });
 
-  it('does not silently evaluate an image whose layout changes while its bitmap is read', async () => {
+  it('uses one snapshot of image positions and sizes before reading any bitmaps', async () => {
     const page = await browser.newPage();
+    const source = `data:image/png;base64,${png.toString('base64')}`;
     try {
-      await page.setContent(`<img src="data:image/png;base64,${png.toString('base64')}" style="width:100px;height:50px">`);
+      await page.setContent(`
+        <style>img { width:100px; height:50px }</style>
+        <img id="first" src="${source}"><img id="second" src="${source}">
+      `);
       await page.evaluate(() => {
-        const original = window.createImageBitmap;
+        const readBitmap = window.createImageBitmap;
         window.createImageBitmap = (async (image: HTMLImageElement) => {
-          const bitmap = await original(image);
-          image.style.width = '200px';
-          return bitmap;
+          if (image.id === 'first') {
+            document.getElementById('second')!.style.width = '200px';
+            document.body.append(image.cloneNode());
+          }
+          return readBitmap(image);
         }) as typeof createImageBitmap;
       });
-      const measurements = await page.evaluate(collectImageResolutionMeasurements, []);
-      expect(evaluateImageResolution(measurements, config)).toMatchObject({ unknown: 1, undersized: 0 });
-      expect(measurements[0]!.reason).toContain('changed');
+      const measurements = await measurePageImages(page);
+      expect(measurements.map(image => image.label)).toEqual(['img#first', 'img#second']);
+      expect(measurements[1]).toMatchObject({ boxWidth: 100, sourceWidth: 400, sourceHeight: 200 });
     } finally { await page.close(); }
   });
 
-  it('waits for pending images together and measures a late image at its loaded layout beside stalled and ready images', async () => {
+  it('reports an unfinished download as unknown while measuring the ready image', async () => {
     const page = await browser.newPage();
-    let lateRoute!: Route;
-    let requested!: () => void;
-    const lateRequested = new Promise<void>(resolve => { requested = resolve; });
-    await page.route('https://example.test/stalled.png', () => {});
-    await page.route('https://example.test/late.png', route => { lateRoute = route; requested(); });
+    const pendingUrl = 'https://example.test/pending.png';
+    await page.route(pendingUrl, () => {}); // Keep the image request pending throughout collection.
     try {
       await page.setContent(`
-        <style>img { width:100px;height:100px }</style>
-        <img src="https://example.test/stalled.png">
-        <img id="late" src="https://example.test/late.png"
-          onload="this.style.width='300px';this.style.height='300px';this.style.objectFit='cover'">
+        <style>img { width:100px; height:50px }</style>
+        <img id="pending" src="${pendingUrl}">
         <img id="ready" src="data:image/png;base64,${png.toString('base64')}">
       `, { waitUntil: 'domcontentloaded' });
-      await lateRequested;
-      const started = Date.now();
-      const collecting = page.evaluate(collectImageResolutionMeasurements, ['https://example.test/late.png']);
-      await page.evaluate(() => {}); // The collector has started before the response is released.
-      await lateRoute.fulfill({ contentType: 'image/png', body: png });
-      const result = evaluateImageResolution(await collecting, config);
-      expect(result.images.find(image => image.label === 'img#late')).toMatchObject({
-        sourceWidth: 400, sourceHeight: 200, boxWidth: 300, boxHeight: 300, fit: 'cover',
-        requiredWidth: 600, requiredHeight: 300, status: 'undersized',
-      });
-      expect(result.images.find(image => image.label === 'img#ready')!.status).not.toBe('unknown');
-      expect(result.images.find(image => image.status === 'unknown')!.label).toContain('stalled.png');
-      expect(Date.now() - started).toBeGreaterThanOrEqual(4500);
-      expect(Date.now() - started).toBeLessThan(9000);
-    } finally { await page.close(); }
-  }, 15_000);
-
-  it('measures a source loaded before the first snapshot while its MIME is unconfirmed, but skips known vectors', async () => {
-    const page = await browser.newPage();
-    await page.route('https://example.test/image.png', route => route.fulfill({ contentType: 'image/png', body: png }));
-    await page.route('https://example.test/vector.svg', route => route.fulfill({
-      contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"/>',
-    }));
-    try {
-      await page.setContent('<img src="https://example.test/image.png"><img src="https://example.test/vector.svg">');
-      const measurements: ImageResolutionMeasurement[] = await page.evaluate(collector =>
-        new Function(`return (${collector})([], true, ['https://example.test/vector.svg'])`)(),
-      collectImageResolutionMeasurements.toString());
-      expect(measurements[0]).toMatchObject({ sourceWidth: 400, sourceHeight: 200 });
-      expect(measurements[0]!.reason).toContain('raster format is unknown');
-      expect(measurements[1]!.sourceWidth).toBeUndefined();
-      expect(measurements[1]!.reason).toContain('vector');
+      await page.locator('#ready').evaluate(img => (img as HTMLImageElement).decode());
+      const measurements = await measurePageImages(page);
+      const classified = classifyImageSources(measurements, new Set());
+      const { images } = evaluateImageResolution(classified, config);
+      expect(images[0]).toMatchObject({ label: 'img#pending', status: 'unknown' });
+      expect(images[1]).toMatchObject({ label: 'img#ready', sourceWidth: 400, sourceHeight: 200, status: 'oversized' });
     } finally { await page.close(); }
   });
 
-  it('refreshes clipping after a pending image loads while retaining the full size of a partially clipped image', async () => {
-    const page = await browser.newPage();
-    const pending: Route[] = [];
-    await page.route('https://example.test/*.png', route => { pending.push(route); });
-    try {
-      await page.setContent(`
-        <style>.box { position:absolute;top:20px;height:300px } img { width:300px;height:300px;object-fit:cover }</style>
-        <div class="box" style="left:20px"><img id="fully-clipped" src="https://example.test/full.png"
-          onload="this.parentElement.style.height='0';this.parentElement.style.overflow='hidden'"></div>
-        <div class="box" style="left:350px"><img id="partial" src="https://example.test/partial.png"
-          onload="this.parentElement.style.height='25px';this.parentElement.style.overflow='hidden'"></div>
-        <img id="ready" style="position:absolute;left:20px;top:350px;width:100px;height:50px"
-          src="data:image/png;base64,${png.toString('base64')}">
-      `, { waitUntil: 'domcontentloaded' });
-      await page.evaluate(() => {
-        const original = window.createImageBitmap;
-        window.createImageBitmap = ((image: HTMLImageElement) => {
-          if (image.id === 'ready') document.documentElement.dataset.readyMeasured = 'yes';
-          return original(image);
-        }) as typeof createImageBitmap;
-      });
-      const collecting = page.evaluate(collectImageResolutionMeasurements, [
-        'https://example.test/full.png', 'https://example.test/partial.png',
-      ]);
-      // Releasing only after a ready bitmap starts ensures the first visibility pass saw both images.
-      await page.waitForFunction(() => document.documentElement.dataset.readyMeasured === 'yes');
-      expect(pending).toHaveLength(2);
-      await Promise.all(pending.map(route => route.fulfill({ contentType: 'image/png', body: png })));
-      const result = evaluateImageResolution(await collecting, config);
-      expect(result.images.map(image => image.label)).toEqual(['img#partial', 'img#ready']);
-      expect(result.images[0]).toMatchObject({ requiredWidth: 600, requiredHeight: 300, status: 'undersized' });
-      expect(result).toMatchObject({ undersized: 1, oversized: 1, unknown: 0 });
-    } finally { await page.close(); }
-  }, 15_000);
-
-  it('bounds bitmap concurrency while a stalled bitmap leaves ready images measurable', async () => {
-    const page = await browser.newPage();
-    try {
-      const source = `data:image/png;base64,${png.toString('base64')}`;
-      await page.setContent(['stalled', 'ready-1', 'ready-2', 'ready-3'].map(id =>
-        `<img id="${id}" src="${source}" style="width:100px;height:100px">`).join(''));
-      await page.evaluate(() => {
-        const original = window.createImageBitmap;
-        let active = 0;
-        const state = window as typeof window & { maximumBitmapReads: number };
-        state.maximumBitmapReads = 0;
-        window.createImageBitmap = (async (image: HTMLImageElement) => {
-          active++;
-          state.maximumBitmapReads = Math.max(state.maximumBitmapReads, active);
-          if (image.id === 'stalled') return new Promise<ImageBitmap>(() => {});
-          try { return await original(image); } finally { active--; }
-        }) as typeof createImageBitmap;
-      });
-      const result = evaluateImageResolution(await page.evaluate(collectImageResolutionMeasurements, []), config);
-      expect(result.unknown).toBe(1);
-      expect(result.images.filter(image => image.label.includes('ready')).every(image => image.status !== 'unknown')).toBe(true);
-      expect(await page.evaluate(() => (window as typeof window & { maximumBitmapReads: number }).maximumBitmapReads)).toBeLessThanOrEqual(2);
-    } finally { await page.close(); }
-  }, 15_000);
-
-  it('excludes fully clipped images but evaluates partially clipped images at their full painted size', async () => {
-    const page = await browser.newPage();
+  it('keeps non-empty image boxes that overlap the viewport, even when clipped or covered', async () => {
+    const page = await browser.newPage({ viewport: { width: 300, height: 200 } });
     const source = `data:image/png;base64,${png.toString('base64')}`;
     try {
       await page.setContent(`
-        <style>img { width:300px;height:300px;object-fit:cover } .box { position:absolute;left:30px;top:30px }</style>
-        <div class="box" style="height:0;overflow:hidden;border:20px solid"><img id="fully-clipped" src="${source}"></div>
-        <div class="box" style="width:0;overflow-x:clip"><img id="clipped-x" src="${source}"></div>
-        <div class="box" style="height:25px;padding-top:15px;border:10px solid;overflow:hidden"><img id="partial" src="${source}"></div>
-        <div class="box" id="clipped-host"><img id="slotted-clipped" src="${source}"></div>
+        <style>body { margin:0 } img { position:absolute; width:100px; height:50px }</style>
+        <img id="overlaps-top" src="${source}" style="top:-20px">
+        <img id="overlaps-right" src="${source}" style="left:299px">
+        <img id="above" src="${source}" style="top:-50px">
+        <img id="below" src="${source}" style="top:200px">
+        <img id="left" src="${source}" style="left:-100px">
+        <img id="right" src="${source}" style="left:300px">
+        <img id="empty" src="${source}" style="width:0">
+        <div style="position:relative; height:0; overflow:hidden"><img id="clipped" src="${source}"></div>
+        <div style="position:fixed; inset:0; background:white"></div>
       `);
-      await page.evaluate(() => {
-        document.querySelector('#clipped-host')!.attachShadow({ mode: 'open' }).innerHTML =
-          '<div style="height:0;overflow:hidden"><slot></slot></div>';
-      });
-      const measurements = await page.evaluate(collectImageResolutionMeasurements, []);
-      expect(measurements.map(image => image.label)).toEqual(['img#partial']);
-      const result = evaluateImageResolution(measurements, config);
-      expect(result).toMatchObject({ undersized: 1, unknown: 0 });
-      expect(result.images[0]).toMatchObject({ paintedWidth: 600, paintedHeight: 300, requiredWidth: 600, requiredHeight: 300 });
+      const measurements = await measurePageImages(page);
+      expect(measurements.map(image => image.label)).toEqual(['img#overlaps-top', 'img#overlaps-right', 'img#clipped']);
+      expect(measurements[0]).toMatchObject({ boxWidth: 100, boxHeight: 50 });
     } finally { await page.close(); }
   });
+});
 
-  it('keeps visible images when body overflow applies to the viewport or fixed positioning escapes a clip', async () => {
-    const page = await browser.newPage();
-    const source = `data:image/png;base64,${png.toString('base64')}`;
-    try {
-      await page.setContent(`
-        <style>body { height:0;overflow:hidden;margin:0 }</style>
-        <img id="body-visible" src="${source}" style="position:absolute;left:20px;top:20px;width:300px;height:300px">
-        <div style="height:0;width:0;overflow:hidden">
-          <img id="fixed-visible" src="${source}" style="position:fixed;left:350px;top:20px;width:40px;height:20px">
-        </div>
-      `);
-      expect(await page.evaluate(() => [
-        document.elementFromPoint(30, 30)?.id, document.elementFromPoint(360, 30)?.id,
-      ])).toEqual(['body-visible', 'fixed-visible']);
-      const measurements = await page.evaluate(collectImageResolutionMeasurements, []);
-      expect(measurements.map(image => image.label)).toEqual(['img#body-visible', 'img#fixed-visible']);
-      expect(evaluateImageResolution(measurements, config).unknown).toBe(0);
-    } finally { await page.close(); }
+describe('image source classification', () => {
+  it('discards bitmap dimensions for SVG and unconfirmed URLs, including URLs that look like a raster image', () => {
+    const records = [
+      measurement({ src: 'https://example.test/confirmed#fragment' }),
+      measurement({ src: 'data:image/png;base64,AAAA' }),
+      measurement({ src: 'data:image/svg+xml,<svg/>' }),
+      measurement({ src: 'https://example.test/unconfirmed.png' }),
+    ];
+    const classified = classifyImageSources(records, new Set(['https://example.test/confirmed']));
+    const { images } = evaluateImageResolution(classified, config);
+    expect(images.map(image => image.status)).toEqual(['undersized', 'undersized', 'unknown', 'unknown']);
+    for (const image of images.slice(2)) {
+      expect(image.sourceWidth).toBeUndefined();
+      expect(image.sourceHeight).toBeUndefined();
+    }
   });
 });

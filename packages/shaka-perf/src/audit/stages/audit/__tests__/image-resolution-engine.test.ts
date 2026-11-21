@@ -36,10 +36,6 @@ describe('audit image check policy', () => {
     log = jest.spyOn(console, 'log').mockImplementation(() => {});
     warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     jest.mocked(createLighthouseBenchmark).mockClear();
-    jest.mocked(measureTest).mockResolvedValue([{ group: 'experiment', samples: [{
-      phases: [{ phase: 'LCP', duration: 1_200_000, start: 0, sign: 1, unit: 'ms' }],
-      duration: 1_200_000, metadata: {},
-    }] }] as never);
   });
 
   afterEach(() => {
@@ -49,12 +45,33 @@ describe('audit image check policy', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
+  const findings = {
+    images: [{ label: 'img#photo', src: 'https://example.test/photo.png', fit: 'fill',
+      boxWidth: 100, boxHeight: 100, naturalWidth: 50, naturalHeight: 50,
+      sourceWidth: 50, sourceHeight: 50, devicePixelRatio: 1, status: 'undersized', ratio: 0.5 }],
+    undersized: 1, oversized: 0, unknown: 0,
+  };
+  const unavailable = { status: 'unavailable', reason: 'Image collector timed out.' };
+  const thresholds = { minRatio: 0.8, maxRatio: 3 };
+
   it.each([
-    { enabled: false, failOnUndersized: false, force: false, expectedEnabled: false, expectedFail: false, status: 'disabled' },
-    { enabled: false, failOnUndersized: false, force: true, expectedEnabled: true, expectedFail: true, status: 'unavailable' },
-    { enabled: true, failOnUndersized: true, force: false, expectedEnabled: true, expectedFail: true, status: 'unavailable' },
-    { enabled: true, failOnUndersized: false, force: false, expectedEnabled: true, expectedFail: false, status: 'unavailable' },
-  ])('preserves speed metrics and applies image policy: %j', async policy => {
+    { enabled: false, failOnUndersized: false, force: false, sample: undefined,
+      expected: { status: 'disabled', failOnUndersized: false } },
+    { enabled: false, failOnUndersized: false, force: true, sample: findings,
+      expected: { ...findings, failOnUndersized: true } },
+    { enabled: true, failOnUndersized: true, force: false, sample: findings,
+      expected: { ...findings, failOnUndersized: true } },
+    { enabled: true, failOnUndersized: false, force: false, sample: findings,
+      expected: { ...findings, failOnUndersized: false } },
+    { enabled: true, failOnUndersized: true, force: false, sample: unavailable,
+      expected: { ...unavailable, failOnUndersized: true } },
+    { enabled: true, failOnUndersized: false, force: false, sample: undefined,
+      expected: { status: 'unavailable', reason: expect.any(String), failOnUndersized: false } },
+  ])('preserves speed metrics and saves the effective image policy (case %#)', async policy => {
+    jest.mocked(measureTest).mockResolvedValue([{ group: 'experiment', samples: [{
+      phases: [{ phase: 'LCP', duration: 1_200_000, start: 0, sign: 1, unit: 'ms' }],
+      duration: 1_200_000, metadata: {}, imageResolution: policy.sample,
+    }] }] as never);
     const test = { name: 'Product', startingPath: '/', file: null, line: null, testTypes: null, testFn: async () => {} } as AbTestDefinition;
     const config = buildAbTestsConfig({
       shared: {
@@ -62,7 +79,7 @@ describe('audit image check policy', () => {
         playwrightOptions: { browser: 'chromium', waitTimeout: 1000 },
         browserConsole: { failOn: [], allowList: [] },
       },
-      audit: { imageResolution: { enabled: policy.enabled, failOnUndersized: policy.failOnUndersized } },
+      audit: { imageResolution: { ...thresholds, enabled: policy.enabled, failOnUndersized: policy.failOnUndersized } },
     });
     const ctx = {
       config, test, viewport: DESKTOP_VIEWPORT, experimentURL: 'https://example.test',
@@ -71,12 +88,12 @@ describe('audit image check policy', () => {
     } as TestContext;
     const result = await runAuditStage(ctx, {} as WorkerPool, { failOnUndersizedImages: policy.force });
     const options = jest.mocked(createLighthouseBenchmark).mock.calls[0]![2];
-    if (policy.expectedEnabled) {
-      expect(options.imageResolution).toMatchObject({ failOnUndersized: policy.expectedFail });
+    if (policy.enabled || policy.force) {
+      expect(options.imageResolution).toEqual(thresholds);
     } else {
       expect(options).not.toHaveProperty('imageResolution');
     }
     expect(result.metrics).toEqual(expect.arrayContaining([expect.objectContaining({ label: 'LCP', value: 1200 })]));
-    expect(result.imageResolution).toMatchObject({ status: policy.status, failOnUndersized: policy.expectedFail });
+    expect(result.imageResolution).toEqual(policy.expected);
   });
 });

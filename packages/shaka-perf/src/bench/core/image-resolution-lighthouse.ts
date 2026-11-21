@@ -9,10 +9,12 @@ import { Audit, Gatherer } from 'lighthouse';
 import type * as LH from 'lighthouse/types/lh.js';
 import {
   collectImageResolutionMeasurements,
+  imageMeasurementPageHelpers,
   evaluateImageResolution,
   type ImageResolutionConfig,
   type ImageResolutionResult,
 } from './image-resolution';
+import { classifyImageSources, isRasterImageType } from './image-source-type';
 
 declare module 'lighthouse/types/artifacts.js' {
   interface GathererArtifacts {
@@ -25,7 +27,6 @@ export const IMAGE_RESOLUTION_CATEGORY = 'shaka-images';
 class ImageResolutionGatherer extends Gatherer {
   meta: LH.Gatherer.GathererMeta = { supportedModes: ['navigation'] };
   private rasterUrls = new Set<string>();
-  private nonRasterUrls = new Set<string>();
   private redirects = new Map<string, Set<string>>();
   private result?: ImageResolutionResult;
 
@@ -40,19 +41,14 @@ class ImageResolutionGatherer extends Gatherer {
     urls.add(request.url);
     this.redirects.set(requestId, urls);
   };
-  private onResponse = ({ requestId, response, type }: LH.Crdp.Network.ResponseReceivedEvent) => {
+  private onResponse = ({ requestId, response }: LH.Crdp.Network.ResponseReceivedEvent) => {
     // currentSrc retains the requested URL, even when the bitmap came through redirects.
     const urls = this.redirects.get(requestId) ?? new Set<string>();
     urls.add(response.url);
-    const raster = /^image\/(?:png|jpeg|webp|gif|avif|bmp|x-icon|vnd\.microsoft\.icon|apng)$/i.test(response.mimeType);
+    const raster = isRasterImageType(response.mimeType);
     for (const url of urls) {
-      if (raster) {
-        this.rasterUrls.add(url);
-        this.nonRasterUrls.delete(url);
-      } else {
-        this.rasterUrls.delete(url);
-        if (type === 'Image' || response.mimeType.startsWith('image/')) this.nonRasterUrls.add(url);
-      }
+      if (raster) this.rasterUrls.add(url);
+      else this.rasterUrls.delete(url);
     }
     this.redirects.delete(requestId);
   };
@@ -66,21 +62,10 @@ class ImageResolutionGatherer extends Gatherer {
     // This phase follows the end of tracing and precedes gatherers that alter the page.
     try {
       const measurements = await driver.executionContext.evaluate(collectImageResolutionMeasurements, {
-        args: [[...this.rasterUrls], true, [...this.nonRasterUrls]], useIsolation: true,
+        args: [], deps: imageMeasurementPageHelpers, useIsolation: true,
       });
-      // A pending image can receive its MIME type while the collector is waiting for it.
-      for (const measurement of measurements) {
-        if (!measurement.needsMimeValidation) continue;
-        delete measurement.needsMimeValidation;
-        if (this.rasterUrls.has(measurement.src.split('#', 1)[0]!)) {
-          if (measurement.sourceWidth && measurement.sourceHeight) delete measurement.reason;
-        }
-        else {
-          delete measurement.sourceWidth;
-          delete measurement.sourceHeight;
-        }
-      }
-      this.result = evaluateImageResolution(measurements, this.config);
+      const classifiedImages = classifyImageSources(measurements, this.rasterUrls);
+      this.result = evaluateImageResolution(classifiedImages, this.config);
     } finally {
       driver.defaultSession.off('Network.requestWillBeSent', this.onRequest);
       driver.defaultSession.off('Network.responseReceived', this.onResponse);
@@ -92,6 +77,10 @@ class ImageResolutionGatherer extends Gatherer {
     if (!this.result) throw new Error('Image resolution measurements were not collected.');
     return this.result;
   }
+}
+
+function formatPixelDimensions(width?: number, height?: number): string {
+  return width && height ? `${Math.ceil(width)} × ${Math.ceil(height)}` : 'Unknown';
 }
 
 class ImageResolutionAudit extends Audit {
@@ -108,7 +97,6 @@ class ImageResolutionAudit extends Audit {
   static audit(artifacts: LH.Artifacts, { options }: LH.Audit.Context): LH.Audit.Product {
     const result = artifacts.ShakaImageResolution;
     const findings = result.undersized + result.oversized;
-    const size = (width?: number, height?: number) => width && height ? `${Math.ceil(width)} × ${Math.ceil(height)}` : 'Unknown';
     return {
       score: findings ? 0 : result.unknown ? null : 1,
       ...(findings === 0 && result.unknown > 0 ? { scoreDisplayMode: 'informative' as const } : {}),
@@ -121,7 +109,7 @@ class ImageResolutionAudit extends Audit {
         url: image.src,
         subItems: { type: 'subitems', items: [
           { resolution: `${image.label} · ${image.status} · object-fit: ${image.fit}` },
-          { resolution: `Source: ${size(image.sourceWidth, image.sourceHeight)} px; required: ${size(image.requiredWidth, image.requiredHeight)} px` },
+          { resolution: `Source: ${formatPixelDimensions(image.sourceWidth, image.sourceHeight)} px; required: ${formatPixelDimensions(image.requiredWidth, image.requiredHeight)} px` },
           { resolution: image.reason ?? `${image.ratio!.toFixed(2)}× required resolution` },
         ] },
       }))),

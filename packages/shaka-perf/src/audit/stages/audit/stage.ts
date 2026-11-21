@@ -38,7 +38,9 @@ export interface AuditMetric {
 
 export interface AuditResult {
   metrics: AuditMetric[];
-  imageResolution?: ImageResolutionCheck;
+  imageResolution?:
+    | (ImageResolutionCheck & { failOnUndersized: boolean })
+    | { status: 'disabled'; failOnUndersized: false };
   lighthouseHref?: string;
   lighthouseThumbHref?: string;
   /** The one-sided halves of compare's "profile diff" / "network diff". */
