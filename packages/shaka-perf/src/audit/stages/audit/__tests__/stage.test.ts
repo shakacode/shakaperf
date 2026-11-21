@@ -22,7 +22,7 @@ describe('AuditStage self-contained report stripping', () => {
 });
 
 describe('AuditStage artifact card', () => {
-  it('shows visible-image coverage, findings, and reasons on the viewport card', () => {
+  it('shows affected images and a collapsed list of passed images on the viewport card', () => {
     const image = {
       label: 'img', src: '/hero.jpg', fit: 'cover', boxWidth: 300, boxHeight: 300,
       naturalWidth: 200, naturalHeight: 200, devicePixelRatio: 1,
@@ -34,17 +34,29 @@ describe('AuditStage artifact card', () => {
         images: [
           { ...image, status: 'undersized', sourceWidth: 200, sourceHeight: 200, requiredWidth: 300, requiredHeight: 300 },
           { ...image, src: '/icon.svg', status: 'unknown', reason: 'Vector image.' },
-          { ...image, src: '/sufficient.png', status: 'sufficient' },
+          {
+            ...image, src: '/sufficient.png', status: 'sufficient', fit: 'contain',
+            naturalWidth: 450, naturalHeight: 300, sourceWidth: 450, sourceHeight: 300,
+            requiredWidth: 300, requiredHeight: 200,
+          },
         ],
       },
     });
-    expect(html).toContain('3 visible · 2 checked · 1 undersized · 0 oversized · 1 unknown');
-    expect(html).toContain('/hero.jpg');
-    expect(html).toContain('200 × 200 px');
-    expect(html).toContain('300 × 300 px');
-    expect(html).toContain('/icon.svg');
-    expect(html).toContain('Vector image.');
-    expect(html).not.toContain('/sufficient.png');
+    expect(html).toContain('3 images recorded · 2 checked · 1 undersized · 0 oversized · 1 unknown');
+    const affected = html.match(/<summary>Affected images \(2\)<\/summary>(.*?)<\/details>/s)?.[1];
+    expect(affected).toContain('/hero.jpg');
+    expect(affected).toContain('200 × 200 px');
+    expect(affected).toContain('300 × 300 px');
+    expect(affected).toContain('/icon.svg');
+    expect(affected).toContain('Vector image.');
+    expect(affected).not.toContain('/sufficient.png');
+
+    const passed = html.match(/<details><summary>Passed images \(1\)<\/summary>(.*?)<\/details>/s)?.[1];
+    expect(passed).toContain('/sufficient.png');
+    expect(passed).toContain('450 × 300 px');
+    expect(passed).toContain('300 × 200 px');
+    expect(passed).not.toContain('/hero.jpg');
+    expect(passed).not.toContain('/icon.svg');
   });
 
   it('links the performance profile and network activity the run captured', () => {
@@ -65,7 +77,7 @@ describe('AuditStage artifact card', () => {
     });
     expect(html).toContain('1.2 s');
     expect(html).toContain('Image check unavailable. Image collector timed out.');
-    expect(html).not.toContain('0 visible');
+    expect(html).not.toContain('0 images recorded');
   });
 
   it('renders a card for a run that captured artifacts but no metrics', () => {

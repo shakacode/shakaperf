@@ -6,6 +6,7 @@
  */
 
 import type { CSSProperties } from 'react';
+import type { ImageResolutionImage } from '../../../bench/core/image-resolution';
 import type { StageRenderEntry } from '../../../stage/stage';
 import {
   DetailedArtifactDialog,
@@ -75,6 +76,49 @@ export function AuditArtifactView({
   );
 }
 
+function ImageResolutionList({ title, images }: { title: string; images: ImageResolutionImage[] }) {
+  if (images.length === 0) return null;
+  return (
+    <details>
+      <summary>{title} ({images.length})</summary>
+      <ul style={{ overflowWrap: 'anywhere' }}>
+        {images.map((image, index) => (
+          <li key={index}>
+            <strong>{image.status}</strong> · {image.label} · {image.src.startsWith('data:') ? 'Embedded image' : image.src}
+            <div>object-fit: {image.fit} · pixel density: {image.devicePixelRatio}×</div>
+            {image.reason ? <div>{image.reason}</div> : image.requiredWidth && image.requiredHeight && (
+              <div>
+                Source {image.sourceWidth} × {image.sourceHeight} px · required{' '}
+                {Math.ceil(image.requiredWidth)} × {Math.ceil(image.requiredHeight)} px
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+function ImageResolutionDetails({ check }: { check: NonNullable<AuditResult['imageResolution']> }) {
+  if ('status' in check) {
+    return <p>{check.status === 'disabled' ? 'Image check disabled.' : `Image check unavailable. ${check.reason}`}</p>;
+  }
+  const findings = check.images.filter(image => image.status !== 'sufficient');
+  const passed = check.images.filter(image => image.status === 'sufficient');
+  const counts = [
+    `${check.images.length} ${check.images.length === 1 ? 'image' : 'images'} recorded`,
+    `${check.images.length - check.unknown} checked`,
+    `${check.undersized} undersized`,
+    `${check.oversized} oversized`,
+    `${check.unknown} unknown`,
+  ];
+  return <>
+    <p>{counts.join(' · ')}</p>
+    <ImageResolutionList title="Affected images" images={findings} />
+    <ImageResolutionList title="Passed images" images={passed} />
+  </>;
+}
+
 function AuditBody({ audit, viewportLabel, latestRun }: { audit: AuditResult; viewportLabel: string; latestRun: boolean }) {
   return <>
     <MetricTable audit={audit} viewportLabel={viewportLabel} latestRun={latestRun} />
@@ -87,42 +131,6 @@ function AuditBody({ audit, viewportLabel, latestRun }: { audit: AuditResult; vi
       >
         <ImageResolutionDetails check={audit.imageResolution} />
       </ReportSection>
-    )}
-  </>;
-}
-
-function ImageResolutionDetails({ check }: { check: NonNullable<AuditResult['imageResolution']> }) {
-  if ('status' in check) {
-    return <p>{check.status === 'disabled' ? 'Image check disabled.' : `Image check unavailable. ${check.reason}`}</p>;
-  }
-  const findings = check.images.filter(image => image.status !== 'sufficient');
-  const counts = [
-    `${check.images.length} visible`,
-    `${check.images.length - check.unknown} checked`,
-    `${check.undersized} undersized`,
-    `${check.oversized} oversized`,
-    `${check.unknown} unknown`,
-  ];
-  return <>
-    <p>{counts.join(' · ')}</p>
-    {findings.length > 0 && (
-      <details>
-        <summary>Affected images ({findings.length})</summary>
-        <ul style={{ overflowWrap: 'anywhere' }}>
-          {findings.map((image, index) => (
-            <li key={index}>
-              <strong>{image.status}</strong> · {image.label} · {image.src.startsWith('data:') ? 'Embedded image' : image.src}
-              <div>object-fit: {image.fit} · pixel density: {image.devicePixelRatio}×</div>
-              {image.reason ? <div>{image.reason}</div> : image.requiredWidth && image.requiredHeight && (
-                <div>
-                  Source {image.sourceWidth} × {image.sourceHeight} px · required{' '}
-                  {Math.ceil(image.requiredWidth)} × {Math.ceil(image.requiredHeight)} px
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      </details>
     )}
   </>;
 }

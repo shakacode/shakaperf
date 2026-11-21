@@ -138,6 +138,11 @@ describe('current rendered image measurement in Chromium', () => {
       await page.setContent(`
         <style>img { width:40px;height:20px }</style>
         <img id="hidden" src="${source}" style="display:none">
+        <img id="hidden-by-visibility" src="${source}" style="visibility:hidden">
+        <div style="visibility:hidden">
+          <img id="inherits-hidden" src="${source}">
+          <img id="explicitly-visible" src="${source}" style="visibility:visible">
+        </div>
         <img id="offscreen" src="${source}" style="position:absolute;top:3000px">
         <div style="opacity:0"><img id="transparent" src="${source}"></div>
         <div style="transform:scale(2);transform-origin:left top"><img id="transform" src="${source}"></div>
@@ -158,9 +163,9 @@ describe('current rendered image measurement in Chromium', () => {
       const classified = classifyImageSources(measurements, new Set());
       const result = evaluateImageResolution(classified, config);
       expect(measurements.map(image => image.label).sort()).toEqual([
-        'img#shadow', 'img#slotted', 'img#transform', 'img#unloaded', 'img#vector', 'img#zoom',
+        'img#explicitly-visible', 'img#shadow', 'img#slotted', 'img#transform', 'img#unloaded', 'img#vector', 'img#zoom',
       ]);
-      expect(result).toMatchObject({ unknown: 5, oversized: 1, undersized: 0 });
+      expect(result).toMatchObject({ unknown: 5, oversized: 2, undersized: 0 });
       expect(result.images.find(image => image.label === 'img#shadow')).toMatchObject({ sourceWidth: 400, sourceHeight: 200 });
     } finally { await page.close(); }
   });

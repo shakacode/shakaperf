@@ -112,8 +112,9 @@ reported as unknown. If the whole image check fails, ShakaPerf keeps the speed
 results and reports the error. With undersized-image failure enabled, that
 error also fails the command.
 
-The main report shows how many images were checked. Expand the findings
-to see the affected images and why they were flagged or could not be measured.
+The main report shows how many images were recorded for each viewport. Expand
+**Passed images** to see which images met the thresholds and their source and
+required dimensions. **Affected images** lists undersized, oversized, and unknown images.
 Measurements are also available in the Lighthouse report and `report.json`.
 The check detects insufficient pixel dimensions, not blur already present in
 the source image. SVGs, unloaded images, unsupported CSS transforms or zoom, and
