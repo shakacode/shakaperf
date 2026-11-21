@@ -16,6 +16,9 @@ export interface ImageResolutionMeasurement {
   fit: string;
   boxWidth: number;
   boxHeight: number;
+  /** On-screen scale on each axis, applied after object-fit. Defaults to 1. */
+  scaleX?: number;
+  scaleY?: number;
   naturalWidth: number;
   naturalHeight: number;
   devicePixelRatio: number;
@@ -59,31 +62,39 @@ function renderedParent(element: Element): Element | null {
   return root instanceof ShadowRoot ? root.host : null;
 }
 
-function readImageLayout(image: HTMLImageElement): ImageResolutionMeasurement | undefined {
+function hasUnsupportedImageTransform(style: CSSStyleDeclaration): boolean {
+  if (style.rotate !== 'none' || style.perspective !== 'none' || style.offsetPath !== 'none') return true;
+  if (style.transform === 'none') return false;
+  const matrix = new DOMMatrixReadOnly(style.transform);
+  // The bounding rectangle gives the scaled width and height only while the axes stay aligned.
+  return !matrix.isIdentity && (!matrix.is2D || matrix.b !== 0 || matrix.c !== 0);
+}
+
+function readImageLayout(image: HTMLImageElement, rect: DOMRect): ImageResolutionMeasurement | undefined {
   const style = getComputedStyle(image);
   if (style.visibility !== 'visible') return;
 
   let reason: string | undefined;
+  let hasTransform = false;
   for (let element: Element | null = image; element; element = renderedParent(element)) {
     const ancestorStyle = element === image ? style : getComputedStyle(element);
     if (Number(ancestorStyle.opacity) === 0 || ancestorStyle.display === 'none' ||
         ancestorStyle.contentVisibility === 'hidden') return;
-    if (ancestorStyle.transform !== 'none' || ancestorStyle.scale !== 'none' ||
-        ancestorStyle.rotate !== 'none' || ancestorStyle.perspective !== 'none' ||
+    if (ancestorStyle.transform !== 'none' || ancestorStyle.scale !== 'none') hasTransform = true;
+    if (hasUnsupportedImageTransform(ancestorStyle) ||
         (ancestorStyle.zoom !== 'normal' && Number(ancestorStyle.zoom) !== 1)) {
-      reason = 'CSS transforms or zoom are unsupported.';
+      reason = 'This CSS transform or zoom is unsupported.';
     }
   }
 
   // object-fit uses the content box, which excludes padding and borders.
-  let boxWidth = parseFloat(style.width);
-  let boxHeight = parseFloat(style.height);
-  if (style.boxSizing === 'border-box') {
-    boxWidth -= parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) +
-      parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
-    boxHeight -= parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) +
-      parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
-  }
+  const horizontalInsets = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) +
+    parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
+  const verticalInsets = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) +
+    parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+  const isBorderBox = style.boxSizing === 'border-box';
+  const boxWidth = parseFloat(style.width) - (isBorderBox ? horizontalInsets : 0);
+  const boxHeight = parseFloat(style.height) - (isBorderBox ? verticalInsets : 0);
   if (!(boxWidth > 0 && boxHeight > 0)) return;
   if (!image.complete || !image.currentSrc || !image.naturalWidth || !image.naturalHeight) {
     reason ??= 'Image is not loaded.';
@@ -96,6 +107,10 @@ function readImageLayout(image: HTMLImageElement): ImageResolutionMeasurement | 
 
   return {
     src: image.currentSrc, label, fit: style.objectFit, boxWidth, boxHeight,
+    ...(hasTransform && !reason ? {
+      scaleX: rect.width / (boxWidth + horizontalInsets),
+      scaleY: rect.height / (boxHeight + verticalInsets),
+    } : {}),
     naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight,
     devicePixelRatio: window.devicePixelRatio, ...(reason ? { reason } : {}),
   };
@@ -109,7 +124,7 @@ function collectImagesInViewport(root: Document | ShadowRoot): ViewportImage[] {
       rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth;
     if (!overlapsViewport) continue;
 
-    const measurement = readImageLayout(image);
+    const measurement = readImageLayout(image, rect);
     if (measurement) images.push({ image, measurement });
   }
   for (const element of Array.from(root.querySelectorAll('*'))) {
@@ -151,7 +166,7 @@ export async function collectImageResolutionMeasurements(): Promise<ImageResolut
 
 // Lighthouse evaluates the collector in Chrome. These functions go with it.
 export const imageMeasurementPageHelpers = [
-  renderedParent, readImageLayout, collectImagesInViewport, readBitmapDimensions,
+  renderedParent, hasUnsupportedImageTransform, readImageLayout, collectImagesInViewport, readBitmapDimensions,
 ];
 
 function evaluateSingleImage(
@@ -177,6 +192,8 @@ function evaluateSingleImage(
     paintedWidth = naturalWidth * scale;
     paintedHeight = naturalHeight * scale;
   }
+  paintedWidth *= measurement.scaleX ?? 1;
+  paintedHeight *= measurement.scaleY ?? 1;
   const requiredWidth = paintedWidth * devicePixelRatio;
   const requiredHeight = paintedHeight * devicePixelRatio;
   const ratio = Math.min(sourceWidth! / requiredWidth, sourceHeight! / requiredHeight);

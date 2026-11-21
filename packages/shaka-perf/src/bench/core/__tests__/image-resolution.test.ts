@@ -131,6 +131,42 @@ describe('current rendered image measurement in Chromium', () => {
     } finally { await page.close(); }
   });
 
+  it('measures the current scale of a paused animation', async () => {
+    const page = await browser.newPage();
+    try {
+      await page.setContent(`
+        <style>
+          @keyframes grow { from { transform:scale(0.5) } to { transform:scale(1.5) } }
+          img { animation:grow 2s linear -1s paused }
+        </style>
+        <img width="400" height="200" src="data:image/png;base64,${png.toString('base64')}">
+      `);
+      const { images } = evaluateImageResolution(await measurePageImages(page), config);
+      // A negative delay of one second freezes the two-second animation at scale(1).
+      expect(images[0]).toMatchObject({
+        sourceWidth: 400, sourceHeight: 200, requiredWidth: 400, requiredHeight: 200, status: 'sufficient',
+      });
+    } finally { await page.close(); }
+  });
+
+  it('applies the image and ancestor scales after object-fit and before screen pixel density', async () => {
+    const page = await browser.newPage({ deviceScaleFactor: 2 });
+    try {
+      await page.setContent(`
+        <div style="transform:scale(2); transform-origin:top left">
+          <img width="120" height="120" src="data:image/png;base64,${png.toString('base64')}"
+            style="box-sizing:border-box; padding:6px; border:4px solid; object-fit:cover;
+              scale:2 0.5; transform:scale(0.75,2); transform-origin:top left">
+        </div>
+      `);
+      const { images } = evaluateImageResolution(await measurePageImages(page), config);
+      // Cover paints 200 × 100. The combined CSS scale is 3 × 2, then DPR doubles both dimensions.
+      expect(images[0]).toMatchObject({
+        requiredWidth: 1200, requiredHeight: 400, status: 'undersized',
+      });
+    } finally { await page.close(); }
+  });
+
   it('excludes invisible images and retains unsupported, vector and unloaded images as unknown', async () => {
     const page = await browser.newPage();
     const source = `data:image/png;base64,${png.toString('base64')}`;
@@ -146,6 +182,7 @@ describe('current rendered image measurement in Chromium', () => {
         <img id="offscreen" src="${source}" style="position:absolute;top:3000px">
         <div style="opacity:0"><img id="transparent" src="${source}"></div>
         <div style="transform:scale(2);transform-origin:left top"><img id="transform" src="${source}"></div>
+        <img id="rotated" src="${source}" style="transform:rotate(20deg)">
         <div style="zoom:2"><img id="zoom" src="${source}"></div>
         <img id="vector" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='20'/%3E">
         <img id="unloaded">
@@ -163,9 +200,18 @@ describe('current rendered image measurement in Chromium', () => {
       const classified = classifyImageSources(measurements, new Set());
       const result = evaluateImageResolution(classified, config);
       expect(measurements.map(image => image.label).sort()).toEqual([
-        'img#explicitly-visible', 'img#shadow', 'img#slotted', 'img#transform', 'img#unloaded', 'img#vector', 'img#zoom',
+        'img#explicitly-visible', 'img#rotated', 'img#shadow', 'img#slotted', 'img#transform',
+        'img#unloaded', 'img#vector', 'img#zoom',
       ]);
-      expect(result).toMatchObject({ unknown: 5, oversized: 2, undersized: 0 });
+      expect(result).toMatchObject({ unknown: 4, oversized: 4, undersized: 0 });
+      for (const label of ['img#transform', 'img#slotted']) {
+        expect(result.images.find(image => image.label === label)).toMatchObject({
+          requiredWidth: 80, requiredHeight: 40, status: 'oversized',
+        });
+      }
+      for (const label of ['img#rotated', 'img#zoom']) {
+        expect(result.images.find(image => image.label === label)?.status).toBe('unknown');
+      }
       expect(result.images.find(image => image.label === 'img#shadow')).toMatchObject({ sourceWidth: 400, sourceHeight: 200 });
     } finally { await page.close(); }
   });

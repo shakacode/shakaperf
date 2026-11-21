@@ -92,7 +92,9 @@ Values on either boundary pass, allowing a tiny tolerance for browser rounding.
 For example, a 300 × 300 CSS-pixel image at pixel density 2 needs 600 × 600 source
 pixels. The default minimum accepts 540 × 540; set `minRatio: 1` to require the
 full resolution. With `cover`, the check includes enlargement before cropping.
-All five `object-fit` values are supported.
+All five `object-fit` values are supported. If the image or a parent uses CSS
+scaling, the audit uses the scale at the moment of the check. For example, a
+300 × 300 image at `transform: scale(1.5)` needs 450 × 450 source pixels on a 1× screen.
 
 Set `enabled: false` to skip image checking.
 Set `failOnUndersized: true` to make failure the project default. Tests can
