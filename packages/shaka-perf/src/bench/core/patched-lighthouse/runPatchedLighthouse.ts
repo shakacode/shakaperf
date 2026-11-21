@@ -5,7 +5,9 @@
  * License in LICENSE.md.
  */
 
-import type { RunnerResult } from 'lighthouse';
+import type { Flags, RunnerResult } from 'lighthouse';
+import type { Config } from 'lighthouse/types/lh.js';
+import type { ImageResolutionConfig } from '../image-resolution';
 
 import { ensureLighthousePatchRegistered } from './register-patch';
 
@@ -22,19 +24,11 @@ ensureLighthousePatchRegistered();
  * silent failure mode where post-load testFn interactions get excluded from
  * the trace.
  *
- * Lighthouse v12+ is ESM-only. TypeScript's CJS emit would rewrite a
- * top-level `import lighthouse from 'lighthouse'` into a plain `require()`,
- * which throws ERR_REQUIRE_ESM at module load — even on code paths that
- * never actually call Lighthouse (e.g. `shaka-perf init`). Dynamic-import
- * at call-time keeps the CLI's other commands usable when Lighthouse isn't
- * needed.
+ * Load Lighthouse only when a command needs it, after registering the patch.
+ * An earlier import can cache Lighthouse before the patch is applied.
  */
-// `tsconfig.base.json` is `module: CommonJS`, so a bare `await import('lighthouse')`
-// gets rewritten by tsc into `Promise.resolve().then(() => require('lighthouse'))`,
-// which fails with ERR_REQUIRE_ESM against Lighthouse 12+. Routing through
-// `new Function('return import(...)')` keeps the dynamic import opaque to tsc
-// — it stays a real native `import()` at runtime, which Node loads as ESM and
-// which the patch-loader hook (registered above) intercepts.
+// Keep this first import native so Node's loader can patch Lighthouse.
+// Otherwise the project's CommonJS build rewrites import() to a deferred require().
 const dynamicImport = new Function('specifier', 'return import(specifier)') as
   (specifier: string) => Promise<unknown>;
 
@@ -67,6 +61,7 @@ export interface RunPatchedLighthouseOptions {
    * of the LHR.
    */
   canStopTracking?: Promise<void>;
+  imageResolution?: ImageResolutionConfig;
 }
 
 /**
@@ -90,15 +85,29 @@ export interface RunPatchedLighthouseOptions {
 export async function runPatchedLighthouse(
   url: string,
   settings: unknown,
-  { canStopTracking = Promise.resolve() }: RunPatchedLighthouseOptions = {},
+  { canStopTracking = Promise.resolve(), imageResolution }: RunPatchedLighthouseOptions = {},
 ): Promise<RunnerResult> {
   const g = globalThis as Record<string, unknown>;
   const hadPrevious = HOLD_GATHER_FLAG in g;
   const previous = g[HOLD_GATHER_FLAG];
   g[HOLD_GATHER_FLAG] = canStopTracking;
   try {
-    const lighthouse = (await importPatchedLighthouse()).default;
-    const result = (await lighthouse(url, settings as never)) as RunnerResult;
+    const module = await importPatchedLighthouse();
+    let effectiveFlags = settings as Flags;
+    let config: Config | undefined;
+    if (imageResolution) {
+      // The plugin extends Lighthouse classes, so load it after the patched import above.
+      const { imageResolutionLighthouseConfig, IMAGE_RESOLUTION_CATEGORY } =
+        await import('../image-resolution-lighthouse');
+      config = imageResolutionLighthouseConfig(imageResolution);
+      if (effectiveFlags.onlyCategories) {
+        effectiveFlags = {
+          ...effectiveFlags,
+          onlyCategories: [...new Set([...effectiveFlags.onlyCategories, IMAGE_RESOLUTION_CATEGORY])],
+        };
+      }
+    }
+    const result = (await module.default(url, effectiveFlags, config)) as RunnerResult;
     return result;
   } finally {
     if (hadPrevious) {

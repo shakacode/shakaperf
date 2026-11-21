@@ -131,6 +131,14 @@ export interface PerfConfigInput {
 }
 
 export interface AuditConfigInput {
+  /** Source pixels / (painted CSS pixels × current screen pixel density). */
+  imageResolution?: {
+    /** Disable image gathering while retaining the ordinary speed audit. Defaults to true. */
+    enabled?: boolean;
+    minRatio?: number;
+    maxRatio?: number;
+    failOnUndersized?: boolean;
+  };
   viewports?: [string, ...string[]];
   // Raw Lighthouse flags (see `PerfConfigInput.lighthouseConfig`).
   lighthouseConfig?: Record<string, unknown>;

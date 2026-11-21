@@ -118,10 +118,14 @@ export async function runAuditStage(
     console.log(chalk.dim('starting'));
   };
 
+  const { enabled, minRatio, maxRatio, failOnUndersized } = ctx.config.audit.imageResolution;
+  const forceFailure = config.failOnUndersizedImages === true;
+  const checkImages = enabled || forceFailure;
   const benchmark = createLighthouseBenchmark('experiment', ctx.test, {
     viewport: ctx.viewport,
     resultsFolder: artifactsDir,
     lhConfig,
+    ...(checkImages ? { imageResolution: { minRatio, maxRatio } } : {}),
     saveArtifacts: true,
     captureAuditArtifacts: true,
     targetUrl: ctx.experimentURL,
@@ -185,11 +189,22 @@ export async function runAuditStage(
 
   const metrics = sample.phases.map(auditMetricForPhase);
   printAuditLevels(ctx, metrics);
-  return readAuditArtifact({
+  const result = await readAuditArtifact({
     artifacts: ctx.artifacts,
     metrics,
     title: `${ctx.test.name} · ${ctx.viewport.label}`,
   });
+  if (!checkImages) {
+    return { ...result, imageResolution: { status: 'disabled', failOnUndersized: false } };
+  }
+  const check = sample.imageResolution ?? {
+    status: 'unavailable' as const,
+    reason: 'The audit did not return image resolution measurements.',
+  };
+  return {
+    ...result,
+    imageResolution: { ...check, failOnUndersized: failOnUndersized || forceFailure },
+  };
 }
 
 function auditMetricForPhase(phase: PhaseSample): AuditMetric {
