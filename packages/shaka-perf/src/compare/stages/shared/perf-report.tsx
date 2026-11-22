@@ -5,26 +5,20 @@
  * License in LICENSE.md.
  */
 
-import { useId, useState } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { PerfArtifact, PerfMetric, PerfMetricGroup } from '../perf';
 import {
   DetailedArtifactDialog,
-  ArtifactMetadataFields,
   StageArtifact,
   StageArtifactTitle,
   ReportHeading,
-  OldRunChip,
   StageNote,
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
-import { performanceMetadataFields } from '../perf/metadata-fields';
+import { performanceMetadataFields } from '../../../report-ui/performanceMetadataFields';
 import { FramePlayer } from './frame-player';
-import {
-  ReportSection,
-  useReportSection,
-  useReportSectionExpanded,
-} from '../../../pipeline/report-section';
+import { useReportSection } from '../../../pipeline/report-section';
+import { PerformanceViewportSection } from '../../../report-ui/PerformanceViewportSection';
 
 const GROUPS: PerfMetricGroup[] = ['vitals', 'diagnostics'];
 
@@ -70,61 +64,18 @@ function PerfViewportBlock({ entry }: { entry: StageRenderEntry<PerfArtifact> })
   const viewportLabel = entry.executionDetails.viewport.label;
   const section = useReportSection();
   const sectionKey = `${section ?? 'perf'}:viewport:${viewportLabel}`;
-  const expanded = useReportSectionExpanded(sectionKey);
-  const viewport = entry.executionDetails.viewport;
-  const fields = performanceMetadataFields(entry.executionDetails.measurementMetadata);
-  const hasSettings = Object.keys(fields).length > 0;
-  const [showSettings, setShowSettings] = useState(false);
-  const settingsVisible = showSettings && expanded;
-  const settingsId = useId();
-  const hasSignificantMetrics = significantMetrics(perf).length > 0;
-  const hasNoDifference = hasNoDifferenceMetrics(perf);
   return (
-    <section
-      className="stage-stack__viewport perf-viewport"
-      aria-label={`${viewportLabel} performance`}
+    <PerformanceViewportSection
+      sectionKey={sectionKey}
+      executionDetails={entry.executionDetails}
+      latestRun={latestRun}
     >
-      <ReportSection
-        sectionKey={sectionKey}
-        title={`${viewportLabel} performance`}
-        badge={
-          <>
-            {settingsVisible ? (
-              <span className="perf-viewport__dimensions">
-                {viewport.width} × {viewport.height}
-              </span>
-            ) : null}
-            <OldRunChip latestRun={latestRun} />
-          </>
-        }
-        actions={
-          hasSettings && expanded ? (
-            <button
-              type="button"
-              className="perf-run-settings-toggle"
-              aria-expanded={settingsVisible}
-              aria-controls={settingsId}
-              onClick={() => setShowSettings(previous => !previous)}
-            >
-              {showSettings ? 'hide metadata' : 'show metadata'}
-            </button>
-          ) : null
-        }
-        nested
-      >
-        {hasSettings ? (
-          <div id={settingsId} className="perf-run-settings" hidden={!settingsVisible}>
-            <ArtifactMetadataFields fields={fields} />
-          </div>
-        ) : null}
-
-        <PerfBody
-          entry={entry}
-          hasNoDifference={hasNoDifference}
-          hasSignificantMetrics={hasSignificantMetrics}
-        />
-      </ReportSection>
-    </section>
+      <PerfBody
+        entry={entry}
+        hasNoDifference={hasNoDifferenceMetrics(perf)}
+        hasSignificantMetrics={significantMetrics(perf).length > 0}
+      />
+    </PerformanceViewportSection>
   );
 }
 

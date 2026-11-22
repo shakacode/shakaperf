@@ -1,0 +1,65 @@
+/*
+ * Copyright (c) 2026 ShakaCode LLC.
+ *
+ * This file is part of ShakaPerf. Use is governed by The ShakaPerf
+ * License in LICENSE.md.
+ */
+
+import { useId, useState, type ReactNode } from 'react';
+import type { ExecutionDetails } from '../pipeline/outcome';
+import { ReportSection } from '../pipeline/report-section';
+import { OldRunChip } from '../pipeline/stage-report-components';
+import { ArtifactMetadataFields } from './ArtifactMetadataFields';
+import { performanceMetadataFields } from './performanceMetadataFields';
+
+export function PerformanceViewportSection({ sectionKey, executionDetails, latestRun, children }: {
+  sectionKey: string;
+  executionDetails: ExecutionDetails;
+  latestRun: boolean;
+  children: ReactNode;
+}) {
+  const { viewport, measurementMetadata } = executionDetails;
+  const fields = performanceMetadataFields(measurementMetadata);
+  const hasSettings = Object.keys(fields).length > 0;
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsId = useId();
+  return (
+    <section
+      className="stage-stack__viewport perf-viewport"
+      aria-label={`${viewport.label} performance`}
+    >
+      <ReportSection
+        sectionKey={sectionKey}
+        title={`${viewport.label} performance`}
+        badge={<OldRunChip latestRun={latestRun} />}
+        actions={hasSettings && (
+          <>
+            {showSettings ? (
+              <span className="perf-viewport__dimensions">
+                {viewport.width} × {viewport.height}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              className="perf-run-settings-toggle"
+              aria-expanded={showSettings}
+              aria-controls={settingsId}
+              onClick={() => setShowSettings(previous => !previous)}
+            >
+              {showSettings ? 'hide metadata' : 'show metadata'}
+            </button>
+          </>
+        )}
+        nested
+      >
+        {hasSettings ? (
+          <div id={settingsId} className="perf-run-settings" hidden={!showSettings}>
+            <ArtifactMetadataFields fields={fields} />
+          </div>
+        ) : null}
+
+        {children}
+      </ReportSection>
+    </section>
+  );
+}

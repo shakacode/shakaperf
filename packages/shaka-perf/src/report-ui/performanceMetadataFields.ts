@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import type { MeasurementThrottling, MeasurementMetadata } from '../../../pipeline/run-metadata';
+import type { MeasurementThrottling, MeasurementMetadata } from '../pipeline/run-metadata';
 
 const NETWORK_UNITS: Record<string, string> = {
   rttMs: 'ms RTT',

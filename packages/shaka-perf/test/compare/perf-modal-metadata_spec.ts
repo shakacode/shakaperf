@@ -7,7 +7,7 @@
 
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { performanceMetadataFields } from '../../src/compare/stages/perf/metadata-fields';
+import { performanceMetadataFields } from '../../src/report-ui/performanceMetadataFields';
 import { runDetailsFixture } from '../../src/pipeline/__tests__/fixtures/run-details';
 import { reportDataForMode } from '../../src/pipeline/report';
 import { ArtifactMetadataFields } from '../../src/pipeline/stage-report-components';
