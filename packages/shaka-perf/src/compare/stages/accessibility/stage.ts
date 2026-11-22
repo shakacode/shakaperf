@@ -56,17 +56,7 @@ export class AccessibilityCompareStage implements Stage<AccessibilityCompareResu
     const { runAccessibilityCompareStage } =
       await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
     const result = await runAccessibilityCompareStage(ctx, pool, this.config);
-    const { new: added, fixed, changed, unchanged } = result.summary;
-    return {
-      measurement: result,
-      metadata: {
-        viewport: ctx.viewport.label,
-        new: String(added),
-        fixed: String(fixed),
-        changed: String(changed),
-        unchanged: String(unchanged),
-      },
-    };
+    return { measurement: result, metadata: accessibilityComparisonFields(result.summary, ctx.viewport) };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<AccessibilityCompareResult>[]) {
@@ -75,4 +65,25 @@ export class AccessibilityCompareStage implements Stage<AccessibilityCompareResu
   }
 
   machineReadableSummary = emptyMachineReadableSummary;
+}
+
+type AccessibilityComparisonFields = {
+  viewport: string;
+  new: string;
+  fixed: string;
+  changed: string;
+  unchanged: string;
+};
+
+function accessibilityComparisonFields(
+  summary: AccessibilityCompareResult['summary'],
+  viewport: Viewport,
+): AccessibilityComparisonFields {
+  return {
+    viewport: viewport.label,
+    new: String(summary.new),
+    fixed: String(summary.fixed),
+    changed: String(summary.changed),
+    unchanged: String(summary.unchanged),
+  };
 }

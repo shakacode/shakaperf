@@ -85,7 +85,8 @@ export class CodeCoverageStage implements Stage<CodeCoverageResult> {
   async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<CodeCoverageResult>> {
     const runImpl = './engine';
     const { runCodeCoverageStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return { measurement: await runCodeCoverageStage(ctx, pool), metadata: {} };
+    const measurement = await runCodeCoverageStage(ctx, pool);
+    return { measurement, metadata: {} };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<CodeCoverageResult>[]) {

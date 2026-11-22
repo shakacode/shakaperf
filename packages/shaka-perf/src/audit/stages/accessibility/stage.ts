@@ -24,7 +24,7 @@ import {
   DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
   type AccessibilityStageConfig,
 } from './config';
-import type { AccessibilityResult } from './types';
+import type { AccessibilityResult, AccessibilityScan } from './types';
 
 export class AccessibilityStage implements Stage<AccessibilityResult> {
   readonly measuresApplication = true;
@@ -53,17 +53,7 @@ export class AccessibilityStage implements Stage<AccessibilityResult> {
     const { runAccessibilityStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
     const result = await runAccessibilityStage(ctx, pool, this.config);
     const [scan] = result.scans;
-    if (!scan) return { measurement: result, metadata: {} };
-    const nodes = scan.violations.reduce((sum, rule) => sum + rule.nodes.length, 0);
-    return {
-      measurement: result,
-      metadata: {
-        viewport: scan.viewportLabel,
-        issues: `${scan.violations.length} rules · ${nodes} nodes`,
-        hotspots: String(localizedHotspots(scan).length),
-        url: scan.url,
-      },
-    };
+    return { measurement: result, metadata: scan ? accessibilityStageMetadata(scan) : {} };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<AccessibilityResult>[]) {
@@ -86,4 +76,21 @@ export class AccessibilityStage implements Stage<AccessibilityResult> {
       })),
     };
   }
+}
+
+type AccessibilityAuditFields = {
+  viewport: string;
+  issues: string;
+  hotspots: string;
+  url: string;
+};
+
+function accessibilityStageMetadata(scan: AccessibilityScan): AccessibilityAuditFields {
+  const nodes = scan.violations.reduce((sum, rule) => sum + rule.nodes.length, 0);
+  return {
+    viewport: scan.viewportLabel,
+    issues: `${scan.violations.length} rules · ${nodes} nodes`,
+    hotspots: String(localizedHotspots(scan).length),
+    url: scan.url,
+  };
 }

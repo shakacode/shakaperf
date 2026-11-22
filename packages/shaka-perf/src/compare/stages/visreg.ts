@@ -89,17 +89,39 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
   };
 }
 
-export function visualComparisonFields(artifacts: VisregResult, viewport: Viewport): Record<string, string> {
-  const fields: Record<string, string> = { viewport: `${viewport.label} ${viewport.width} × ${viewport.height}` };
+type VisualComparisonFields = {
+  viewport: string;
+  selector?: string;
+  mismatch?: string;
+  'visual comparisons'?: string;
+  [label: `mismatch · ${string}`]: string;
+  [label: `visual comparisons · ${string}`]: string;
+};
+
+function comparisonCount(artifact: VisregArtifact): string | undefined {
+  const { visualComparisonCount, visualComparisonLimit, savedByRetries } = artifact;
+  if (visualComparisonCount === undefined) return undefined;
+
+  const count = visualComparisonLimit === undefined
+    ? String(visualComparisonCount)
+    : `${visualComparisonCount}/${visualComparisonLimit}`;
+  return savedByRetries ? `${count} · matched on retry` : count;
+}
+
+export function visualComparisonFields(artifacts: VisregResult, viewport: Viewport): VisualComparisonFields {
+  const fields: VisualComparisonFields = { viewport: `${viewport.label} ${viewport.width} × ${viewport.height}` };
   for (const artifact of artifacts) {
-    const suffix = artifacts.length > 1 ? ` · ${artifact.selector}` : '';
-    if (!suffix) fields.selector = artifact.selector;
-    fields[`mismatch${suffix}`] = `${artifact.misMatchPercentage.toFixed(2)}%`;
-    const { visualComparisonCount, visualComparisonLimit } = artifact;
-    if (visualComparisonCount === undefined) continue;
-    const limit = visualComparisonLimit === undefined ? '' : `/${visualComparisonLimit}`;
-    const recovery = artifact.savedByRetries ? ' · matched on retry' : '';
-    fields[`visual comparisons${suffix}`] = `${visualComparisonCount}${limit}${recovery}`;
+    const mismatch = `${artifact.misMatchPercentage.toFixed(2)}%`;
+    const comparisons = comparisonCount(artifact);
+
+    if (artifacts.length === 1) {
+      fields.selector = artifact.selector;
+      fields.mismatch = mismatch;
+      if (comparisons !== undefined) fields['visual comparisons'] = comparisons;
+    } else {
+      fields[`mismatch · ${artifact.selector}`] = mismatch;
+      if (comparisons !== undefined) fields[`visual comparisons · ${artifact.selector}`] = comparisons;
+    }
   }
   return fields;
 }

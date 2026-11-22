@@ -77,7 +77,8 @@ export class MyStage implements Stage<MyResult> {
   async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<MyResult>> {
     const runImpl = './engine';
     const { runMyStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return { measurement: await runMyStage(ctx, pool, this.config), metadata: {} };
+    const measurement = await runMyStage(ctx, pool, this.config);
+    return { measurement, metadata: {} };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<MyResult>[]) {
