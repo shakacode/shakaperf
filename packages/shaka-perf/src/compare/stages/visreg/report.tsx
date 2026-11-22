@@ -76,7 +76,6 @@ function VisregCard({ row }: { row: VisregRow }) {
         href={artifact.diffImage}
         label={`${viewportLabel} ${artifact.selector}`}
         title={`visual regressions ${viewportLabel} > ${artifact.selector}`}
-        fields={visualComparisonFields(row)}
         executionDetails={row.entry.executionDetails}
         body={<VisregDialogImages row={artifact} diffImage={artifact.diffImage} />}
       >
@@ -92,7 +91,6 @@ function VisregCard({ row }: { row: VisregRow }) {
         href={artifact.controlImage}
         label={`${viewportLabel} ${artifact.selector}`}
         title={`visual regressions ${viewportLabel} > ${artifact.selector}`}
-        fields={visualComparisonFields(row)}
         executionDetails={row.entry.executionDetails}
         body={<VisregDialogImages row={artifact} />}
       >
@@ -102,27 +100,6 @@ function VisregCard({ row }: { row: VisregRow }) {
       </DetailedArtifactDialog>
     </div>
   );
-}
-
-export function visualComparisonFields({
-  artifact,
-  viewportLabel,
-  entry,
-}: Pick<VisregRow, 'artifact' | 'viewportLabel' | 'entry'>): Readonly<Record<string, string>> {
-  const fields: Record<string, string> = {
-    viewport: `${viewportLabel} ${entry.executionDetails.viewport.width} × ${entry.executionDetails.viewport.height}`,
-    selector: artifact.selector,
-    mismatch: `${artifact.misMatchPercentage.toFixed(2)}%`,
-  };
-  const { visualComparisonCount, visualComparisonLimit } = artifact;
-  if (visualComparisonCount === undefined) return fields;
-
-  let comparisonText = String(visualComparisonCount);
-  if (visualComparisonLimit !== undefined) comparisonText += `/${visualComparisonLimit}`;
-  if (artifact.savedByRetries) comparisonText += ' · matched on retry';
-
-  fields['visual comparisons'] = comparisonText;
-  return fields;
 }
 
 function DiffImages({ row, diffImage }: { row: VisregArtifact; diffImage: string }) {

@@ -558,7 +558,6 @@ function AccessibilityCompareViewport({
               className="a11y-compare-card__inspect"
               href={result.comparisonArtifactHref ?? '#'}
               label={`${viewportLabel} accessibility comparison`}
-              fields={compareDialogFields(result, viewportLabel)}
               executionDetails={entry.executionDetails}
               body={<CompareFindingsDialog result={result} viewportLabel={viewportLabel} />}
             >
@@ -575,19 +574,6 @@ function AccessibilityCompareViewport({
       </div>
     </div>
   );
-}
-
-export function compareDialogFields(
-  result: AccessibilityCompareResult,
-  viewportLabel: string,
-): Readonly<Record<string, string>> {
-  return {
-    viewport: viewportLabel,
-    new: String(result.summary.new),
-    fixed: String(result.summary.fixed),
-    changed: String(result.summary.changed),
-    unchanged: String(result.summary.unchanged),
-  };
 }
 
 function CompareFindingsDialog({

@@ -12,6 +12,7 @@ import type { Viewport } from '../../../config';
 import {
   emptyMachineReadableSummary,
   type Stage,
+  type StageRunResult,
   type StageName,
   type StageRenderEntry,
   type TestContext,
@@ -63,10 +64,10 @@ export class AuditStage implements Stage<AuditResult> {
     return true;
   }
 
-  async run(ctx: TestContext, pool: WorkerPool): Promise<AuditResult> {
+  async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<AuditResult>> {
     const runImpl = './engine';
     const { runAuditStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return runAuditStage(ctx, pool, this.config);
+    return [await runAuditStage(ctx, pool, this.config), {}];
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<AuditResult>[]) {

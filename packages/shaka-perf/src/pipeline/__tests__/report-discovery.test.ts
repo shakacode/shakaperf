@@ -74,7 +74,7 @@ describe.each(['compare', 'audit'] as const)('%s report discovery', (name) => {
           applies: () => true,
           run: async (ctx) => {
             measuredTests.push(ctx.test.name);
-            return {};
+            return [{}, {}] as const;
           },
           renderArtifacts: () => null,
           machineReadableSummary: () => ({}),

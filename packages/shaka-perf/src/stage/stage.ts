@@ -133,6 +133,9 @@ export interface StageRenderEntry<M = unknown> {
   readonly latestRun: boolean;
 }
 
+/** The runner saves these fields once per test, viewport, and stage. */
+export type StageRunResult<M> = readonly [measurement: M, metadata: Readonly<Record<string, string>>];
+
 export interface Stage<M = unknown> {
   /** Explicitly declare whether run() measures the application or derives data
    * from saved results. The runner captures metadata before measuring stages;
@@ -161,7 +164,7 @@ export interface Stage<M = unknown> {
    */
   readonly renderingPriority?: number;
   applies(test: AbTestDefinition, viewport: Viewport, priorOutcomeKinds: ReadonlyMap<StageName, OutcomeKind>): boolean;
-  run(ctx: TestContext, pool: WorkerPool): Promise<M>;
+  run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<M>>;
   machineReadableSummary(measurement: M, ctx: StageRenderContext): JsonValue;
   /**
    * Fields explicitly set to `true` are removed from self-contained report

@@ -11,6 +11,7 @@ import type { Viewport } from '../../../config';
 import {
   type JsonValue,
   type Stage,
+  type StageRunResult,
   type StageName,
   type StageRenderContext,
   type StageRenderEntry,
@@ -45,10 +46,10 @@ export class AgentReadinessStage implements Stage<AgentReadinessResult> {
     return test.config?.agentReadiness?.enabled ?? this.config.enabled;
   }
 
-  async run(ctx: TestContext, pool: WorkerPool): Promise<AgentReadinessResult> {
+  async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<AgentReadinessResult>> {
     const runImpl = './engine';
     const { runAgentReadinessStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return runAgentReadinessStage(ctx, pool, this.config);
+    return [await runAgentReadinessStage(ctx, pool, this.config), {}];
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<AgentReadinessResult>[]) {

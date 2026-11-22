@@ -13,7 +13,6 @@ import { ArtifactDialogMetadata } from '../report-ui/ArtifactDialogMetadata';
 import { Dialog } from '../report-ui/Dialog';
 import { useTestCard } from '../report-ui/TestCardProvider';
 export { Dialog };
-export { ArtifactMetadataFields } from '../report-ui/ArtifactMetadataFields';
 
 export { ReportHeading } from './report-heading';
 

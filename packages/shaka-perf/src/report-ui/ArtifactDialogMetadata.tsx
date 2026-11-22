@@ -11,9 +11,8 @@ import { ArtifactMetadataFields } from './ArtifactMetadataFields';
 import { TestMetadataSection } from './TestMetadataSection';
 import { useTestCard } from './TestCardProvider';
 
-export function ArtifactDialogMetadata({ executionDetails, fields }: {
+export function ArtifactDialogMetadata({ executionDetails }: {
   executionDetails: ExecutionDetails;
-  fields?: Readonly<Record<string, string>>;
 }) {
   const { meta, test } = useTestCard();
   const measurement = executionDetails.measurementMetadata;
@@ -25,7 +24,7 @@ export function ArtifactDialogMetadata({ executionDetails, fields }: {
       measuredAt={measurement?.measuredAt ? Date.parse(measurement.measuredAt) : null}
       troubleshoot={pipelineTroubleshootCommands(meta, test.name, [executionDetails.viewport.label])}
     >
-      <ArtifactMetadataFields executionDetails={executionDetails} fields={fields} />
+      <ArtifactMetadataFields executionDetails={executionDetails} />
     </TestMetadataSection>
   );
 }

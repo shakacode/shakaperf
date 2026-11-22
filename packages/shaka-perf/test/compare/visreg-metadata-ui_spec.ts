@@ -32,7 +32,7 @@ function fixture() {
   test.outcomes = [{
     ...saved,
     stage: 'visreg',
-    executionDetails: { ...saved.executionDetails, recoveredAfterRetries: true, taskRetries: 1, taskRetryLimit: 2 },
+    executionDetails: { ...saved.executionDetails, stageMetadata: { 'visual comparisons': '2/3 · matched on retry' }, recoveredAfterRetries: true, taskRetries: 1, taskRetryLimit: 2 },
     measurement: [{
       selector: 'document', controlImage: image, experimentImage: image,
       diffImage: null, misMatchPercentage: 0, savedByRetries: true,
@@ -76,7 +76,7 @@ describe('visual preview metadata', () => {
         const phone = {
           ...desktop,
           executionDetails: {
-            ...desktop.executionDetails, measurementMetadata: { ...desktop.executionDetails.measurementMetadata!, measuredAt: '2026-01-01T00:00:00Z' }, runId: phoneRunId, command: 'shaka-perf compare --viewport phone', viewport: PHONE_VIEWPORT,
+            ...desktop.executionDetails, stageMetadata: { 'visual comparisons': '1/3' }, measurementMetadata: { ...desktop.executionDetails.measurementMetadata!, measuredAt: '2026-01-01T00:00:00Z' }, runId: phoneRunId, command: 'shaka-perf compare --viewport phone', viewport: PHONE_VIEWPORT,
             testSourceHref: params.has('missing') ? null : 'data:text/plain;charset=utf-8,' + encodeURIComponent(phoneSource),
             recoveredAfterRetries: false, taskRetries: 0, taskRetryLimit: 8,
           },
@@ -231,6 +231,10 @@ describe('visual preview metadata', () => {
     const outcome = second.outcomes[0]!;
     const [image] = outcome.measurement as Record<string, unknown>[];
     outcome.measurement = ['#header', '#footer'].map(selector => ({ ...image, selector }));
+    outcome.executionDetails = {
+      ...outcome.executionDetails,
+      stageMetadata: { 'visual comparisons · #header': '1/3', 'visual comparisons · #footer': '2/3' },
+    };
     data.tests.push(second);
 
     const page = await browser.newPage();
@@ -245,7 +249,8 @@ describe('visual preview metadata', () => {
         expect(await dialog.locator('.ui-dialog__title').textContent()).toContain(selector + ' · Checkout');
         expect(await dialog.locator('.card__path').textContent()).toBe(second.filePath);
         expect(await dialog.locator('.card__targets a').allTextContents()).toEqual([second.controlUrl, second.experimentUrl]);
-        expect(await dialog.locator('dt').filter({ hasText: /^selector$/ }).locator('..').locator('dd').textContent()).toBe(selector);
+        expect(await dialog.getByText('visual comparisons · #header', { exact: true }).locator('..').locator('dd').textContent()).toBe('1/3');
+        expect(await dialog.getByText('visual comparisons · #footer', { exact: true }).locator('..').locator('dd').textContent()).toBe('2/3');
         await dialog.getByRole('button', { name: 'artifact paths' }).click();
         expect(await dialog.locator('.card__code').textContent()).toContain('results/checkout/desktop');
         await page.keyboard.press('Escape');
@@ -343,7 +348,7 @@ describe('visual preview metadata', () => {
 
   it('does not borrow a newer sibling result for a legacy visual artifact', async () => {
     const outcome = data.tests[0]!.outcomes[0]!;
-    outcome.executionDetails = { ...outcome.executionDetails, measurementMetadata: undefined, testSourceHref: null };
+    outcome.executionDetails = { ...outcome.executionDetails, stageMetadata: undefined, measurementMetadata: undefined, testSourceHref: null };
     const page = await browser.newPage();
     try {
       await page.goto(url);
@@ -352,6 +357,7 @@ describe('visual preview metadata', () => {
       expect(await metadata.getByRole('button', { name: 'command', exact: true }).count()).toBe(0);
       expect(await metadata.locator('.card__measured-at').textContent()).toContain('never measured');
       expect(await metadata.locator('.card__target-commits').count()).toBe(0);
+      expect(await metadata.getByText('visual comparisons', { exact: true }).count()).toBe(0);
       expect(await metadata.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(0);
       await metadata.getByRole('button', { name: 'test source', exact: true }).click();
       expect(await metadata.textContent()).toContain('No source snapshot was captured.');
