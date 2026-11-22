@@ -52,7 +52,7 @@ export class AiSummaryStage implements Stage<AiSummaryResult> {
     // report-shell bundle, mirroring the other audit stages.
     const runImpl = './engine';
     const { runAiSummaryStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return [await runAiSummaryStage(ctx, pool), {}];
+    return { measurement: await runAiSummaryStage(ctx, pool), metadata: {} };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<AiSummaryResult>[]) {

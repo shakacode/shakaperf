@@ -67,7 +67,7 @@ export class AuditStage implements Stage<AuditResult> {
   async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<AuditResult>> {
     const runImpl = './engine';
     const { runAuditStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return [await runAuditStage(ctx, pool, this.config), {}];
+    return { measurement: await runAuditStage(ctx, pool, this.config), metadata: {} };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<AuditResult>[]) {

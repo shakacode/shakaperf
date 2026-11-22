@@ -79,7 +79,7 @@ export class PerfEngineStage<M> implements Stage<M> {
   ): Promise<StageRunResult<M>> {
     const runImpl = './engine';
     const { runPerfEngineStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return [await runPerfEngineStage(ctx, pool, this.options.config) as M, {}];
+    return { measurement: await runPerfEngineStage(ctx, pool, this.options.config) as M, metadata: {} };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<M>[]) {

@@ -139,7 +139,7 @@ export class BuildAnnotatedTimelineStage implements Stage<BuildAnnotatedTimeline
     const { runBuildAnnotatedTimelineStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
     // Per-test effective cap (config.audit.limitVideoFramesCount in an
     // abTest() applies to that test); the zod schema defaults it to 700.
-    return [await runBuildAnnotatedTimelineStage(ctx, pool, ctx.config.audit.limitVideoFramesCount), {}];
+    return { measurement: await runBuildAnnotatedTimelineStage(ctx, pool, ctx.config.audit.limitVideoFramesCount), metadata: {} };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<BuildAnnotatedTimelineResult>[]) {

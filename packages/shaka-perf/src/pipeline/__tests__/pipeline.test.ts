@@ -81,7 +81,7 @@ function stage(
         controlURL: ctx.controlURL,
         experimentURL: ctx.experimentURL,
       });
-      return [{}, {}] as const;
+      return { measurement: {}, metadata: {} };
     },
     renderArtifacts: () => null,
     machineReadableSummary: (_measurement, ctx) => {
@@ -296,7 +296,7 @@ describe('runPipeline', () => {
     const run = jest.fn(async (ctx: TestContext) => {
       expect(measuredCommit).toHaveBeenCalledWith(ctx.controlURL);
       expect(measuredCommit).toHaveBeenCalledWith(ctx.experimentURL);
-      return [{}, {}] as const;
+      return { measurement: {}, metadata: {} };
     });
     measuring.run = run;
     const result = await runWithFrozenTest({ categories: 'visreg', skipReport: true }, selected);
@@ -321,7 +321,7 @@ describe('runPipeline', () => {
   it.each(['derived', 'not-applicable'] as const)('excludes %s stages from automatic metadata capture', async (mode) => {
     const selected = pipeline();
     const candidate = selected.stages[0]!;
-    const run = jest.fn(async () => [{}, {}] as const);
+    const run = jest.fn(async () => ({ measurement: {}, metadata: {} }));
     Object.assign(candidate, { measuresApplication: mode !== 'derived', applies: () => mode !== 'not-applicable', run });
     jest.mocked(measuredCommit).mockClear();
     const result = await runWithFrozenTest({ categories: 'visreg', skipReport: true }, selected);
@@ -388,7 +388,7 @@ describe('runPipeline', () => {
       expect(fs.readFileSync(path.join(ctx.artifacts.dir, snapshots[0]!), 'utf8')).toBe(source);
       fs.writeFileSync(file, changed);
       if (failed) throw new Error('measurement failed');
-      return [{}, {}] as const;
+      return { measurement: {}, metadata: {} };
     };
     try {
       const first = await runWithFrozenTest({ cwd, tests: [test], categories: 'visreg', skipReport: true }, selected);
@@ -487,7 +487,7 @@ describe('runPipeline', () => {
       return pool.submit(async () => {
         attempts++;
         if (attempts === 1 || exhausted) throw new Error('temporary failure');
-        return [{}, {}] as const;
+        return { measurement: {}, metadata: {} };
       });
     };
     const test = { ...frozenTest, config: { shared: { retries: 1, retryDelay: 0 } } };
@@ -1282,7 +1282,7 @@ describe('per-test task limits reach the pool', () => {
           if (settled !== FINISHED) throw new Error('stage aborted');
           return FINISHED;
         });
-        return [{}, {}] as const;
+        return { measurement: {}, metadata: {} };
       },
     };
   }

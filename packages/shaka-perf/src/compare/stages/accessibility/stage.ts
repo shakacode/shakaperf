@@ -57,13 +57,16 @@ export class AccessibilityCompareStage implements Stage<AccessibilityCompareResu
       await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
     const result = await runAccessibilityCompareStage(ctx, pool, this.config);
     const { new: added, fixed, changed, unchanged } = result.summary;
-    return [result, {
-      viewport: ctx.viewport.label,
-      new: String(added),
-      fixed: String(fixed),
-      changed: String(changed),
-      unchanged: String(unchanged),
-    }];
+    return {
+      measurement: result,
+      metadata: {
+        viewport: ctx.viewport.label,
+        new: String(added),
+        fixed: String(fixed),
+        changed: String(changed),
+        unchanged: String(unchanged),
+      },
+    };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<AccessibilityCompareResult>[]) {
