@@ -12,12 +12,12 @@ import {
   StageArtifact,
   StageArtifactTitle,
   ReportHeading,
-  OldRunChip,
   StageNote,
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
 import { FramePlayer } from './frame-player';
-import { ReportSection, useReportSection } from '../../../pipeline/report-section';
+import { useReportSection } from '../../../pipeline/report-section';
+import { PerformanceViewportSection } from '../../../report-ui/PerformanceViewportSection';
 
 const GROUPS: PerfMetricGroup[] = ['vitals', 'diagnostics'];
 
@@ -62,26 +62,19 @@ function PerfViewportBlock({ entry }: { entry: StageRenderEntry<PerfArtifact> })
   const { measurement: perf, latestRun } = entry;
   const viewportLabel = entry.executionDetails.viewport.label;
   const section = useReportSection();
-  const hasSignificantMetrics = significantMetrics(perf).length > 0;
-  const hasNoDifference = hasNoDifferenceMetrics(perf);
+  const sectionKey = `${section ?? 'perf'}:viewport:${viewportLabel}`;
   return (
-    <section
-      className="stage-stack__viewport perf-viewport"
-      aria-label={`${viewportLabel} performance`}
+    <PerformanceViewportSection
+      sectionKey={sectionKey}
+      executionDetails={entry.executionDetails}
+      latestRun={latestRun}
     >
-      <ReportSection
-        sectionKey={`${section ?? 'perf'}:viewport:${viewportLabel}`}
-        title={`${viewportLabel} performance`}
-        badge={<OldRunChip latestRun={latestRun} />}
-        nested
-      >
-        <PerfBody
-          entry={entry}
-          hasNoDifference={hasNoDifference}
-          hasSignificantMetrics={hasSignificantMetrics}
-        />
-      </ReportSection>
-    </section>
+      <PerfBody
+        entry={entry}
+        hasNoDifference={hasNoDifferenceMetrics(perf)}
+        hasSignificantMetrics={significantMetrics(perf).length > 0}
+      />
+    </PerformanceViewportSection>
   );
 }
 

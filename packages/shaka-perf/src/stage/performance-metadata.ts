@@ -53,11 +53,9 @@ type PerformanceMetadataFields = {
 
 export function performanceMetadataFields(settings: PerformanceSettings): PerformanceMetadataFields {
   const countLabel = settings.measuredSideCount > 1 ? `${settings.numberOfMeasurements} per side` : String(settings.numberOfMeasurements);
-  const fields: PerformanceMetadataFields = { 'number of measurements': countLabel };
-
   const throttling = settings.throttling;
-  if (throttling) {
-    fields.throttling = formatThrottling(throttling);
-  }
-  return fields;
+  return {
+    ...(throttling && { throttling: formatThrottling(throttling) }),
+    'number of measurements': countLabel,
+  };
 }
