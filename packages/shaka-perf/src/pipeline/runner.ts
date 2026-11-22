@@ -1206,7 +1206,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     // "did this test declare it?" branch, because whatever outranks a test is
     // layered on inside the pool's own resolver rather than smuggled in as a
     // pool-wide default nobody may override.
-    const measurement = await consoleCaptureStorage.run(
+    const [measurement, stageMetadata] = await consoleCaptureStorage.run(
       logger,
       () => stageTaskProgressStorage.run(
         taskProgressSink,
@@ -1227,6 +1227,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       stage: stage.name,
       measurement,
       executionDetails: {
+        stageMetadata,
         ...invocation, viewport: unit.viewport, testSourceHref: unit.testSourceHref,
         measurementMetadata: measurementStart && recorder.snapshot(measurementStart),
         taskRetries: recorder.taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0,

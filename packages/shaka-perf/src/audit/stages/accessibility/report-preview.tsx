@@ -14,7 +14,7 @@ import type {
   AccessibilityScan,
   AccessibilityViolation,
 } from './types';
-import { AccessibilityDialog, accessibilityDialogFields, ThumbnailMarker } from './report-dialog';
+import { AccessibilityDialog, ThumbnailMarker } from './report-dialog';
 import { FilteredEmptyState, useAccessibilityFilterState } from './report-filter';
 import { ACCESSIBILITY_CSS, ACCESSIBILITY_PREVIEW_CSS } from './report-styles';
 import { ViolationTagChips } from './report-tag-chips';
@@ -61,7 +61,6 @@ export function ScreenshotPreview({
           image
           href={source}
           label={`${scan.viewportLabel} accessibility issues`}
-          fields={accessibilityDialogFields(scan, hotspots.length)}
           executionDetails={entry.executionDetails}
           body={<AccessibilityDialog filterOptions={filterOptions} scan={scan} source={source} />}
         >

@@ -14,6 +14,7 @@ import type { WorkerPool } from '../../../pipeline/worker-pool';
 import {
   emptyMachineReadableSummary,
   type Stage,
+  type StageRunResult,
   type StageName,
   type StageRenderEntry,
   type TestContext,
@@ -133,12 +134,12 @@ export class BuildAnnotatedTimelineStage implements Stage<BuildAnnotatedTimeline
     return priorOutcomeKinds.get('audit') === 'ok';
   }
 
-  async run(ctx: TestContext, pool: WorkerPool): Promise<BuildAnnotatedTimelineResult> {
+  async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<BuildAnnotatedTimelineResult>> {
     const runImpl = './engine';
     const { runBuildAnnotatedTimelineStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
     // Per-test effective cap (config.audit.limitVideoFramesCount in an
     // abTest() applies to that test); the zod schema defaults it to 700.
-    return runBuildAnnotatedTimelineStage(ctx, pool, ctx.config.audit.limitVideoFramesCount);
+    return [await runBuildAnnotatedTimelineStage(ctx, pool, ctx.config.audit.limitVideoFramesCount), {}];
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<BuildAnnotatedTimelineResult>[]) {

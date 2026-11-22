@@ -38,16 +38,6 @@ import {
   type AccessibilityFilterSelection,
 } from './report-utils';
 
-export function accessibilityDialogFields(scan: AccessibilityScan, hotspotCount: number): Readonly<Record<string, string>> {
-  const nodeCount = scan.violations.reduce((total, violation) => total + violation.nodes.length, 0);
-  return {
-    viewport: scan.viewportLabel,
-    issues: `${scan.violations.length} rules · ${nodeCount} nodes`,
-    hotspots: String(hotspotCount),
-    url: scan.url,
-  };
-}
-
 export function AccessibilityDialog({
   filterOptions,
   scan,

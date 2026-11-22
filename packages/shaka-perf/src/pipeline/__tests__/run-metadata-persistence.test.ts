@@ -66,7 +66,7 @@ it('automatically persists original metadata and reuses it unchanged in every re
         measuresApplication: true,
         name: 'visreg', label: 'Visual Diff', category: 'visreg', description: 'Fake measurement; real identity lookup and persistence', selfContainedReportStrip: {},
         applies: () => true, renderArtifacts: () => null, machineReadableSummary: () => ({}),
-        async run() { return []; },
+        async run() { return [[], { sample: 'saved stage value' }]; },
       });
       builder.waitForAllTasksFinishAndDispose(pool);
       builder.buildChips({ chipsForAllTests: (entries) => new Map(entries.map(({ test }) => [test, []])) });
@@ -79,6 +79,7 @@ it('automatically persists original metadata and reuses it unchanged in every re
     for (const outcome of result.testResults[0]!.outcomes) {
       expect(outcome.executionDetails.measurementMetadata).not.toHaveProperty('viewport');
       expect(Object.keys(outcome.executionDetails.measurementMetadata!).sort()).toEqual(['measuredAt', 'targets']);
+      expect(store.readOutcome(test, outcome.executionDetails.viewport.label, 'visreg')?.executionDetails.stageMetadata).toEqual({ sample: 'saved stage value' });
       expect(outcome).not.toHaveProperty('runMetadata');
       expect(outcome.executionDetails.viewport.width).toBeGreaterThan(0);
       expect(store.readOutcome(test, outcome.executionDetails.viewport.label, 'visreg')?.executionDetails.measurementMetadata).toEqual(outcome.executionDetails.measurementMetadata);
@@ -91,6 +92,7 @@ it('automatically persists original metadata and reuses it unchanged in every re
     for (const file of ['report.json', 'full-report.html', 'self-contained-performance-report.html']) {
       const content = fs.readFileSync(path.join(cwd, 'compare-results', file), 'utf8');
       expect(content).toContain('measurementMetadata');
+      expect(content).toContain('saved stage value');
       expect(content).toContain(targetUrl);
       expect(content).toContain('demo-session');
       expect(content).toContain('demo-auth');

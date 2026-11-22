@@ -7,15 +7,10 @@
 
 import type { ExecutionDetails } from '../pipeline/outcome';
 
-export interface ArtifactMetadataProps {
-  readonly fields?: Readonly<Record<string, string>>;
-  readonly executionDetails?: ExecutionDetails;
-}
-
-/** Shared markup: stages supply plain values, never metadata elements. */
-export function ArtifactMetadataFields({ fields, executionDetails }: ArtifactMetadataProps) {
+export function ArtifactMetadataFields({ executionDetails }: { executionDetails: ExecutionDetails }) {
+  const fields = executionDetails.stageMetadata;
   const showRetries =
-    executionDetails?.recoveredAfterRetries || (executionDetails?.taskRetries ?? 0) > 0;
+    executionDetails.recoveredAfterRetries || (executionDetails.taskRetries ?? 0) > 0;
   return (
     <>
       {showRetries ? (
@@ -23,8 +18,8 @@ export function ArtifactMetadataFields({ fields, executionDetails }: ArtifactMet
           <div>
             <dt>error retries</dt>
             <dd>
-              {executionDetails?.taskRetries ?? '?'}/{executionDetails?.taskRetryLimit ?? '?'}
-              {executionDetails?.recoveredAfterRetries ? ' · recovered' : ''}
+              {executionDetails.taskRetries ?? '?'}/{executionDetails.taskRetryLimit ?? '?'}
+              {executionDetails.recoveredAfterRetries ? ' · recovered' : ''}
             </dd>
           </div>
         </dl>

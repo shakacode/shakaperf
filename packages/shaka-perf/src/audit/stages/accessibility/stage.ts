@@ -11,12 +11,14 @@ import type { Viewport } from '../../../config';
 import {
   type JsonValue,
   type Stage,
+  type StageRunResult,
   type StageName,
   type StageRenderEntry,
   type StageRenderContext,
   type TestContext,
 } from '../../../stage/stage';
 import type { WorkerPool } from '../../../pipeline/worker-pool';
+import { localizedHotspots } from './report-utils';
 import { AccessibilityArtifactView } from './report';
 import {
   DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
@@ -46,10 +48,19 @@ export class AccessibilityStage implements Stage<AccessibilityResult> {
     return true;
   }
 
-  async run(ctx: TestContext, pool: WorkerPool): Promise<AccessibilityResult> {
+  async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<AccessibilityResult>> {
     const runImpl = './engine';
     const { runAccessibilityStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return runAccessibilityStage(ctx, pool, this.config);
+    const result = await runAccessibilityStage(ctx, pool, this.config);
+    const [scan] = result.scans;
+    if (!scan) return [result, {}];
+    const nodes = scan.violations.reduce((sum, rule) => sum + rule.nodes.length, 0);
+    return [result, {
+      viewport: scan.viewportLabel,
+      issues: `${scan.violations.length} rules · ${nodes} nodes`,
+      hotspots: String(localizedHotspots(scan).length),
+      url: scan.url,
+    }];
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<AccessibilityResult>[]) {

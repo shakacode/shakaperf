@@ -25,6 +25,7 @@ export interface ErrorInfo {
 }
 
 export interface ExecutionDetails {
+  readonly stageMetadata?: Readonly<Record<string, string>>;
   readonly measurementMetadata?: MeasurementMetadata;
   readonly runId: string;
   readonly command: string;

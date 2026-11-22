@@ -15,6 +15,7 @@ jest.mock('../run', () => ({ runVisregUnit: jest.fn(), resetVisregScreenshots: j
 it('resets screenshots once across a worker retry', async () => {
   const ctx = {
     testAndViewportId: 'homepage-desktop',
+    viewport: { label: 'desktop', width: 1000, height: 800 },
     artifacts: { dir: '/homepage-desktop/artifacts' },
   } as unknown as TestContext;
   const pool = new WorkerPool(1, { limits: { timeoutMs: 0, retries: 1, retryDelay: 0 } });

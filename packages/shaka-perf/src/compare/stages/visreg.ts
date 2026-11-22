@@ -6,7 +6,7 @@
  */
 
 import { createElement } from 'react';
-import type { VisregConfig } from '../../config';
+import type { Viewport, VisregConfig } from '../../config';
 import {
   emptyMachineReadableSummary,
   type Stage,
@@ -76,14 +76,30 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
       // even when --keep-old-results or --restart-from-stage retains artifacts.
       // Reset ONCE, outside the retried task: its attempts share the fresh pools.
       resetVisregScreenshots(ctx.artifacts.dir);
-      return pool.submit(
+      const artifacts = await pool.submit(
         () => runVisregUnit(ctx, config),
         { key: ctx.testAndViewportId },
       );
+      return [artifacts, visualComparisonFields(artifacts, ctx.viewport)];
     },
     renderArtifacts(measurements) {
       return createElement(VisregArtifactView, { measurements });
     },
     machineReadableSummary: emptyMachineReadableSummary,
   };
+}
+
+export function visualComparisonFields(artifacts: VisregResult, viewport: Viewport): Record<string, string> {
+  const fields: Record<string, string> = { viewport: `${viewport.label} ${viewport.width} × ${viewport.height}` };
+  for (const artifact of artifacts) {
+    const suffix = artifacts.length > 1 ? ` · ${artifact.selector}` : '';
+    if (!suffix) fields.selector = artifact.selector;
+    fields[`mismatch${suffix}`] = `${artifact.misMatchPercentage.toFixed(2)}%`;
+    const { visualComparisonCount, visualComparisonLimit } = artifact;
+    if (visualComparisonCount === undefined) continue;
+    const limit = visualComparisonLimit === undefined ? '' : `/${visualComparisonLimit}`;
+    const recovery = artifact.savedByRetries ? ' · matched on retry' : '';
+    fields[`visual comparisons${suffix}`] = `${visualComparisonCount}${limit}${recovery}`;
+  }
+  return fields;
 }

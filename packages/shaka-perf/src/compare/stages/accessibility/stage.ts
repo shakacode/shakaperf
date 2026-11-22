@@ -11,6 +11,7 @@ import type { Viewport } from '../../../config';
 import {
   emptyMachineReadableSummary,
   type Stage,
+  type StageRunResult,
   type StageRenderEntry,
   type TestContext,
 } from '../../../stage/stage';
@@ -50,11 +51,19 @@ export class AccessibilityCompareStage implements Stage<AccessibilityCompareResu
     return true;
   }
 
-  async run(ctx: TestContext, pool: WorkerPool): Promise<AccessibilityCompareResult> {
+  async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<AccessibilityCompareResult>> {
     const runImpl = './engine';
     const { runAccessibilityCompareStage } =
       await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return runAccessibilityCompareStage(ctx, pool, this.config);
+    const result = await runAccessibilityCompareStage(ctx, pool, this.config);
+    const { new: added, fixed, changed, unchanged } = result.summary;
+    return [result, {
+      viewport: ctx.viewport.label,
+      new: String(added),
+      fixed: String(fixed),
+      changed: String(changed),
+      unchanged: String(unchanged),
+    }];
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<AccessibilityCompareResult>[]) {
