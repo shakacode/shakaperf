@@ -63,6 +63,7 @@ export function BuildAnnotatedTimelineArtifactView({
                 />
                 <DetailedArtifactDialog
                   executionDetails={entry.executionDetails}
+                  title={`${viewportLabel} annotated timeline`}
                   body={
                     <AnnotatedTimelineDialog
                       frames={frames}
