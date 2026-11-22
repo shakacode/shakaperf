@@ -66,7 +66,7 @@ it('automatically persists original metadata and reuses it unchanged in every re
         measuresApplication: true,
         name: 'visreg', label: 'Visual Diff', category: 'visreg', description: 'Fake measurement; real identity lookup and persistence', selfContainedReportStrip: {},
         applies: () => true, renderArtifacts: () => null, machineReadableSummary: () => ({}),
-        async run() { return [[], { sample: 'saved stage value' }]; },
+        async run() { return { measurement: [], metadata: { sample: 'saved stage value' } }; },
       });
       builder.waitForAllTasksFinishAndDispose(pool);
       builder.buildChips({ chipsForAllTests: (entries) => new Map(entries.map(({ test }) => [test, []])) });

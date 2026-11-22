@@ -80,7 +80,7 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
         () => runVisregUnit(ctx, config),
         { key: ctx.testAndViewportId },
       );
-      return [artifacts, visualComparisonFields(artifacts, ctx.viewport)];
+      return { measurement: artifacts, metadata: visualComparisonFields(artifacts, ctx.viewport) };
     },
     renderArtifacts(measurements) {
       return createElement(VisregArtifactView, { measurements });

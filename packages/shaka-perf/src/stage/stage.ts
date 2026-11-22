@@ -134,7 +134,10 @@ export interface StageRenderEntry<M = unknown> {
 }
 
 /** The runner saves these fields once per test, viewport, and stage. */
-export type StageRunResult<M> = readonly [measurement: M, metadata: Readonly<Record<string, string>>];
+export interface StageRunResult<M> {
+  readonly measurement: M;
+  readonly metadata: Readonly<Record<string, string>>;
+}
 
 export interface Stage<M = unknown> {
   /** Explicitly declare whether run() measures the application or derives data

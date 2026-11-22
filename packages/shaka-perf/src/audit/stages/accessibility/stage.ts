@@ -53,14 +53,17 @@ export class AccessibilityStage implements Stage<AccessibilityResult> {
     const { runAccessibilityStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
     const result = await runAccessibilityStage(ctx, pool, this.config);
     const [scan] = result.scans;
-    if (!scan) return [result, {}];
+    if (!scan) return { measurement: result, metadata: {} };
     const nodes = scan.violations.reduce((sum, rule) => sum + rule.nodes.length, 0);
-    return [result, {
-      viewport: scan.viewportLabel,
-      issues: `${scan.violations.length} rules · ${nodes} nodes`,
-      hotspots: String(localizedHotspots(scan).length),
-      url: scan.url,
-    }];
+    return {
+      measurement: result,
+      metadata: {
+        viewport: scan.viewportLabel,
+        issues: `${scan.violations.length} rules · ${nodes} nodes`,
+        hotspots: String(localizedHotspots(scan).length),
+        url: scan.url,
+      },
+    };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<AccessibilityResult>[]) {
