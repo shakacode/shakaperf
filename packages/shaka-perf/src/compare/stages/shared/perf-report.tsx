@@ -72,11 +72,7 @@ function PerfViewportBlock({ entry }: { entry: StageRenderEntry<PerfArtifact> })
   const sectionKey = `${section ?? 'perf'}:viewport:${viewportLabel}`;
   const expanded = useReportSectionExpanded(sectionKey);
   const viewport = entry.executionDetails.viewport;
-  const { throttling, ...measurementFields } = performanceMetadataFields(
-    entry.executionDetails.measurementMetadata,
-  );
-  const fields =
-    throttling === undefined ? measurementFields : { throttling, ...measurementFields };
+  const fields = performanceMetadataFields(entry.executionDetails.measurementMetadata);
   const hasSettings = Object.keys(fields).length > 0;
   const [showSettings, setShowSettings] = useState(false);
   const settingsVisible = showSettings && expanded;

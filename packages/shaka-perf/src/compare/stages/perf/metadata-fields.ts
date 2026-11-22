@@ -43,6 +43,11 @@ export function performanceMetadataFields(
   const fields: Record<string, string> = {};
   if (!metadata) return fields;
 
+  const lighthouseSettings = metadata.throttling;
+  if (lighthouseSettings?.engine === 'Lighthouse') {
+    fields.throttling = formatThrottling(lighthouseSettings);
+  }
+
   if (metadata.numberOfMeasurements !== undefined) {
     let countLabel = String(metadata.numberOfMeasurements);
     if (metadata.targets.length > 1) {
@@ -54,9 +59,5 @@ export function performanceMetadataFields(
     fields['number of measurements'] = countLabel;
   }
 
-  const lighthouseSettings = metadata.throttling;
-  if (lighthouseSettings?.engine === 'Lighthouse') {
-    fields.throttling = formatThrottling(lighthouseSettings);
-  }
   return fields;
 }
