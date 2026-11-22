@@ -49,7 +49,7 @@ bundling native deps like `sharp`, `playwright`, and `lighthouse`.
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { Viewport } from '../../../config';
-import type { Outcome } from '../../../pipeline/outcome';
+import type { OutcomeKind } from '../../../pipeline/outcome';
 import type { WorkerPool } from '../../../pipeline/worker-pool';
 import {
   emptyMachineReadableSummary,
@@ -70,8 +70,12 @@ export class MyStage implements Stage<MyResult> {
 
   constructor(private readonly config: MyStageConfig) {}
 
-  applies(_test: AbTestDefinition, _viewport: Viewport, priorOutcomes: ReadonlyMap<StageName, Outcome>): boolean {
-    return priorOutcomes.get('audit')?.kind === 'ok';
+  applies(
+    _test: AbTestDefinition,
+    _viewport: Viewport,
+    priorOutcomeKinds: ReadonlyMap<StageName, OutcomeKind>,
+  ): boolean {
+    return priorOutcomeKinds.get('audit') === 'ok';
   }
 
   async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<MyResult>> {
@@ -104,19 +108,22 @@ Field-by-field:
 - **`description`** — one-liner shown in `>>> <name> · <description>`
   banner and the report.
 
-- **`applies(test, viewport, priorOutcomes)`** — called once per unit
+- **`applies(test, viewport, priorOutcomeKinds)`** — called once per unit
   before `run`. Returning `false` produces a `skipped` outcome with a
   framework-supplied reason. Use this for cross-stage dependencies:
   ```ts
-  applies(_test, _viewport, priorOutcomes) {
-    return priorOutcomes.get('audit')?.kind === 'ok';
+  applies(_test, _viewport, priorOutcomeKinds) {
+    return priorOutcomeKinds.get('audit') === 'ok';
   }
   ```
   Per-test category opt-outs (`testTypes: [...]`) and viewport filters
   are handled by the runner before `applies` even fires.
 
 - **`run(ctx, pool)`** — the worker. Returns `{ measurement, metadata }` on success.
-  Supply a string-to-string dictionary for the run. Use `{}` for no fields.
+  Await the engine result before assigning it to `measurement`.
+  When a stage supplies metadata, put its formatting in a function with an explicit return type.
+  Name the fields in that type, for example `{ viewport: string; issues: string }`.
+  Mark fields optional when the stage can omit them. Use `{}` when there are no fields.
   The framework saves the dictionary in `executionDetails.stageMetadata` and renders it in the artifact dialogs for that run.
   Throw to mark the unit failed. The runner persists
   `{ kind: 'ok' | 'error', stage, measurement, error, logs }` to
@@ -351,10 +358,9 @@ that gets inlined into one self-contained `report.html`. Constraints:
 - **No Node-only imports** reach the shell. `fs`, `path`,
   `child_process`, `sharp`, `playwright` — all engine-side. Put them
   in `engine.ts`.
-- Anything you want the shell to display must travel through the
-  measurement (returned from `run`). Either embed as a data URL
-  (`data:image/avif;base64,...`) or persist to disk and pass a
-  report-relative href (`<unit_dir>/timeline_frames.svg`).
+- The measurement from `run()` must reference every stage artifact the report shell displays.
+  Return the report-relative path from `ctx.artifacts`. The framework embeds
+  the referenced file when it creates the self-contained report.
 - No `fetch` at render time — the report is opened from `file://`
   often.
 
@@ -363,6 +369,14 @@ test card. For per-viewport rendering, iterate `measurements` (already
 paired with viewports). For per-card layout like a preview that opens
 a fullscreen dialog, use `DetailedArtifactDialog` with
 `variant="preview"` (see `build_annotated_timeline/report.tsx`).
+
+Pass `executionDetails={entry.executionDetails}` to `DetailedArtifactDialog`.
+The shared dialog renders the fields in `executionDetails.stageMetadata`.
+For visual comparisons, `run()` saves the viewport as run metadata and returns the raw artifacts.
+Each card formats its selected artifact’s fields and adds them to a copy of the run metadata
+for its dialog. Compare and audit performance stages return the sample count and throttling from `run()`.
+The engine supplies the effective sample count, the number of measured sides, and the throttling reported by Lighthouse. The shared dialog renders
+the supplied fields. The runner owns timestamps and error retries. Use `metadata: {}` for stages with no run-wide fields.
 
 ## `pipelineConfig` round-trip
 
@@ -407,7 +421,7 @@ format.
 
 - Stages run on a per-unit chain, so a stage failure for unit K does
   **not** block other units. Subsequent stages on unit K skip
-  themselves via `priorOutcomes`.
+  themselves via `priorOutcomeKinds`.
 - A submission whose `key` gets `pool.cancel(key, reason)`'d rejects
   immediately. In-flight task bodies that thread
   `raceCancellation` (the second arg to the `WorkerTask` signature)
