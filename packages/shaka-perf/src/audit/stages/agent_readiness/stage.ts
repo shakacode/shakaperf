@@ -49,7 +49,8 @@ export class AgentReadinessStage implements Stage<AgentReadinessResult> {
   async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<AgentReadinessResult>> {
     const runImpl = './engine';
     const { runAgentReadinessStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return { measurement: await runAgentReadinessStage(ctx, pool, this.config), metadata: {} };
+    const measurement = await runAgentReadinessStage(ctx, pool, this.config);
+    return { measurement, metadata: {} };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<AgentReadinessResult>[]) {
