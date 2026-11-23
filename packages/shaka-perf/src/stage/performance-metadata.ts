@@ -55,9 +55,9 @@ export function performanceMetadataFields(settings: PerformanceSettings): Perfor
   const countLabel = settings.measuredSideCount > 1 ? `${settings.numberOfMeasurements} per side` : String(settings.numberOfMeasurements);
   const fields: PerformanceMetadataFields = { 'number of measurements': countLabel };
 
-  const lighthouseSettings = settings.throttling;
-  if (lighthouseSettings?.engine === 'Lighthouse') {
-    fields.throttling = formatThrottling(lighthouseSettings);
+  const throttling = settings.throttling;
+  if (throttling) {
+    fields.throttling = formatThrottling(throttling);
   }
   return fields;
 }
