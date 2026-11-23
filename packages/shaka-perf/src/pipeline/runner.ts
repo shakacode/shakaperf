@@ -1466,6 +1466,8 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
   let accessibilityRegressions = 0;
   let accessibilityErrors = 0;
   let accessibilityBlocked = 0;
+  let undersizedImages = 0;
+  let missingImageMeasurements = 0;
   let errors = 0;
   for (const t of data.tests) {
     if (t.outcomes.some((outcome) => outcome.kind === 'error') || hasChipTag(t, 'broken')) errors++;
@@ -1475,6 +1477,8 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
     if (hasChipTag(t, 'accessibility regression')) accessibilityRegressions++;
     if (hasChipTag(t, 'accessibility error')) accessibilityErrors++;
     if (hasChipTag(t, 'accessibility blocked')) accessibilityBlocked++;
+    if (hasChipTag(t, 'undersized images')) undersizedImages++;
+    if (hasChipTag(t, 'image resolution unavailable')) missingImageMeasurements++;
   }
   if (data.meta.errors.length > 0) errors += data.meta.errors.length;
   const parts: string[] = [];
@@ -1500,6 +1504,10 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
     parts.push(
       `${accessibilityBlocked} accessibility scan${accessibilityBlocked === 1 ? '' : 's'} blocked by bot protection`,
     );
+  }
+  if (undersizedImages > 0) parts.push(`${undersizedImages} test${undersizedImages === 1 ? '' : 's'} with undersized images`);
+  if (missingImageMeasurements > 0) {
+    parts.push(`${missingImageMeasurements} test${missingImageMeasurements === 1 ? '' : 's'} missing image resolution measurements; rerun the audit stage`);
   }
   return {
     hasFailures: parts.length > 0,
