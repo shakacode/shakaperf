@@ -41,11 +41,12 @@ import type { CdpPorts } from '../troubleshoot/debug-session';
 import {
   writeMachineReport,
   writeReport,
+  type ChipDescriptor,
   type ReportData,
   type ReportOutcome,
   type TestResult,
 } from './report';
-import { brokenChip, flakyChip } from './outcome-chips';
+import { retryUsageTooltip } from './retry-usage-tooltip';
 import {
   persistedOutcomeInScope,
   resolveViewportsForTest,
@@ -1629,6 +1630,48 @@ function chipResultsForOutcomes(
     });
   }
   return results;
+}
+
+function brokenChip(outcomes: readonly ReportOutcome[], stages: readonly Pick<Stage, 'name' | 'label'>[]): ChipDescriptor {
+  const failedTasks = outcomes.filter((outcome) => outcome.kind === 'error');
+  const usage = failedTasks.map((outcome) => ({
+    stage: stages.find((stage) => stage.name === outcome.stage)?.label ?? outcome.stage,
+    viewport: outcome.executionDetails.viewport.label,
+    count: outcome.executionDetails.taskRetries,
+    limit: outcome.executionDetails.taskRetryLimit,
+  }));
+  const tooltip = retryUsageTooltip('Tasks still failed', 'retries', usage);
+  return { tag: 'broken', text: 'broken', color: 'red', sortingWeight: 0, tooltip };
+}
+
+// Cross-cutting warning chip the runner attaches to any test whose stage task
+// crashed or timed out on an earlier attempt but succeeded on a worker-pool
+// retry. Informational (doesn't drive card order); filterable to isolate flaky
+// tests. Distinct from the compare pipeline's "visreg unstable" chip, which is
+// about visual-comparison instability rather than crash recovery.
+function flakyChip(recovered: readonly ReportOutcome[]): ChipDescriptor {
+  let retries: number | undefined = 0;
+  for (const outcome of recovered) {
+    const count = outcome.executionDetails.taskRetries;
+    if (count === undefined || count < 1) {
+      retries = undefined;
+      break;
+    }
+    retries += count;
+  }
+  return {
+    tag: 'flaky',
+    text: `flaky (recovered after ${retryCountText(retries)})`,
+    color: 'yellow',
+    sortingWeight: 16,
+    affectsCardOrder: false,
+    tooltip: 'A task failed, then succeeded on retry.',
+  };
+}
+
+function retryCountText(count: number | undefined): string {
+  if (count === undefined) return 'retries';
+  return `${count} ${count === 1 ? 'retry' : 'retries'}`;
 }
 
 function hasChipTag(test: TestResult, tag: string): boolean {

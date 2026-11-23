@@ -209,8 +209,16 @@ export function createComparePipeline(input: ComparePipelineConfig) {
               sortingWeight: 10,
             });
           }
-          const visualChange = visualChangeChip(results.visreg);
-          if (visualChange) chips.push(visualChange);
+          const changed = comparisonUsage(results.visreg, artifact => artifact.diffImage !== null);
+          if (changed.length > 0) {
+            chips.push({
+              tag: 'visual change',
+              text: `visual change: ${changed.length} diff${changed.length === 1 ? '' : 's'}`,
+              color: 'red',
+              sortingWeight: 10,
+              tooltip: retryUsageTooltip('Screenshots still differ', 'comparisons', changed),
+            });
+          }
           const improvedMetrics = collectPerfMetrics('improvedMetrics', results.perf, results['perf-low-noise']);
           if (improvedMetrics.length > 0) {
             chips.push({
@@ -220,8 +228,21 @@ export function createComparePipeline(input: ComparePipelineConfig) {
               sortingWeight: 30,
             });
           }
-          const unstable = unstableVisregChip(results.visreg);
-          if (unstable) chips.push(unstable);
+          const recovered = comparisonUsage(results.visreg, artifact => artifact.savedByRetries);
+          if (recovered.length > 0) {
+            const count = recovered[0]!.count;
+            const match = count !== undefined && recovered.every(entry => entry.count === count)
+              ? `matched after ${count} ${count === 1 ? 'comparison' : 'comparisons'}`
+              : 'matched on a later comparison';
+
+            chips.push({
+              tag: 'visreg unstable',
+              text: `visreg unstable (${match})`,
+              color: 'red',
+              sortingWeight: 12,
+              tooltip: retryUsageTooltip('Screenshots matched', 'comparisons', recovered),
+            });
+          }
           out.set(test, chips.length > 0
             ? chips
             : [{
@@ -468,35 +489,4 @@ function comparisonUsage(
       count: artifact.visualComparisonCount,
       limit: artifact.visualComparisonLimit,
     })));
-}
-
-export function visualChangeChip(entries: ChipStageResults<VisregResult>): ChipDescriptor | null {
-  const changed = comparisonUsage(entries, artifact => artifact.diffImage !== null);
-  if (changed.length === 0) return null;
-
-  return {
-    tag: 'visual change',
-    text: `visual change: ${changed.length} diff${changed.length === 1 ? '' : 's'}`,
-    color: 'red',
-    sortingWeight: 10,
-    tooltip: retryUsageTooltip('Screenshots still differ', 'comparisons', changed),
-  };
-}
-
-export function unstableVisregChip(entries: ChipStageResults<VisregResult>): ChipDescriptor | null {
-  const recovered = comparisonUsage(entries, artifact => artifact.savedByRetries);
-  if (recovered.length === 0) return null;
-
-  const count = recovered[0]!.count;
-  const match = count !== undefined && recovered.every(entry => entry.count === count)
-    ? `matched after ${count} ${count === 1 ? 'comparison' : 'comparisons'}`
-    : 'matched on a later comparison';
-
-  return {
-    tag: 'visreg unstable',
-    text: `visreg unstable (${match})`,
-    color: 'red',
-    sortingWeight: 12,
-    tooltip: retryUsageTooltip('Screenshots matched', 'comparisons', recovered),
-  };
 }
