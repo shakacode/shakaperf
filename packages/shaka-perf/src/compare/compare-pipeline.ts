@@ -487,9 +487,14 @@ export function unstableVisregChip(entries: ChipStageResults<VisregResult>): Chi
   const recovered = comparisonUsage(entries, artifact => artifact.savedByRetries);
   if (recovered.length === 0) return null;
 
+  const count = recovered[0]!.count;
+  const match = count !== undefined && recovered.every(entry => entry.count === count)
+    ? `matched after ${count} ${count === 1 ? 'comparison' : 'comparisons'}`
+    : 'matched on a later comparison';
+
   return {
     tag: 'visreg unstable',
-    text: 'visreg unstable (matched on a later comparison)',
+    text: `visreg unstable (${match})`,
     color: 'red',
     sortingWeight: 12,
     tooltip: retryUsageTooltip('Screenshots matched', 'comparisons', recovered),

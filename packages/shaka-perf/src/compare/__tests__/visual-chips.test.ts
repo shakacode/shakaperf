@@ -30,6 +30,7 @@ it('shows comparison counts for recovered and differing selectors separately', (
     artifact('header'), artifact('footer'),
     artifact('main', { diffImage: 'diff.png', savedByRetries: false, visualComparisonCount: 3 }),
   ]);
+  expect(unstableVisregChip(result)?.text).toBe('visreg unstable (matched after 2 comparisons)');
   expect(unstableVisregChip(result)?.tooltip).toBe('Screenshots matched after 2 of 3 allowed comparisons.');
   expect(visualChangeChip(result)?.tooltip).toBe('Screenshots still differ after 3 of 3 allowed comparisons.');
 });
@@ -47,4 +48,14 @@ it('scopes differing attempt counts to their selectors', () => {
 it('keeps legacy retry counts unknown instead of substituting viewport totals', () => {
   const result = entries([artifact('document', { visualComparisonCount: undefined })]);
   expect(unstableVisregChip(result)?.tooltip).toBe('Screenshots matched.');
+});
+
+it.each([3, undefined])('uses the generic label when a second count is %s', secondCount => {
+  const result = entries([artifact('header'), artifact('footer', { visualComparisonCount: secondCount })]);
+  expect(unstableVisregChip(result)?.text).toBe('visreg unstable (matched on a later comparison)');
+});
+
+it('uses the singular for one recorded comparison', () => {
+  const result = entries([artifact('header', { visualComparisonCount: 1 })]);
+  expect(unstableVisregChip(result)?.text).toBe('visreg unstable (matched after 1 comparison)');
 });

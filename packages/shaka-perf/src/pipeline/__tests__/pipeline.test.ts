@@ -555,7 +555,7 @@ describe('runPipeline', () => {
     const test: AbTestDefinition = { ...frozenTest, config: { visreg: { viewports: ['desktop'] } } };
     const result = await runWithFrozenTest({ tests: [test], categories: 'visreg', skipReport: true }, selected);
     expect(result.testResults[0]!.chips).toEqual([expect.objectContaining({
-      tag: 'visreg unstable', text: 'visreg unstable (matched on a later comparison)',
+      tag: 'visreg unstable', text: `visreg unstable (matched after ${retries + 1} comparisons)`,
     })]);
   });
 
