@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { performanceMetadataFields } from '../../../stage/performance-metadata';
 import type { ReactNode } from 'react';
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
@@ -79,8 +80,8 @@ export class PerfEngineStage<M> implements Stage<M> {
   ): Promise<StageRunResult<M>> {
     const runImpl = './engine';
     const { runPerfEngineStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    const measurement = await runPerfEngineStage(ctx, pool, this.options.config) as M;
-    return { measurement, metadata: {} };
+    const { measurement, settings } = await runPerfEngineStage(ctx, pool, this.options.config);
+    return { measurement: measurement as M, metadata: performanceMetadataFields(settings) };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<M>[]) {

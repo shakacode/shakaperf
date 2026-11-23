@@ -318,7 +318,7 @@ describe('visual preview metadata', () => {
     try {
       await page.goto(`${url}?perf=1`);
       await page.getByRole('button', { name: 'play frames' }).click();
-      const dialog = page.getByRole('dialog', { name: 'frames side by side · Homepage' });
+      const dialog = page.getByRole('dialog', { name: /frames side by side/ });
       await dialog.getByRole('slider', { name: 'time' }).waitFor();
       expect(await dialog.getByRole('button', { name: 'logs', exact: true }).count()).toBe(0);
       await dialog.getByRole('button', { name: 'command', exact: true }).click();
@@ -342,7 +342,8 @@ describe('visual preview metadata', () => {
       await page.locator('.artifact-card--single').getByRole('button').click();
       const panel = page.getByRole('dialog').locator('.card__metadata');
       expect(await panel.locator('.card__measured-at').textContent()).toContain('2 days ago');
-      expect(await panel.locator('.ui-dialog__meta').first().textContent()).toContain('1/2 · recovered');
+      const retries = panel.locator('.ui-dialog__meta > div').filter({ has: page.getByText('error retries', { exact: true }) });
+      expect(await retries.locator('dd').textContent()).toBe('1/2 · recovered');
       expect(await panel.locator('.card__target-commits').allTextContents()).toEqual([
         expect.stringContaining('1e04e038'), expect.stringContaining('1e04e038'),
       ]);

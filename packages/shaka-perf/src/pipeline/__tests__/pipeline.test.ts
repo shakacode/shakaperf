@@ -307,6 +307,7 @@ describe('runPipeline', () => {
       expect(outcome.executionDetails.measurementMetadata?.targets).toHaveLength(2);
       expect(outcome.executionDetails.measurementMetadata).not.toHaveProperty('viewport');
     expect(outcome.executionDetails.viewport.width).toBeGreaterThan(0);
+      expect(outcome.executionDetails.measurementMetadata).not.toHaveProperty('throttling');
     }
   });
 
@@ -502,12 +503,12 @@ describe('runPipeline', () => {
         viewport: expect.objectContaining({ label: expect.any(String), width: expect.any(Number) }),
         testSourceHref: derived ? null : expect.any(String),
         stageMetadata: exhausted ? undefined : {},
-        taskRetries: 1,
-        taskRetryLimit: 1,
-        recoveredAfterRetries: !exhausted,
         measurementMetadata: derived
           ? undefined
           : expect.objectContaining({ targets: expect.any(Array) }),
+        taskRetries: 1,
+        taskRetryLimit: 1,
+        recoveredAfterRetries: !exhausted,
       });
       if (derived) expect(outcome.executionDetails.measurementMetadata).toBeUndefined();
       else {
@@ -573,6 +574,7 @@ describe('runPipeline', () => {
       const perf = second.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.kind === 'ok')!;
       expect(perf.executionDetails.command).toContain('--restart-from-stage perf');
       expect(perf.executionDetails.measurementMetadata?.numberOfMeasurements).toBe(7);
+      expect(perf.executionDetails.measurementMetadata?.targets.length).toBe(2);
       expect(perf.executionDetails.measurementMetadata).not.toHaveProperty('compareRetries');
       expect(perf.executionDetails.runId).not.toBe(before.executionDetails.runId);
       jest.mocked(measuredCommit).mockClear();
@@ -613,6 +615,7 @@ describe('runPipeline', () => {
     const outcome = result.testResults[0]!.outcomes.find((o) => o.kind === 'ok')!;
     expect(outcome.executionDetails.measurementMetadata?.targets).toEqual([{ side: 'experiment', url: 'https://user:password@deployment.test/cart?token=secret', commit: null }]);
     expect(outcome.executionDetails.measurementMetadata?.throttling).toEqual({ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } });
+    expect(outcome.executionDetails.measurementMetadata?.targets.length).toBe(1);
     expect(outcome.executionDetails.measurementMetadata).not.toHaveProperty('viewport');
     expect(outcome.executionDetails.viewport.width).toBeGreaterThan(0);
   });
