@@ -10,6 +10,7 @@ import type { StageRenderEntry } from '../../../stage/stage';
 import type { VisregArtifact, VisregResult } from '../visreg';
 import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, ReportHeading, OldRunChip, StageNote } from '../../../pipeline/stage-report-components';
 import { ImageViewport } from '../../../pipeline/image-viewport';
+import { visualComparisonFields } from './metadata';
 import { Scrubber } from './scrubber';
 
 export function VisregArtifactView({
@@ -57,6 +58,11 @@ interface VisregRow {
 
 function VisregCard({ row }: { row: VisregRow }) {
   const { artifact, viewportLabel } = row;
+  const { executionDetails } = row.entry;
+  const dialogExecution = {
+    ...executionDetails,
+    stageMetadata: { ...executionDetails.stageMetadata, ...visualComparisonFields(artifact) },
+  };
   const changed = artifact.diffImage !== null;
   const head = (
     <div className="artifact-card__head">
@@ -76,7 +82,7 @@ function VisregCard({ row }: { row: VisregRow }) {
         href={artifact.diffImage}
         label={`${viewportLabel} ${artifact.selector}`}
         title={`visual regressions ${viewportLabel} > ${artifact.selector}`}
-        executionDetails={row.entry.executionDetails}
+        executionDetails={dialogExecution}
         body={<VisregDialogImages row={artifact} diffImage={artifact.diffImage} />}
       >
         <DiffImages row={artifact} diffImage={artifact.diffImage} />
@@ -91,7 +97,7 @@ function VisregCard({ row }: { row: VisregRow }) {
         href={artifact.controlImage}
         label={`${viewportLabel} ${artifact.selector}`}
         title={`visual regressions ${viewportLabel} > ${artifact.selector}`}
-        executionDetails={row.entry.executionDetails}
+        executionDetails={dialogExecution}
         body={<VisregDialogImages row={artifact} />}
       >
         <div className="artifact-card__media">
