@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import type { PerformanceEngineResult, PerformanceSettings } from '../../../stage/performance-metadata';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import chalk from 'chalk';
@@ -48,7 +49,7 @@ export async function runPerfEngineStage(
   ctx: TestContext,
   workerPool: WorkerPool,
   config: PerfStageConfig,
-): Promise<PerfResult | PerfLowNoiseResult | PerfWarmupResult> {
+): Promise<PerformanceEngineResult<PerfResult | PerfLowNoiseResult | PerfWarmupResult>> {
   // The engine measures at ctx.viewport, so config.viewports is unused.
   const perfConfig = config;
   const unitId = ctx.testAndViewportId;
@@ -105,8 +106,9 @@ export async function runPerfEngineStage(
       targetUrl: ctx.experimentURL,
     }),
   ];
+  let settings: PerformanceSettings;
   try {
-    await runPerfPhase(ctx, benchmarks, pool, artifactsDir, config);
+    settings = await runPerfPhase(ctx, benchmarks, pool, artifactsDir, config);
   } catch (err) {
     const message = (err as Error).message || String(err);
     console.error(chalk.red(`perf engine error: ${message}`));
@@ -127,7 +129,7 @@ export async function runPerfEngineStage(
   }
 
   if (isWarmupConfig(config)) {
-    return {};
+    return { measurement: {}, settings };
   }
 
   if (config.statisticalAnalysis) {
@@ -141,7 +143,7 @@ export async function runPerfEngineStage(
     saveArtifacts: config.saveArtifacts,
     statisticalAnalysis: config.statisticalAnalysis,
   });
-  return artifact;
+  return { measurement: artifact, settings };
 }
 
 async function runPerfPhase(
@@ -150,7 +152,7 @@ async function runPerfPhase(
   pool: ReturnType<typeof createWorkerLighthouseSamplingPool<NavigationSample>>,
   artifactsDir: string,
   config: PerfStageConfig,
-): Promise<void> {
+): Promise<PerformanceSettings> {
   const startTime = config.statisticalAnalysis ? timestamp() : null;
   // The statistical stage samples the per-test effective count
   // (config.perf.numberOfMeasurements in an abTest() applies to that test);
@@ -225,6 +227,7 @@ async function runPerfPhase(
       );
     }
   }
+  return { numberOfMeasurements, targetCount: benchmarks.length, throttling: firstSample?.measurementThrottling };
 }
 
 function isWarmupConfig(config: Pick<PerfStageConfig, 'saveArtifacts' | 'statisticalAnalysis'>): boolean {

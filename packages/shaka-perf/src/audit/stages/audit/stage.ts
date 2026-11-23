@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { performanceMetadataFields } from '../../../stage/performance-metadata';
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { PerfLighthouseConfig } from '../../../bench/core/lighthouse-config';
@@ -67,8 +68,8 @@ export class AuditStage implements Stage<AuditResult> {
   async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<AuditResult>> {
     const runImpl = './engine';
     const { runAuditStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    const measurement = await runAuditStage(ctx, pool, this.config);
-    return { measurement, metadata: {} };
+    const { measurement, settings } = await runAuditStage(ctx, pool, this.config);
+    return { measurement, metadata: performanceMetadataFields(settings) };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<AuditResult>[]) {

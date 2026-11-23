@@ -11,7 +11,7 @@ import { comparePipelineConfigFromAbTests } from '../../../compare/compare-pipel
 import type { ReportData as PipelineReportData } from '../../report';
 import type { BisectReportModel } from '../../../compare/bisect/report-model';
 type ReportData = PipelineReportData & { bisect?: BisectReportModel };
-import type { ReportOutcome, TestResult } from '../../report';
+import type { TestResult } from '../../report';
 import type { MeasurementMetadata } from '../../run-metadata';
 
 const firstRun = '2026-10-20T20:54:53.891Z';
@@ -33,8 +33,12 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
       side, url: 'http://127.0.0.1:3910/',
       commit: { sha: '1e04e03852fee4e3257a2084f226189b97f13e2e', message: 'Redact complete credential values before persisting run details [skip ci]', source: 'Git in twin-server source checkout' },
     })),
-    throttling: { engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 150, throughputKbps: 1638.4 } },
   });
+  const testSourceHref =
+    'data:text/plain;charset=utf-8,' +
+    encodeURIComponent(
+      "abTest('Homepage', { startingPath: '/' }, async ({ page }) => {\n  await waitUntilPageSettled(page);\n});",
+    );
   const result = (id: string, name: string, withMetadata: boolean): TestResult => ({
     id, name, filePath: `ab-tests/${id}.abtest.ts`, startingPath: '/',
     controlUrl: 'http://127.0.0.1:3910/', experimentUrl: 'http://127.0.0.1:3910/',
@@ -44,57 +48,27 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
     viewportArtifactPaths: [{ viewport: 'desktop', path: `results/${id}-desktop` }],
     outcomes: [
       {
+        kind: 'ok', stage, measurement, logs: '<0.1s> Measurement completed',
         executionDetails: {
-          viewport: DESKTOP_VIEWPORT,
-          testSourceHref:
-            'data:text/plain;charset=utf-8,' +
-            encodeURIComponent(
-              "abTest('Homepage', { startingPath: '/' }, async ({ page }) => {\n  await waitUntilPageSettled(page);\n});",
-            ),
-          command,
-          runId: firstRun,
-          recoveredAfterRetries: false,
-          measurementMetadata: withMetadata ? metadata(firstRun) : undefined,
+          viewport: DESKTOP_VIEWPORT, testSourceHref, command, runId: firstRun, recoveredAfterRetries: false,
+          measurementMetadata: withMetadata ? {
+            ...metadata(firstRun),
+            throttling: { engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 150, throughputKbps: 1638.4 } },
+          } : undefined,
         },
-        kind: 'ok',
-        stage,
-        measurement,
-        logs: '<0.1s> Measurement completed',
       },
       {
+        kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' },
         executionDetails: {
-          viewport: DESKTOP_VIEWPORT,
-          testSourceHref:
-            'data:text/plain;charset=utf-8,' +
-            encodeURIComponent(
-              "abTest('Homepage', { startingPath: '/' }, async ({ page }) => {\n  await waitUntilPageSettled(page);\n});",
-            ),
-          command,
-          runId: secondRun,
-          recoveredAfterRetries: false,
+          viewport: DESKTOP_VIEWPORT, testSourceHref, command, runId: secondRun, recoveredAfterRetries: false,
           measurementMetadata: withMetadata ? metadata(secondRun) : undefined,
         },
-        kind: 'error',
-        stage: 'accessibility',
-        error: { message: 'Accessibility scan timed out; performance result was retained.' },
       },
       {
-        executionDetails: {
-          viewport: PHONE_VIEWPORT,
-          testSourceHref:
-            'data:text/plain;charset=utf-8,' +
-            encodeURIComponent(
-              "abTest('Homepage', { startingPath: '/' }, async ({ page }) => {\n  await waitUntilPageSettled(page);\n});",
-            ),
-          command,
-          runId: secondRun,
-          recoveredAfterRetries: false,
-        },
-        kind: 'ok',
-        stage,
-        measurement,
+        kind: 'ok', stage, measurement,
+        executionDetails: { viewport: PHONE_VIEWPORT, testSourceHref, command, runId: secondRun, recoveredAfterRetries: false },
       },
-    ] as ReportOutcome[],
+    ],
   });
   const data: ReportData = {
     meta: { title: `${pipelineName} report`, pipelineName, generatedAt: secondRun, controlUrl: config.shared.controlURL,

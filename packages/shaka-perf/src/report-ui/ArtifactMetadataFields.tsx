@@ -24,16 +24,21 @@ export function ArtifactMetadataFields({ executionDetails }: { executionDetails:
           </div>
         </dl>
       ) : null}
-      {fields && Object.keys(fields).length > 0 ? (
-        <dl className="ui-dialog__meta">
-          {Object.entries(fields).map(([label, value]) => (
-            <div key={label}>
-              <dt>{label}</dt>
-              <dd className="ui-dialog__meta-break">{value}</dd>
-            </div>
-          ))}
-        </dl>
-      ) : null}
+      <MetadataRows fields={fields} />
     </>
+  );
+}
+
+export function MetadataRows({ fields }: { fields?: Readonly<Record<string, string>> }) {
+  if (!fields || Object.keys(fields).length === 0) return null;
+  return (
+    <dl className="ui-dialog__meta">
+      {Object.entries(fields).map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd className="ui-dialog__meta-break">{value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
