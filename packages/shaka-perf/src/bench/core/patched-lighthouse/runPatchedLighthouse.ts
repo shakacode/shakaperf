@@ -24,8 +24,9 @@ ensureLighthousePatchRegistered();
  * silent failure mode where post-load testFn interactions get excluded from
  * the trace.
  *
- * Load Lighthouse only when a command needs it, after registering the patch.
- * An earlier import can cache Lighthouse before the patch is applied.
+ * Load Lighthouse only when a command needs it (loading takes over a second,
+ * which commands like `shaka-perf init` should not pay), and only after the
+ * patch is registered: an earlier load caches Lighthouse unpatched.
  */
 // Keep this first import native so Node's loader can patch Lighthouse.
 // Otherwise the project's CommonJS build rewrites import() to a deferred require().
@@ -96,7 +97,9 @@ export async function runPatchedLighthouse(
     let effectiveFlags = settings as Flags;
     let config: Config | undefined;
     if (imageResolution) {
-      // The plugin extends Lighthouse classes, so load it after the patched import above.
+      // Load the plugin only after the native import above. Its `import from 'lighthouse'`
+      // compiles to require(), which then reuses the patched copy; loaded first, it failed
+      // on Node 22.12 under Yarn PnP.
       const { imageResolutionLighthouseConfig, IMAGE_RESOLUTION_CATEGORY } =
         await import('../image-resolution-lighthouse');
       config = imageResolutionLighthouseConfig(imageResolution);
