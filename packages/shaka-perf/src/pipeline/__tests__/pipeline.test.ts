@@ -516,13 +516,31 @@ describe('runPipeline', () => {
       }
     }
     expect(result.testResults[0]!.chips.filter((chip) => chip.tag === 'flaky')).toEqual(exhausted ? [] : [expect.objectContaining({
-      text: `flaky (recovered after ${measured.length} ${measured.length === 1 ? 'retry' : 'retries'})`,
+      text: 'flaky (recovered after 1 retry)',
     })]);
     if (exhausted) {
       expect(result.testResults[0]!.chips.find((chip) => chip.tag === 'broken')?.tooltip).toBe(
         'Tasks still failed after 1 of 1 allowed retries.',
       );
     }
+  });
+
+  it('shows the largest retry count across recovered tasks', async () => {
+    const selected = pipeline();
+    selected.stages[0]!.run = async (ctx, pool) => {
+      const failures = ctx.viewport.label === 'desktop' ? 2 : 1;
+      let attempts = 0;
+      return pool.submit(async () => {
+        if (++attempts <= failures) throw new Error('temporary failure');
+        return { measurement: {}, metadata: {} };
+      });
+    };
+    const test: AbTestDefinition = { ...frozenTest, config: { shared: { retries: 2, retryDelay: 0 }, visreg: { viewports: ['desktop', 'phone'] } } };
+    const { testResults } = await runWithFrozenTest({ tests: [test], categories: 'visreg', skipReport: true }, selected);
+    const card = testResults[0]!;
+    const counts = card.outcomes.filter(o => o.executionDetails.recoveredAfterRetries).map(o => o.executionDetails.taskRetries);
+    expect(counts.sort()).toEqual([1, 2]);
+    expect(card.chips.find(chip => chip.tag === 'flaky')?.text).toBe('flaky (recovered after 2 retries)');
   });
 
   it.each([undefined, 1, 3])('reports visual attempts and their limit on mismatches (%p attempts)', async (attempts) => {

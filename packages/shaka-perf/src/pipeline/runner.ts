@@ -1650,27 +1650,22 @@ function brokenChip(outcomes: readonly ReportOutcome[], stages: readonly Pick<St
 // tests. Distinct from the compare pipeline's "visreg unstable" chip, which is
 // about visual-comparison instability rather than crash recovery.
 function flakyChip(recovered: readonly ReportOutcome[]): ChipDescriptor {
-  let retries: number | undefined = 0;
-  for (const outcome of recovered) {
-    const count = outcome.executionDetails.taskRetries;
-    if (count === undefined || count < 1) {
-      retries = undefined;
-      break;
-    }
-    retries += count;
+  let maxRetries = 0;
+  for (const { executionDetails } of recovered) {
+    maxRetries = Math.max(maxRetries, executionDetails.taskRetries ?? 0);
   }
   return {
     tag: 'flaky',
-    text: `flaky (recovered after ${retryCountText(retries)})`,
+    text: `flaky (recovered after ${retryCountText(maxRetries)})`,
     color: 'yellow',
     sortingWeight: 16,
     affectsCardOrder: false,
-    tooltip: 'A task failed, then succeeded on retry.',
+    tooltip: 'A stage task failed on an earlier attempt but a retry succeeded — the test is flaky but recovered.',
   };
 }
 
-function retryCountText(count: number | undefined): string {
-  if (count === undefined) return 'retries';
+function retryCountText(count: number): string {
+  if (count === 0) return 'retries';
   return `${count} ${count === 1 ? 'retry' : 'retries'}`;
 }
 
