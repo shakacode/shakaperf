@@ -14,7 +14,7 @@ import {
   type ImageResolutionConfig,
   type ImageResolutionResult,
 } from './image-resolution';
-import { classifyImageSources, isRasterImageType } from './image-source-type';
+import { classifyImageSources, isVectorImageType } from './image-source-type';
 
 declare module 'lighthouse/types/artifacts.js' {
   interface GathererArtifacts {
@@ -45,7 +45,8 @@ class ImageResolutionGatherer extends Gatherer {
     // currentSrc retains the requested URL, even when the bitmap came through redirects.
     const urls = this.redirects.get(requestId) ?? new Set<string>();
     urls.add(response.url);
-    const raster = isRasterImageType(response.mimeType);
+    // Every response that is not SVG counts. Only <img> URLs are looked up, and an <img> decodes images only.
+    const raster = !isVectorImageType(response.mimeType);
     for (const url of urls) {
       if (raster) this.rasterUrls.add(url);
       else this.rasterUrls.delete(url);

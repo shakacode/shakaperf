@@ -37,10 +37,14 @@ it.each([
         } else if (req.url === '/vector.png') {
           res.writeHead(200, {'Content-Type': 'image/svg+xml'});
           res.end('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"></svg>');
+        } else if (req.url === '/mislabeled.jpg') {
+          // PNG data under a non-standard type name. Chrome still decodes it.
+          res.writeHead(200, {'Content-Type': 'image/jpg'}); res.end(png);
         } else {
           res.writeHead(200, {'Content-Type': 'text/html'});
           const otherImages = mode === 'pending-and-vector'
-            ? '<img id="stalled" src="/stalled.png" width="100" height="100"><img id="vector" src="/vector.png" width="40" height="20">'
+            ? '<img id="stalled" src="/stalled.png" width="100" height="100"><img id="vector" src="/vector.png" width="40" height="20">' +
+              '<img id="mislabeled" src="/mislabeled.jpg" width="100" height="50">'
             : '';
           res.end('<!doctype html><title>Image test</title><h1>Image test</h1><img id="photo" src="' + source + '" width="300" height="300" style="object-fit:cover">' + otherImages);
         }
@@ -113,5 +117,8 @@ it.each([
       expect(image.sourceWidth).toBeUndefined();
       expect(image.sourceHeight).toBeUndefined();
     }
+    expect(output.result.images.find((item: { label: string }) => item.label === 'img#mislabeled')).toMatchObject({
+      sourceWidth: 400, sourceHeight: 200, status: 'sufficient',
+    });
   }
 }, 100_000);

@@ -108,9 +108,9 @@ measurements require a fresh audit.
 After Lighthouse stops recording speed, ShakaPerf selects the images once.
 An image partly inside the viewport is checked at its full painted size. An
 image covered by an overlay or clipped by a container can still be included.
-ShakaPerf reads the bitmap dimensions and uses the recorded image types to
-identify raster images. An image still downloading at the time of the check is
-reported as unknown. If the whole image check fails, ShakaPerf keeps the speed
+ShakaPerf reads the bitmap dimensions and uses the recorded response types to
+identify SVGs. An image whose response was not recorded, such as a `blob:` URL,
+is reported as unknown, as is an image still downloading at the time of the check. If the whole image check fails, ShakaPerf keeps the speed
 results and reports the error. With undersized-image failure enabled, that
 error also fails the command.
 

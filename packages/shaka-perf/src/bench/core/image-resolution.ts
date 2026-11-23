@@ -11,6 +11,7 @@ export interface ImageResolutionConfig {
 }
 
 export interface ImageResolutionMeasurement {
+  /** The selected URL. An embedded image keeps only its type: `data:image/png;…`. */
   src: string;
   label: string;
   fit: string;
@@ -52,6 +53,8 @@ export type ImageResolutionCheck = ImageResolutionResult | {
 
 interface ViewportImage {
   image: HTMLImageElement;
+  /** The full selected URL. It stays in the page; `measurement.src` omits embedded image data. */
+  selectedSrc: string;
   measurement: ImageResolutionMeasurement;
 }
 
@@ -105,8 +108,11 @@ function readImageLayout(image: HTMLImageElement, rect: DOMRect): ImageResolutio
   else if (image.alt) label = `img (${image.alt})`;
   else if (!image.currentSrc && image.getAttribute('src')) label = `img (${image.getAttribute('src')})`;
 
+  // An embedded image is reported by its type alone, so its data never leaves the page.
+  const src = /^data:[^;,]*[;,]/i.exec(image.currentSrc)?.[0].concat('…') ?? image.currentSrc;
+
   return {
-    src: image.currentSrc, label, fit: style.objectFit, boxWidth, boxHeight,
+    src, label, fit: style.objectFit, boxWidth, boxHeight,
     ...(hasTransform && !reason ? {
       scaleX: rect.width / (boxWidth + horizontalInsets),
       scaleY: rect.height / (boxHeight + verticalInsets),
@@ -125,7 +131,7 @@ function collectImagesInViewport(root: Document | ShadowRoot): ViewportImage[] {
     if (!overlapsViewport) continue;
 
     const measurement = readImageLayout(image, rect);
-    if (measurement) images.push({ image, measurement });
+    if (measurement) images.push({ image, selectedSrc: image.currentSrc, measurement });
   }
   for (const element of Array.from(root.querySelectorAll('*'))) {
     if (!element.shadowRoot) continue;
@@ -134,8 +140,8 @@ function collectImagesInViewport(root: Document | ShadowRoot): ViewportImage[] {
   return images;
 }
 
-async function readBitmapDimensions(image: HTMLImageElement, measurement: ImageResolutionMeasurement): Promise<void> {
-  if (image.currentSrc !== measurement.src) {
+async function readBitmapDimensions({ image, selectedSrc, measurement }: ViewportImage): Promise<void> {
+  if (image.currentSrc !== selectedSrc) {
     measurement.reason = 'Image source changed before the bitmap was read.';
     return;
   }
@@ -157,8 +163,9 @@ async function readBitmapDimensions(image: HTMLImageElement, measurement: ImageR
 export async function collectImageResolutionMeasurements(): Promise<ImageResolutionMeasurement[]> {
   const images = collectImagesInViewport(document);
   const measurements: ImageResolutionMeasurement[] = [];
-  for (const { image, measurement } of images) {
-    if (!measurement.reason) await readBitmapDimensions(image, measurement);
+  for (const viewportImage of images) {
+    const { measurement } = viewportImage;
+    if (!measurement.reason) await readBitmapDimensions(viewportImage);
     measurements.push(measurement);
   }
   return measurements;

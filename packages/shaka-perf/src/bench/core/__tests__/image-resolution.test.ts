@@ -259,6 +259,17 @@ describe('current rendered image measurement in Chromium', () => {
     } finally { await page.close(); }
   });
 
+  it('reports an embedded image by its type and keeps its data in the page', async () => {
+    const page = await browser.newPage();
+    try {
+      await page.setContent(`<img width="100" height="50" src="data:image/png;base64,${png.toString('base64')}">`);
+      const measurements = await measurePageImages(page);
+      expect(measurements[0]).toMatchObject({ src: 'data:image/png;…', sourceWidth: 400, sourceHeight: 200 });
+      const { images } = evaluateImageResolution(classifyImageSources(measurements, new Set()), config);
+      expect(images[0]!.status).toBe('oversized');
+    } finally { await page.close(); }
+  });
+
   it('keeps non-empty image boxes that overlap the viewport, even when clipped or covered', async () => {
     const page = await browser.newPage({ viewport: { width: 300, height: 200 } });
     const source = `data:image/png;base64,${png.toString('base64')}`;
@@ -286,14 +297,15 @@ describe('image source classification', () => {
   it('discards bitmap dimensions for SVG and unconfirmed URLs, including URLs that look like a raster image', () => {
     const records = [
       measurement({ src: 'https://example.test/confirmed#fragment' }),
-      measurement({ src: 'data:image/png;base64,AAAA' }),
-      measurement({ src: 'data:image/svg+xml,<svg/>' }),
+      measurement({ src: 'data:image/png;…' }),
+      measurement({ src: 'data:image/jpg;…' }), // A non-standard type name that browsers still decode.
+      measurement({ src: 'data:image/svg+xml,…' }),
       measurement({ src: 'https://example.test/unconfirmed.png' }),
     ];
     const classified = classifyImageSources(records, new Set(['https://example.test/confirmed']));
     const { images } = evaluateImageResolution(classified, config);
-    expect(images.map(image => image.status)).toEqual(['undersized', 'undersized', 'unknown', 'unknown']);
-    for (const image of images.slice(2)) {
+    expect(images.map(image => image.status)).toEqual(['undersized', 'undersized', 'undersized', 'unknown', 'unknown']);
+    for (const image of images.slice(3)) {
       expect(image.sourceWidth).toBeUndefined();
       expect(image.sourceHeight).toBeUndefined();
     }
