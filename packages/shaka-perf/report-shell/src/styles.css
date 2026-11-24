@@ -1336,6 +1336,11 @@ input {
   letter-spacing: inherit;
 }
 
+.pill .report-tooltip__help {
+  font: 600 10px/1 Arial, sans-serif;
+  letter-spacing: normal;
+}
+
 .pill__sep {
   text-transform: uppercase;
   white-space: pre;
