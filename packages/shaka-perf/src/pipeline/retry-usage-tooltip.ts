@@ -14,6 +14,11 @@ interface RetryUsage {
 
 type UsageUnit = 'retries' | 'comparisons';
 
+/**
+ * @example
+ * formatUsage({ stage: 'Accessibility', viewport: 'desktop', count: 1, limit: 2 }, 'retries')
+ * // => '1 of 2 retries used'
+ */
 function formatUsage({ count, limit }: RetryUsage, unit: UsageUnit): string {
   const singular = unit === 'retries' ? 'retry' : 'comparison';
   if (count === undefined) {
@@ -25,6 +30,13 @@ function formatUsage({ count, limit }: RetryUsage, unit: UsageUnit): string {
   return `${count} of ${limit} ${unit} used`;
 }
 
+/**
+ * @example
+ * uniformUsageTooltip('Screenshots matched', 'comparisons', {
+ *   stage: 'Visual comparison', viewport: 'desktop', count: 2, limit: 3,
+ * })
+ * // => 'Screenshots matched after 2 of 3 allowed comparisons.'
+ */
 function uniformUsageTooltip(summary: string, unit: UsageUnit, usage: RetryUsage): string {
   const { count, limit } = usage;
   if (count === undefined || limit === undefined) {
@@ -37,7 +49,17 @@ function uniformUsageTooltip(summary: string, unit: UsageUnit, usage: RetryUsage
   return `${summary} after ${count} of ${limit} allowed ${unit}.`;
 }
 
-/** Only add stage and viewport labels when the counts need disambiguation. */
+/**
+ * Only add stage and viewport labels when the counts need disambiguation.
+ *
+ * @example
+ * retryUsageTooltip('Tasks still failed', 'retries', [
+ *   { stage: 'Accessibility', viewport: 'desktop', count: 1, limit: 1 },
+ *   { stage: 'Accessibility', viewport: 'phone', count: 2, limit: 2 },
+ * ])
+ * // => 'Tasks still failed.\nAccessibility · desktop — 1 of 1 retries used\n'
+ * //    + 'Accessibility · phone — 2 of 2 retries used'
+ */
 export function retryUsageTooltip(summary: string, unit: UsageUnit, entries: readonly RetryUsage[]): string {
   const first = entries[0];
   if (!first) return `${summary}.`;
