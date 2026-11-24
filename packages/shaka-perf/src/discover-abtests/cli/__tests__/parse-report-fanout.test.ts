@@ -7,6 +7,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { shakaPerfVersion } from '../../../pipeline/saved-result-version';
 import { createDiscoverAbtestsCommand } from '../program';
 
 describe('parse-report without a path', () => {
@@ -42,6 +43,7 @@ describe('parse-report without a path', () => {
     fs.mkdirSync(path.dirname(goodReport), { recursive: true });
     fs.writeFileSync(badReport, '{');
     fs.writeFileSync(goodReport, JSON.stringify({
+      shakaPerfVersion,
       tests: [{ status: 'pass', pair: { label: 'Good report' } }],
     }));
     process.chdir(tmpDir);

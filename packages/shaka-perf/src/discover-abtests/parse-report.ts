@@ -7,6 +7,8 @@
 
 import * as fs from 'node:fs';
 
+import { isCompatibleSavedResult, shakaPerfVersion } from '../pipeline/saved-result-version';
+
 interface Pair {
   status?: string;
   diff?: { misMatchPercentage?: number | string };
@@ -45,6 +47,10 @@ export function parseReport(reportPath: string): void {
   } catch (error) {
     console.error(`Failed to read or parse report ${reportPath}: ${(error as Error).message}`);
     process.exitCode = 1;
+    return;
+  }
+  if (!isCompatibleSavedResult(data)) {
+    console.warn(`Skipping incompatible report ${reportPath}. Current shaka-perf version: ${shakaPerfVersion}.`);
     return;
   }
   const tests = data.tests ?? [];

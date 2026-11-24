@@ -64,11 +64,14 @@ To look at a failing page rather than measure it, use `yarn shaka-perf troublesh
 - `compare-results/self-contained-performance-report.html` — shareable single file, everything inlined.
 - `compare-results/full-report.html` — local variant referencing sibling artifact dirs.
 
-**`compare-results/report.json`** (`schemaVersion: 1`) is the machine report. Shape:
+**`compare-results/report.json`** (`schemaVersion: 1`) is the machine report. Its `shakaPerfVersion` field identifies the installed package that generated it. Each saved stage outcome and shard error file carries its own version. Report assembly reuses files from the same major and minor release, including other patch releases. Rerun the affected tests to regenerate unversioned or incompatible results.
+
+Example:
 
 ```jsonc
 {
   "schemaVersion": 1,
+  "shakaPerfVersion": "0.7.0",
   "meta": { "controlUrl": "...", "experimentUrl": "...", "errors": [ /* engine-level errors */ ] },
   "pipeline": { "name": "compare", "stages": ["visreg", "perf-warmup", "perf", "perf-low-noise", "accessibility"] },
   "tests": [

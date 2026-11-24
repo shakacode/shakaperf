@@ -12,6 +12,7 @@ import type {
   Stats,
 } from "../../stats";
 import chalk from "chalk";
+import { shakaPerfVersion } from "../../../pipeline/saved-result-version";
 
 import type { RegressionThresholdStat } from "../command-config/tb-config";
 import { logHeading } from "../helpers/utils";
@@ -271,7 +272,7 @@ export class CompareResults {
       isBelowRegressionThreshold: this.isBelowRegressionThreshold,
       regressionThresholdStat: this.regressionThresholdStat,
     };
-    return JSON.stringify(jsonResults);
+    return JSON.stringify({ shakaPerfVersion, ...jsonResults });
   }
 
   public getPlainTextSummary(): string {

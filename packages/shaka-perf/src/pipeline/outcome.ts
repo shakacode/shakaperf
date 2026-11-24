@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { isCompatibleSavedResult } from './saved-result-version';
 import type { Viewport } from '../config';
 import type { MeasurementMetadata } from './run-metadata';
 import type { StageName } from '../stage/stage';
@@ -53,6 +54,7 @@ export interface Outcome {
 }
 
 /** Read the current saved outcome contract without legacy conversions. */
-export function parseOutcome(json: string): Outcome {
-  return JSON.parse(json) as Outcome;
+export function parseOutcome(json: string): Outcome | null {
+  const saved = JSON.parse(json) as Outcome;
+  return isCompatibleSavedResult(saved) ? saved : null;
 }
