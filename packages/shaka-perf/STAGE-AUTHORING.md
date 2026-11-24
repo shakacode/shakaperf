@@ -415,8 +415,10 @@ for each stage. Constraints:
   `consoleCaptureStorage` reroutes it transparently.
 - **`executionDetails.runId`** — identifies the run that produced the outcome.
 
-`--report-only` reads stage outcomes whose `shakaPerfVersion` matches the
-installed ShakaPerf major and minor version.
+Each saved stage outcome contains a `shakaPerfVersion` field. With
+`--report-only`, ShakaPerf compares the major and minor numbers in this field
+with those in the installed version. ShakaPerf reuses the outcome only if both
+numbers match.
 
 ## Cancellation semantics
 
