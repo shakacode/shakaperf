@@ -358,9 +358,14 @@ that gets inlined into one self-contained `report.html`. Constraints:
 - **No Node-only imports** reach the shell. `fs`, `path`,
   `child_process`, `sharp`, `playwright` — all engine-side. Put them
   in `engine.ts`.
-- The measurement from `run()` must reference every stage artifact the report shell displays.
-  Return the report-relative path from `ctx.artifacts`. The framework embeds
-  the referenced file when it creates the self-contained report.
+- Use the `measurement` from `run()` to supply stage data to `renderArtifacts`.
+  Use one of these forms for each artifact that the report shell displays.
+  - Include a data URL such as `data:image/avif;base64,...` directly in the
+    measurement.
+  - Save the artifact to disk. Include the report-relative path from
+    `ctx.artifacts` in the measurement, such as
+    `<unit_dir>/artifacts/timeline_frames.svg`. The framework embeds the file
+    when it creates the self-contained report.
 - No `fetch` at render time — the report is opened from `file://`
   often.
 
@@ -370,13 +375,23 @@ paired with viewports). For per-card layout like a preview that opens
 a fullscreen dialog, use `DetailedArtifactDialog` with
 `variant="preview"` (see `build_annotated_timeline/report.tsx`).
 
-Pass `executionDetails={entry.executionDetails}` to `DetailedArtifactDialog`.
-The shared dialog renders the fields in `executionDetails.stageMetadata`.
-For visual comparisons, `run()` saves the viewport as run metadata and returns the raw artifacts.
-Each card formats its selected artifact’s fields and adds them to a copy of the run metadata
-for its dialog. Compare and audit performance stages return the sample count and throttling from `run()`.
-The engine supplies the effective sample count, the number of measured sides, and the throttling reported by Lighthouse. The shared dialog renders
-the supplied fields. The runner owns timestamps and error retries. Use `metadata: {}` for stages with no run-wide fields.
+The runner saves the `metadata` from `run()` in `entry.executionDetails.stageMetadata`.
+The runner also records timestamps and error retries.
+Return `metadata: {}` if there are no fields for the stage run as a whole.
+Pass `executionDetails={entry.executionDetails}` to `DetailedArtifactDialog` to
+display the fields in `stageMetadata`.
+
+1. In the visual comparison stage, return the viewport in `metadata` and the
+   raw artifacts in `measurement`.
+2. In each card, format the fields for the selected artifact.
+3. Copy `entry.executionDetails`. Add those fields to the copy's `stageMetadata`.
+4. Pass the copy to `DetailedArtifactDialog`.
+
+In the compare and audit performance stages, the engine supplies the effective
+sample count and the number of measured sides. It also supplies the throttling
+that Lighthouse reports, when available. The stage adds `per side` to the
+sample count when the engine measures more than one side.
+`run()` returns the formatted sample count and any throttling in `metadata`.
 
 ## `pipelineConfig` round-trip
 
