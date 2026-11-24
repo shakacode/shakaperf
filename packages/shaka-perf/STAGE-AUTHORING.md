@@ -358,14 +358,11 @@ that gets inlined into one self-contained `report.html`. Constraints:
 - **No Node-only imports** reach the shell. `fs`, `path`,
   `child_process`, `sharp`, `playwright` — all engine-side. Put them
   in `engine.ts`.
-- Use the `measurement` from `run()` to supply stage data to `renderArtifacts`.
-  Use one of these forms for each artifact that the report shell displays.
-  - Include a data URL such as `data:image/avif;base64,...` directly in the
-    measurement.
-  - Save the artifact to disk. Include the report-relative path from
-    `ctx.artifacts` in the measurement, such as
-    `<unit_dir>/artifacts/timeline_frames.svg`. The framework embeds the file
-    when it creates the self-contained report.
+- In `run()`, return the data that `renderArtifacts` needs in `measurement`.
+  Include each artifact as a data URL (`data:image/avif;base64,...`) or save it
+  to disk and include its report-relative path from `ctx.artifacts`
+  (`<unit_dir>/artifacts/preview.svg`). The framework embeds referenced
+  files in the self-contained report.
 - No `fetch` at render time — the report is opened from `file://`
   often.
 
@@ -375,23 +372,13 @@ paired with viewports). For per-card layout like a preview that opens
 a fullscreen dialog, use `DetailedArtifactDialog` with
 `variant="preview"` (see `build_annotated_timeline/report.tsx`).
 
-The runner saves the `metadata` from `run()` in `entry.executionDetails.stageMetadata`.
-The runner also records timestamps and error retries.
-Return `metadata: {}` if there are no fields for the stage run as a whole.
 Pass `executionDetails={entry.executionDetails}` to `DetailedArtifactDialog` to
 display the fields in `stageMetadata`.
 
-1. In the visual comparison stage, return the viewport in `metadata` and the
-   raw artifacts in `measurement`.
-2. In each card, format the fields for the selected artifact.
-3. Copy `entry.executionDetails`. Add those fields to the copy's `stageMetadata`.
-4. Pass the copy to `DetailedArtifactDialog`.
-
-In the compare and audit performance stages, the engine supplies the effective
-sample count and the number of measured sides. It also supplies the throttling
-that Lighthouse reports, when available. The stage adds `per side` to the
-sample count when the engine measures more than one side.
-`run()` returns the formatted sample count and any throttling in `metadata`.
+If a dialog needs fields for one artifact, return the raw values in
+`measurement`. Format those values in the report card. Copy
+`entry.executionDetails`. Set the copy’s `stageMetadata` to a new object with the
+existing metadata and the formatted fields. Pass the copy to the dialog.
 
 ## `pipelineConfig` round-trip
 
