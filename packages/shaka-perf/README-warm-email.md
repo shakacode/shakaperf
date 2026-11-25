@@ -69,7 +69,7 @@ Renders one card per page (worst ~5 in full, the rest as a one-line list):
 - A collapsible frame-by-frame strip with the story beats always present:
   blank start, first content (nearest frame to FCP), the LCP frame, the
   settled end, and the biggest layout shifts with their moved regions drawn
-  as boxes. Frames come from `artifacts/timeline_frames.json` (written by the
+  as boxes. Frames come from `artifacts/build_annotated_timeline/timeline_frames.json` (written by the
   `build_annotated_timeline` stage); audits without timeline frames still
   render, just without strips.
 - Page weight, speed score, CLS when notable, and the audit's AI summary
