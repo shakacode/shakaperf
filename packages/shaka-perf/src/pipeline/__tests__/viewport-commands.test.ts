@@ -57,7 +57,7 @@ function mockPipeline(name: 'compare' | 'audit') {
   return createPipeline({
     name, description: name,
     measurementSides: name === 'compare' ? ['control', 'experiment'] : ['experiment'],
-    derivedResultsDirs: [{ stage: 'code_coverage', path: 'derived', unitFiles: (unitId) => [`${unitId}.json`] }],
+    derivedResultsDirs: [{ stage: stageIds.codeCoverage, path: 'derived', unitFiles: (unitId) => [`${unitId}.json`] }],
     report: { reportLabel: name, renderHeaderUrls: () => null, testTargets: () => [] },
   }, (builder) => {
     const pool = builder.registerWorkerPool(1);
@@ -343,7 +343,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
         config: built, tests: [narrowed, active], controlURL: built.shared.controlURL, experimentURL: built.shared.experimentURL,
         categories: 'code_coverage', viewportsFilter: ['phone'], preserveOtherViewports: true, skipReport: true,
       });
-      expect(store().readOutcome(narrowed, 'phone', 'code_coverage')?.kind).toBe('ok');
+      expect(store().readOutcome(narrowed, 'phone', stageIds.codeCoverage)?.kind).toBe('ok');
       for (const test of [narrowed, active]) {
         expect(fs.existsSync(path.join(mirrors, `${unitIdForTest(test, 'phone')}.json`))).toBe(false);
       }

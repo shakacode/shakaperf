@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createDiscoverAbtestsCommand, findDefaultVisregReports } from '../program';
@@ -32,8 +33,8 @@ describe('findDefaultVisregReports', () => {
   });
 
   it('finds and sorts per-unit reports', () => {
-    const first = path.join(tmpDir, 'a-test-desktop', 'artifacts', 'visreg', 'report.json');
-    const second = path.join(tmpDir, 'b-test-phone', 'artifacts', 'visreg', 'report.json');
+    const first = path.join(tmpDir, 'a-test-desktop', 'artifacts', stageIds.visreg, 'report.json');
+    const second = path.join(tmpDir, 'b-test-phone', 'artifacts', stageIds.visreg, 'report.json');
     fs.mkdirSync(path.dirname(first), { recursive: true });
     fs.mkdirSync(path.dirname(second), { recursive: true });
     fs.writeFileSync(first, '{"tests": []}');
@@ -49,7 +50,7 @@ describe('findDefaultVisregReports', () => {
   });
 
   it('uses per-unit reports when parse-report has no path argument', async () => {
-    const reportPath = path.join('compare-results', 'home-desktop', 'artifacts', 'visreg', 'report.json');
+    const reportPath = path.join('compare-results', 'home-desktop', 'artifacts', stageIds.visreg, 'report.json');
     fs.mkdirSync(path.join(tmpDir, path.dirname(reportPath)), { recursive: true });
     fs.writeFileSync(path.join(tmpDir, reportPath), '{"tests": []}');
     process.chdir(tmpDir);
