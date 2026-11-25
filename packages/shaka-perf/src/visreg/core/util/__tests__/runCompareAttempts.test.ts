@@ -193,14 +193,13 @@ it('resumes pending selectors after a worker failure without recapturing a match
   expect(resumed.map(row => [row.result.pass, row.visualComparisonCount])).toEqual([[true, 1], [true, 2]]);
 });
 
-it('persistent mismatch: spends the retry budget, returns the closest pair with a diff', async () => {
-  // Distinct frames per attempt (dirty=attempt) so the pool grows; ref stays
-  // red-ish, test blue-ish, so nothing ever matches.
+it('stops at the local retry limit and reports the closest pair when only one pool grows', async () => {
   const { deps, sleeps, counts } = makeDeps((attempt, side) =>
-    side === 'ref' ? png(RED, attempt) : png(BLUE, attempt));
+    side === 'ref' ? png(RED) : png(RED, 3 - attempt));
   const outcomes = await run(deps, makeConfig({ compareRetries: 2 }));
 
   expect(outcomes[0].result.pass).toBe(false);
+  expect(outcomes[0].result.leastDiffPixels).toBe(1);
   expect(outcomes[0].result.diffBuffer).not.toBeNull();
   expect(outcomes[0].refFrame).not.toBeNull();
   // 3 attempts (0 + 2 retries): fresh sides each, all disposed. Backoff 10, 20.

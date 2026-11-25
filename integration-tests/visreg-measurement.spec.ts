@@ -22,23 +22,30 @@ const repo = path.resolve(__dirname, '..');
 async function side() {
   let frames: string[] = ['green'];
   let visits = 0;
+  let hideStableAfterFirst = false;
   const server = http.createServer((req, res) => {
     if (req.url !== '/') { res.writeHead(204).end(); return; }
     const frame = frames[Math.min(visits++, frames.length - 1)];
     res.setHeader('Content-Type', 'text/html');
-    res.end(`<title>Fixture</title><body data-frame="${frame}" style="background:${frame}">Fixture</body>`);
+    const stable = hideStableAfterFirst && visits > 1 ? '' : '<div id="stable">Stable</div>';
+    res.end(`<title>Fixture</title><body data-frame="${frame}">${stable}
+      <div id="frame" style="width:32px;height:32px;background:${frame}"></div></body>`);
   });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('Missing TCP listener');
   return {
     url: `http://127.0.0.1:${address.port}`, visits: () => visits,
-    reset(next: string[]) { visits = 0; frames = next; },
+    reset(next: string[], options: { hideStableAfterFirst?: boolean } = {}) {
+      visits = 0;
+      frames = next;
+      hideStableAfterFirst = options.hideStableAfterFirst ?? false;
+    },
     close: () => server.close(),
   };
 }
 
-test('desktop measurements preserve perf and bound visreg retries across restarts', async ({ page }, testInfo) => {
+test('desktop measurements preserve perf and reuse only current visreg frames across restarts', async ({ page }, testInfo) => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-visreg-measurement-'));
   const [control, experiment] = await Promise.all([side(), side()]);
   try {
@@ -47,7 +54,7 @@ test('desktop measurements preserve perf and bound visreg retries across restart
     fs.mkdirSync(path.join(cwd, 'ab-tests'));
     fs.writeFileSync(path.join(cwd, 'ab-tests/frame.abtest.js'), `
       const { abTest } = require('shaka-shared');
-      abTest('Frame', { startingPath: '/' }, async ({ page, testType }) => {
+      abTest('Frame', { startingPath: '/', visregSelectors: ['#frame', '#stable'] }, async ({ page, testType }) => {
         if (testType === 'visreg' && await page.locator('body').getAttribute('data-frame') === 'crash')
           throw new Error('Injected visual round failure');
       });
@@ -141,20 +148,35 @@ test('desktop measurements preserve perf and bound visreg retries across restart
 
     // First capture red/blue. After the retry crashes, blue/yellow matches
     // only by pairing the restarted control with the initial experiment.
-    control.reset(['red', 'red', 'blue']); experiment.reset(['blue', 'crash', 'yellow']);
+    const hideMatched = { hideStableAfterFirst: true };
+    control.reset(['red', 'red', 'blue'], hideMatched);
+    experiment.reset(['blue', 'crash', 'yellow'], hideMatched);
     await compare(visreg);
     expect(experiment.visits()).toBe(3);
-    expect(outcome('visreg').executionDetails.taskRetries).toBe(1);
-    expect(outcome('visreg').measurement[0]).toMatchObject({ diffImage: null, savedByRetries: true });
+    const recovered = outcome('visreg');
+    expect(recovered.executionDetails.taskRetries).toBe(1);
+    expect(recovered.measurement).toEqual([
+      expect.objectContaining({ selector: '#frame', diffImage: null, visualComparisonCount: 2, savedByRetries: true }),
+      expect.objectContaining({ selector: '#stable', diffImage: null, visualComparisonCount: 1 }),
+    ]);
 
-    control.reset(['red', 'red', 'red', 'red', 'red', 'red']);
-    experiment.reset(['blue', 'crash', 'orange', 'crash', 'purple', 'yellow']);
+    // Two workers crash before saving their round. On the final worker the
+    // distinct control/experiment pool sizes grow from 2/3 to 2/4, 3/4, 4/4.
+    // Stop on its second retry, with one local retry still available.
+    control.reset(['red', 'lime', 'brown', 'red', 'brown', 'red', 'teal', 'pink']);
+    experiment.reset(['blue', 'orange', 'crash', 'purple', 'crash', 'yellow', 'yellow', 'yellow']);
     const log = await compare(visreg, 1);
-    expect(log.match(/Retry [123]\/3 for/g)).toEqual(['Retry 1/3 for', 'Retry 2/3 for', 'Retry 3/3 for']);
-    expect(experiment.visits()).toBe(6);
+    expect(log.match(/Retry [123]\/3 for/g)).toEqual([
+      'Retry 1/3 for', 'Retry 2/3 for', 'Retry 1/3 for', 'Retry 1/3 for', 'Retry 2/3 for',
+    ]);
+    expect(experiment.visits()).toBe(8);
     const mismatch = outcome('visreg');
     expect(mismatch.executionDetails.taskRetries).toBe(2);
-    expect(mismatch.measurement[0]).toMatchObject({ visualComparisonCount: 4, diffImage: expect.any(String) });
+    expect(mismatch.measurement[0]).toMatchObject({
+      selector: '#frame', visualComparisonCount: 6, diffImage: expect.any(String),
+    });
+    expect(mismatch.measurement[0].visualComparisonLimit).toBeUndefined();
+    expect(log).toContain('across 4 control × 4 experiment frames');
     const report = JSON.parse(fs.readFileSync(path.join(results, 'report.json'), 'utf8'));
     expect(report.tests[0].chips).toContainEqual(expect.objectContaining({ tag: 'visual change' }));
   } finally {
