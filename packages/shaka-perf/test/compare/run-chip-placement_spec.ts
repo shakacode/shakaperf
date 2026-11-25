@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../src/stage/stage-ids';
 import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -33,13 +34,13 @@ const config = { tags: ['wcag2a'], disableRules: [], includeRules: null };
 
 type Example = { stage: ReportOutcome['stage']; measurement: unknown; heading: string };
 const compare: Example[] = [
-  { stage: 'visreg', measurement: [{ selector: 'viewport', controlImage: IMAGE, experimentImage: IMAGE,
+  { stage: stageIds.visreg, measurement: [{ selector: 'viewport', controlImage: IMAGE, experimentImage: IMAGE,
     diffImage: null, misMatchPercentage: 0, diffPixels: 0, threshold: 0.1, diffBbox: null,
     savedByRetries: false }], heading: '.artifact-card__title' },
-  ...(['perf', 'perf-low-noise'] as const).map((stage) => ({
+  ...([stageIds.perf, stageIds.perfLowNoise] as const).map((stage) => ({
     stage, measurement: { metrics: [] }, heading: '.report-section--nested > .report-section__head .report-section__title',
   })),
-  { stage: 'accessibility', measurement: {
+  { stage: stageIds.accessibility, measurement: {
     control: { side: 'control', url: 'http://control.test', violations: [], blocked: true },
     experiment: { side: 'experiment', url: 'http://experiment.test', violations: [] },
     effectiveConfig: config, failOnViolation: true, findings: [],
@@ -48,22 +49,22 @@ const compare: Example[] = [
   }, heading: '.stage-section__head' },
 ];
 const audit: Example[] = [
-  { stage: 'audit', measurement: { metrics: [{ label: 'LCP', group: 'vitals', display: '1 s' }] },
+  { stage: stageIds.audit, measurement: { metrics: [{ label: 'LCP', group: 'vitals', display: '1 s' }] },
     heading: '.report-section--nested > .report-section__head .report-section__title' },
-  { stage: 'accessibility', measurement: { totalViolations: 1, failOnViolation: true,
+  { stage: stageIds.accessibility, measurement: { totalViolations: 1, failOnViolation: true,
     effectiveConfig: config, scans: [{ viewportLabel: 'desktop', viewport: DESKTOP_VIEWPORT,
       url: 'http://control.test', screenshot: { width: 240, height: 160, imageHref: IMAGE },
       violations: [violation] }] }, heading: '.stage-section__head' },
-  { stage: 'code_coverage', measurement: { totalStatements: 10, coveredStatements: 8, files: 1 },
+  { stage: stageIds.codeCoverage, measurement: { totalStatements: 10, coveredStatements: 8, files: 1 },
     heading: '.stage-section__head' },
-  { stage: 'build_annotated_timeline', measurement: {
+  { stage: stageIds.buildAnnotatedTimeline, measurement: {
     frames: [{ timeMs: 0, imageHref: IMAGE, imgW: 240, imgH: 160, annotation: 'Page load' }],
   }, heading: '.stage-section__head' },
-  { stage: 'agent-readiness', measurement: { raw: { ok: false, signals: null }, rendered: {
+  { stage: stageIds.agentReadiness, measurement: { raw: { ok: false, signals: null }, rendered: {
     textWords: 10, structuredData: { types: [] }, headings: { h1Count: 1 }, landmarks: {},
     images: { withAlt: 0, total: 0 }, links: { total: 1, nondescriptive: 0 },
   } }, heading: '.stage-section__head' },
-  { stage: 'ai_summary', measurement: { summary: 'Saved summary' }, heading: '.report-section__head .report-section__title' },
+  { stage: stageIds.aiSummary, measurement: { summary: 'Saved summary' }, heading: '.report-section__head .report-section__title' },
 ];
 
 function fixture(pipelineName: string, reportMode: 'full' | 'self-contained', examples: Example[]): ReportData {
@@ -113,12 +114,12 @@ describe('contextual old-run chips', () => {
         const slot = page.locator(`.outcome-slot[data-stage="${stage}"]`);
         expect({ stage, chips: await slot.locator('.old-run-chip').allTextContents(), slots: await slot.count() }).toEqual({ stage, chips: ['old run'], slots: 1 });
         expect(await slot.locator('.stage-artifact__title').count()).toBe(0);
-        expect(await slot.getByRole('heading').count()).toBe(stage === 'ai_summary' ? 1 : 3);
+        expect(await slot.getByRole('heading').count()).toBe(stage === stageIds.aiSummary ? 1 : 3);
         const headings = slot.locator(heading);
         // Summary renders only the first non-empty measurement. Every other
         // renderer must attribute the warning to desktop and leave phone clear.
         expect(await headings.first().locator('.old-run-chip').textContent()).toBe('old run');
-        if (stage === 'ai_summary') {
+        if (stage === stageIds.aiSummary) {
           await slot.getByRole('button', { name: 'Summary visibility for all tests' }).click();
           expect(await headings.first().isVisible()).toBe(true);
           expect(await headings.first().locator('.old-run-chip').isVisible()).toBe(true);
@@ -126,7 +127,7 @@ describe('contextual old-run chips', () => {
           expect(await headings.first().textContent()).toContain('desktop');
           expect(await headings.nth(1).textContent()).toContain('phone');
           expect(await headings.nth(1).locator('.old-run-chip').count()).toBe(0);
-          if (stage === 'perf' || stage === 'perf-low-noise' || stage === 'audit') {
+          if (stage === stageIds.perf || stage === stageIds.perfLowNoise || stage === stageIds.audit) {
             await headings.first().getByRole('button').click();
             expect(await headings.first().isVisible()).toBe(true);
             expect(await headings.first().locator('.old-run-chip').isVisible()).toBe(true);
@@ -172,13 +173,13 @@ describe('contextual old-run chips', () => {
         ]);
         await page.setContent(renderToStaticMarkup(artifact));
         expect(await page.locator('.stage-artifact__title').count()).toBe(1);
-        expect(await page.getByRole('heading').count()).toBe(stage === 'ai_summary' ? 1 : 3);
-        const headings = page.locator(stage === 'ai_summary' ? '.stage-artifact__title' : heading);
+        expect(await page.getByRole('heading').count()).toBe(stage === stageIds.aiSummary ? 1 : 3);
+        const headings = page.locator(stage === stageIds.aiSummary ? '.stage-artifact__title' : heading);
         expect(await headings.first().locator('.old-run-chip').count()).toBe(1);
         if (stage !== 'ai_summary') expect(await headings.nth(1).locator('.old-run-chip').count()).toBe(0);
         await page.setContent(renderToStaticMarkup(createElement(StageRunChipsProvider, { value: false }, artifact)));
         expect(await page.locator('.old-run-chip').count()).toBe(0);
-        expect(await page.getByRole('heading').count()).toBe(stage === 'ai_summary' ? 1 : 3);
+        expect(await page.getByRole('heading').count()).toBe(stage === stageIds.aiSummary ? 1 : 3);
       }
     } finally {
       await page.close();
@@ -208,7 +209,7 @@ describe('contextual old-run chips', () => {
     ['self-contained', 'Selected desktop summary', OLD, 'Unused current summary', LATEST, true],
   ] as const)('%s Summary attributes its main heading to the displayed measurement (%s / %s)', async (mode, desktop, desktopRun, phone, phoneRun, stale) => {
     const data = fixture('audit', mode, audit);
-    for (const outcome of data.tests[0].outcomes.filter((item) => item.stage === 'ai_summary')) {
+    for (const outcome of data.tests[0].outcomes.filter((item) => item.stage === stageIds.aiSummary)) {
       outcome.measurement = { summary: outcome.executionDetails.viewport.label === 'desktop' ? desktop : phone };
       outcome.executionDetails = { ...outcome.executionDetails, runId: outcome.executionDetails.viewport.label === 'desktop' ? desktopRun : phoneRun };
     }

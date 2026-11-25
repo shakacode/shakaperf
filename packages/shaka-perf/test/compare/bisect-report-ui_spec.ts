@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../src/stage/stage-ids';
 import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -372,9 +373,9 @@ function reportData(): BisectReportData {
       reportMode: 'full',
     },
     tests: [
-      reportTest('homepage-card', 'Homepage', 'homepage', ['visreg', 'perf', 'accessibility']),
-      reportTest('product-card', 'Product', 'product', ['perf', 'accessibility']),
-      reportTest('checkout-card', 'Checkout', 'checkout', ['accessibility']),
+      reportTest('homepage-card', 'Homepage', 'homepage', [stageIds.visreg, stageIds.perf, stageIds.accessibility]),
+      reportTest('product-card', 'Product', 'product', [stageIds.perf, stageIds.accessibility]),
+      reportTest('checkout-card', 'Checkout', 'checkout', [stageIds.accessibility]),
     ],
     bisect: {
       status: 'complete',
@@ -457,7 +458,7 @@ function reportTest(
     durationMs: 1_000,
     measuredAt: null,
     runId: null,
-    outcomes: stages.map((stage) => stage === 'visreg' && id === 'homepage-card'
+    outcomes: stages.map((stage) => stage === stageIds.visreg && id === 'homepage-card'
       ? ({
         ...executionFixture(),
         kind: 'ok' as const,

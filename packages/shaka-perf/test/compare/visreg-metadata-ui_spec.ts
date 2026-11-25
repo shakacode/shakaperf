@@ -1,3 +1,4 @@
+import { stageIds } from '../../src/stage/stage-ids';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
 /*
  * Copyright (c) 2026 ShakaCode LLC.
@@ -31,7 +32,7 @@ function fixture() {
   test.experimentUrl = 'http://new-experiment.example/';
   test.outcomes = [{
     ...saved,
-    stage: 'visreg',
+    stage: stageIds.visreg,
     executionDetails: { ...saved.executionDetails, stageMetadata: { viewport: 'desktop' }, recoveredAfterRetries: true, taskRetries: 1, taskRetryLimit: 2 },
     measurement: [{
       selector: 'document', controlImage: image, experimentImage: image,
@@ -40,7 +41,7 @@ function fixture() {
     }],
   }, {
     ...saved,
-    stage: 'perf',
+    stage: stageIds.perf,
     executionDetails: { ...saved.executionDetails, runId: '2026-10-21T20:54:53.891Z', command: 'shaka-perf compare --categories perf --filter Homepage', measurementMetadata: {
       ...saved.executionDetails.measurementMetadata!,
       measuredAt: '2026-10-21T20:54:53.891Z',
@@ -83,12 +84,12 @@ describe('visual preview metadata', () => {
           measurement: [{ ...measurement[0], visualComparisonCount: 1, savedByRetries: false }],
         };
         test.outcomes = [desktop, phone, {
-          kind: 'skipped', stage: 'perf', reason: 'Not selected',
+          kind: 'skipped', stage: stageIds.perf, reason: 'Not selected',
           executionDetails: { ...desktop.executionDetails, measurementMetadata: undefined, command: 'skipped invocation', runId: '2026-10-23T00:00:00Z', testSourceHref: null },
         }];
       }
       if (params.has('perf')) {
-        responseData.tests[0]!.outcomes[0]!.stage = 'perf-low-noise';
+        responseData.tests[0]!.outcomes[0]!.stage = stageIds.perfLowNoise;
         responseData.tests[0]!.outcomes[0]!.measurement = {
           controlLighthouseHref: 'data:text/html,<p>saved Lighthouse report</p>',
           framesHref: 'data:text/javascript,' + encodeURIComponent(renderSideBySideFramesScript({

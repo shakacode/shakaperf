@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../src/stage/stage-ids';
 import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import type { ReportData, ReportOutcome } from '../../src/pipeline/report';
@@ -21,15 +22,15 @@ export function imageModalFixture(pipeline: 'audit' | 'compare' = 'audit'): Repo
   };
   const config = { tags: ['wcag2a'], disableRules: [], includeRules: null };
   const ok = (stage: string, measurement: unknown) => ({ ...executionFixture(), kind: 'ok', stage,  measurement }) as ReportOutcome;
-  const error = { ...executionFixture(), kind: 'error', stage: pipeline === 'audit' ? 'audit' : 'visreg',  error: { message: 'Example navigation failure' }, failure: { media: TALL_IMAGE } } as ReportOutcome;
+  const error = { ...executionFixture(), kind: 'error', stage: pipeline === 'audit' ? stageIds.audit : stageIds.visreg,  error: { message: 'Example navigation failure' }, failure: { media: TALL_IMAGE } } as ReportOutcome;
   const outcomes = pipeline === 'audit' ? [
-    ok('code_coverage', { files: 1, coveredStatements: 2, totalStatements: 3, screenshotHref: TALL_IMAGE }),
-    ok('code_coverage', { files: 1, coveredStatements: 2, totalStatements: 3, screenshotHref: WIDE_IMAGE }),
-    ok('accessibility', { scans: [{ viewportLabel: 'mobile-tall', viewport: DESKTOP_VIEWPORT, url: 'https://example.test', screenshot, violations: [violation] }], totalViolations: 1, failOnViolation: false, effectiveConfig: config }),
+    ok(stageIds.codeCoverage, { files: 1, coveredStatements: 2, totalStatements: 3, screenshotHref: TALL_IMAGE }),
+    ok(stageIds.codeCoverage, { files: 1, coveredStatements: 2, totalStatements: 3, screenshotHref: WIDE_IMAGE }),
+    ok(stageIds.accessibility, { scans: [{ viewportLabel: 'mobile-tall', viewport: DESKTOP_VIEWPORT, url: 'https://example.test', screenshot, violations: [violation] }], totalViolations: 1, failOnViolation: false, effectiveConfig: config }),
   ] : [
-    ok('visreg', [{ selector: 'body', controlImage: TALL_IMAGE, experimentImage: TALL_IMAGE, diffImage: TALL_IMAGE, misMatchPercentage: 1, diffBbox: { x: 20, y: 2000, w: 350, h: 120, imgW: 390, controlImgH: 4096, experimentImgH: 4096, diffImgH: 4096 } }]),
-    ok('visreg', [{ selector: 'body', controlImage: WIDE_IMAGE, experimentImage: WIDE_IMAGE, diffImage: null, misMatchPercentage: 0 }]),
-    ok('accessibility', { control: { side: 'control', url: 'https://example.test', screenshot, violations: [] }, experiment: { side: 'experiment', url: 'https://example.test', screenshot, violations: [violation] }, effectiveConfig: config, failOnViolation: false, findings: [{ signature: 'checkout', status: 'new', ruleId: violation.ruleId, impact: violation.impact, tags: violation.tags, experiment: violation }], summary: { new: 1, fixed: 0, changed: 0, unchanged: 0, blocked: 0, newByImpact: { serious: 1 }, fixedByImpact: {}, changedByImpact: {} } }),
+    ok(stageIds.visreg, [{ selector: 'body', controlImage: TALL_IMAGE, experimentImage: TALL_IMAGE, diffImage: TALL_IMAGE, misMatchPercentage: 1, diffBbox: { x: 20, y: 2000, w: 350, h: 120, imgW: 390, controlImgH: 4096, experimentImgH: 4096, diffImgH: 4096 } }]),
+    ok(stageIds.visreg, [{ selector: 'body', controlImage: WIDE_IMAGE, experimentImage: WIDE_IMAGE, diffImage: null, misMatchPercentage: 0 }]),
+    ok(stageIds.accessibility, { control: { side: 'control', url: 'https://example.test', screenshot, violations: [] }, experiment: { side: 'experiment', url: 'https://example.test', screenshot, violations: [violation] }, effectiveConfig: config, failOnViolation: false, findings: [{ signature: 'checkout', status: 'new', ruleId: violation.ruleId, impact: violation.impact, tags: violation.tags, experiment: violation }], summary: { new: 1, fixed: 0, changed: 0, unchanged: 0, blocked: 0, newByImpact: { serious: 1 }, fixedByImpact: {}, changedByImpact: {} } }),
   ];
   return {
     meta: { title: 'Image sizing verification', pipelineName: pipeline, pipelineConfig: {}, generatedAt: new Date(0).toISOString(), controlUrl: 'https://example.test', experimentUrl: 'https://example.test', cwd: '/tmp/image-modal', errors: [], durationMs: 1000, reportOnly: true, reportMode: 'full' },

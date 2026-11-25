@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../src/stage/stage-ids';
 import { executionFixture } from '../src/pipeline/__tests__/fixtures/execution';
 import assert from 'node:assert';
 import { execFileSync } from 'node:child_process';
@@ -52,7 +53,7 @@ describe('coverage-baseline.mts save', function () {
     ];
     write('audit-results/report.json', JSON.stringify({
       tests: tests.map(({ id, name }) => ({ id, name, outcomes: [{
-    ...executionFixture(), kind: 'ok', stage: 'code_coverage' }] })),
+    ...executionFixture(), kind: 'ok', stage: stageIds.codeCoverage }] })),
     }));
     for (const { id, file, ran } of tests) {
       write(`audit-results/${id}/artifacts/coverage.json`, JSON.stringify({

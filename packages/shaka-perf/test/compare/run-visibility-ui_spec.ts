@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../src/stage/stage-ids';
 import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -31,7 +32,7 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained'): R
       {
         ...executionFixture({ runId }),
         kind: 'error',
-        stage: 'accessibility',
+        stage: stageIds.accessibility,
         error: { message: 'Saved result' },
       },
       ...(id === 'Older'
@@ -39,12 +40,12 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained'): R
             {
               ...executionFixture({ viewport: PHONE_VIEWPORT, runId: '2026-09-30T00:00:00.000Z' }),
               kind: 'error' as const,
-              stage: 'accessibility' as const,
+              stage: stageIds.accessibility,
 
         error: { message: 'Another old run' } }] : []),
-      ...(mixed ? [{ ...executionFixture({ viewport: PHONE_VIEWPORT, runId: OLD }), kind: 'error' as const, stage: 'accessibility' as const,
+      ...(mixed ? [{ ...executionFixture({ viewport: PHONE_VIEWPORT, runId: OLD }), kind: 'error' as const, stage: stageIds.accessibility,
          error: { message: 'Older phone result' } },
-        { ...executionFixture({ runId: OLD }), kind: 'error' as const, stage: pipelineName === 'audit' ? 'audit' as const : 'visreg' as const,
+        { ...executionFixture({ runId: OLD }), kind: 'error' as const, stage: pipelineName === 'audit' ? stageIds.audit : stageIds.visreg,
             error: { message: 'Older stage result' } }] : []),
     ],
   });
@@ -73,12 +74,12 @@ describe('latest measurement run visibility', () => {
     const data = fixture('compare', 'full');
     const outcomes = [LATEST, OLD].map((runId) => ({
       ...executionFixture({ runId }),
-      kind: 'ok' as const, stage: 'accessibility' as const,
+      kind: 'ok' as const, stage: stageIds.accessibility,
        measurement: { runId },
     }));
     try {
       stageSection(data.meta, outcomes, LATEST);
-      expect(render).toHaveBeenLastCalledWith('compare', {}, 'accessibility', [
+      expect(render).toHaveBeenLastCalledWith('compare', {}, stageIds.accessibility, [
         { measurement: { runId: LATEST }, executionDetails: outcomes[0]!.executionDetails, latestRun: true },
         { measurement: { runId: OLD }, executionDetails: outcomes[1]!.executionDetails, latestRun: false },
       ]);

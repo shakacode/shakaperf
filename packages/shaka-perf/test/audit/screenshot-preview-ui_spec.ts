@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../src/stage/stage-ids';
 import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -21,11 +22,12 @@ const TALL_IMAGE = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://
 const BROKEN_IMAGE = 'data:image/png;base64,broken';
 
 function fixture(): ReportData {
-  const ok = (stage: 'audit' | 'code_coverage', measurement: unknown): ReportOutcome => ({
+  type PreviewStage = typeof stageIds.audit | typeof stageIds.codeCoverage;
+  const ok = (stage: PreviewStage, measurement: unknown): ReportOutcome => ({
     ...executionFixture(),
     kind: 'ok', stage,  measurement,
   } as ReportOutcome);
-  const error = (stage: 'audit' | 'code_coverage'): ReportOutcome => ({
+  const error = (stage: PreviewStage): ReportOutcome => ({
     ...executionFixture(),
     kind: 'error', stage,
     error: { message: 'Navigation timed out' }, failure: { media: TALL_IMAGE },
@@ -38,9 +40,9 @@ function fixture(): ReportData {
       errors: [], durationMs: 1000, reportOnly: true, reportMode: 'full',
     },
     tests: [
-      [ok('code_coverage', { files: 1, coveredStatements: 2, totalStatements: 3, screenshotHref: TALL_IMAGE, coverageHref: 'data:application/json,{}', visibilityMapHref: 'data:text/plain,map', sourceAttribution: { located: 1, elements: 2, plugin: 'react19', warnings: [] } }), error('audit')],
-      [ok('audit', { metrics: [], lighthouseHref: 'data:text/html,Lighthouse', lighthouseThumbHref: TALL_IMAGE }), error('code_coverage')],
-      [ok('code_coverage', { files: 1, coveredStatements: 2, totalStatements: 3, screenshotHref: BROKEN_IMAGE })],
+      [ok(stageIds.codeCoverage, { files: 1, coveredStatements: 2, totalStatements: 3, screenshotHref: TALL_IMAGE, coverageHref: 'data:application/json,{}', visibilityMapHref: 'data:text/plain,map', sourceAttribution: { located: 1, elements: 2, plugin: 'react19', warnings: [] } }), error(stageIds.audit)],
+      [ok(stageIds.audit, { metrics: [], lighthouseHref: 'data:text/html,Lighthouse', lighthouseThumbHref: TALL_IMAGE }), error(stageIds.codeCoverage)],
+      [ok(stageIds.codeCoverage, { files: 1, coveredStatements: 2, totalStatements: 3, screenshotHref: BROKEN_IMAGE })],
     ].map((outcomes, index) => ({
       id: `preview-${index}`, name: `Preview ${index}`, filePath: 'previews.abtest.ts',
       startingPath: '/', controlUrl: 'http://localhost:3090/', experimentUrl: 'http://localhost:3090/',
@@ -175,7 +177,7 @@ describe('audit and coverage screenshot previews', () => {
     data.tests = [data.tests[0]];
     data.tests[0].outcomes = [{
       ...executionFixture(),
-      kind: 'ok', stage: 'code_coverage',
+      kind: 'ok', stage: stageIds.codeCoverage,
       measurement: { files: 0, totalStatements: 0, coveredStatements: 0, coverageHref: 'data:application/json,{}', visibilityMapHref: 'data:text/plain,map' },
     } as ReportOutcome];
     const file = path.join(directory, 'no-screenshot.html');

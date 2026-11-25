@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../packages/shaka-perf/src/stage/stage-ids';
 import { test, expect } from './base-test';
 import { execSync, spawn } from 'child_process';
 import * as fs from 'fs';
@@ -120,7 +121,7 @@ test('orphaned cpu-idle poller must not surface as "Session closed" @perf', asyn
   expect(/Session closed/.test(text), `no sample may die of "Session closed"\n${errors}`).toBe(false);
 
   // And the perf stages must actually complete.
-  for (const stageName of ['perf-warmup', 'perf', 'perf-low-noise']) {
+  for (const stageName of [stageIds.perfWarmup, stageIds.perf, stageIds.perfLowNoise]) {
     const stageOutcomes = outcomes.filter((o) => o.stage === stageName && o.kind !== 'skipped');
     expect(stageOutcomes.length, `${stageName} must have run`).toBeGreaterThan(0);
     expect(
