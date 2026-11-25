@@ -12,6 +12,7 @@ import type { OutcomeKind } from '../../../pipeline/outcome';
 import {
   type JsonValue,
   type Stage,
+  type StageRunResult,
   type StageName,
   type StageRenderEntry,
   type TestContext,
@@ -46,12 +47,13 @@ export class AiSummaryStage implements Stage<AiSummaryResult> {
     return priorOutcomeKinds.get('audit') === 'ok';
   }
 
-  async run(ctx: TestContext, pool: WorkerPool): Promise<AiSummaryResult> {
+  async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<AiSummaryResult>> {
     // Lazy-import keeps the node-only engine (child_process) out of the
     // report-shell bundle, mirroring the other audit stages.
     const runImpl = './engine';
     const { runAiSummaryStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return runAiSummaryStage(ctx, pool);
+    const measurement = await runAiSummaryStage(ctx, pool);
+    return { measurement, metadata: {} };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<AiSummaryResult>[]) {

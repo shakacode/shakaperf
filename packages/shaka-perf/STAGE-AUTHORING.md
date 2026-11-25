@@ -56,11 +56,12 @@ import {
   type Stage,
   type StageName,
   type StageRenderEntry,
+  type StageRunResult,
   type TestContext,
 } from '../../../stage/stage';
 import { MyStageArtifactView } from './report';
 
-export interface MyResult { /* what run() returns */ }
+export interface MyResult { /* measured values */ }
 
 export class MyStage implements Stage<MyResult> {
   readonly category = 'audit';          // shaka-shared TestType
@@ -73,10 +74,11 @@ export class MyStage implements Stage<MyResult> {
     return priorOutcomes.get('audit')?.kind === 'ok';
   }
 
-  async run(ctx: TestContext, pool: WorkerPool): Promise<MyResult> {
+  async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<MyResult>> {
     const runImpl = './engine';
     const { runMyStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return runMyStage(ctx, pool, this.config);
+    const measurement = await runMyStage(ctx, pool, this.config);
+    return { measurement, metadata: {} };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<MyResult>[]) {
@@ -113,8 +115,10 @@ Field-by-field:
   Per-test category opt-outs (`testTypes: [...]`) and viewport filters
   are handled by the runner before `applies` even fires.
 
-- **`run(ctx, pool)`** — the worker. Returns `MyResult` on success;
-  throw to mark the unit failed. The runner persists
+- **`run(ctx, pool)`** — the worker. Returns `{ measurement, metadata }` on success.
+  Supply a string-to-string dictionary for the run. Use `{}` for no fields.
+  The framework saves the dictionary in `executionDetails.stageMetadata` and renders it in the artifact dialogs for that run.
+  Throw to mark the unit failed. The runner persists
   `{ kind: 'ok' | 'error', stage, measurement, error, logs }` to
   `<resultsRoot>/<testAndViewportId>/<name>.json`. Console.log/warn/error
   inside `run` are captured into `outcome.logs` and embedded in the

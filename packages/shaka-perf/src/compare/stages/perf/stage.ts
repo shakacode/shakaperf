@@ -13,6 +13,7 @@ import type { OutcomeKind } from '../../../pipeline/outcome';
 import type {
   JsonValue,
   Stage,
+  StageRunResult,
   StageName,
   StageRenderEntry,
   StageRenderContext,
@@ -75,10 +76,11 @@ export class PerfEngineStage<M> implements Stage<M> {
   async run(
     ctx: TestContext,
     pool: WorkerPool,
-  ): Promise<M> {
+  ): Promise<StageRunResult<M>> {
     const runImpl = './engine';
     const { runPerfEngineStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return runPerfEngineStage(ctx, pool, this.options.config) as Promise<M>;
+    const measurement = await runPerfEngineStage(ctx, pool, this.options.config) as M;
+    return { measurement, metadata: {} };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<M>[]) {

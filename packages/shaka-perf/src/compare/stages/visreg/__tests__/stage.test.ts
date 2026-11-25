@@ -5,7 +5,8 @@
  * License in LICENSE.md.
  */
 
-import { createVisregStage } from '../../visreg';
+import { visualComparisonFields } from '../metadata';
+import { createVisregStage, type VisregArtifact } from '../../visreg';
 import { resetVisregScreenshots, runVisregUnit } from '../run';
 import { WorkerPool } from '../../../../pipeline/worker-pool';
 import type { TestContext } from '../../../../stage/stage';
@@ -15,6 +16,7 @@ jest.mock('../run', () => ({ runVisregUnit: jest.fn(), resetVisregScreenshots: j
 it('resets screenshots once across a worker retry', async () => {
   const ctx = {
     testAndViewportId: 'homepage-desktop',
+    viewport: { label: 'desktop', width: 1000, height: 800 },
     artifacts: { dir: '/homepage-desktop/artifacts' },
   } as unknown as TestContext;
   const pool = new WorkerPool(1, { limits: { timeoutMs: 0, retries: 1, retryDelay: 0 } });
@@ -38,4 +40,40 @@ describe('visreg self-contained artifact dictionary', () => {
     const stage = createVisregStage({} as never);
     expect(stage.selfContainedReportStrip).toEqual({});
   });
+});
+
+it('formats selector counts without borrowing execution counts', () => {
+  const artifact: VisregArtifact = {
+    selector: '#checkout', controlImage: '', experimentImage: '', diffImage: null,
+    misMatchPercentage: 0, diffPixels: 0, threshold: 0, diffBbox: null, savedByRetries: false,
+    visualComparisonCount: 1, visualComparisonLimit: 5,
+  };
+  expect(visualComparisonFields(artifact)).toEqual({ selector: '#checkout', mismatch: '0.00%', 'visual comparisons': '1/5' });
+  expect(visualComparisonFields({ ...artifact, visualComparisonLimit: undefined })['visual comparisons']).toBe('1');
+  expect(visualComparisonFields({ ...artifact, visualComparisonCount: 3, savedByRetries: true })['visual comparisons']).toBe('3/5 · matched on retry');
+  expect(visualComparisonFields({ ...artifact, visualComparisonCount: undefined, savedByRetries: true })['visual comparisons']).toBeUndefined();
+  expect(visualComparisonFields({ ...artifact, visualComparisonCount: undefined })['visual comparisons']).toBeUndefined();
+});
+
+it('returns raw artifacts and saves only run-wide metadata', async () => {
+  const ctx = {
+    testAndViewportId: 'homepage-desktop',
+    viewport: { label: 'desktop', width: 1000, height: 800 },
+    artifacts: { dir: '/homepage-desktop/artifacts' },
+  } as unknown as TestContext;
+  const first: VisregArtifact = {
+    selector: '#hero', controlImage: 'a', experimentImage: 'b', diffImage: null,
+    misMatchPercentage: 0, diffPixels: 0, threshold: 0, diffBbox: null,
+    savedByRetries: false, visualComparisonCount: 1, visualComparisonLimit: 3,
+  };
+  const second = { ...first, selector: '#features', visualComparisonCount: 2, savedByRetries: true };
+  jest.mocked(runVisregUnit).mockResolvedValueOnce([first, second]);
+  const pool = new WorkerPool(1, { limits: { timeoutMs: 0, retries: 0, retryDelay: 0 } });
+  try {
+    const { measurement, metadata } = await createVisregStage({} as never).run(ctx, pool);
+    expect(metadata).toEqual({ viewport: 'desktop 1000 × 800' });
+    expect(measurement).toEqual([first, second]);
+  } finally {
+    await pool.dispose();
+  }
 });

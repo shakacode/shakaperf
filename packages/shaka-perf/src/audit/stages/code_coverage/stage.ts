@@ -9,6 +9,7 @@ import { createElement } from 'react';
 import {
   type JsonValue,
   type Stage,
+  type StageRunResult,
   type StageName,
   type StageRenderEntry,
   type TestContext,
@@ -81,10 +82,11 @@ export class CodeCoverageStage implements Stage<CodeCoverageResult> {
     return true;
   }
 
-  async run(ctx: TestContext, pool: WorkerPool): Promise<CodeCoverageResult> {
+  async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<CodeCoverageResult>> {
     const runImpl = './engine';
     const { runCodeCoverageStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return runCodeCoverageStage(ctx, pool);
+    const measurement = await runCodeCoverageStage(ctx, pool);
+    return { measurement, metadata: {} };
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<CodeCoverageResult>[]) {

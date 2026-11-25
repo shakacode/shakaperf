@@ -32,7 +32,7 @@ function fixture() {
   test.outcomes = [{
     ...saved,
     stage: 'visreg',
-    executionDetails: { ...saved.executionDetails, recoveredAfterRetries: true, taskRetries: 1, taskRetryLimit: 2 },
+    executionDetails: { ...saved.executionDetails, stageMetadata: { viewport: 'desktop' }, recoveredAfterRetries: true, taskRetries: 1, taskRetryLimit: 2 },
     measurement: [{
       selector: 'document', controlImage: image, experimentImage: image,
       diffImage: null, misMatchPercentage: 0, savedByRetries: true,
@@ -76,7 +76,7 @@ describe('visual preview metadata', () => {
         const phone = {
           ...desktop,
           executionDetails: {
-            ...desktop.executionDetails, measurementMetadata: { ...desktop.executionDetails.measurementMetadata!, measuredAt: '2026-01-01T00:00:00Z' }, runId: phoneRunId, command: 'shaka-perf compare --viewport phone', viewport: PHONE_VIEWPORT,
+            ...desktop.executionDetails, stageMetadata: { viewport: 'phone' }, measurementMetadata: { ...desktop.executionDetails.measurementMetadata!, measuredAt: '2026-01-01T00:00:00Z' }, runId: phoneRunId, command: 'shaka-perf compare --viewport phone', viewport: PHONE_VIEWPORT,
             testSourceHref: params.has('missing') ? null : 'data:text/plain;charset=utf-8,' + encodeURIComponent(phoneSource),
             recoveredAfterRetries: false, taskRetries: 0, taskRetryLimit: 8,
           },
@@ -229,8 +229,22 @@ describe('visual preview metadata', () => {
     second.viewportArtifactPaths = [{ viewport: 'desktop', path: 'results/checkout/desktop' }];
     second.outcomes.forEach(outcome => { delete outcome.logs; });
     const outcome = second.outcomes[0]!;
-    const [image] = outcome.measurement as Record<string, unknown>[];
-    outcome.measurement = ['#header', '#footer'].map(selector => ({ ...image, selector }));
+    const [base] = outcome.measurement as Record<string, unknown>[];
+    const cases = [
+      { selector: '#header', mismatch: '0.00%', comparisons: '1/3', diffImage: null },
+      { selector: '[data-label="a · #header"]', mismatch: '2.50%', comparisons: '2/3', diffImage: image },
+    ];
+    outcome.measurement = cases.map(({ selector, mismatch, comparisons, diffImage }) => ({
+      ...base, selector, diffImage, misMatchPercentage: parseFloat(mismatch),
+      visualComparisonCount: parseInt(comparisons, 10), savedByRetries: false,
+    }));
+    outcome.executionDetails = {
+      ...outcome.executionDetails,
+      stageMetadata: {
+        viewport: 'desktop',
+        'baseline · source': 'reference build',
+      },
+    };
     data.tests.push(second);
 
     const page = await browser.newPage();
@@ -238,14 +252,18 @@ describe('visual preview metadata', () => {
       await page.goto(url);
       const card = page.locator('[data-report-test-id="checkout"]');
       expect(await card.getByRole('button', { name: 'logs', exact: true }).count()).toBe(0);
-      for (const selector of ['#header', '#footer']) {
-        const trigger = card.locator('.artifact-card--single').filter({ hasText: selector }).getByRole('button');
+      for (const { selector, mismatch, comparisons } of [...cases, cases[0]!]) {
+        const trigger = card.locator('.artifact-card').filter({ has: page.getByText(selector, { exact: true }) }).getByRole('button');
         await trigger.click();
         const dialog = page.getByRole('dialog');
         expect(await dialog.locator('.ui-dialog__title').textContent()).toContain(selector + ' · Checkout');
         expect(await dialog.locator('.card__path').textContent()).toBe(second.filePath);
         expect(await dialog.locator('.card__targets a').allTextContents()).toEqual([second.controlUrl, second.experimentUrl]);
-        expect(await dialog.locator('dt').filter({ hasText: /^selector$/ }).locator('..').locator('dd').textContent()).toBe(selector);
+        for (const [label, expected] of Object.entries({ viewport: 'desktop', 'baseline · source': 'reference build', selector, mismatch, 'visual comparisons': comparisons })) {
+          const rows = dialog.locator('dl > div').filter({ has: page.getByText(label, { exact: true }) });
+          expect(await rows.locator('dd').allTextContents()).toEqual([expected]);
+        }
+        expect(await dialog.locator('dt').filter({ hasText: /^(mismatch|visual comparisons) · / }).count()).toBe(0);
         await dialog.getByRole('button', { name: 'artifact paths' }).click();
         expect(await dialog.locator('.card__code').textContent()).toContain('results/checkout/desktop');
         await page.keyboard.press('Escape');
@@ -343,7 +361,7 @@ describe('visual preview metadata', () => {
 
   it('does not borrow a newer sibling result for a legacy visual artifact', async () => {
     const outcome = data.tests[0]!.outcomes[0]!;
-    outcome.executionDetails = { ...outcome.executionDetails, measurementMetadata: undefined, testSourceHref: null };
+    outcome.executionDetails = { ...outcome.executionDetails, stageMetadata: undefined, measurementMetadata: undefined, testSourceHref: null };
     const page = await browser.newPage();
     try {
       await page.goto(url);
@@ -352,6 +370,7 @@ describe('visual preview metadata', () => {
       expect(await metadata.getByRole('button', { name: 'command', exact: true }).count()).toBe(0);
       expect(await metadata.locator('.card__measured-at').textContent()).toContain('never measured');
       expect(await metadata.locator('.card__target-commits').count()).toBe(0);
+      expect(await metadata.getByText('visual comparisons', { exact: true }).locator('..').locator('dd').textContent()).toBe('2/3 · matched on retry');
       expect(await metadata.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(0);
       await metadata.getByRole('button', { name: 'test source', exact: true }).click();
       expect(await metadata.textContent()).toContain('No source snapshot was captured.');

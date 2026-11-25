@@ -66,7 +66,7 @@ function mockPipeline(name: 'compare' | 'audit') {
         run: async (ctx: TestContext) => {
           measured.push(`${ctx.test.name}:${ctx.viewport.label}:${category}`);
           await ctx.artifacts.writeFile('sample.txt', 'new');
-          return {};
+          return { measurement: {}, metadata: {} };
         },
         renderArtifacts: () => null, machineReadableSummary: () => ({}),
       });
