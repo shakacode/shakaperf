@@ -127,6 +127,7 @@ describe('bisect report App rendering', () => {
         kind: 'skipped',
         stage: 'visreg',
         reason: 'fixture skip',
+
       }],
     }];
 
@@ -190,6 +191,7 @@ describe('bisect report App rendering', () => {
         kind: 'skipped',
         stage: 'visreg',
         reason: 'fixture skip',
+
       }],
     }];
 
@@ -382,6 +384,7 @@ function testResult({
       kind: 'error' as const,
       stage,
       error: { message: `${stage} failed` },
+
     })),
     viewportArtifactPaths: [],
   };

@@ -16,6 +16,7 @@ import { createCompareCommand } from '../../compare/cli/program';
 import { createAuditCommand } from '../../audit/program';
 import { createPipeline } from '../pipeline';
 import { ArtifactStore } from '../artifact-store';
+import type { ReportOutcome } from '../report';
 import { runPipeline } from '../runner';
 import { WorkerPool } from '../worker-pool';
 import { mirrorCoverageToNycOutput } from '../../audit/stages/code_coverage/coverage-artifacts';
@@ -198,14 +199,14 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     for (const entry of before) {
       const now = fs.readFileSync(entry.file, 'utf8');
       if (entry.file.startsWith(store().unitDirForViewport(tests[0]!, 'phone') + path.sep)) {
-        expect(JSON.parse(now).runId).not.toBe(JSON.parse(entry.bytes).runId);
+        expect(JSON.parse(now).executionDetails.runId).not.toBe(JSON.parse(entry.bytes).executionDetails.runId);
       } else {
         expect(now).toBe(entry.bytes); expect(fs.statSync(entry.file).mtimeMs).toBe(entry.mtime);
       }
     }
     const card = report().tests.find((test: { name: string }) => test.name === 'Product Detail');
-    expect(new Set(card.outcomes.map((outcome: { runId: string }) => outcome.runId)).size).toBe(2);
-    expect(new Set(card.outcomes.map((outcome: { viewport: { label: string } }) => outcome.viewport.label))).toEqual(new Set(['desktop', 'phone']));
+    expect(new Set(card.outcomes.map((outcome: ReportOutcome) => outcome.executionDetails.runId)).size).toBe(2);
+    expect(new Set(card.outcomes.map((outcome: ReportOutcome) => outcome.executionDetails.viewport.label))).toEqual(new Set(['desktop', 'phone']));
   });
 
   it('does not rewrite unselected viewport skip markers', async () => {
@@ -286,7 +287,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     for (const test of [narrowed, active]) {
       for (const label of ['desktop', 'phone']) {
         mirrorCoverageToNycOutput(coverage, store().resultsRoot, unitIdForTest(test, label));
-        store().writeOutcome(test, label, { ...executionFixture(), kind: 'ok', stage: 'code_coverage' });
+        store().writeOutcome(test, label, { ...executionFixture({ viewport: built.shared.viewportDefinitions.find(viewport => viewport.label === label)! }), kind: 'ok', stage: 'code_coverage' });
       }
     }
     const mirrors = path.join(store().resultsRoot, '.nyc_output');

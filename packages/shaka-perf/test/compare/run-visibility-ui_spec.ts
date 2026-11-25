@@ -31,11 +31,12 @@ function fixture(pipelineName: string, reportMode: 'full' | 'self-contained'): R
       { ...executionFixture({ runId }), kind: 'error', stage: 'accessibility',
         error: { message: 'Saved result' } },
       ...(id === 'Older' ? [{ ...executionFixture({ viewport: PHONE_VIEWPORT, runId: '2026-09-30T00:00:00.000Z' }), kind: 'error' as const, stage: 'accessibility' as const,
+
         error: { message: 'Another old run' } }] : []),
       ...(mixed ? [{ ...executionFixture({ viewport: PHONE_VIEWPORT, runId: OLD }), kind: 'error' as const, stage: 'accessibility' as const,
-        error: { message: 'Older phone result' } },
+         error: { message: 'Older phone result' } },
         { ...executionFixture({ runId: OLD }), kind: 'error' as const, stage: pipelineName === 'audit' ? 'audit' as const : 'visreg' as const,
-          error: { message: 'Older stage result' } }] : []),
+            error: { message: 'Older stage result' } }] : []),
     ],
   });
   return {
@@ -64,14 +65,16 @@ describe('latest measurement run visibility', () => {
     const outcomes = [LATEST, OLD].map((runId) => ({
       ...executionFixture({ runId }),
       kind: 'ok' as const, stage: 'accessibility' as const,
-      measurement: { runId },
+       measurement: { runId },
     }));
     try {
       stageSection(data.meta, outcomes, LATEST);
       expect(render).toHaveBeenLastCalledWith('compare', {}, 'accessibility', [
-        { ...executionFixture(), measurement: { runId: LATEST }, outcome: outcomes[0], latestRun: true },
-        { ...executionFixture(), measurement: { runId: OLD }, outcome: outcomes[1], latestRun: false },
+        { measurement: { runId: LATEST }, executionDetails: outcomes[0]!.executionDetails, outcome: outcomes[0], latestRun: true },
+        { measurement: { runId: OLD }, executionDetails: outcomes[1]!.executionDetails, outcome: outcomes[1], latestRun: false },
       ]);
+      const entries = render.mock.calls.at(-1)![3];
+      entries.forEach((entry, index) => expect(entry.executionDetails).toBe(outcomes[index]!.executionDetails));
       stageSection(data.meta, outcomes, null);
       expect(render.mock.calls.at(-1)?.[3].map((entry) => entry.latestRun)).toEqual([true, true]);
     } finally {
@@ -126,7 +129,7 @@ describe('latest measurement run visibility', () => {
       runId: LATEST, measuredAt: 0,
     };
     mixed.outcomes = mixed.outcomes.map((outcome) => ({
-      ...outcome, ...(outcome.viewport.label === 'phone' ? { outsideCurrentConfig: true } : {}),
+      ...outcome, ...(outcome.executionDetails.viewport.label === 'phone' ? { outsideCurrentConfig: true } : {}),
     }));
     const file = path.join(directory, `controls-${pipeline}-${mode}.html`);
     fs.writeFileSync(file, renderReportHtml(data));
@@ -163,7 +166,7 @@ describe('latest measurement run visibility', () => {
     const data = fixture(pipeline, mode);
     const mixed = data.tests.find((test) => test.name === 'Mixed')!;
     mixed.outcomes = mixed.outcomes.map((outcome) => ({
-      ...outcome, ...(outcome.viewport.label === 'phone' ? { outsideCurrentConfig: true } : {}),
+      ...outcome, ...(outcome.executionDetails.viewport.label === 'phone' ? { outsideCurrentConfig: true } : {}),
     }));
     const current = data.tests.find((test) => test.name === 'Current')!;
     current.outcomes = current.outcomes.map((outcome) => ({ ...outcome, outsideCurrentConfig: true }));

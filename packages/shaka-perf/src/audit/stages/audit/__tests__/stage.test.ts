@@ -62,7 +62,7 @@ describe('AuditStage artifact card', () => {
 function render(measurement: AuditResult): string {
   return renderToStaticMarkup(
     createElement('div', null, new AuditStage({}).renderArtifacts([
-      { ...executionFixture(), measurement, latestRun: true },
+      { measurement,  ...executionFixture(), latestRun: true },
     ])),
   );
 }

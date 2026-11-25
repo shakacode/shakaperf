@@ -13,9 +13,9 @@ import type { PipelineMachineReportRow } from '../../pipeline/pipeline';
 
 function row(
   viewport: Viewport,
-  outcomes: PipelineMachineReportRow['outcomes'] = [{ ...executionFixture(), kind: 'ok', stage: 'audit', measurement: {} }],
+  outcomes: PipelineMachineReportRow['outcomes'] = [{ ...executionFixture({ viewport }), kind: 'ok', stage: 'audit', measurement: {} }],
 ): PipelineMachineReportRow {
-  return { viewport, outcomes };
+  return { outcomes };
 }
 
 describe('auditMachineReportMeta', () => {
