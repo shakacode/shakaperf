@@ -66,6 +66,10 @@ export class PerfEngineStage<M> implements Stage<M> {
     this.description = options.description;
   }
 
+  artifactsToClear() {
+    return [this.name];
+  }
+
   applies(
     test: AbTestDefinition,
     viewport: Viewport,
@@ -80,7 +84,7 @@ export class PerfEngineStage<M> implements Stage<M> {
   ): Promise<StageRunResult<M>> {
     const runImpl = './engine';
     const { runPerfEngineStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    const { measurement, settings } = await runPerfEngineStage(ctx, pool, this.options.config);
+    const { measurement, settings } = await runPerfEngineStage({ ...ctx, artifacts: ctx.artifacts.child(this.name) }, pool, this.options.config);
     return { measurement: measurement as M, metadata: performanceMetadataFields(settings) };
   }
 

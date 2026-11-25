@@ -45,26 +45,6 @@ async function disposeTimelineClient(state: Record<string, unknown>): Promise<vo
   await client.dispose();
 }
 
-function clearGeneratedTimelineArtifacts(artifactsDir: string, metadataPath: string): number {
-  if (!fs.existsSync(artifactsDir)) return 0;
-  let removed = 0;
-  for (const p of [metadataPath, path.join(artifactsDir, DEBUG_FRAMES_METADATA_FILENAME)]) {
-    if (fs.existsSync(p)) {
-      fs.unlinkSync(p);
-      removed++;
-    }
-  }
-  for (const entry of fs.readdirSync(artifactsDir)) {
-    // Both the deduped `timeline_frame_*` images and the diagnostics-only
-    // `debug_allframe_*` images (plus their cached thumbnails) are regenerated
-    // each run, so clear either form here.
-    if (!/^(?:timeline_frame_[\d.]+ms|debug_allframe_\d+_[\d.]+ms)\.(?:jpe?g|avif|webp)(?:\.thumb(?:-v\d+)?\.avif)?$/.test(entry)) continue;
-    fs.unlinkSync(path.join(artifactsDir, entry));
-    removed++;
-  }
-  return removed;
-}
-
 export async function runBuildAnnotatedTimelineStage(
   ctx: TestContext,
   workerPool: WorkerPool,
@@ -86,10 +66,6 @@ export async function runBuildAnnotatedTimelineStage(
   // on subsequent uses. Bounded peak worker_threads = `parallelism`.
   console.log(chalk.dim(`annotated-timeline: building frames from ${profilePath}`));
   const metadataPath = path.join(artifactsDir, FRAMES_METADATA_FILENAME);
-  const removedArtifacts = clearGeneratedTimelineArtifacts(artifactsDir, metadataPath);
-  if (removedArtifacts > 0) {
-    console.log(chalk.dim(`annotated-timeline: cleared ${removedArtifacts} stale generated artifact${removedArtifacts === 1 ? '' : 's'}`));
-  }
   const key = `${ctx.testAndViewportId}:build_annotated_timeline`;
   await workerPool.submit(async (state) => {
     const slot = workerPool.getWorkerState<TimelineSlotState>(state, disposeTimelineClient);

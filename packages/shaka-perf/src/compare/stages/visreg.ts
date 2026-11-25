@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { screenshotPoolPaths } from '../../visreg/core/util/screenshotPoolPaths';
 import { createElement } from 'react';
 import type { VisregConfig } from '../../config';
 import {
@@ -61,6 +62,10 @@ export interface VisregStageConfig extends Omit<VisregConfig, 'viewports'> {
 export function createVisregStage(config: VisregStageConfig): Stage<VisregResult> {
   return {
     measuresApplication: true,
+    artifactsToClear: () => [
+      ...Object.values(screenshotPoolPaths('')), 'visreg-report.json',
+      'control-visreg-failure-screenshot.png', 'experiment-visreg-failure-screenshot.png',
+    ],
     name: 'visreg',
     label: 'Visual Diff',
     category: 'visreg',
@@ -71,11 +76,7 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
     },
     async run(ctx, pool) {
       const runImpl = './visreg/run';
-      const { runVisregUnit, resetVisregScreenshots } = await import(/* @vite-ignore */ runImpl) as typeof import('./visreg/run');
-      // A new measurement must not cross-match against a previous run's pixels,
-      // even when --keep-old-results or --restart-from-stage retains artifacts.
-      // Reset ONCE, outside the retried task: its attempts share the fresh pools.
-      resetVisregScreenshots(ctx.artifacts.dir);
+      const { runVisregUnit } = await import(/* @vite-ignore */ runImpl) as typeof import('./visreg/run');
       const visualRetries = { retriesStarted: 0, comparisons: new Map<string, number>() };
       const artifacts = await pool.submit(
         () => runVisregUnit(ctx, config, visualRetries),

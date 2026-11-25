@@ -63,6 +63,7 @@ it('automatically persists original metadata and reuses it unchanged in every re
     }, (builder) => {
       const pool = builder.registerWorkerPool(1);
       builder.runStage(pool, {
+        artifactsToClear: () => [],
         measuresApplication: true,
         name: 'visreg', label: 'Visual Diff', category: 'visreg', description: 'Fake measurement; real identity lookup and persistence', selfContainedReportStrip: {},
         applies: () => true, renderArtifacts: () => null, machineReadableSummary: () => ({}),

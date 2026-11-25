@@ -21,6 +21,10 @@ export type ArtifactPath = string & { readonly [artifactPathBrand]: true };
 export class ArtifactScope {
   constructor(readonly dir: string, private readonly reportRoot: string) {}
 
+  child(directory: string): ArtifactScope {
+    return new ArtifactScope(this.resolveSafeName(directory), this.reportRoot);
+  }
+
   async writeFile(name: string, bytes: string | Buffer): Promise<ArtifactPath> {
     fs.mkdirSync(this.dir, { recursive: true });
     await fs.promises.writeFile(this.resolveSafeName(name), bytes);
@@ -113,20 +117,21 @@ export class ArtifactStore {
     );
   }
 
-  /**
-   * Remove the unit dir outright — outcomes AND the `artifacts/` subtree they
-   * reference. The pre-run sweep calls this so every stage starts from an empty
-   * slate: engines that ACCUMULATE rather than overwrite (visreg's screenshot
-   * pool writes one content-addressed frame per capture) would otherwise carry
-   * a previous run's frames into this run's best-of-N match and pass on them.
-   *
-   * This deliberately drops other categories' outcomes too. A default run means
-   * "this run's results only"; to layer a category onto a previous run's
-   * results, use `--keep-old-results`, which skips the sweep entirely.
-   */
-  removeUnitDir(test: AbTestDefinition, viewportLabel: string): void {
-    // `force` makes a missing dir a no-op.
-    fs.rmSync(this.unitDirForViewport(test, viewportLabel), { recursive: true, force: true });
+  clearArtifacts(test: AbTestDefinition, label: string, paths: readonly string[]): void {
+    const dir = this.artifactsDirForViewport(test, label);
+    for (const name of new Set(paths)) {
+      if (path.isAbsolute(name) || name.split(/[\\/]/).some(part => !part || part === '.' || part === '..')) {
+        throw new Error(`Invalid relative artifact path: ${name}`);
+      }
+      let parent = dir;
+      for (const segment of name.split(path.sep).slice(0, -1)) {
+        parent = path.join(parent, segment);
+        if (fs.lstatSync(parent, { throwIfNoEntry: false })?.isSymbolicLink()) {
+          throw new Error(`Artifact path traverses a symbolic link: ${name}`);
+        }
+      }
+      fs.rmSync(path.join(dir, name), { recursive: true, force: true });
+    }
   }
 
   readOutcome(test: AbTestDefinition, viewportLabel: string, stage: StageName): Outcome | null {

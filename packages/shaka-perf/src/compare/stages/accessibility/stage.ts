@@ -26,6 +26,18 @@ import type {
 import { AccessibilityCompareArtifactView, accessibilityCompareRows } from './report';
 
 export class AccessibilityCompareStage implements Stage<AccessibilityCompareResult> {
+  artifactsToClear() {
+    return [
+      'accessibility-comparison.json',
+      'control-accessibility-report.json',
+      'control-accessibility-screenshot.png',
+      'control-accessibility-failure-screenshot.png',
+      'experiment-accessibility-report.json',
+      'experiment-accessibility-screenshot.png',
+      'experiment-accessibility-failure-screenshot.png',
+    ];
+  }
+
   readonly measuresApplication = true;
   readonly category = 'accessibility';
   readonly name = 'accessibility';

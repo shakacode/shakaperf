@@ -121,6 +121,11 @@ export interface BuildAnnotatedTimelineResult {
 }
 
 export class BuildAnnotatedTimelineStage implements Stage<BuildAnnotatedTimelineResult> {
+  artifactsToClear({ existingFiles }: { existingFiles: readonly string[] }) {
+    return ['timeline_frames.json', 'timeline_debug_all_frames.json', ...existingFiles.filter(name =>
+      /^(?:timeline_frame_[\d.]+ms|debug_allframe_\d+_[\d.]+ms)\.(?:jpe?g|avif|webp)(?:\.thumb(?:-v\d+)?\.avif)?$/.test(name))];
+  }
+
   readonly measuresApplication = false;
   readonly category = 'audit';
   readonly name: StageName = 'build_annotated_timeline';

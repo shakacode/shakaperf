@@ -59,7 +59,7 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     // mirrorCoverageToNycOutput); the runner wipes it before a fresh run so
     // orphan slugs from renamed/deleted tests can't pollute the nyc report.
     // A viewport rerun replaces only its own mirrors, even if measurement fails.
-    derivedResultsDirs: [{ path: '.nyc_output', unitFiles: (unitId) => [nycCoverageFileName(unitId)] }],
+    derivedResultsDirs: [{ stage: 'code_coverage', path: '.nyc_output', unitFiles: (unitId) => [nycCoverageFileName(unitId)] }],
     machineReportMeta: ({ rows }) => auditMachineReportMeta(input, rows),
   }, (pipeline) => {
     const workerPool = pipeline.registerWorkerPool(input.parallelism);

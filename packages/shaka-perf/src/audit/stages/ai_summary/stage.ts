@@ -33,6 +33,10 @@ export interface AiSummaryResult {
  * the TOP of each card.
  */
 export class AiSummaryStage implements Stage<AiSummaryResult> {
+  artifactsToClear() {
+    return [];
+  }
+
   readonly measuresApplication = false;
   readonly category = 'audit';
   readonly name: StageName = 'ai_summary';

@@ -66,11 +66,11 @@ describe('visreg core report', function () {
   }
 
   function readPerTestReport() {
-    const p = path.join(unitArtifactsDir, 'report.json');
+    const p = path.join(unitArtifactsDir, 'visreg-report.json');
     return JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>;
   }
 
-  it('writes report.json into the dir it was given, not one it derives', async function () {
+  it('writes visreg-report.json into the dir it was given, not one it derives', async function () {
     reporter.tests = [
       {
         pair: { label: 'Homepage', viewportLabel: 'desktop', selector: 'document' },

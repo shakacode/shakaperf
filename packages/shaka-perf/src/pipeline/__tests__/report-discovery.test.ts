@@ -65,6 +65,7 @@ describe.each(['compare', 'audit'] as const)('%s report discovery', (name) => {
       }, (builder) => {
         const pool = builder.registerWorkerPool(1);
         builder.runStage(pool, {
+          artifactsToClear: () => [],
           measuresApplication: false,
           name: stageName,
           category: stageName,

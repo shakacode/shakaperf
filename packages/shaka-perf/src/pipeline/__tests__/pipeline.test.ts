@@ -67,6 +67,7 @@ function stage(
   observedUrls?: ObservedStageUrls[],
 ): Stage<Record<string, never>> {
   return {
+    artifactsToClear: () => category === 'visreg' ? ['experiment_screenshots'] : [],
     measuresApplication: true,
     name,
     label: name,
@@ -464,7 +465,7 @@ describe('runPipeline', () => {
       expect(missing.testResults[0]).not.toHaveProperty('code');
       expect(missing.testResults[0]!.outcomes).toHaveLength(retained.testResults[0]!.outcomes.length);
       expect(store.readTextArtifact(originalPath)).toBe(source);
-      // A normal rerun removes obsolete snapshots with the other unit artifacts.
+      // Once every stage is remeasured the old shared snapshot is unreferenced.
       fs.writeFileSync(file, changed);
       await runWithFrozenTest({ cwd, tests: [test], skipReport: true });
       expect(store.readTextArtifact(originalPath)).toBeUndefined();
@@ -650,7 +651,7 @@ describe('runPipeline', () => {
       const replaced = await runWithFrozenTest({ cwd, categories: 'visreg', keepOldResults: true, skipReport: true });
       const latest = replaced.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.kind === 'ok')!;
       expect(latest.executionDetails.runId).not.toBe(before.executionDetails.runId);
-      expect(replaced.testResults[0]!.outcomes.filter((o) => o.kind === 'ok').every((o) => o.stage === 'visreg')).toBe(true);
+      expect(replaced.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.kind === 'ok')?.executionDetails).toEqual(perf.executionDetails);
     } finally {
       clock.mockRestore();
       process.argv = originalArgv;
@@ -1006,39 +1007,11 @@ describe('pre-run wipe', () => {
     return path.join(store.unitDirForViewport(narrowedTest, viewportLabel), `${stage}.json`);
   }
 
-  it('sweeps a selected stage\'s stale outcomes at viewports outside the current plan', async () => {
-    // visreg ran at desktop before the test narrowed itself to tablet.
-    const staleVisreg = seedOutcome('desktop', 'visreg');
-
+  it('preserves other viewports and other stages at the measured viewport', async () => {
+    const files = [seedOutcome('desktop', 'visreg'), seedOutcome('tablet', 'perf')];
+    const previous = files.map(file => fs.readFileSync(file));
     await run({ categories: 'visreg' });
-
-    expect(fs.existsSync(staleVisreg)).toBe(false);
-    // The dir may be re-created by the post-run "--categories skipped" perf
-    // markers, but nothing measured survives — only skip markers.
-    const remaining = fs.existsSync(path.dirname(staleVisreg))
-      ? fs.readdirSync(path.dirname(staleVisreg)).filter((f) => f.endsWith('.json'))
-      : [];
-    for (const file of remaining) {
-      const outcome = JSON.parse(fs.readFileSync(path.join(path.dirname(staleVisreg), file), 'utf8')) as { kind: string };
-      expect(outcome.kind).toBe('skipped');
-    }
-  });
-
-  it('drops other categories\' measured outcomes when sweeping', async () => {
-    // A default run means "this run's results only": the unit dir goes
-    // wholesale so no stale artifact (notably visreg's accumulated screenshot
-    // frames) survives into this run. The perf outcome does not survive as a
-    // measurement — it reappears only as a `--categories` skip marker.
-    const staleVisreg = seedOutcome('desktop', 'visreg');
-    const sweptPerf = seedOutcome('desktop', 'perf');
-
-    await run({ categories: 'visreg' });
-
-    expect(fs.existsSync(staleVisreg)).toBe(false);
-    const perf = fs.existsSync(sweptPerf)
-      ? (JSON.parse(fs.readFileSync(sweptPerf, 'utf8')) as { kind: string })
-      : null;
-    expect(perf?.kind ?? 'absent').not.toBe('ok');
+    expect(files.map(file => fs.readFileSync(file))).toEqual(previous);
   });
 
   it('clears stale artifacts at an IN-PLAN viewport, not just outcomes', async () => {

@@ -56,13 +56,14 @@ function mockPipeline(name: 'compare' | 'audit') {
   return createPipeline({
     name, description: name,
     measurementSides: name === 'compare' ? ['control', 'experiment'] : ['experiment'],
-    derivedResultsDirs: [{ path: 'derived', unitFiles: (unitId) => [`${unitId}.json`] }],
+    derivedResultsDirs: [{ stage: 'code_coverage', path: 'derived', unitFiles: (unitId) => [`${unitId}.json`] }],
     report: { reportLabel: name, renderHeaderUrls: () => null, testTargets: () => [] },
   }, (builder) => {
     const pool = builder.registerWorkerPool(1);
     for (const category of categories) {
       builder.runStage(pool, {
         name: category, category, label: category, description: category,
+        artifactsToClear: () => [],
         measuresApplication: false,
         selfContainedReportStrip: {}, applies: () => true,
         run: async (ctx: TestContext) => {
@@ -232,7 +233,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     fs.writeFileSync(path.join(store().resultsRoot, 'derived', 'sibling.txt'), 'keep');
     await run('--filter', '^Product Detail$', '--viewport', 'phone');
     expect(measured).toEqual(stages.map((stage) => `Product Detail:phone:${stage}`));
-    expect(fs.existsSync(path.join(phoneDir, 'old-frame.txt'))).toBe(false);
+    expect(fs.readFileSync(path.join(phoneDir, 'old-frame.txt'), 'utf8')).toBe('stale');
     expect(fs.readFileSync(path.join(desktopDir, 'sibling.txt'), 'utf8')).toBe('keep');
     expect(fs.existsSync(path.join(store().resultsRoot, 'derived', 'sibling.txt'))).toBe(true);
     for (const entry of before) {
@@ -308,7 +309,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     } finally { failure.mockRestore(); error.mockRestore(); }
   });
 
-  if (command === 'audit') it.each([false, true])('clears abandoned selected coverage when a test narrows its viewports (registry replaced=%s)', async (replaceRegistry) => {
+  if (command === 'audit') it.each([false, true])('preserves unselected coverage when a test narrows its viewports (registry replaced=%s)', async (replaceRegistry) => {
     const built = buildAbTestsConfig(config as never);
     const narrowed = definition('Narrowed', ['desktop']);
     if (replaceRegistry) narrowed.config = { shared: {
@@ -342,9 +343,9 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
         config: built, tests: [narrowed, active], controlURL: built.shared.controlURL, experimentURL: built.shared.experimentURL,
         categories: 'code_coverage', viewportsFilter: ['phone'], preserveOtherViewports: true, skipReport: true,
       });
-      expect(fs.existsSync(store().unitDirForViewport(narrowed, 'phone'))).toBe(false);
+      expect(store().readOutcome(narrowed, 'phone', 'code_coverage')?.kind).toBe('ok');
       for (const test of [narrowed, active]) {
-        expect(fs.existsSync(path.join(mirrors, `${unitIdForTest(test, 'phone')}.json`))).toBe(false);
+        expect(fs.existsSync(path.join(mirrors, `${unitIdForTest(test, 'phone')}.json`))).toBe(test === narrowed);
       }
       for (const entry of desktops) {
         expect(fs.readFileSync(entry.file, 'utf8')).toBe(entry.bytes);
@@ -353,14 +354,14 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     } finally { failure.mockRestore(); error.mockRestore(); }
   });
 
-  it('keeps existing filter-only callers such as troubleshoot on their cleanup contract', async () => {
+  it('preserves other viewports for filter-only callers such as troubleshoot', async () => {
     await run();
     await runPipeline(mockPipeline(command), {
       config: buildAbTestsConfig(config as never), tests: [tests[0]!],
       controlURL: config.shared.controlURL, experimentURL: config.shared.experimentURL,
       viewportsFilter: ['phone'], skipReport: true,
     });
-    expect(store().readOutcome(tests[0]!, 'desktop', stages[0]!)).toBeNull();
+    expect(store().readOutcome(tests[0]!, 'desktop', stages[0]!)?.kind).toBe('ok');
     expect(store().readOutcome(tests[0]!, 'phone', stages[0]!)?.kind).toBe('ok');
   });
 

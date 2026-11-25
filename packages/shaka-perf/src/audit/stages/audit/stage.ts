@@ -47,6 +47,21 @@ export interface AuditResult {
 }
 
 export class AuditStage implements Stage<AuditResult> {
+  artifactsToClear() {
+    return [
+      'experiment_lighthouse_report.html',
+      'experiment_lighthouse_thumbnail.jpg',
+      'experiment_network_activity.txt',
+      'experiment_performance_profile.json',
+      'experiment_performance_profile_timeline.html',
+      'experiment_performance_profile.summary.txt',
+      'experiment_interactions.json',
+      'failure-screenshot.png',
+      'screencast.mp4',
+      'screencast_start.json',
+    ];
+  }
+
   readonly measuresApplication = true;
   readonly category = 'audit';
   readonly name: StageName = 'audit';

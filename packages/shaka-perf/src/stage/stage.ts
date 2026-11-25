@@ -144,6 +144,8 @@ export interface Stage<M = unknown> {
    * from saved results. The runner captures metadata before measuring stages;
    * derived stages never create new measurement metadata. */
   readonly measuresApplication: boolean;
+  /** Owned paths relative to this measurement's artifacts directory. */
+  artifactsToClear(ctx: { readonly existingFiles: readonly string[] }): readonly string[];
   readonly name: StageName;
   /**
    * Human-readable display name for this stage, used by the report's

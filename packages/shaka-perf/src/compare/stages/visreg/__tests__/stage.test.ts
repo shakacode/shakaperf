@@ -7,13 +7,13 @@
 
 import { visualComparisonFields } from '../metadata';
 import { createVisregStage, type VisregArtifact } from '../../visreg';
-import { resetVisregScreenshots, runVisregUnit } from '../run';
+import { runVisregUnit } from '../run';
 import { WorkerPool } from '../../../../pipeline/worker-pool';
 import type { TestContext } from '../../../../stage/stage';
 
-jest.mock('../run', () => ({ runVisregUnit: jest.fn(), resetVisregScreenshots: jest.fn() }));
+jest.mock('../run', () => ({ runVisregUnit: jest.fn() }));
 
-it('resets screenshots once across a worker retry', async () => {
+it('shares measurement retry state across worker attempts', async () => {
   const ctx = {
     testAndViewportId: 'homepage-desktop',
     viewport: { label: 'desktop', width: 1000, height: 800 },
@@ -25,10 +25,8 @@ it('resets screenshots once across a worker retry', async () => {
     .mockResolvedValueOnce([]);
   try {
     await createVisregStage({} as never).run(ctx, pool);
-    expect(resetVisregScreenshots).toHaveBeenCalledTimes(1);
-    expect(resetVisregScreenshots).toHaveBeenCalledWith(ctx.artifacts.dir);
-    expect(jest.mocked(resetVisregScreenshots).mock.invocationCallOrder[0])
-      .toBeLessThan(jest.mocked(runVisregUnit).mock.invocationCallOrder[0]!);
+    const calls = jest.mocked(runVisregUnit).mock.calls;
+    expect(calls[1]![2]).toBe(calls[0]![2]);
     expect(runVisregUnit).toHaveBeenCalledTimes(2);
   } finally {
     await pool.dispose();

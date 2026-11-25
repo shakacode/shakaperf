@@ -12,7 +12,6 @@ import * as crypto from 'node:crypto';
 import chalk from 'chalk';
 import type { VisualRetryState } from '../../../visreg/core/types';
 import visregRunner from '../../../visreg/core/runner';
-import { screenshotPoolPaths } from '../../../visreg/core/util/screenshotPoolPaths';
 import { resolvePlaywrightOptions } from '../../../config';
 import { withCdpPort } from '../../../troubleshoot/debug-session';
 import type { VisregConfig, Viewport } from '../../../config';
@@ -29,14 +28,6 @@ import type { VisregResult, VisregStageConfig } from '../visreg';
 import { readVisregArtifacts } from './artifacts';
 
 const SINGLE_UNIT_ENGINE_PARALLELISM = 1;
-
-/** Start a new measurement's pools without disturbing other unit artifacts. */
-export function resetVisregScreenshots(unitArtifactsDir: string): void {
-  const { controlScreenshotDir, experimentScreenshotDir } = screenshotPoolPaths(unitArtifactsDir);
-  for (const dir of [controlScreenshotDir, experimentScreenshotDir]) {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-}
 
 export async function runVisregUnit(
   ctx: TestContext,
@@ -130,12 +121,6 @@ function writeTempVisregConfig(
     ...visregConfig,
     asyncCaptureLimit: SINGLE_UNIT_ENGINE_PARALLELISM,
     asyncCompareLimit: SINGLE_UNIT_ENGINE_PARALLELISM,
-    // The one output location the engine gets: everything it writes goes under
-    // this unit's artifacts dir. The stage resets the screenshot pools once
-    // before submitting its retried task; the runner also wipes the whole unit
-    // on a fresh run. We read
-    // the results back from here (readVisregArtifacts); the engine owns the
-    // layout beneath it.
     paths: { artifacts: unitArtifactsDir },
   };
   const hash = crypto.randomBytes(6).toString('hex');

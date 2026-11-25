@@ -63,7 +63,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
     .option('--viewport <label>', VIEWPORT_OPTION_DESCRIPTION)
     .option('--report-only', 'Re-render the HTML report from existing audit-results/ stage outcomes without re-running engines. Complements --skip-report for sharded CI assembly.', false)
     .option('--skip-report', 'Run the audit engine but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
-    .option('--keep-old-results', 'Do not wipe audit-results/ before running. Engines still overwrite the files they produce, but unrelated artifacts from a prior run survive instead of being cleared.', false)
+    .option('--keep-old-results', 'Retained for compatibility. Reruns always preserve results outside the selected measurements.', false)
     .option('--debug-show-all-frames', 'Diagnostics: also render the FULL, non-deduped screencast timeline alongside the normal (deduped) one. Every synced frame is shown, each annotated with the pixel diff vs the previous frame (the signal the dedupe uses to decide what to drop). Off by default — produces a much heavier report.', false)
     .option('--headed', 'Launch the measurement browser headed (visible window) instead of headless. Off by default.', false)
     .option('--burn <number>', BURN_OPTION_DESCRIPTION)

@@ -348,13 +348,7 @@ export interface RuntimeOptions {
   readonly restartFromStage?: string | undefined;
   readonly reportOnly?: boolean | undefined;
   readonly skipReport?: boolean | undefined;
-  /**
-   * Skip the pre-run wipe of this run's per-unit artifact dirs (and the flat
-   * visreg screenshot scratch dirs). Engines still overwrite the files they
-   * produce, but unrelated leftovers from a prior run survive instead of
-   * being cleared. Off by default — the normal contract is a clean slate per
-   * run. Has no effect under `reportOnly`, which never wipes anyway.
-   */
+  /** Compatibility flag. Remeasurement always preserves unrelated results. */
   readonly keepOldResults?: boolean | undefined;
   /**
    * Diagnostics: instruct stages that dedupe artifacts to ALSO emit the full,
@@ -487,11 +481,6 @@ async function runConfiguredPipelineWithSelection(
   const startedAt = Date.now();
   const store = new ArtifactStore(resultsRoot);
   const categories = categoriesForStages(executableStages);
-  const restarting = stageSelection.restartFromStage !== null;
-  // Keep the prior run's per-unit artifacts dir on restart: the retained
-  // earlier stages' outputs (e.g. the Lighthouse profile the restarted stage
-  // reads) live there alongside the restarted stages' soon-to-be-redone files.
-  const preserveOldResults = runtime.keepOldResults === true || restarting;
   const preservedViewportSelection = runtime.preserveOtherViewports
     ? runtime.viewportsFilter : undefined;
 
@@ -558,11 +547,6 @@ async function runConfiguredPipelineWithSelection(
     if (!runtime.skipReport && !preservedViewportSelection) {
       wipePersistedEngineErrors(resultsRoot);
     }
-    if (!preserveOldResults && !preservedViewportSelection && !runtime.skipReport) {
-      for (const dir of pipeline.derivedResultsDirs ?? []) {
-        fs.rmSync(path.join(resultsRoot, dir.path), { recursive: true, force: true });
-      }
-    }
   }
 
   const engineErrors: string[] = [];
@@ -590,83 +574,34 @@ async function runConfiguredPipelineWithSelection(
     settleAfterTestMs: runtime.settleAfterTestMs ?? 0,
   };
 
-  // Single wipe authority: one cleanup per pipeline run, before any stage
-  // runs. Engines no longer wipe internally — that was the source of the
-  // parallel-visreg race (one invocation rming another's pending PNGs
-  // mid-flight).
-  //
-  // Run-scope sweep: for this run's tests, at EVERY viewport the effective
-  // config defines (limited to the requested label when preserving other
-  // viewports) — not just this run's planned units — delete the selected
-  // stages' outcomes and then remove the unit dir wholesale. A per-test
-  // viewport override (or a config edit) shrinks the plan, so abandoned
-  // viewports' stale outcomes would otherwise survive every subsequent run and
-  // keep feeding --report-only assemblies.
-  //
-  // The dir goes wholesale because a unit's categories SHARE one `artifacts/`
-  // dir, and not every engine overwrites what it produced last time: visreg's
-  // screenshot pool accumulates content-addressed frames, so a surviving frame
-  // from a previous run re-enters this run's best-of-N match and can pass on
-  // stale pixels. An empty slate is the only way to rule that out.
-  //
-  // The cost is that a --categories=visreg rerun also drops the perf outcomes
-  // it isn't remeasuring (they reappear as `--categories` skip markers). That
-  // is the intended contract: a default run means "this run's results only".
-  // To combine categories, run them in sequence with --keep-old-results on the
-  // later ones, which skips this sweep entirely.
-  //
-  // Under --skip-report we still sweep this shard's own tests so reruns
-  // cannot read stale artifacts, but we leave the flat visreg scratch dirs
-  // alone because sibling shards may be using them. --keep-old-results and
-  // --restart-from-stage opt out of the wipe entirely (we still ensure the
-  // dirs exist) so a rerun layers onto a prior run's artifacts — the
-  // retained earlier stages need their prior artifacts and outcome JSONs
-  // intact.
   if (!runtime.reportOnly) {
-    if (!preserveOldResults) {
-      for (const test of testsSelectedForMeasurement) {
-        // A viewport pass sweeps its requested labels even if a test narrowed
-        // its viewport list or replaced the definition registry. Other callers
-        // retain the normal sweep over the effective definition registry.
-        const labels = preservedViewportSelection ?? applyPerTestConfigOverrides(runtime.config, test)
-          .shared.viewportDefinitions.map((viewport) => viewport.label);
-        for (const label of labels) {
-          for (const stage of executableStages) {
-            store.deleteOutcome(test, label, stage.name);
-          }
-          if (preservedViewportSelection) {
-            // Derived inputs share the exact outcome cleanup scope, including
-            // abandoned units outside the current measurement plan.
-            for (const dir of pipeline.derivedResultsDirs ?? []) {
-              for (const file of dir.unitFiles(unitIdForTest(test, label))) {
-                fs.rmSync(path.join(resultsRoot, dir.path, file), { force: true });
-              }
-            }
-          }
-          store.removeUnitDir(test, label);
-        }
-      }
-    }
     for (const unit of units) {
-      fs.mkdirSync(store.artifactsDirForViewport(unit.test, unit.viewport.label), { recursive: true });
+      const { test, viewport } = unit;
+      const selected = executableStages.filter(stage => testDeclaresStageCategory(test, stage)
+        && resolveViewportsForTest(test, runtime.config, stage.category).some(vp => vp.label === viewport.label));
+      const dir = store.artifactsDirForViewport(test, viewport.label);
+      fs.mkdirSync(dir, { recursive: true });
+      for (const stage of selected) store.deleteOutcome(test, viewport.label, stage.name);
       if (unit.testSource !== null) {
-        unit.testSourceHref = store.writeTestSource(unit.test, unit.viewport.label, unit.testSource);
+        unit.testSourceHref = store.writeTestSource(test, viewport.label, unit.testSource);
       }
-    }
-    // Restart discards the redone stages' prior results before they re-run.
-    // The blanket wipe above is skipped on restart to protect the retained
-    // earlier stages' artifacts, so the restarted-and-later stages' stale
-    // outcome JSONs would otherwise survive — and a re-run that crashes or
-    // ends early would leave the previous run's "ok" outcomes masquerading as
-    // this run's. Delete them up front so each redone stage starts from a
-    // clean slate; the stages rewrite their own outcomes (and prune their own
-    // generated artifacts) as they run.
-    if (restarting) {
-      for (const unit of units) {
-        for (const stage of executableStages) {
-          store.deleteOutcome(unit.test, unit.viewport.label, stage.name);
+      const existingFiles = fs.readdirSync(dir);
+      const paths = selected.flatMap(stage => stage.artifactsToClear({ existingFiles }));
+      const retainedSources = new Set(store.readOutcomesForViewport(test, viewport.label)
+        .map(outcome => outcome.executionDetails.testSourceHref));
+      retainedSources.add(unit.testSourceHref);
+      const scope = store.scopeFor(test, viewport.label);
+      for (const file of existingFiles) {
+        if (/^test-source-[a-f0-9]{64}\.ts$/.test(file) && !retainedSources.has(scope.pathFor(file))) paths.push(file);
+      }
+      store.clearArtifacts(test, viewport.label, paths);
+      for (const derived of pipeline.derivedResultsDirs ?? []) {
+        if (!selected.some(stage => stage.name === derived.stage)) continue;
+        for (const file of derived.unitFiles(unitIdForTest(test, viewport.label))) {
+          fs.rmSync(path.join(resultsRoot, derived.path, file), { force: true });
         }
       }
+
     }
   }
   let invocation: RunInvocation | undefined;
@@ -1131,7 +1066,11 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const reason = !viewportApplies
       ? `${unit.viewport.label} not in ${stage.category}.viewports`
       : `${stage.name} does not apply to ${unit.viewport.label}`;
-    persistStageOutcome(store, unit, logger, skippedOutcome(stage.name, reason, invocation, unit.viewport));
+    if ((viewportApplies && testDeclaresStageCategory(unit.test, stage)) || !store.readOutcome(unit.test, unit.viewport.label, stage.name)) {
+      persistStageOutcome(store, unit, logger, skippedOutcome(stage.name, reason, invocation, unit.viewport));
+    } else {
+      unit.priorOutcomeKinds.set(stage.name, 'skipped');
+    }
     progress.skipped += 1;
     renderSticky();
     return;
@@ -1305,6 +1244,7 @@ function persistCliSkippedStageOutcomes(
     for (const { stage, reason } of skippedStages) {
       for (const viewport of viewports) {
         if (viewportsFilter && !viewportsFilter.includes(viewport.label)) continue;
+        if (store.readOutcome(test, viewport.label, stage.name)) continue;
         store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason, invocation, viewport));
       }
     }
@@ -1558,13 +1498,15 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
   const stagesByName = new Map(pipeline.stages.map((stage, index) => [stage.name, { stage, index }]));
   const currentViewports = new Set(viewportsForTestAcrossStages(test, reportedStages, config).map((vp) => vp.label));
   const reportViewports = viewportsForSavedReport(test, reportedStages, config, store);
-  const viewportOutcomes = reportViewports.flatMap((viewport) =>
-    store.readOutcomesForViewport(test, viewport.label)
-      .map((outcome) => ({ outcome, viewport,
-        outsideCurrentConfig: !currentViewports.has(viewport.label) ||
+  const viewportOutcomes = reportViewports.flatMap((viewport) => {
+    const saved = store.readOutcomesForViewport(test, viewport.label);
+    const latestMeasurement = newestRunId(saved.filter(outcome => outcome.kind !== 'skipped'));
+    return saved.map((outcome) => ({ outcome, viewport,
+        outsideCurrentConfig: (latestMeasurement !== null && outcome.executionDetails.runId !== latestMeasurement) ||
+          !currentViewports.has(viewport.label) ||
           !persistedOutcomeInScope(test, config, stagesByName.get(outcome.stage)?.stage, outcome, viewport.label),
-      })),
-  ).sort((a, b) => {
+      }));
+  }).sort((a, b) => {
     // Render order = DESCENDING renderingPriority (higher shows first), ties
     // broken by registration order. Decoupled from execution order so a stage
     // can run last but render first (e.g. the audit AI summary).

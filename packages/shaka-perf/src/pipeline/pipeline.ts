@@ -126,6 +126,7 @@ export interface PipelineMachineReportMetaContext {
 }
 
 export interface DerivedResultsDirectory {
+  readonly stage: StageName;
   readonly path: string;
   /** Files relative to this directory owned by one test/viewport unit. */
   unitFiles(unitId: string): readonly string[];
@@ -138,16 +139,7 @@ interface PipelineOptions {
   readonly artifactRoot?: string;
   readonly pipelineConfig?: unknown;
   readonly report: PipelineReport;
-  /**
-   * Run-level derived dirs (relative to the results root) that this
-   * pipeline's stages accumulate into across units — e.g. the audit stage
-   * mirrors per-unit coverage into `.nyc_output/`. The runner's wipe
-   * authority clears them before a fresh measuring run (never on
-   * `--report-only`, `--skip-report` shards, `--keep-old-results`, or
-   * restart), so entries from renamed/deleted tests can't leak into later
-   * runs. Viewport-selected runs invalidate declared per-unit files in the
-   * same sweep as outcome directories, preserving sibling viewports. Stages must not wipe these themselves.
-   */
+  /** Per-unit mirrors stored outside the artifact directory, invalidated with their owning stage. */
   readonly derivedResultsDirs?: readonly DerivedResultsDirectory[];
   readonly machineReportMeta?: (ctx: PipelineMachineReportMetaContext) => PipelineMachineReportMeta;
 }
