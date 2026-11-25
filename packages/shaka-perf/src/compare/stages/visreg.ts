@@ -71,11 +71,7 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
     },
     async run(ctx, pool) {
       const runImpl = './visreg/run';
-      const { runVisregUnit, resetVisregScreenshots } = await import(/* @vite-ignore */ runImpl) as typeof import('./visreg/run');
-      // A new measurement must not cross-match against a previous run's pixels,
-      // even when --keep-old-results or --restart-from-stage retains artifacts.
-      // Reset ONCE, outside the retried task: its attempts share the fresh pools.
-      resetVisregScreenshots(ctx.artifacts.dir);
+      const { runVisregUnit } = await import(/* @vite-ignore */ runImpl) as typeof import('./visreg/run');
       const artifacts = await pool.submit(
         () => runVisregUnit(ctx, config),
         { key: ctx.testAndViewportId },
