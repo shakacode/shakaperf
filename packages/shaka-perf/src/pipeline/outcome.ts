@@ -27,6 +27,7 @@ export interface ErrorInfo {
 export interface ExecutionDetails {
   readonly measurementMetadata?: MeasurementMetadata;
   readonly runId: string;
+  readonly command: string;
   readonly viewport: Viewport;
   readonly testSourceHref: string | null;
   readonly taskRetries?: number;
