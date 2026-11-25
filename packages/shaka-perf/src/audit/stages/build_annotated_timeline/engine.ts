@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import chalk from 'chalk';
@@ -45,39 +46,22 @@ async function disposeTimelineClient(state: Record<string, unknown>): Promise<vo
   await client.dispose();
 }
 
-function clearGeneratedTimelineArtifacts(artifactsDir: string, metadataPath: string): number {
-  if (!fs.existsSync(artifactsDir)) return 0;
-  let removed = 0;
-  for (const p of [metadataPath, path.join(artifactsDir, DEBUG_FRAMES_METADATA_FILENAME)]) {
-    if (fs.existsSync(p)) {
-      fs.unlinkSync(p);
-      removed++;
-    }
-  }
-  for (const entry of fs.readdirSync(artifactsDir)) {
-    // Both the deduped `timeline_frame_*` images and the diagnostics-only
-    // `debug_allframe_*` images (plus their cached thumbnails) are regenerated
-    // each run, so clear either form here.
-    if (!/^(?:timeline_frame_[\d.]+ms|debug_allframe_\d+_[\d.]+ms)\.(?:jpe?g|avif|webp)(?:\.thumb(?:-v\d+)?\.avif)?$/.test(entry)) continue;
-    fs.unlinkSync(path.join(artifactsDir, entry));
-    removed++;
-  }
-  return removed;
-}
-
 export async function runBuildAnnotatedTimelineStage(
   ctx: TestContext,
   workerPool: WorkerPool,
   limitVideoFramesCount: number,
 ): Promise<BuildAnnotatedTimelineResult> {
   const artifactsDir = ctx.artifacts.dir;
-  const profilePath = path.join(artifactsDir, 'experiment_performance_profile.json');
+  const auditArtifacts = ctx.priorArtifacts(stageIds.audit);
+  const profilePath = path.join(auditArtifacts.dir, 'experiment_performance_profile.json');
   if (!fs.existsSync(profilePath)) {
     console.log(chalk.dim(`annotated-timeline: no performance profile at ${profilePath}; reading cached artifact`));
     return readAnnotatedTimelineArtifact({
-      artifacts: ctx.artifacts,
+      artifacts: ctx.artifacts, auditArtifacts,
     });
   }
+
+  fs.mkdirSync(artifactsDir, { recursive: true });
 
   // The whole build runs inside a single pool submit: it holds the slot
   // for the full timeline (well under the default 120 s per-task timeout
@@ -86,10 +70,6 @@ export async function runBuildAnnotatedTimelineStage(
   // on subsequent uses. Bounded peak worker_threads = `parallelism`.
   console.log(chalk.dim(`annotated-timeline: building frames from ${profilePath}`));
   const metadataPath = path.join(artifactsDir, FRAMES_METADATA_FILENAME);
-  const removedArtifacts = clearGeneratedTimelineArtifacts(artifactsDir, metadataPath);
-  if (removedArtifacts > 0) {
-    console.log(chalk.dim(`annotated-timeline: cleared ${removedArtifacts} stale generated artifact${removedArtifacts === 1 ? '' : 's'}`));
-  }
   const key = `${ctx.testAndViewportId}:build_annotated_timeline`;
   await workerPool.submit(async (state) => {
     const slot = workerPool.getWorkerState<TimelineSlotState>(state, disposeTimelineClient);
@@ -171,12 +151,13 @@ export async function runBuildAnnotatedTimelineStage(
   console.log(chalk.dim('annotated-timeline: frame build done; reading artifact metadata'));
 
   return readAnnotatedTimelineArtifact({
-    artifacts: ctx.artifacts,
+    artifacts: ctx.artifacts, auditArtifacts,
   });
 }
 
 interface ReadAnnotatedTimelineArtifactOptions {
   artifacts: ArtifactScope;
+  auditArtifacts: ArtifactScope;
 }
 
 async function readAnnotatedTimelineArtifact(opts: ReadAnnotatedTimelineArtifactOptions): Promise<BuildAnnotatedTimelineResult> {
@@ -205,9 +186,9 @@ async function readAnnotatedTimelineArtifact(opts: ReadAnnotatedTimelineArtifact
     return frame;
   });
   console.log(chalk.dim(`annotated-timeline: prepared ${frames.length} report frame${frames.length === 1 ? '' : 's'}`));
-  const screencastPath = path.join(opts.artifacts.dir, SCREENCAST_FILENAME);
+  const screencastPath = path.join(opts.auditArtifacts.dir, SCREENCAST_FILENAME);
   const screencastHref = fs.existsSync(screencastPath)
-    ? opts.artifacts.pathFor(SCREENCAST_FILENAME)
+    ? opts.auditArtifacts.pathFor(SCREENCAST_FILENAME)
     : undefined;
   console.log(chalk.dim(`annotated-timeline: screencast ${screencastHref ? 'attached' : 'not found'}`));
   const debugAllFrames = loadDebugAllFrames(opts);

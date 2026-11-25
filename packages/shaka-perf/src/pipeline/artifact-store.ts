@@ -18,12 +18,23 @@ import { toPosixRelative } from './path-utils';
 declare const artifactPathBrand: unique symbol;
 export type ArtifactPath = string & { readonly [artifactPathBrand]: true };
 
+function localArtifactPath(dir: string, name: string): string {
+  if (!name || name === '.' || path.isAbsolute(name) || name.includes('..') || name.includes('/') || name.includes('\\')) {
+    throw new Error(`artifact name must be a local filename: ${name}`);
+  }
+  return path.join(dir, name);
+}
+
 export class ArtifactScope {
   constructor(readonly dir: string, private readonly reportRoot: string) {}
 
+  stageDirectory(stage: StageName): ArtifactScope {
+    return new ArtifactScope(localArtifactPath(this.dir, stage), this.reportRoot);
+  }
+
   async writeFile(name: string, bytes: string | Buffer): Promise<ArtifactPath> {
     fs.mkdirSync(this.dir, { recursive: true });
-    await fs.promises.writeFile(this.resolveSafeName(name), bytes);
+    await fs.promises.writeFile(localArtifactPath(this.dir, name), bytes);
     return this.pathFor(name);
   }
 
@@ -36,13 +47,6 @@ export class ArtifactScope {
       this.reportRoot,
       this.resolveScopedPath(name),
     ) as ArtifactPath;
-  }
-
-  private resolveSafeName(name: string): string {
-    if (path.isAbsolute(name) || name.includes('..') || name.includes('/') || name.includes('\\')) {
-      throw new Error(`artifact name must be a local filename: ${name}`);
-    }
-    return path.join(this.dir, name);
   }
 
   private resolveScopedPath(name: string): string {
@@ -106,27 +110,29 @@ export class ArtifactStore {
     );
   }
 
-  deleteOutcome(test: AbTestDefinition, viewportLabel: string, stage: StageName): void {
-    fs.rmSync(
-      path.join(this.unitDirForViewport(test, viewportLabel), `${stage}.json`),
-      { force: true },
-    );
-  }
-
-  /**
-   * Remove the unit dir outright — outcomes AND the `artifacts/` subtree they
-   * reference. The pre-run sweep calls this so every stage starts from an empty
-   * slate: engines that ACCUMULATE rather than overwrite (visreg's screenshot
-   * pool writes one content-addressed frame per capture) would otherwise carry
-   * a previous run's frames into this run's best-of-N match and pass on them.
-   *
-   * This deliberately drops other categories' outcomes too. A default run means
-   * "this run's results only"; to layer a category onto a previous run's
-   * results, use `--keep-old-results`, which skips the sweep entirely.
-   */
-  removeUnitDir(test: AbTestDefinition, viewportLabel: string): void {
-    // `force` makes a missing dir a no-op.
-    fs.rmSync(this.unitDirForViewport(test, viewportLabel), { recursive: true, force: true });
+  prepareMeasurement(test: AbTestDefinition, label: string, stages: readonly StageName[], source: string | null): ArtifactPath | null {
+    if (!stages.length) return null;
+    const unit = this.unitDirForViewport(test, label);
+    const scope = this.scopeFor(test, label);
+    // Invalidate every selected outcome before cleanup can fail partway through.
+    for (const stage of stages) {
+      fs.rmSync(localArtifactPath(unit, `${stage}.json`), { force: true });
+    }
+    for (const stage of stages) {
+      const dir = scope.stageDirectory(stage).dir;
+      fs.rmSync(dir, { recursive: true, force: true });
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const sourceHref = source === null ? null : this.writeTestSource(test, label, source);
+    const retained = new Set(this.readOutcomesForViewport(test, label)
+      .map(outcome => outcome.executionDetails.testSourceHref));
+    retained.add(sourceHref);
+    for (const file of fs.readdirSync(scope.dir)) {
+      if (/^test-source-[a-f0-9]{64}\.ts$/.test(file) && !retained.has(scope.pathFor(file))) {
+        fs.rmSync(path.join(scope.dir, file), { force: true });
+      }
+    }
+    return sourceHref;
   }
 
   readOutcome(test: AbTestDefinition, viewportLabel: string, stage: StageName): Outcome | null {
