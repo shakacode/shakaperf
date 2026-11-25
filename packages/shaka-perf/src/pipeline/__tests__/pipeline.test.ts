@@ -309,6 +309,14 @@ describe('runPipeline', () => {
     }
   });
 
+  it('omits run metadata when capture fails before the stage starts', async () => {
+    jest.mocked(measuredCommit).mockRejectedValueOnce(new Error('target lookup failed'));
+    const result = await runWithFrozenTest({ categories: 'visreg', skipReport: true });
+    const failed = result.testResults[0]!.outcomes.find((outcome) => outcome.kind === 'error');
+    expect(failed?.error?.message).toContain('target lookup failed');
+    expect(failed).not.toHaveProperty('runMetadata');
+  });
+
   it.each(['derived', 'not-applicable'] as const)('excludes %s stages from automatic metadata capture', async (mode) => {
     const selected = pipeline();
     const candidate = selected.stages[0]!;
@@ -474,10 +482,11 @@ describe('runPipeline', () => {
 
   it.each([false, true])('saves actual worker retries, including exhausted tasks: %p', async (exhausted) => {
     const selected = pipeline();
-    selected.stages[0]!.run = async (_ctx, pool) => {
+    selected.stages[0]!.run = async (ctx, pool) => {
       let attempts = 0;
       return pool.submit(async () => {
-        if (++attempts === 1 || exhausted) throw new Error('temporary failure');
+        ctx.recordMeasurementOptions({ compareAttempts: ++attempts });
+        if (attempts === 1 || exhausted) throw new Error('temporary failure');
         return {};
       });
     };
@@ -504,7 +513,7 @@ describe('runPipeline', () => {
       const visreg = initialPipeline.stages[0]!;
       const initialRun = visreg.run;
       visreg.run = async (ctx, pool) => {
-        ctx.recordMeasurementOptions?.({ compareRetries: ctx.config.visreg.compareRetries, compareAttempts: 2 });
+        ctx.recordMeasurementOptions({ compareRetries: ctx.config.visreg.compareRetries, compareAttempts: 2 });
         return initialRun(ctx, pool);
       };
       const first = await runWithFrozenTest({ cwd, tests: [configuredTest], categories: 'visreg', skipReport: true }, initialPipeline);
@@ -526,7 +535,7 @@ describe('runPipeline', () => {
       const perfStage = nextPipeline.stages.find((entry) => entry.name === 'perf')!;
       const nextRun = perfStage.run;
       perfStage.run = async (ctx, pool) => {
-        ctx.recordMeasurementOptions?.({ numberOfMeasurements: ctx.config.perf.numberOfMeasurements });
+        ctx.recordMeasurementOptions({ numberOfMeasurements: ctx.config.perf.numberOfMeasurements });
         return nextRun(ctx, pool);
       };
       const second = await runWithFrozenTest({ cwd, tests: [configuredTest], categories: 'perf', restartFromStage: 'perf', skipReport: true }, nextPipeline);
@@ -563,7 +572,7 @@ describe('runPipeline', () => {
     const captureStage = selected.stages[0]!;
     const originalRun = captureStage.run;
     captureStage.run = async (ctx, pool) => {
-      ctx.recordMeasurementThrottling?.({ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } });
+      ctx.recordMeasurementOptions({ throttling: { engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } } });
       return originalRun(ctx, pool);
     };
     const result = await runWithFrozenTest({ skipReport: true, categories: 'visreg', tests: [{
@@ -573,38 +582,8 @@ describe('runPipeline', () => {
     }] }, { ...selected, measurementSides: ['experiment'] });
     const outcome = result.testResults[0]!.outcomes.find((o) => o.kind === 'ok')!;
     expect(outcome.runMetadata?.targets).toEqual([{ side: 'experiment', url: 'https://user:password@deployment.test/cart?token=secret', commit: null }]);
-    expect(outcome.runMetadata?.throttling).toEqual([{ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } }]);
+    expect(outcome.runMetadata?.throttling).toEqual({ engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 9, network: { rttMs: 80 } });
     expect(outcome.runMetadata?.viewport).toEqual(outcome.viewport);
-  });
-
-  it.each([
-    ['CPU', { method: 'simulate', cpuSlowdownMultiplier: 6, network: { rttMs: 80, throughputKbps: 800 } }],
-    ['network', { method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 90, throughputKbps: 800 } }],
-    ['method', { method: 'devtools', cpuSlowdownMultiplier: 4, network: { rttMs: 80, throughputKbps: 800 } }],
-  ])('errors when resolved Lighthouse %s throttling differs between sides', async (_field, experiment) => {
-    const selected = pipeline();
-    selected.stages[0]!.run = async (ctx) => {
-      ctx.recordMeasurementThrottling?.({ engine: 'Lighthouse', side: 'control', method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 80, throughputKbps: 800 } });
-      ctx.recordMeasurementThrottling?.({ engine: 'Lighthouse', side: 'experiment', ...experiment });
-      return {};
-    };
-    const result = await runWithFrozenTest({ skipReport: true, categories: 'visreg' }, selected);
-    const outcome = result.testResults[0]!.outcomes.find((outcome) => outcome.stage === selected.stages[0]!.name)!;
-    expect(outcome.kind).toBe('error');
-    expect(outcome.error?.message).toContain('Lighthouse throttling must match between control and experiment');
-  });
-
-  it('accepts equal resolved Lighthouse throttling regardless of network property order', async () => {
-    const selected = pipeline();
-    selected.stages[0]!.run = async (ctx) => {
-      ctx.recordMeasurementThrottling?.({ engine: 'Lighthouse', side: 'control', method: 'simulate', cpuSlowdownMultiplier: 4, network: { rttMs: 80, throughputKbps: 800 } });
-      ctx.recordMeasurementThrottling?.({ engine: 'Lighthouse', side: 'experiment', method: 'simulate', cpuSlowdownMultiplier: 4, network: { throughputKbps: 800, rttMs: 80 } });
-      return {};
-    };
-    const result = await runWithFrozenTest({ skipReport: true, categories: 'visreg' }, selected);
-    const outcome = result.testResults[0]!.outcomes.find((outcome) => outcome.stage === selected.stages[0]!.name)!;
-    expect(outcome.kind).toBe('ok');
-    expect(outcome.runMetadata?.throttling?.map(({ side }) => side)).toEqual(['control', 'experiment']);
   });
 
   it('uses frozen report tests without loading test definitions', async () => {

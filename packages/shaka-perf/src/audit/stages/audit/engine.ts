@@ -139,7 +139,7 @@ export async function runAuditStage(
     playwrightOptions: resolvePlaywrightOptions(ctx.config, 'audit'),
   });
   const numberOfMeasurements = 1;
-  ctx.recordMeasurementOptions?.({ numberOfMeasurements });
+  ctx.recordMeasurementOptions({ numberOfMeasurements });
   let sampleGroups;
   try {
     sampleGroups = await measureTest(
@@ -165,7 +165,7 @@ export async function runAuditStage(
     throw new Error(`audit did not collect a Lighthouse sample for ${ctx.viewport.label}`);
   }
 
-  if (sample.measurementThrottling) ctx.recordMeasurementThrottling?.({ ...sample.measurementThrottling, side: 'experiment' });
+  ctx.recordMeasurementOptions({ throttling: sample.measurementThrottling });
 
   // Persist the a11y score to <id>/accessibility-client.json (report reads phone).
   // The standalone score runner cannot share the interactive challenge state
