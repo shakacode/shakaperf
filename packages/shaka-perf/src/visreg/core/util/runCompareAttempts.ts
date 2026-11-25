@@ -34,6 +34,7 @@ export type CaptureScreenshotFn = (
 
 /** Injected collaborators — defaulted to the real implementations; overridden in tests. */
 export interface CompareAttemptsDeps {
+  comparisonCounts?: Map<string, number>;
   captureScreenshot: CaptureScreenshotFn;
   createSide?: CreateSideFn;
   preparePage?: PreparePageFn;
@@ -185,54 +186,61 @@ export async function runCompareAttempts(
   const maxNumDiffPixels = config.maxNumDiffPixels;
   const compareOpts = { maxNumDiffPixels, pixelmatchThreshold };
 
-  let runs: SelectorRun[] = [];
-
   // JSON-bridge boundary: the engine's config crosses as data (no functions), so
   // rebuild this test's effective config here and read from it.
   const effectiveConfig = await reconstructEffectiveConfig(scenario._testDef);
   const beforeNavigate = effectiveConfig.shared.beforeNavigate;
   const browserConsole = effectiveConfig.shared.browserConsole;
 
-  for (let attempt = 0; attempt <= maxRetries && (attempt === 0 || runs.some((r) => !r.done)); attempt++) {
+  // Both pools retain distinct frames across worker restarts. A repeated capture
+  // on one side must not spend the other side’s chance to find a matching frame.
+  const hasEnoughDistinctFrames = (control: PoolFrame[], experiment: PoolFrame[]) =>
+    control.length >= maxRetries + 1 && experiment.length >= maxRetries + 1;
+  const compareFrames = (control: PoolFrame[], experiment: PoolFrame[]) => crossMatch(
+    control.map(frame => frame.buffer), experiment.map(frame => frame.buffer), compareOpts,
+  );
+  const selectors = scenario.selectors?.length
+    ? scenario.selectors
+    : [DOCUMENT_SELECTOR];
+  const runs: SelectorRun[] = selectors.map((selector, selectorIndex) => {
+    const testPair = engineTools.generateTestPair(
+      config,
+      scenario,
+      viewport,
+      scenarioLabelSafe,
+      selectorIndex,
+      selector,
+    );
+    const pool = new ScreenshotPool(
+      path.dirname(testPair.reference),
+      path.dirname(testPair.test),
+      path.basename(testPair.test, engineTools.OUTPUT_FORMAT_SUFFIX),
+    );
+    const control = pool.load('control');
+    const experiment = pool.load('experiment');
+
+    // A worker restart must not recapture a selector whose saved frames already match.
+    const result = control.length && experiment.length
+      ? compareFrames(control, experiment)
+      : null;
+    return {
+      visualComparisonCount: deps.comparisonCounts?.get(testPair.test) ?? (result ? 1 : 0),
+      selector,
+      testPair,
+      pool,
+      control,
+      experiment,
+      result,
+      done: result?.pass === true || hasEnoughDistinctFrames(control, experiment),
+    };
+  });
+
+  for (let attempt = 0; attempt <= maxRetries && runs.some(r => !r.done); attempt++) {
     if (attempt > 0) {
       // Linear backoff: 5s, 10s, 15s, ...
       const delay = retryDelayMs * attempt;
       logger.log(`Retry ${attempt}/${maxRetries} for "${scenario.label}" - chilling for ${delay}ms`);
       await sleep(delay);
-    }
-
-    // The selector set is declarative on the scenario. Build the pools before
-    // launching the concurrent side lifecycles so both sides capture the same
-    // set of still-pending selectors.
-    if (attempt === 0) {
-      const selectors = scenario.selectors?.length
-        ? scenario.selectors
-        : [DOCUMENT_SELECTOR];
-      runs = selectors.map((selector, selectorIndex) => {
-        const testPair = engineTools.generateTestPair(
-          config,
-          scenario,
-          viewport,
-          scenarioLabelSafe,
-          selectorIndex,
-          selector,
-        );
-        const pool = new ScreenshotPool(
-          path.dirname(testPair.reference),
-          path.dirname(testPair.test),
-          path.basename(testPair.test, engineTools.OUTPUT_FORMAT_SUFFIX),
-        );
-        return {
-          visualComparisonCount: 0,
-          selector,
-          testPair,
-          pool,
-          control: pool.load('control'),
-          experiment: pool.load('experiment'),
-          result: null,
-          done: false,
-        };
-      });
     }
 
     const activeSides = new Set<ComparisonSide>();
@@ -262,7 +270,6 @@ export async function runCompareAttempts(
 
     for (const run of runs) {
       if (run.done) continue;
-      run.visualComparisonCount = attempt + 1;
       const refBuffer = refCaptures.get(run.selector)!;
       const testBuffer = testCaptures.get(run.selector)!;
 
@@ -274,17 +281,13 @@ export async function runCompareAttempts(
       run.control = run.pool.load('control');
       run.experiment = run.pool.load('experiment');
 
-      run.result = crossMatch(
-        run.control.map((f) => f.buffer),
-        run.experiment.map((f) => f.buffer),
-        compareOpts,
-      );
-      const budgetSpent = run.control.length > maxRetries &&
-        run.experiment.length > maxRetries;
+      run.result = compareFrames(run.control, run.experiment);
+      run.visualComparisonCount++;
+      deps.comparisonCounts?.set(run.testPair.test, run.visualComparisonCount);
       // A retry that added no frames is pixel-stable — retrying can't change it.
       const pixelStable = attempt > 0 &&
         run.control.length + run.experiment.length === framesBefore;
-      run.done = run.result.pass || budgetSpent || pixelStable;
+      run.done = run.result.pass || pixelStable || hasEnoughDistinctFrames(run.control, run.experiment);
     }
   }
 

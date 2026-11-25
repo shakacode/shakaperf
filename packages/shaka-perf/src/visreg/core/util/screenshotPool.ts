@@ -26,8 +26,8 @@ import { compareBuffers } from './compare/pixelmatch-inline';
  * filename template: the `__<sha1>` suffix lets many frames per comparison
  * coexist (re-capturing an identical frame is a no-op — the pool holds DISTINCT
  * frames only), while the shared `<key>` prefix lets a restart find them again.
- * Cleanup is NOT done here: the runner wipes the unit dir once per test, before
- * any stage runs, which clears these dirs generically.
+ * The runner clears the stage-owned pools once before the measurement. Frames survive every attempt of that
+ * measurement, but never enter a later measurement's cross-match.
  */
 export type PoolSide = 'control' | 'experiment';
 
@@ -56,7 +56,7 @@ export class ScreenshotPool {
     const prefix = this.key + FRAME_SEP;
     let names: string[];
     try {
-      names = fs.readdirSync(dir).filter((n) => n.startsWith(prefix) && n.endsWith('.png')).sort();
+      names = fs.readdirSync(dir).filter((n) => n.startsWith(prefix) && /^[a-f0-9]{40}\.png$/.test(n.slice(prefix.length))).sort();
     } catch {
       return [];
     }

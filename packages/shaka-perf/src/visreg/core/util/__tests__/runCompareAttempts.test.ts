@@ -174,14 +174,32 @@ it('keeps a clean selector at one attempt while another selector retries', async
   ]);
 });
 
-it('persistent mismatch: spends the retry budget, returns the closest pair with a diff', async () => {
-  // Distinct frames per attempt (dirty=attempt) so the pool grows; ref stays
-  // red-ish, test blue-ish, so nothing ever matches.
+it('resumes pending selectors after a worker failure without recapturing a matched selector', async () => {
+  const { deps } = makeDeps(() => png(BLUE));
+  deps.comparisonCounts = new Map();
+  let changedCaptures = 0;
+  deps.captureScreenshot = async (_page, selector) => {
+    if (selector === '.clean') return png(GREEN);
+    if (++changedCaptures > 2) throw new Error('worker failure');
+    return png(changedCaptures === 1 ? RED : BLUE);
+  };
+  const selectors = ['.clean', '.changed'];
+  await expect(run(deps, makeConfig(), selectors)).rejects.toThrow('worker failure');
+  deps.captureScreenshot = async (_page, selector) => {
+    expect(selector).toBe('.changed');
+    return png(GREEN);
+  };
+  const resumed = await run(deps, makeConfig(), selectors);
+  expect(resumed.map(row => [row.result.pass, row.visualComparisonCount])).toEqual([[true, 1], [true, 2]]);
+});
+
+it('stops at the local retry limit and reports the closest pair when only one pool grows', async () => {
   const { deps, sleeps, counts } = makeDeps((attempt, side) =>
-    side === 'ref' ? png(RED, attempt) : png(BLUE, attempt));
+    side === 'ref' ? png(RED) : png(RED, 3 - attempt));
   const outcomes = await run(deps, makeConfig({ compareRetries: 2 }));
 
   expect(outcomes[0].result.pass).toBe(false);
+  expect(outcomes[0].result.leastDiffPixels).toBe(1);
   expect(outcomes[0].result.diffBuffer).not.toBeNull();
   expect(outcomes[0].refFrame).not.toBeNull();
   // 3 attempts (0 + 2 retries): fresh sides each, all disposed. Backoff 10, 20.

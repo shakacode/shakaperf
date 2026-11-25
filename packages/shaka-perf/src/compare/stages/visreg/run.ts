@@ -31,6 +31,7 @@ const SINGLE_UNIT_ENGINE_PARALLELISM = 1;
 export async function runVisregUnit(
   ctx: TestContext,
   stageConfig: VisregStageConfig,
+  comparisonCounts?: Map<string, number>,
 ): Promise<VisregResult> {
   console.log(
     'Loading every test page on both the control server and the experiment server, taking a screenshot of each once the page has settled, and comparing the two screenshots pixel-by-pixel. ' +
@@ -79,6 +80,7 @@ export async function runVisregUnit(
       testPathPattern: testPathPatternForSingleTest(ctx.test, testPathPattern),
       filter: exactTestNameFilter(ctx.test.name),
     }, {
+      comparisonCounts,
       captureFailure: async (err, page, isControl) => {
         const media = await captureFailureScreenshot(
           ctx.artifacts,
@@ -118,11 +120,6 @@ function writeTempVisregConfig(
     ...visregConfig,
     asyncCaptureLimit: SINGLE_UNIT_ENGINE_PARALLELISM,
     asyncCompareLimit: SINGLE_UNIT_ENGINE_PARALLELISM,
-    // The one output location the engine gets: everything it writes goes under
-    // this unit's artifacts dir, so the runner's generic per-test wipe (rmSync
-    // of the unit dir) clears it — no visreg-specific cleanup anywhere. We read
-    // the results back from here (readVisregArtifacts); the engine owns the
-    // layout beneath it.
     paths: { artifacts: unitArtifactsDir },
   };
   const hash = crypto.randomBytes(6).toString('hex');

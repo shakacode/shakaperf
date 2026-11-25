@@ -16,6 +16,7 @@ export type { PlaywrightPage, BrowserContext, Browser };
  * framework that created the stage's ArtifactScope.
  */
 export interface VisregRunRuntime {
+  comparisonCounts?: Map<string, number>;
   captureFailure?: (
     err: unknown,
     page: PlaywrightPage,
@@ -204,7 +205,7 @@ export interface TestPair {
    * the "Flaky (saved by retries)" chip.
    */
   savedByRetries?: boolean;
-  /** Capture-and-compare attempts for this selector in the completed invocation. */
+  /** Capture-and-compare attempts for this selector across worker invocations. */
   visualComparisonCount?: number;
   /** Maximum capture-and-compare rounds, including the first. */
   visualComparisonLimit?: number;

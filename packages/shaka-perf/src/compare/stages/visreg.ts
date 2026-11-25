@@ -73,8 +73,9 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
     async run(ctx, pool) {
       const runImpl = './visreg/run';
       const { runVisregUnit } = await import(/* @vite-ignore */ runImpl) as typeof import('./visreg/run');
+      const comparisonCounts = new Map<string, number>();
       const artifacts = await pool.submit(
-        () => runVisregUnit(ctx, config),
+        () => runVisregUnit(ctx, config, comparisonCounts),
         { key: ctx.testAndViewportId },
       );
       const { label, width, height } = ctx.viewport;

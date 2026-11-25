@@ -112,8 +112,7 @@ export interface VisregCompareResult {
 export async function execute(config: RuntimeConfig): Promise<VisregCompareResult> {
   const compareResult = await compare(config);
   if (!compareResult) {
-    logger.error('Comparison failed, no report generated.');
-    return { passed: 0, failed: 0 };
+    throw new Error('Comparison failed, no report generated.');
   }
   const report = compareResult as Reporter;
 
