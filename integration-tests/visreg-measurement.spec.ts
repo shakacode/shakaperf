@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../packages/shaka-perf/src/stage/stage-ids';
 import { test as base, expect } from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -32,9 +33,9 @@ const test = base.extend<{ measurement: Awaited<ReturnType<typeof createMeasurem
 test('desktop visreg matches immediately and keeps perf viewable after report regeneration', async ({ measurement, page }, testInfo) => {
   const { runCompare, runVisreg, outcome, setFrames, visits, unitDirectory, results } = measurement;
   await runCompare(['--categories', 'perf']);
-  const perf = outcome('perf');
+  const perf = outcome(stageIds.perf);
   expect(perf.kind).toBe('ok');
-  const lowNoise = outcome('perf-low-noise');
+  const lowNoise = outcome(stageIds.perfLowNoise);
   expect(lowNoise.kind).toBe('ok');
   const artifacts = path.join(unitDirectory(), 'artifacts');
   const perfFiles = fs.readdirSync(artifacts, { recursive: true, encoding: 'utf8' }).filter(name =>
@@ -45,13 +46,13 @@ test('desktop visreg matches immediately and keeps perf viewable after report re
   setFrames(['green'], ['green']);
   await runVisreg();
   expect(visits()).toBe(1);
-  const fresh = outcome('visreg');
+  const fresh = outcome(stageIds.visreg);
   expect(fresh.executionDetails.runId).not.toBe(perf.executionDetails.runId);
   expect(fresh.measurement[0]).toMatchObject({ diffImage: null, visualComparisonCount: 1 });
   async function expectRetainedPerfInReport() {
-    expect(outcome('perf')).toEqual(perf);
-    expect(outcome('perf-low-noise')).toEqual(lowNoise);
-    expect(outcome('visreg')).toEqual(fresh);
+    expect(outcome(stageIds.perf)).toEqual(perf);
+    expect(outcome(stageIds.perfLowNoise)).toEqual(lowNoise);
+    expect(outcome(stageIds.visreg)).toEqual(fresh);
     expect(hashes()).toEqual(originalHashes);
     await page.goto(pathToFileURL(path.join(results, 'full-report.html')).href);
     const toggle = page.getByRole('checkbox', { name: 'Show old runs' });
@@ -78,7 +79,7 @@ test('a matching screenshot from an older measurement cannot hide a new mismatch
   // Only the previous experiment screenshot matches the new control.
   setFrames(['green'], ['blue']);
   await runVisreg(1);
-  expect(outcome('visreg').measurement[0].diffImage).toEqual(expect.any(String));
+  expect(outcome(stageIds.visreg).measurement[0].diffImage).toEqual(expect.any(String));
 });
 
 test('a worker restart can match frames captured on different attempts', async ({ measurement }) => {
@@ -87,7 +88,7 @@ test('a worker restart can match frames captured on different attempts', async (
   measurement.setFrames(['red', 'red', 'blue'], ['blue', 'crash', 'yellow'], true);
   await measurement.runVisreg();
 
-  const result = measurement.outcome('visreg');
+  const result = measurement.outcome(stageIds.visreg);
   expect(measurement.visits()).toBe(3);
   expect(result.executionDetails.taskRetries).toBe(1);
   expect(result.executionDetails.measurementMetadata.compareAttempts).toBe(3);
@@ -112,7 +113,7 @@ test('two interrupted rounds count toward the eight rounds started across three 
   measurement.setFrames(rounds.map(([control]) => control), rounds.map(([, experiment]) => experiment));
   const log = await measurement.runVisreg(1);
 
-  const result = measurement.outcome('visreg');
+  const result = measurement.outcome(stageIds.visreg);
   expect(measurement.visits()).toBe(rounds.length);
   expect(result.executionDetails.taskRetries).toBe(2);
   expect(result.executionDetails.measurementMetadata.compareAttempts).toBe(rounds.length);
@@ -129,7 +130,7 @@ test('a measurement records every started round even when all workers fail', asy
   measurement.setFrames(['red'], ['crash']);
   await measurement.runVisreg(1);
 
-  const result = measurement.outcome('visreg');
+  const result = measurement.outcome(stageIds.visreg);
   expect(result.kind).toBe('error');
   expect(result.executionDetails.taskRetries).toBe(2);
   expect(result.executionDetails.measurementMetadata.compareAttempts).toBe(3);
