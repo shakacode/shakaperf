@@ -165,7 +165,7 @@ nothing.
 
 The persisted stage-measurement and report-artifact schema has changed.
 Artifacts written by older shaka-perf versions are not supported by
-`--report-only` or `--keep-old-results`. Remove the existing `test-results`
+`--report-only`. Remove the existing `test-results`
 directory (or your configured results directory) and run the measurements
 again before generating reports with this version.
 

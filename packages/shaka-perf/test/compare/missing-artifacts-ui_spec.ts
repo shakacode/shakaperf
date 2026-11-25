@@ -81,7 +81,7 @@ describe('missing-results disclosure', () => {
     expect(command.split('\n')).toHaveLength(1);
     // Parse through the shell without executing the generated measurement command.
     const args = execFileSync('/bin/sh', ['-c', `set -- ${command}; printf '%s\\0' "$@"`]).toString().split('\0').slice(0, -1);
-    expect(args).toEqual(['shaka-perf', pipeline, '--filter', expect.any(String), '--keep-old-results']);
+    expect(args).toEqual(['shaka-perf', pipeline, '--filter', expect.any(String)]);
     expect(args[3]).toMatch(/^\^\(\?:.*\)\$$/);
     const filters = args[3]!.split(',').map((pattern) => new RegExp(pattern));
     const definitions = [

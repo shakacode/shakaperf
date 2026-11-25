@@ -50,7 +50,6 @@ export function createCompareCommand(
     .option('--viewport <label>', VIEWPORT_OPTION_DESCRIPTION)
     .option('--report-only', 'Re-render the HTML report from existing compare-results/ stage outcomes without re-running engines. Complements --skip-report for sharded CI assembly.', false)
     .option('--skip-report', 'Run the engines but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
-    .option('--keep-old-results', 'Retained for compatibility. Reruns always preserve results outside the selected measurements.', false)
     .option('--burn <number>', BURN_OPTION_DESCRIPTION)
     .option('--seconds-to-settle-after-test <seconds>', SETTLE_AFTER_TEST_OPTION_DESCRIPTION)
     .action(async function (this: Command) {
@@ -95,7 +94,6 @@ export function createCompareCommand(
           restartFromStage,
           reportOnly: opts.reportOnly === true,
           skipReport: opts.skipReport === true,
-          keepOldResults: opts.keepOldResults === true,
           headed: opts.headed === true,
           burn,
           settleAfterTestMs,

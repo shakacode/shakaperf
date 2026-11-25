@@ -649,7 +649,7 @@ describe('runPipeline', () => {
       expect(report.testResults[0]!.outcomes.find((o) => o.stage === stageIds.visreg && o.executionDetails.viewport.label === before.executionDetails.viewport.label)?.executionDetails.measurementMetadata).toEqual(before.executionDetails.measurementMetadata);
       expect(report.testResults[0]!.outcomes.find((o) => o.stage === stageIds.perf && o.executionDetails.viewport.label === perf.executionDetails.viewport.label)?.executionDetails.measurementMetadata).toEqual(perf.executionDetails.measurementMetadata);
       clock.mockReturnValue(Date.parse('2026-10-20T12:00:00Z'));
-      const replaced = await runWithFrozenTest({ cwd, categories: 'visreg', keepOldResults: true, skipReport: true });
+      const replaced = await runWithFrozenTest({ cwd, categories: 'visreg', skipReport: true });
       const latest = replaced.testResults[0]!.outcomes.find((o) => o.stage === stageIds.visreg && o.kind === 'ok')!;
       expect(latest.executionDetails.runId).not.toBe(before.executionDetails.runId);
       expect(replaced.testResults[0]!.outcomes.find((o) => o.stage === stageIds.perf && o.kind === 'ok')?.executionDetails).toEqual(perf.executionDetails);
@@ -776,7 +776,7 @@ describe('runPipeline', () => {
          error: { message: 'Archived phone error' } });
       const contents = fs.readFileSync(file, 'utf8');
       const mtime = fs.statSync(file).mtimeMs;
-      const desktop = await run('desktop', { keepOldResults: true });
+      const desktop = await run('desktop');
       const result = desktop.testResults[0]!;
       expect(result.outcomes.filter((o) => o.executionDetails.viewport.label === 'phone' && o.kind === 'ok')).toHaveLength(3);
       expect(result.outcomes.filter((o) => o.executionDetails.viewport.label === 'phone').every((o) => o.outsideCurrentConfig)).toBe(true);
@@ -1040,14 +1040,6 @@ describe('pre-run wipe', () => {
     // from THIS run's stage (the mock stage succeeds), not the stale error.
     const rewritten = JSON.parse(fs.readFileSync(staleVisreg, 'utf8')) as { kind: string };
     expect(rewritten.kind).toBe('ok');
-  });
-
-  it('leaves stale outcomes alone under --keep-old-results', async () => {
-    const staleVisreg = seedOutcome('desktop', stageIds.visreg);
-
-    await run({ categories: 'visreg', keepOldResults: true });
-
-    expect(fs.existsSync(staleVisreg)).toBe(true);
   });
 });
 

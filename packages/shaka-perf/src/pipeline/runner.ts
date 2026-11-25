@@ -348,8 +348,6 @@ export interface RuntimeOptions {
   readonly restartFromStage?: string | undefined;
   readonly reportOnly?: boolean | undefined;
   readonly skipReport?: boolean | undefined;
-  /** Compatibility flag. Remeasurement always preserves unrelated results. */
-  readonly keepOldResults?: boolean | undefined;
   /**
    * Diagnostics: instruct stages that dedupe artifacts to ALSO emit the full,
    * non-deduped form for inspection. Currently consumed only by
