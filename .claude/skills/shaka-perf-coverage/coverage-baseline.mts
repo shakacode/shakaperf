@@ -32,9 +32,7 @@ const files = (dir: string): string[] => fs.readdirSync(dir, { recursive: true, 
   .filter((e) => e.isFile()).map((e) => path.join(e.parentPath, e.name));
 const sourceFiles = (dir: string): string[] => files(dir).filter((f) => path.basename(f) !== 'legend.txt');
 function artifact(test: Test, name: string): string {
-  const root = path.join(AUDIT, test.id, 'artifacts');
-  const scoped = path.join(root, 'code_coverage');
-  return path.join(fs.existsSync(scoped) ? scoped : root, name);
+  return path.join(AUDIT, test.id, 'artifacts', 'code_coverage', name);
 }
 function at<K, V>(map: Map<K, V>, key: K, make: () => V): V {
   let value = map.get(key);
