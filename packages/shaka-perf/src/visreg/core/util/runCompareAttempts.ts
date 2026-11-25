@@ -70,7 +70,6 @@ export interface CompareSelectorOutcome {
 }
 
 interface SelectorRun {
-  visualComparisonCount: number;
   selector: string;
   testPair: TestPair;
   pool: ScreenshotPool;
@@ -175,6 +174,7 @@ export async function runCompareAttempts(
   params: CompareAttemptsParams,
 ): Promise<CompareSelectorOutcome[]> {
   const { browser, config, viewport, scenario, scenarioLabelSafe, pixelmatchThreshold } = params;
+  const { comparisonCounts } = deps;
   const captureScreenshot = deps.captureScreenshot;
   const createSide = deps.createSide ?? defaultCreateComparisonSide;
   const preparePage = deps.preparePage ?? defaultPreparePage;
@@ -195,8 +195,8 @@ export async function runCompareAttempts(
 
   // Both pools retain distinct frames across worker restarts. A repeated capture
   // on one side must not spend the other side’s chance to find a matching frame.
-  const hasEnoughDistinctFrames = (control: PoolFrame[], experiment: PoolFrame[]) =>
-    control.length >= maxRetries + 1 && experiment.length >= maxRetries + 1;
+  const bothPoolsHaveEnoughFrames = (control: PoolFrame[], experiment: PoolFrame[]) =>
+    control.length > maxRetries && experiment.length > maxRetries;
   const compareFrames = (control: PoolFrame[], experiment: PoolFrame[]) => crossMatch(
     control.map(frame => frame.buffer), experiment.map(frame => frame.buffer), compareOpts,
   );
@@ -224,15 +224,17 @@ export async function runCompareAttempts(
     const result = control.length && experiment.length
       ? compareFrames(control, experiment)
       : null;
+    if (!comparisonCounts.has(testPair.test)) {
+      comparisonCounts.set(testPair.test, result ? 1 : 0);
+    }
     return {
-      visualComparisonCount: deps.comparisonCounts.get(testPair.test) ?? (result ? 1 : 0),
       selector,
       testPair,
       pool,
       control,
       experiment,
       result,
-      done: result?.pass === true || hasEnoughDistinctFrames(control, experiment),
+      done: result?.pass === true || bothPoolsHaveEnoughFrames(control, experiment),
     };
   });
 
@@ -248,8 +250,8 @@ export async function runCompareAttempts(
     deps.onAttempt?.();
     for (const run of runs) {
       if (run.done) continue;
-      run.visualComparisonCount++;
-      deps.comparisonCounts.set(run.testPair.test, run.visualComparisonCount);
+      const key = run.testPair.test;
+      comparisonCounts.set(key, comparisonCounts.get(key)! + 1);
     }
 
     const activeSides = new Set<ComparisonSide>();
@@ -294,7 +296,7 @@ export async function runCompareAttempts(
       // A retry that added no frames is pixel-stable — retrying can't change it.
       const pixelStable = attempt > 0 &&
         run.control.length + run.experiment.length === framesBefore;
-      run.done = run.result.pass || pixelStable || hasEnoughDistinctFrames(run.control, run.experiment);
+      run.done = run.result.pass || pixelStable || bothPoolsHaveEnoughFrames(run.control, run.experiment);
     }
   }
 
@@ -312,7 +314,7 @@ export async function runCompareAttempts(
       // Clean = the single first capture pair matched. Anything that needed a
       // second frame (a retry or a crash-resumed leftover) was saved by retries.
       savedByRetries: result.pass && (run.control.length > 1 || run.experiment.length > 1),
-      visualComparisonCount: run.visualComparisonCount,
+      visualComparisonCount: comparisonCounts.get(run.testPair.test)!,
     };
   });
 }
