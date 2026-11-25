@@ -176,7 +176,7 @@ it('keeps a clean selector at one attempt while another selector retries', async
 
 it('resumes pending selectors after a worker failure without recapturing a matched selector', async () => {
   const { deps } = makeDeps(() => png(BLUE));
-  deps.visualRetries = { retriesStarted: 0, comparisons: new Map() };
+  deps.comparisonCounts = new Map();
   let changedCaptures = 0;
   deps.captureScreenshot = async (_page, selector) => {
     if (selector === '.clean') return png(GREEN);
@@ -191,7 +191,6 @@ it('resumes pending selectors after a worker failure without recapturing a match
   };
   const resumed = await run(deps, makeConfig(), selectors);
   expect(resumed.map(row => [row.result.pass, row.visualComparisonCount])).toEqual([[true, 1], [true, 2]]);
-  expect(deps.visualRetries.retriesStarted).toBe(1);
 });
 
 it('persistent mismatch: spends the retry budget, returns the closest pair with a diff', async () => {

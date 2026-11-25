@@ -25,6 +25,7 @@ function formatUsage({ count, limit }: RetryUsage, unit: UsageUnit): string {
     return unit === 'comparisons' ? '' : `Retry count unavailable; limit: ${limit ?? 'unknown'}`;
   }
   if (limit === undefined) {
+    if (unit === 'comparisons') return `${count} ${count === 1 ? singular : unit} completed`;
     return `${count} ${count === 1 ? singular : unit} used; limit unavailable`;
   }
   return `${count} of ${limit} ${unit} used`;

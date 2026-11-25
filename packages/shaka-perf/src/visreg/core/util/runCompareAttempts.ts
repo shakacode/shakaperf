@@ -23,7 +23,7 @@ import { withPreparedSide, type CreateSideFn, type PreparePageFn } from './prepa
 import { ScreenshotPool, crossMatch, type PoolFrame, type CrossMatchResult } from './screenshotPool';
 import { assertConsoleClean, type BrowserConsolePolicy } from '../../../browser-console';
 import { reconstructEffectiveConfig } from '../../../effective-config';
-import type { VisualRetryState, Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig } from '../types';
+import type { Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig } from '../types';
 
 const logger = createLogger('runCompareAttempts');
 
@@ -34,7 +34,7 @@ export type CaptureScreenshotFn = (
 
 /** Injected collaborators — defaulted to the real implementations; overridden in tests. */
 export interface CompareAttemptsDeps {
-  visualRetries?: VisualRetryState;
+  comparisonCounts?: Map<string, number>;
   captureScreenshot: CaptureScreenshotFn;
   createSide?: CreateSideFn;
   preparePage?: PreparePageFn;
@@ -192,7 +192,10 @@ export async function runCompareAttempts(
   const beforeNavigate = effectiveConfig.shared.beforeNavigate;
   const browserConsole = effectiveConfig.shared.browserConsole;
 
-  const budget = deps.visualRetries ?? { retriesStarted: 0, comparisons: new Map<string, number>() };
+  // Both pools retain distinct frames across worker restarts. A repeated capture
+  // on one side must not spend the other side’s chance to find a matching frame.
+  const hasEnoughDistinctFrames = (control: PoolFrame[], experiment: PoolFrame[]) =>
+    control.length >= maxRetries + 1 && experiment.length >= maxRetries + 1;
   const compareFrames = (control: PoolFrame[], experiment: PoolFrame[]) => crossMatch(
     control.map(frame => frame.buffer), experiment.map(frame => frame.buffer), compareOpts,
   );
@@ -215,29 +218,28 @@ export async function runCompareAttempts(
     );
     const control = pool.load('control');
     const experiment = pool.load('experiment');
-    const visualComparisonCount = budget.comparisons.get(testPair.test) ?? 0;
+
     // A worker restart must not recapture a selector whose saved frames already match.
-    const result = visualComparisonCount && control.length && experiment.length
+    const result = control.length && experiment.length
       ? compareFrames(control, experiment)
       : null;
     return {
-      visualComparisonCount,
+      visualComparisonCount: deps.comparisonCounts?.get(testPair.test) ?? (result ? 1 : 0),
       selector,
       testPair,
       pool,
       control,
       experiment,
       result,
-      done: result?.pass === true,
+      done: result?.pass === true || hasEnoughDistinctFrames(control, experiment),
     };
   });
 
-  for (let attempt = 0; runs.some(r => !r.done) && (attempt === 0 || budget.retriesStarted < maxRetries); attempt++) {
+  for (let attempt = 0; attempt <= maxRetries && runs.some(r => !r.done); attempt++) {
     if (attempt > 0) {
       // Linear backoff: 5s, 10s, 15s, ...
-      budget.retriesStarted++;
-      const delay = retryDelayMs * budget.retriesStarted;
-      logger.log(`Retry ${budget.retriesStarted}/${maxRetries} for "${scenario.label}" - chilling for ${delay}ms`);
+      const delay = retryDelayMs * attempt;
+      logger.log(`Retry ${attempt}/${maxRetries} for "${scenario.label}" - chilling for ${delay}ms`);
       await sleep(delay);
     }
 
@@ -281,11 +283,11 @@ export async function runCompareAttempts(
 
       run.result = compareFrames(run.control, run.experiment);
       run.visualComparisonCount++;
-      budget.comparisons.set(run.testPair.test, run.visualComparisonCount);
+      deps.comparisonCounts?.set(run.testPair.test, run.visualComparisonCount);
       // A retry that added no frames is pixel-stable — retrying can't change it.
       const pixelStable = attempt > 0 &&
         run.control.length + run.experiment.length === framesBefore;
-      run.done = run.result.pass || pixelStable;
+      run.done = run.result.pass || pixelStable || hasEnoughDistinctFrames(run.control, run.experiment);
     }
   }
 

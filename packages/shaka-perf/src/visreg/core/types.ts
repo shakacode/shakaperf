@@ -15,13 +15,8 @@ export type { PlaywrightPage, BrowserContext, Browser };
  * stays outside the JSON bridge config so artifact ownership remains with the
  * framework that created the stage's ArtifactScope.
  */
-export interface VisualRetryState {
-  retriesStarted: number;
-  comparisons: Map<string, number>;
-}
-
 export interface VisregRunRuntime {
-  visualRetries?: VisualRetryState;
+  comparisonCounts?: Map<string, number>;
   captureFailure?: (
     err: unknown,
     page: PlaywrightPage,
@@ -210,7 +205,7 @@ export interface TestPair {
    * the "Flaky (saved by retries)" chip.
    */
   savedByRetries?: boolean;
-  /** Capture-and-compare attempts for this selector in the completed invocation. */
+  /** Capture-and-compare attempts for this selector across worker invocations. */
   visualComparisonCount?: number;
   /** Maximum capture-and-compare rounds, including the first. */
   visualComparisonLimit?: number;
