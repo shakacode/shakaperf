@@ -9,3 +9,5 @@ merge:
 wip:
   include_checkout_path: false
 repo_prefix: PERF
+project_guidance:
+  pr_evidence: .agents/shaka/pr-evidence.md
