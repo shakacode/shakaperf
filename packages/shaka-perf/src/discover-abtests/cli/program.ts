@@ -7,6 +7,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { savedArtifactDirectory } from '../../pipeline/artifact-store';
 import { Command } from 'commander';
 import { parseReport } from '../parse-report';
 
@@ -34,7 +35,7 @@ export function findDefaultVisregReports(resultsRoot = DEFAULT_RESULTS_ROOT): st
 
   return fs.readdirSync(resultsRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .map((entry) => path.join(resultsRoot, entry.name, 'artifacts', 'report.json'))
+    .map((entry) => path.join(savedArtifactDirectory(path.join(resultsRoot, entry.name, 'artifacts'), 'visreg'), 'report.json'))
     .filter((reportPath) => fs.existsSync(reportPath))
     .sort();
 }

@@ -90,7 +90,7 @@ To look at a failing page rather than measure it, use `yarn shaka-perf troublesh
 **Where the numbers are today:** per-stage `summary` objects in `compare-results/report.json` are still empty placeholders ([#68](https://github.com/shakacode/shakaperf/issues/68) tracks populating p-values / estimates / diff percentages there; the schema doc is [#69](https://github.com/shakacode/shakaperf/issues/69)). Audit reports already include machine-readable summaries for accessibility, agent-readiness, and AI summary stages. Until compare summaries are populated:
 
 - Perf numbers (per-metric estimates, confidence intervals, p-values) are in the HTML report and per-test artifact dirs under `compare-results/`.
-- Visreg details are machine-readable via the visreg engine's own per-unit reports: run `yarn shaka-perf discover-abtests parse-report` after `compare`. Without a path, it finds reports under `compare-results/<test-and-viewport>/artifacts/report.json` and prints per-test status, diff %, the available `testWhitePixelPercent` or `refWhitePixelPercent` (>90 usually means the selector captured empty space - a false PASS), and engine errors.
+- Visreg details are machine-readable via the visreg engine's own per-unit reports: run `yarn shaka-perf discover-abtests parse-report` after `compare`. Without a path, it finds reports under `compare-results/<test-and-viewport>/artifacts/visreg/report.json` and prints per-test status, diff %, the available `testWhitePixelPercent` or `refWhitePixelPercent` (>90 usually means the selector captured empty space - a false PASS), and engine errors.
 
 ## What "regression" means
 

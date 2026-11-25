@@ -32,7 +32,7 @@ describe('findDefaultVisregReports', () => {
   });
 
   it('finds and sorts per-unit reports', () => {
-    const first = path.join(tmpDir, 'a-test-desktop', 'artifacts', 'report.json');
+    const first = path.join(tmpDir, 'a-test-desktop', 'artifacts', 'visreg', 'report.json');
     const second = path.join(tmpDir, 'b-test-phone', 'artifacts', 'report.json');
     fs.mkdirSync(path.dirname(first), { recursive: true });
     fs.mkdirSync(path.dirname(second), { recursive: true });

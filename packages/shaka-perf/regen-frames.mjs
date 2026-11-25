@@ -15,15 +15,20 @@ import { generateProfileFramesSvg } from './dist/bench/core/timeline-comparison.
 const ROOT = '/Users/romex/shakaperf_2/demo-ecommerce/audit-results';
 const dirs = fs.readdirSync(ROOT)
   .map((d) => path.join(ROOT, d, 'artifacts'))
-  .filter((d) => fs.existsSync(path.join(d, 'experiment_performance_profile.json')));
+  .filter((d) => fs.existsSync(d));
 
-for (const dir of dirs) {
+for (const root of dirs) {
+  const audit = path.join(root, 'audit');
+  const profilePath = path.join(fs.existsSync(audit) ? audit : root, 'experiment_performance_profile.json');
+  if (!fs.existsSync(profilePath)) continue;
+  const dir = fs.existsSync(audit) ? path.join(root, 'build_annotated_timeline') : root;
+  fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(dir)) {
     if (f.startsWith('timeline_frame_') && f.endsWith('.avif')) fs.unlinkSync(path.join(dir, f));
   }
   const t0 = Date.now();
   await generateProfileFramesSvg({
-    profilePath: path.join(dir, 'experiment_performance_profile.json'),
+    profilePath,
     outputPath: path.join(dir, 'timeline_frames.svg'),
   });
   console.log(`${path.basename(path.dirname(dir))}: ${((Date.now() - t0) / 1000).toFixed(1)}s`);

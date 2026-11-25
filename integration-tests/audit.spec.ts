@@ -86,7 +86,8 @@ test('shaka-perf audit produces frames whose blue + red click chips coincide @au
     .map((d) => path.join(AUDIT_RESULTS_DIR, d, 'artifacts'))
     .filter((d) => fs.statSync(path.dirname(d)).isDirectory() && fs.existsSync(d));
   expect(testDirs.length, 'audit must produce at least one per-test artifacts directory').toBeGreaterThan(0);
-  for (const dir of testDirs) {
+  for (const root of testDirs) {
+    const dir = path.join(root, 'build_annotated_timeline');
     const metadataPath = path.join(dir, 'timeline_frames.json');
     expect(fs.existsSync(metadataPath), `${dir} must contain timeline_frames.json`).toBe(true);
     const frames = JSON.parse(fs.readFileSync(metadataPath, 'utf-8')) as Array<{ imageFilename: string }>;

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { savedArtifactDirectory } from '../pipeline/artifact-store';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -176,11 +177,16 @@ function containedJoin(root: string, ...segs: string[]): string | null {
   return abs.startsWith(rootAbs + path.sep) ? abs : null;
 }
 
+function stageArtifact(resultsDir: string, pageId: string, stage: string, filename: string): string | null {
+  const root = containedJoin(resultsDir, pageId, 'artifacts');
+  return root && containedJoin(savedArtifactDirectory(root, stage), filename);
+}
+
 // Read the page's `timeline_frames.json` - the build_annotated_timeline stage's
 // persisted FrameMetadata (see worker-protocol.ts). The entries are already
 // visually DEDUPED upstream: every frame is a moment where the screen changed.
 function readFrames(resultsDir: string, pageId: string): Frame[] {
-  const p = containedJoin(resultsDir, pageId, 'artifacts', 'timeline_frames.json');
+  const p = stageArtifact(resultsDir, pageId, 'build_annotated_timeline', 'timeline_frames.json');
   if (!p || !fs.existsSync(p)) return []; // frameless audits (older runs) just skip the strip
   let metas: FrameMetadata[];
   try {
@@ -322,7 +328,7 @@ async function buildVideo(resultsDir: string, pageId: string, endMs: number): Pr
   // No window means no usable signal (frameless AND metricless) - an arbitrary
   // 2-second clip would contradict the card around it, so skip the video.
   if (endMs <= 0) return null;
-  const src = containedJoin(resultsDir, pageId, 'artifacts', 'screencast.mp4');
+  const src = stageArtifact(resultsDir, pageId, 'audit', 'screencast.mp4');
   if (!src || !fs.existsSync(src)) return null;
   const endSec = Math.max(2, Math.min(endMs / 1000 + 1.2, 60));
   // Page ids are store-generated slugs, but sanitize anyway: this string goes
@@ -464,7 +470,7 @@ async function buildShots(resultsDir: string, page: PagePerf, frames: Frame[], d
   const fcpFrame = fcpMs !== undefined && picked.length ? nearestFrame(picked, fcpMs) : undefined;
   const shots: Shot[] = [];
   for (const f of picked) {
-    const abs = containedJoin(resultsDir, page.id, 'artifacts', f.imageFilename);
+    const abs = stageArtifact(resultsDir, page.id, 'build_annotated_timeline', f.imageFilename);
     if (!abs) continue;
     const dataUri = await inlineFrame(abs);
     if (!dataUri) continue;
