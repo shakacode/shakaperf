@@ -65,7 +65,11 @@ export function ReportSection({ sectionKey, title, children, badge, nested = fal
 
   return (
     <SectionContext.Provider value={sectionKey}>
-      <div className={`report-section${nested ? ' report-section--nested' : ''}`} data-report-section={sectionKey} data-hidden={hidden}>
+      <div
+        className={`report-section${nested ? ' report-section--nested' : ''}`}
+        data-report-section={sectionKey}
+        data-hidden={hidden}
+      >
         <div className="report-section__head">
           <ReportHeading
             title={title}

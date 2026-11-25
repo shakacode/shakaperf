@@ -54,15 +54,29 @@ export function RunCommits({ outcomes, side }: { outcomes: readonly ReportOutcom
     commit: target.commit ? { sha: target.commit.sha, message: target.commit.message } : null,
     side: side ? target.side : null,
   }));
-  const rows = commits.filter(({ value }) => !side || value.side === side).map(({ value: { commit }, items }, index) => {
-    const content = <>
-      {commit ? <CommitDetails commit={commit} /> : <p className="run-details__unavailable">Commit unavailable</p>}
-      <Scope items={items.map(({ entry }) => entry)} entries={entries} runs={runs} />
-    </>;
-    return <div key={index}>
-      {side ? null : <div className="run-details__label">{unique(items.map(({ target }) => target.side)).join(' / ')}</div>}
-      {content}
-    </div>;
-  });
+  const rows = commits
+    .filter(({ value }) => !side || value.side === side)
+    .map(({ value: { commit }, items }, index) => {
+      const content = (
+        <>
+          {commit ? (
+            <CommitDetails commit={commit} />
+          ) : (
+            <p className="run-details__unavailable">Commit unavailable</p>
+          )}
+          <Scope items={items.map(({ entry }) => entry)} entries={entries} runs={runs} />
+        </>
+      );
+      return (
+        <div key={index}>
+          {side ? null : (
+            <div className="run-details__label">
+              {unique(items.map(({ target }) => target.side)).join(' / ')}
+            </div>
+          )}
+          {content}
+        </div>
+      );
+    });
   return <div className={side ? 'card__target-commits' : 'run-details__commits'}>{rows}</div>;
 }

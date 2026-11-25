@@ -36,12 +36,30 @@ export function MeasurementCommand({ command, compact = false, autoSize = false,
     }
   }
   return (
-    <div className={`run-details__command${compact ? ' run-details__command--compact' : ''}${autoSize ? ' run-details__command--auto-size' : ''}`}>
-      {autoSize
-        ? <pre aria-label={label ?? 'Measurement command'} ref={code} tabIndex={0}><code>{command}</code></pre>
-        : <textarea aria-label={label ?? (compact ? 'Latest command' : 'Measurement command')} ref={field} value={command} readOnly rows={compact ? 1 : 2} />}
-      <button type="button" onClick={copy} aria-label="Copy command" title={status}>{compact ? 'Copy' : status}</button>
-      {compact || autoSize ? <span className="run-details__copy-status" role="status">{status === 'Copy command' ? '' : status}</span> : null}
+    <div
+      className={`run-details__command${compact ? ' run-details__command--compact' : ''}${autoSize ? ' run-details__command--auto-size' : ''}`}
+    >
+      {autoSize ? (
+        <pre aria-label={label ?? 'Measurement command'} ref={code} tabIndex={0}>
+          <code>{command}</code>
+        </pre>
+      ) : (
+        <textarea
+          aria-label={label ?? (compact ? 'Latest command' : 'Measurement command')}
+          ref={field}
+          value={command}
+          readOnly
+          rows={compact ? 1 : 2}
+        />
+      )}
+      <button type="button" onClick={copy} aria-label="Copy command" title={status}>
+        {compact ? 'Copy' : status}
+      </button>
+      {compact || autoSize ? (
+        <span className="run-details__copy-status" role="status">
+          {status === 'Copy command' ? '' : status}
+        </span>
+      ) : null}
     </div>
   );
 }
