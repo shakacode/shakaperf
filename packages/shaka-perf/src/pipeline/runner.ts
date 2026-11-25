@@ -46,6 +46,7 @@ import {
   type ReportOutcome,
   type TestResult,
 } from './report';
+import { isCompatibleSavedResult, shakaPerfVersion } from './saved-result-version';
 import { retryUsageTooltip } from './retry-usage-tooltip';
 import {
   persistedOutcomeInScope,
@@ -1412,7 +1413,7 @@ function readPersistedEngineErrors(resultsRoot: string): ReadPersistedResult {
       if (!firstReadError) firstReadError = msg;
       continue;
     }
-    if (Array.isArray(parsed.engineErrors)) engineErrors.push(...parsed.engineErrors);
+    if (isCompatibleSavedResult(parsed) && Array.isArray(parsed.engineErrors)) engineErrors.push(...parsed.engineErrors);
   }
 
   return {
@@ -1430,7 +1431,7 @@ function writePersistedEngineErrors(
   // that the assembler would later read as authoritative.
   const finalPath = path.join(resultsRoot, `${ENGINE_ERRORS_PREFIX}${key}${ENGINE_ERRORS_SUFFIX}`);
   const tmpPath = `${finalPath}.${process.pid}.tmp`;
-  fs.writeFileSync(tmpPath, JSON.stringify(payload, null, 2));
+  fs.writeFileSync(tmpPath, JSON.stringify({ ...payload, shakaPerfVersion }, null, 2));
   fs.renameSync(tmpPath, finalPath);
 }
 

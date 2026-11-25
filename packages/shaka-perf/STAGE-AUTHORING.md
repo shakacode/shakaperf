@@ -401,23 +401,26 @@ for each stage. Constraints:
 ```ts
 { kind: 'ok' | 'error' | 'skipped',
   stage,
+  shakaPerfVersion,
+  executionDetails,
   measurement?,
   error?,
   reason?,
-  logs?,
-  runId? }
+  logs? }
 ```
 
 - **`logs`** — every console.log/warn/error captured during the stage,
   including from the worker-pool's retried-failure announcements. Make
   sure your engine uses regular `console.log` — the runner's
   `consoleCaptureStorage` reroutes it transparently.
-- **`runId`** — written by the runner. Lets `--report-only` skip
-  stale outcomes from earlier shard runs.
+- **`executionDetails.runId`** — identifies the run that produced the outcome.
 
-The same `<stage_name>.json` is read by `--report-only` to rebuild the
-report without re-running anything. Treat it as a stable interchange
-format.
+With `--report-only`, ShakaPerf reads the same `<stage_name>.json` files that
+it writes during a test run. ShakaPerf rebuilds the report from these files
+without running the stages again. ShakaPerf reuses an outcome only if the major
+and minor numbers in `shakaPerfVersion` match those in the installed version.
+
+Treat `<stage_name>.json` as a stable interchange format across patch releases.
 
 ## Cancellation semantics
 

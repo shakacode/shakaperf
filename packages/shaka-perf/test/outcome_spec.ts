@@ -6,12 +6,20 @@
  */
 
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
+import { shakaPerfVersion } from '../src/pipeline/saved-result-version';
 import { parseOutcome } from '../src/pipeline/outcome';
 
 it('reads the canonical execution record without converting old fields', () => {
   const saved = {
-    kind: 'ok', stage: 'visreg',
+    shakaPerfVersion, kind: 'ok', stage: 'visreg',
     executionDetails: { command: 'shaka-perf compare', viewport: DESKTOP_VIEWPORT, testSourceHref: null, runId: 'fixture-run', taskRetries: 1, taskRetryLimit: 2, recoveredAfterRetries: true },
   };
   expect(parseOutcome(JSON.stringify(saved))).toEqual(saved);
+});
+
+it('ignores unversioned, malformed and different-major records before reading their payload', () => {
+  const [major, minor] = shakaPerfVersion.split('.');
+  for (const version of [undefined, 'invalid', 7, `${Number(major) + 1}.${minor}.0`]) {
+    expect(parseOutcome(JSON.stringify({ shakaPerfVersion: version, obsolete: true }))).toBeNull();
+  }
 });

@@ -60,6 +60,14 @@ Pass `--filter=<testNameRegex>` to run only tests matching your regex.
 > [!WARNING]
 > `compare` wipes the selected tests’ viewport directories in `compare-results/` at the start of every measuring run. With `--viewport <label>`, only that viewport is remeasured; other saved viewport results are preserved. `--report-only` does not wipe saved results. Do not point it at a directory containing files you care about.
 
+Use `--report-only` to build a report from saved results. ShakaPerf reuses a
+result only if the saved version and the installed version have the same major
+and minor numbers. For example, ShakaPerf `0.7.3` reuses results from `0.7.0`
+and skips results from `0.8.0`. ShakaPerf also skips results without a
+`shakaPerfVersion` field.
+
+Rerun the affected tests without `--report-only` to save new results.
+
 ### CLI Options
 
 ```

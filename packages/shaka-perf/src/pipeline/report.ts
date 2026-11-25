@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { shakaPerfVersion } from './saved-result-version';
 import * as fs from 'fs';
 import * as path from 'path';
 import sharp from 'sharp';
@@ -630,6 +631,7 @@ export function writeMachineReport(
     reportOnly: meta.reportOnly,
   }) ?? {};
   const payload = {
+    shakaPerfVersion,
     schemaVersion: 1,
     meta: {
       generatedAt: meta.generatedAt,

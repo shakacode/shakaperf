@@ -9,6 +9,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import type { AbTestDefinition } from 'shaka-shared';
+import { shakaPerfVersion } from './saved-result-version';
 import { parseOutcome, type Outcome } from './outcome';
 import type { StageName } from '../stage/stage';
 import { testIdForTest, unitIdForTest } from './unit-id';
@@ -101,7 +102,7 @@ export class ArtifactStore {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(
       path.join(dir, `${outcome.stage}.json`),
-      JSON.stringify(outcome, null, 2),
+      JSON.stringify({ ...outcome, shakaPerfVersion }, null, 2),
     );
   }
 
@@ -149,7 +150,8 @@ export class ArtifactStore {
     for (const entry of entries) {
       if (!entry.endsWith('.json')) continue;
       try {
-        outcomes.push(parseOutcome(fs.readFileSync(path.join(dir, entry), 'utf8')));
+        const outcome = parseOutcome(fs.readFileSync(path.join(dir, entry), 'utf8'));
+        if (outcome) outcomes.push(outcome);
       } catch {
         // Report-only can still use any other readable outcomes.
       }

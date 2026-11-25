@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { shakaPerfVersion } from '../../pipeline/saved-result-version';
 import path from 'node:path';
 import * as fs from 'node:fs';
 import chalk from 'chalk';
@@ -47,7 +48,7 @@ async function writePerTestReports(config: RuntimeConfig, reporter: Reporter): P
 
   fs.writeFileSync(
     path.join(destDir, 'report.json'),
-    JSON.stringify({ testSuite: reporter.testSuite, tests: movedTests }, null, 2),
+    JSON.stringify({ shakaPerfVersion, testSuite: reporter.testSuite, tests: movedTests }, null, 2),
   );
 
   // Flat capture dirs may hold leftover PNGs from sibling parallel

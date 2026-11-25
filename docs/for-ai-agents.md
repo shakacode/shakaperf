@@ -64,11 +64,12 @@ To look at a failing page rather than measure it, use `yarn shaka-perf troublesh
 - `compare-results/self-contained-performance-report.html` — shareable single file, everything inlined.
 - `compare-results/full-report.html` — local variant referencing sibling artifact dirs.
 
-**`compare-results/report.json`** (`schemaVersion: 1`) is the machine report. Shape:
+**`compare-results/report.json`** (`schemaVersion: 1`) is the machine report.
 
 ```jsonc
 {
   "schemaVersion": 1,
+  "shakaPerfVersion": "0.7.0",
   "meta": { "controlUrl": "...", "experimentUrl": "...", "errors": [ /* engine-level errors */ ] },
   "pipeline": { "name": "compare", "stages": ["visreg", "perf-warmup", "perf", "perf-low-noise", "accessibility"] },
   "tests": [

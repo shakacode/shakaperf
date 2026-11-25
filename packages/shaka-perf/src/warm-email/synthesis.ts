@@ -12,6 +12,7 @@ import type { AuditResult } from '../audit/stages/audit/stage';
 import type { AccessibilityResult } from '../audit/stages/accessibility/types';
 import type { AgentReadinessResult } from '../audit/stages/agent_readiness/types';
 import type { ChipDescriptor } from '../pipeline/report';
+import { isCompatibleSavedResult, shakaPerfVersion } from '../pipeline/saved-result-version';
 import { parseOutcome } from '../pipeline/outcome';
 
 // Cross-page synthesis over a SAVED audit-results directory. shaka-perf computes
@@ -138,6 +139,9 @@ export function synthesizeSite(resultsDir: string): SiteScorecard {
   } catch (err) {
     throw new Error(`${reportPath} is not valid JSON (interrupted audit?): ${(err as Error).message}`);
   }
+  if (!isCompatibleSavedResult(report)) {
+    throw new Error(`Regenerate ${reportPath} with shaka-perf ${shakaPerfVersion} or a compatible patch release.`);
+  }
   const meta = report.meta ?? {};
   const tests: MachineReportTest[] = selectViewportRows(Array.isArray(report.tests) ? report.tests : []);
   const metaViewport = meta.viewport;
@@ -153,7 +157,7 @@ export function synthesizeSite(resultsDir: string): SiteScorecard {
         // audit.json is the audit stage's persisted Outcome (artifact-store
         // writes `${outcome.stage}.json`); its measurement is an AuditResult.
         const outcome = parseOutcome(fs.readFileSync(auditPath, 'utf8'));
-        const ms = (outcome.measurement as Partial<AuditResult> | undefined)?.metrics ?? [];
+        const ms = (outcome?.measurement as Partial<AuditResult> | undefined)?.metrics ?? [];
         for (const m of ms) {
           if (m && m.label) {
             metrics[String(m.label)] = {
@@ -182,7 +186,7 @@ export function synthesizeSite(resultsDir: string): SiteScorecard {
     if (fs.existsSync(a11yPath)) {
       try {
         const outcome = parseOutcome(fs.readFileSync(a11yPath, 'utf8'));
-        const measurement = outcome.measurement as AccessibilityResult | undefined;
+        const measurement = outcome?.measurement as AccessibilityResult | undefined;
         if (measurement && Array.isArray(measurement.scans)) a11y = measurement;
       } catch {
         // unreadable accessibility.json -> page simply has no Accessibility card
@@ -196,7 +200,7 @@ export function synthesizeSite(resultsDir: string): SiteScorecard {
     if (fs.existsSync(agentPath)) {
       try {
         const outcome = parseOutcome(fs.readFileSync(agentPath, 'utf8'));
-        const measurement = outcome.measurement as AgentReadinessResult | undefined;
+        const measurement = outcome?.measurement as AgentReadinessResult | undefined;
         // Validate the shape the scorer relies on: a truncated/corrupt file (e.g.
         // `{rendered:{}}` from an interrupted write) would otherwise throw deep
         // inside scoring and sink the WHOLE report. Require the load-bearing

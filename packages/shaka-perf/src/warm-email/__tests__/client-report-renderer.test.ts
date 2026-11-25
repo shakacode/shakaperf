@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { shakaPerfVersion } from '../../pipeline/saved-result-version';
 import { executionFixture } from '../../pipeline/__tests__/fixtures/execution';
 import { chromium } from 'playwright';
 import * as fs from 'node:fs';
@@ -499,6 +500,7 @@ function writePerfResultsForPages(
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-cr-report-'));
   tempResultDirs.push(dir);
   fs.writeFileSync(path.join(dir, 'report.json'), `${JSON.stringify({
+    shakaPerfVersion,
     meta: {
       experimentUrl: 'http://localhost',
       generatedAt: '2026-06-24T00:00:00.000Z',
@@ -515,6 +517,7 @@ function writePerfResultsForPages(
   for (const page of pages) {
     fs.mkdirSync(path.join(dir, page.id), { recursive: true });
     fs.writeFileSync(path.join(dir, page.id, 'audit.json'), `${JSON.stringify({
+      shakaPerfVersion,
       stage: 'audit',
       measurement: {
         metrics: Object.entries(page.metrics).map(([label, value]) => ({
@@ -527,6 +530,7 @@ function writePerfResultsForPages(
     if (page.agent) {
       const url = `http://localhost${page.startingPath || '/'}`;
       fs.writeFileSync(path.join(dir, page.id, 'agent-readiness.json'), `${JSON.stringify({
+        shakaPerfVersion,
         ...executionFixture(),
         kind: 'ok',
         stage: 'agent-readiness',
@@ -536,6 +540,7 @@ function writePerfResultsForPages(
     if (page.a11y) {
       const url = `http://localhost${page.startingPath || '/'}`;
       fs.writeFileSync(path.join(dir, page.id, 'accessibility.json'), `${JSON.stringify({
+        shakaPerfVersion,
         ...executionFixture(),
         kind: 'ok',
         stage: 'accessibility',

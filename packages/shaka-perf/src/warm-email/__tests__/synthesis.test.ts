@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { shakaPerfVersion } from '../../pipeline/saved-result-version';
 import { executionFixture } from '../../pipeline/__tests__/fixtures/execution';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -58,6 +59,7 @@ describe('synthesizeSite', () => {
 
   it('mirrors optional machine report meta and accepts old PageSignals without textSample', () => {
     fs.writeFileSync(path.join(dir, 'report.json'), JSON.stringify({
+      shakaPerfVersion,
       meta: {
         experimentUrl: 'https://example.com',
         generatedAt: '2026-07-01T00:00:00.000Z',
@@ -68,6 +70,7 @@ describe('synthesizeSite', () => {
     }));
     fs.mkdirSync(path.join(dir, 'home-phone'));
     fs.writeFileSync(path.join(dir, 'home-phone', 'agent-readiness.json'), JSON.stringify({
+      shakaPerfVersion,
       ...executionFixture(),
       kind: 'ok',
       stage: 'agent-readiness',
@@ -83,6 +86,7 @@ describe('synthesizeSite', () => {
 
   it('passes through present textSample values', () => {
     fs.writeFileSync(path.join(dir, 'report.json'), JSON.stringify({
+      shakaPerfVersion,
       meta: {
         experimentUrl: 'https://example.com',
         generatedAt: '2026-07-01T00:00:00.000Z',
@@ -91,6 +95,7 @@ describe('synthesizeSite', () => {
     }));
     fs.mkdirSync(path.join(dir, 'home-phone'));
     fs.writeFileSync(path.join(dir, 'home-phone', 'agent-readiness.json'), JSON.stringify({
+      shakaPerfVersion,
       ...executionFixture(),
       kind: 'ok',
       stage: 'agent-readiness',

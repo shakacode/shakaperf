@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { shakaPerfVersion } from '../../pipeline/saved-result-version';
 import { executionFixture } from '../../pipeline/__tests__/fixtures/execution';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -141,6 +142,7 @@ function writeResults(pages: PageFixture[], siteUrl = 'http://localhost:1'): str
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-reframe-'));
   dirs.push(dir);
   fs.writeFileSync(path.join(dir, 'report.json'), `${JSON.stringify({
+    shakaPerfVersion,
     meta: {
       experimentUrl: siteUrl,
       generatedAt: '2026-07-10T00:00:00.000Z',
@@ -157,6 +159,7 @@ function writeResults(pages: PageFixture[], siteUrl = 'http://localhost:1'): str
     const pageDir = path.join(dir, page.id);
     fs.mkdirSync(pageDir, { recursive: true });
     fs.writeFileSync(path.join(pageDir, 'audit.json'), `${JSON.stringify({
+      shakaPerfVersion,
       stage: 'audit',
       measurement: {
         metrics: Object.entries(page.metrics).map(([label, value]) => ({ label, value, display: display(label, value) })),
@@ -165,6 +168,7 @@ function writeResults(pages: PageFixture[], siteUrl = 'http://localhost:1'): str
     const url = `${siteUrl}${page.startingPath}`;
     if (page.a11y) {
       fs.writeFileSync(path.join(pageDir, 'accessibility.json'), `${JSON.stringify({
+        shakaPerfVersion,
         ...executionFixture(),
         kind: 'ok', stage: 'accessibility', measurement: a11y(url, page.a11y, page.id),
       }, null, 2)}\n`);
@@ -174,6 +178,7 @@ function writeResults(pages: PageFixture[], siteUrl = 'http://localhost:1'): str
     }
     if (page.agent) {
       fs.writeFileSync(path.join(pageDir, 'agent-readiness.json'), `${JSON.stringify({
+        shakaPerfVersion,
         ...executionFixture(),
         kind: 'ok', stage: 'agent-readiness', measurement: agent(url, page.agent),
       }, null, 2)}\n`);

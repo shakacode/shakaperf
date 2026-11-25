@@ -15,6 +15,8 @@ import { loadAbTestsConfig, loadTests } from '../../config-loader';
 import { createCompareCommand } from '../../compare/cli/program';
 import { createAuditCommand } from '../../audit/program';
 import { createPipeline } from '../pipeline';
+import { inc } from 'semver';
+import { shakaPerfVersion } from '../saved-result-version';
 import { ArtifactStore } from '../artifact-store';
 import type { ReportOutcome } from '../report';
 import { runPipeline } from '../runner';
@@ -131,6 +133,43 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     await run();
     expect(measured).toHaveLength(6);
     expect(measured.some((entry) => entry.startsWith('Desktop only:phone:'))).toBe(false);
+  });
+
+  it('assembles a mixed results directory using only outcomes from the current minor release', async () => {
+    await run('--skip-report');
+    const dir = store().unitDirForViewport(tests[0]!, 'desktop');
+    const compatible = path.join(dir, `${stages[0]}.json`);
+    const incompatible = path.join(dir, `${stages[1]}.json`);
+    const saved = JSON.parse(fs.readFileSync(compatible, 'utf8'));
+    expect(saved.shakaPerfVersion).toBe(shakaPerfVersion);
+    fs.writeFileSync(compatible, JSON.stringify({ ...saved, shakaPerfVersion: inc(shakaPerfVersion, 'patch') }));
+    fs.writeFileSync(incompatible, JSON.stringify({ shakaPerfVersion: inc(shakaPerfVersion, 'minor'), unexpectedSchema: true }));
+    fs.writeFileSync(path.join(dir, 'old.json'), JSON.stringify({ unexpectedSchema: true }));
+    expect(store().readOutcome(tests[0]!, 'desktop', stages[1]!)).toBeNull();
+
+    await run('--report-only');
+    const row = report().tests.find((t: { name: string }) => t.name === tests[0]!.name);
+    const desktop = row.outcomes.filter((o: ReportOutcome) => o.executionDetails.viewport.label === 'desktop');
+    expect(desktop.map((o: ReportOutcome) => o.stage)).toEqual([stages[0]]);
+    const machine = JSON.parse(fs.readFileSync(path.join(store().resultsRoot, 'report.json'), 'utf8'));
+    expect(machine.shakaPerfVersion).toBe(shakaPerfVersion);
+    expect(machine.tests.find((t: { id: string }) => t.id === path.basename(dir)).outcomes).toHaveLength(1);
+  });
+
+  it('merges only compatible shard errors in report-only mode', async () => {
+    await run('--skip-report');
+    const root = store().resultsRoot;
+    const file = fs.readdirSync(root).find(name => name.startsWith('.shaka-engine-errors-'))!;
+    expect(JSON.parse(fs.readFileSync(path.join(root, file), 'utf8')).shakaPerfVersion).toBe(shakaPerfVersion);
+    const writeShard = (key: string, version: string | null) => fs.writeFileSync(
+      path.join(root, `.shaka-engine-errors-${key}.json`),
+      JSON.stringify({ shakaPerfVersion: version, engineErrors: [key] }),
+    );
+    writeShard('compatible', inc(shakaPerfVersion, 'patch'));
+    writeShard('incompatible', inc(shakaPerfVersion, 'major'));
+
+    await run('--report-only');
+    expect(report().meta.errors).toEqual(['compatible']);
   });
 
   it.each(['desktop', 'phone'])('intersects %s with per-test declarations', async (label) => {
