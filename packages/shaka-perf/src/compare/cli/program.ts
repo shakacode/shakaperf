@@ -112,7 +112,7 @@ export function createCompareCommand(
 
 # For AI
   when analyzing performance regressions, read:
-    compare-results/<test>-<viewport>-<hash>/artifacts/the_only_file_ai_needs_to_analyze.diff
+    compare-results/<test>-<viewport>-<hash>/artifacts/perf-low-noise/the_only_file_ai_needs_to_analyze.diff
   The rest of the perf artifacts are optimized for humans.
 `);
   return compare;
