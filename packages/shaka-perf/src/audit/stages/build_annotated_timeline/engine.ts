@@ -52,12 +52,12 @@ export async function runBuildAnnotatedTimelineStage(
   limitVideoFramesCount: number,
 ): Promise<BuildAnnotatedTimelineResult> {
   const artifactsDir = ctx.artifacts.dir;
-  const auditArtifacts = ctx.priorStageArtifactScope(stageIds.audit);
-  const profilePath = path.join(auditArtifacts.dir, 'experiment_performance_profile.json');
+  const auditArtifactScope = ctx.priorStageArtifactScope(stageIds.audit);
+  const profilePath = path.join(auditArtifactScope.dir, 'experiment_performance_profile.json');
   if (!fs.existsSync(profilePath)) {
     console.log(chalk.dim(`annotated-timeline: no performance profile at ${profilePath}; reading cached artifact`));
     return readAnnotatedTimelineArtifact({
-      artifacts: ctx.artifacts, auditArtifacts,
+      artifacts: ctx.artifacts, auditArtifactScope,
     });
   }
 
@@ -150,13 +150,13 @@ export async function runBuildAnnotatedTimelineStage(
   console.log(chalk.dim('annotated-timeline: frame build done; reading artifact metadata'));
 
   return readAnnotatedTimelineArtifact({
-    artifacts: ctx.artifacts, auditArtifacts,
+    artifacts: ctx.artifacts, auditArtifactScope,
   });
 }
 
 interface ReadAnnotatedTimelineArtifactOptions {
   artifacts: ArtifactScope;
-  auditArtifacts: ArtifactScope;
+  auditArtifactScope: ArtifactScope;
 }
 
 async function readAnnotatedTimelineArtifact(opts: ReadAnnotatedTimelineArtifactOptions): Promise<BuildAnnotatedTimelineResult> {
@@ -185,9 +185,9 @@ async function readAnnotatedTimelineArtifact(opts: ReadAnnotatedTimelineArtifact
     return frame;
   });
   console.log(chalk.dim(`annotated-timeline: prepared ${frames.length} report frame${frames.length === 1 ? '' : 's'}`));
-  const screencastPath = path.join(opts.auditArtifacts.dir, SCREENCAST_FILENAME);
+  const screencastPath = path.join(opts.auditArtifactScope.dir, SCREENCAST_FILENAME);
   const screencastHref = fs.existsSync(screencastPath)
-    ? opts.auditArtifacts.pathFor(SCREENCAST_FILENAME)
+    ? opts.auditArtifactScope.pathFor(SCREENCAST_FILENAME)
     : undefined;
   console.log(chalk.dim(`annotated-timeline: screencast ${screencastHref ? 'attached' : 'not found'}`));
   const debugAllFrames = loadDebugAllFrames(opts);
