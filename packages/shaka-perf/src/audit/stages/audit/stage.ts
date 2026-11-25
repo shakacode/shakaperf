@@ -11,7 +11,7 @@ import type { AbTestDefinition } from 'shaka-shared';
 import type { PerfLighthouseConfig } from '../../../bench/core/lighthouse-config';
 import type { Viewport } from '../../../config';
 import {
-  emptyMachineReadableSummary,
+  type JsonValue,
   type Stage,
   type StageRunResult,
   type StageName,
@@ -44,6 +44,8 @@ export interface AuditResult {
   /** The one-sided halves of compare's "profile diff" / "network diff". */
   performanceProfileHref?: string;
   networkActivityHref?: string;
+  /** One line per visible image. Small, so the self-contained report keeps it. */
+  imageResolutionHref?: string;
 }
 
 export class AuditStage implements Stage<AuditResult> {
@@ -76,5 +78,7 @@ export class AuditStage implements Stage<AuditResult> {
     return createElement(AuditArtifactView, { measurements });
   }
 
-  machineReadableSummary = emptyMachineReadableSummary;
+  machineReadableSummary(measurement: AuditResult): JsonValue {
+    return { metrics: Object.fromEntries(measurement.metrics.map((metric) => [metric.label, metric.value])) };
+  }
 }

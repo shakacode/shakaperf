@@ -13,6 +13,7 @@ import type { LighthouseConfig, PhaseSample } from './lighthouse-config';
 import { extractLcpRawTraceTimestamp, extractTestAnnotationMarks } from './extract-markers';
 import { saveNetworkActivity, analyzeNetworkResources } from './network-activity';
 import { countMainThreadTasks } from './main-thread-tasks';
+import { checkImageResolution, type ImageResolutionLimits, type ImageSize } from './image-resolution';
 import { runPatchedLighthouse } from './patched-lighthouse';
 import { summarizePerformanceProfile } from './summarize-performance-profile';
 import type { Group } from '../../pipeline/log-prefix-format';
@@ -33,6 +34,8 @@ export async function runLighthouse(
   resultsFolder: string,
   saveArtifacts: boolean = true,
   canStopTracking: Promise<void> = Promise.resolve(),
+  // Image sizes are read in the page by the caller, right before it lets tracking stop.
+  imageResolution?: ImageResolutionLimits & { sizes: Promise<ImageSize[]> },
 ): Promise<{ phases: PhaseSample[], runnerResult: RunnerResult }> {
   // Lighthouse's own `maxWaitForLoad` caps wait-for-fully-loaded, and
   // `withRaceTimeout` in the sampling worker pool kills hung runs at the
@@ -144,6 +147,12 @@ export async function runLighthouse(
       sign: 1,
       unit: '',
     });
+
+    if (imageResolution) {
+      const images = checkImageResolution(await imageResolution.sizes, runnerResult, url, imageResolution);
+      results.push(...images.phases);
+      if (saveArtifacts) writeFileSync(`${namePrefix}_image_resolution.txt`, images.report);
+    }
   }
 
   return { phases: results, runnerResult };

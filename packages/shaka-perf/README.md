@@ -55,6 +55,40 @@ yarn shaka-perf servers start-containers
 yarn shaka-perf servers start-servers
 ```
 
+## Image resolution
+
+Every Lighthouse sample of `compare` and `audit` also checks the `<img>`
+elements visible in the viewport when the test body ends. It compares the
+pixels of the image file with the pixels the screen needs:
+
+```
+ratio = file pixels ÷ (painted CSS pixels × device pixel ratio)
+```
+
+The painted size follows `object-fit`. The file size is that of the `srcset`
+candidate the browser chose. Three counts are reported as metrics, beside the
+other diagnostics:
+
+- `undersized-images`: the ratio is below `minRatio` (default 0.9).
+- `oversized-images`: the ratio is above `maxRatio` (default 2).
+- `scaled-small-images`: the image is painted within 64 × 64 CSS pixels and its
+  file is not a whole multiple of its on-screen pixels. A 32-pixel icon drawn
+  into 31 pixels blurs far more than a 320-pixel photo drawn into 310.
+
+`compare` treats the counts like any other metric and adds an "image resolution
+diff" of the two sides. `audit` links the per-image list as "image resolution"
+and writes every metric to `report.json` under `summary.metrics`, for scripts
+that want to fail a build. SVG images, CSS backgrounds, images outside the
+viewport, and images inside shadow DOM or iframes are not checked.
+
+Change the limits in `abtests.config.ts`, or for one test through its `config`:
+
+```ts
+shared: {
+  imageResolution: { minRatio: 0.9, maxRatio: 2 },
+},
+```
+
 ## License
 
 ShakaPerf is source-available under

@@ -97,6 +97,12 @@ export interface SharedConfigInput {
   playwrightOptions: PlaywrightOptionsInput;
   /** Required, no defaults — same reasoning as `playwrightOptions`. */
   browserConsole: BrowserConsoleConfigInput;
+  /**
+   * Limits of the image resolution metrics, as source pixels ÷ the pixels the
+   * screen needs. Below `minRatio` (default 0.9) an image counts as undersized;
+   * above `maxRatio` (default 2) as oversized.
+   */
+  imageResolution?: { minRatio?: number; maxRatio?: number };
 }
 
 export interface VisregConfigInput {

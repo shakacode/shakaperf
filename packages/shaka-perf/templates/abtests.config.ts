@@ -115,6 +115,10 @@ export default defineConfig({
       // Substrings matched against the message text or the logging script's URL.
       allowList: [],
     },
+
+    // Source pixels ÷ the pixels the screen needs. An image below minRatio
+    // counts as undersized, above maxRatio as oversized (these are the defaults).
+    imageResolution: { minRatio: 0.9, maxRatio: 2 },
   },
 
   visreg: {

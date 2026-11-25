@@ -51,6 +51,7 @@ import { settleAfterTest } from '../../pipeline/settle-after-test';
 import { importPatchedLighthouse } from './patched-lighthouse';
 import { extractMarkers } from './extract-markers';
 import { injectINPObserver, collectINP } from './inp';
+import { collectImageSizes, type ImageSize } from './image-resolution';
 import { createInteractionRecorder } from './interaction-recorder';
 import { attachInteractionOverlay } from '../../pipeline/interaction-overlay';
 import type { AbTestDefinition } from './ab-test-registry';
@@ -389,6 +390,10 @@ class LighthouseWorkerSampler {
       const canStopTracking = new Promise<void>((resolve) => {
         releaseTracking = resolve;
       });
+      let reportImageSizes: (sizes: ImageSize[]) => void = () => {};
+      const imageSizes = new Promise<ImageSize[]>((resolve) => {
+        reportImageSizes = resolve;
+      });
 
       const timestamp = new Date();
       console.log(
@@ -423,6 +428,7 @@ class LighthouseWorkerSampler {
         resultsFolder,
         saveArtifacts,
         canStopTracking,
+        { ...config.shared.imageResolution, sizes: imageSizes },
       );
 
       const page = await this.waitForPage(context, url);
@@ -484,6 +490,8 @@ class LighthouseWorkerSampler {
           if (this.keepBrowserOpen && options.windowLabel) {
             await labelWindow(page, options.windowLabel);
           }
+          // The page is in its final state here, and still inside the trace.
+          reportImageSizes(await collectImageSizes(page));
           // Never released under keep-open: LH stays in its gather, so it never
           // reaches `_cleanup` and never closes the page or clears its storage.
           // Costs the LHR, which only exists after the gather ends.

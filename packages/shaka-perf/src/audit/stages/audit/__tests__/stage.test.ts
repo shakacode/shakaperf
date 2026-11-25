@@ -57,6 +57,26 @@ describe('AuditStage artifact card', () => {
 
     expect(html).not.toContain('artifact-links');
   });
+
+  it('links the per-image resolution list', () => {
+    const html = render({
+      metrics: [{ label: 'undersized-images', value: 1, unit: '', display: '1', group: 'diagnostics' }],
+      imageResolutionHref: 'unit/artifacts/experiment_image_resolution.txt',
+    });
+
+    expect(html).toContain('image resolution');
+  });
+});
+
+describe('AuditStage machine-readable summary', () => {
+  it('lists every metric by name, for scripts that read report.json', () => {
+    expect(new AuditStage({}).machineReadableSummary({
+      metrics: [
+        { label: 'LCP', value: 1200, unit: 'ms', display: '1.2 s', group: 'vitals' },
+        { label: 'undersized-images', value: 2, unit: '', display: '2', group: 'diagnostics' },
+      ],
+    })).toEqual({ metrics: { LCP: 1200, 'undersized-images': 2 } });
+  });
 });
 
 function render(measurement: AuditResult): string {

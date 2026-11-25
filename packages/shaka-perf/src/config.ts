@@ -216,6 +216,16 @@ export const SharedConfigSchema = z
     playwrightOptions: PlaywrightOptionsSchema,
     // Required, no defaults — same reasoning as `playwrightOptions`.
     browserConsole: BrowserConsoleConfigSchema,
+    // Limits of the image resolution metrics, as source pixels ÷ the pixels
+    // the screen needs: below `minRatio` an image counts as undersized, above
+    // `maxRatio` as oversized.
+    imageResolution: z
+      .object({
+        minRatio: z.number().positive().max(1).default(0.9),
+        maxRatio: z.number().min(1).default(2),
+      })
+      .strict()
+      .default({}),
   })
   // Strict: an unknown key is a typo or a removed option. Zod's default is to
   // strip silently, which is how a renamed knob quietly falls back to its

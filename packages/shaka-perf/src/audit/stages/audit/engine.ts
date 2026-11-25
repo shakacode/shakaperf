@@ -262,6 +262,8 @@ async function readAuditArtifact(opts: ReadAuditArtifactOptions): Promise<AuditR
   }
   const networkActivity = files.find((f) => f === 'experiment_network_activity.txt');
   if (networkActivity) artifact.networkActivityHref = opts.artifacts.pathFor(networkActivity);
+  const imageResolution = files.find((f) => f === 'experiment_image_resolution.txt');
+  if (imageResolution) artifact.imageResolutionHref = opts.artifacts.pathFor(imageResolution);
 
   if (experimentLh) {
     const fullPath = path.join(opts.artifacts.dir, experimentLh);
