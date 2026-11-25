@@ -16,7 +16,7 @@ import type { RuntimeConfig, VisregRunRuntime } from './types';
  * point — the unified compare pipeline calls it once per work unit.
  */
 export default async function runVisregCompare(
-  options: Record<string, unknown> | undefined,
+  options: Record<string, unknown>,
   runtime: VisregRunRuntime,
 ) {
   const config = await makeConfig(options) as RuntimeConfig;
