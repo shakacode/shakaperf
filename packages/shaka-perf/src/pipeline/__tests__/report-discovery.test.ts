@@ -60,8 +60,7 @@ describe.each(['compare', 'audit'] as const)('%s report discovery', (name) => {
         report: {
           reportLabel: name,
           renderHeaderUrls: () => null,
-          renderTestCardUrls: () => null,
-          renderDialogMetaUrls: () => null,
+          testTargets: () => [],
         },
       }, (builder) => {
         const pool = builder.registerWorkerPool(1);

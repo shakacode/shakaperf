@@ -12,7 +12,6 @@ import type { Viewport } from '../config';
 import type { ChipDescriptor, ReportMeta, SortDescriptor, TestResult } from './report';
 import type { Outcome } from './outcome';
 import type { MeasurementSide } from './run-metadata';
-import type { StageArtifactTestMeta } from './stage-report-components';
 import type { Stage, StageCategory, StageName, StageRenderEntry } from '../stage/stage';
 import type { TaskLimits } from './worker-pool';
 
@@ -93,11 +92,16 @@ export type PipelineStep =
   | PipelineRunStageStep
   | PipelineDisposeWorkerPoolStep;
 
+export interface TestTarget {
+  side: 'control' | 'experiment';
+  label: string;
+  href: string;
+}
+
 export interface PipelineReport {
   readonly reportLabel: string;
   renderHeaderUrls(meta: ReportMeta): ReactNode;
-  renderTestCardUrls(test: TestResult, details?: (side: 'control' | 'experiment') => ReactNode): ReactNode;
-  renderDialogMetaUrls(test: StageArtifactTestMeta): ReactNode;
+  testTargets(test: Pick<TestResult, 'controlUrl' | 'experimentUrl'>): readonly TestTarget[];
   /**
    * The command that re-runs this test at this viewport with its browsers left
    * open. It runs whichever of visreg/perf the test declares, which is not

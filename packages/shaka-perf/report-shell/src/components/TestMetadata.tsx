@@ -7,11 +7,15 @@
 
 import { useId, useState, type ReactNode } from 'react';
 import type { ExecutionDetails } from '../../../src/pipeline/outcome';
+import { TargetLink } from '../../../src/report-ui/TargetLink';
 import { SourceText } from '../../../src/report-ui/SourceText';
 import type { ReportMeta, TestResult } from '../types';
 import { MeasurementCommand } from '../../../src/report-ui/MeasurementCommand';
 import { RunCommits } from './RunDetails';
-import { pipelineTroubleshootCommands, renderPipelineTestCardUrls } from '../../../src/pipeline/pipeline-artifacts';
+import {
+  pipelineTroubleshootCommands,
+  pipelineTestTargets,
+} from '../../../src/pipeline/pipeline-artifacts';
 
 // Full-word units so "12m" isn't mistaken for "12 months" — especially
 // relevant in merged --report-only views where artifacts can be weeks old.
@@ -88,8 +92,10 @@ export function TestMetadata({ meta, test, expanded: sharedExpanded, onToggleExp
         <div className="card__metadata-content">
           {variant === 'card' ? provenance : null}
           <dl className="card__urls card__targets" aria-label="URLs">
-            {renderPipelineTestCardUrls(meta, test, (side) => (
-              <RunCommits outcomes={test.outcomes} side={side} />
+            {pipelineTestTargets(meta, test).map(target => (
+              <TargetLink key={target.side} target={target}>
+                <RunCommits outcomes={test.outcomes} side={target.side} />
+              </TargetLink>
             ))}
           </dl>
           {children}

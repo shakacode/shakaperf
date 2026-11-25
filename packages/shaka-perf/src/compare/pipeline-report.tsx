@@ -6,8 +6,7 @@
  */
 
 import type { PipelineReport } from '../pipeline/pipeline';
-import type { ReportMeta, TestResult } from '../pipeline/report';
-import type { StageArtifactTestMeta } from '../pipeline/stage-report-components';
+import type { ReportMeta } from '../pipeline/report';
 import { troubleshootCommandFor } from '../troubleshoot/command';
 
 function renderHeaderUrls(meta: ReportMeta) {
@@ -25,58 +24,14 @@ function renderHeaderUrls(meta: ReportMeta) {
   );
 }
 
-function renderTestCardUrls(test: TestResult, details?: Parameters<PipelineReport['renderTestCardUrls']>[1]) {
-  return (
-    <>
-      <div>
-        <dt>control</dt>
-        <dd>
-          <a href={test.controlUrl} target="_blank" rel="noreferrer">
-            {test.controlUrl}
-          </a>
-          {details?.('control')}
-        </dd>
-      </div>
-      <div>
-        <dt>experiment</dt>
-        <dd>
-          <a href={test.experimentUrl} target="_blank" rel="noreferrer">
-            {test.experimentUrl}
-          </a>
-          {details?.('experiment')}
-        </dd>
-      </div>
-    </>
-  );
-}
-
-function renderDialogMetaUrls(test: StageArtifactTestMeta) {
-  return (
-    <>
-      <div>
-        <dt>control</dt>
-        <dd className="ui-dialog__meta-break">
-          <a href={test.controlUrl} target="_blank" rel="noreferrer">
-            {test.controlUrl}
-          </a>
-        </dd>
-      </div>
-      <div>
-        <dt>experiment</dt>
-        <dd className="ui-dialog__meta-break">
-          <a href={test.experimentUrl} target="_blank" rel="noreferrer">
-            {test.experimentUrl}
-          </a>
-        </dd>
-      </div>
-    </>
-  );
-}
-
 export const comparePipelineReport: PipelineReport = {
   reportLabel: 'compare report',
   renderHeaderUrls,
-  renderTestCardUrls,
-  renderDialogMetaUrls,
+  testTargets(test) {
+    return [
+      { side: 'control', label: 'control', href: test.controlUrl },
+      { side: 'experiment', label: 'experiment', href: test.experimentUrl },
+    ];
+  },
   troubleshootCommand: troubleshootCommandFor,
 };
