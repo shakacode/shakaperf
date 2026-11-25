@@ -230,6 +230,18 @@ function seedPoolFrame(side: 'control' | 'experiment', buffer: Buffer): void {
   ).add(side, buffer);
 }
 
+it('reports zero started rounds when saved screenshots already match and the count is empty', async () => {
+  seedPoolFrame('control', png(GREEN));
+  seedPoolFrame('experiment', png(GREEN));
+  const { deps, counts } = makeDeps(() => png(BLUE));
+
+  const [outcome] = await run(deps, makeConfig());
+
+  expect(outcome.result.pass).toBe(true);
+  expect(outcome.visualComparisonCount).toBe(0);
+  expect(counts().captureCalls).toBe(0);
+});
+
 it('resumes from a frame persisted by an earlier (crashed) attempt', async () => {
   // The crashed attempt captured GREEN on the experiment side. This run's
   // fresh pair mismatches (ref GREEN vs test BLUE), but the fresh ref matches

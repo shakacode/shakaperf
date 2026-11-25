@@ -224,9 +224,6 @@ export async function runCompareAttempts(
     const result = control.length && experiment.length
       ? compareFrames(control, experiment)
       : null;
-    if (!comparisonCounts.has(testPair.test)) {
-      comparisonCounts.set(testPair.test, result ? 1 : 0);
-    }
     return {
       selector,
       testPair,
@@ -251,7 +248,8 @@ export async function runCompareAttempts(
     for (const run of runs) {
       if (run.done) continue;
       const key = run.testPair.test;
-      comparisonCounts.set(key, comparisonCounts.get(key)! + 1);
+      const previousCount = comparisonCounts.get(key) ?? 0;
+      comparisonCounts.set(key, previousCount + 1);
     }
 
     const activeSides = new Set<ComparisonSide>();
@@ -314,7 +312,7 @@ export async function runCompareAttempts(
       // Clean = the single first capture pair matched. Anything that needed a
       // second frame (a retry or a crash-resumed leftover) was saved by retries.
       savedByRetries: result.pass && (run.control.length > 1 || run.experiment.length > 1),
-      visualComparisonCount: comparisonCounts.get(run.testPair.test)!,
+      visualComparisonCount: comparisonCounts.get(run.testPair.test) ?? 0,
     };
   });
 }
