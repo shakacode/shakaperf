@@ -186,8 +186,6 @@ export async function runCompareAttempts(
   const maxNumDiffPixels = config.maxNumDiffPixels;
   const compareOpts = { maxNumDiffPixels, pixelmatchThreshold };
 
-  let runs: SelectorRun[] = [];
-
   // JSON-bridge boundary: the engine's config crosses as data (no functions), so
   // rebuild this test's effective config here and read from it.
   const effectiveConfig = await reconstructEffectiveConfig(scenario._testDef);
@@ -195,47 +193,52 @@ export async function runCompareAttempts(
   const browserConsole = effectiveConfig.shared.browserConsole;
 
   const budget = deps.visualRetries ?? { retriesStarted: 0, comparisons: new Map<string, number>() };
-  for (let attempt = 0; attempt === 0 || (budget.retriesStarted < maxRetries && runs.some((r) => !r.done)); attempt++) {
+  const compareFrames = (control: PoolFrame[], experiment: PoolFrame[]) => crossMatch(
+    control.map(frame => frame.buffer), experiment.map(frame => frame.buffer), compareOpts,
+  );
+  const selectors = scenario.selectors?.length
+    ? scenario.selectors
+    : [DOCUMENT_SELECTOR];
+  const runs: SelectorRun[] = selectors.map((selector, selectorIndex) => {
+    const testPair = engineTools.generateTestPair(
+      config,
+      scenario,
+      viewport,
+      scenarioLabelSafe,
+      selectorIndex,
+      selector,
+    );
+    const pool = new ScreenshotPool(
+      path.dirname(testPair.reference),
+      path.dirname(testPair.test),
+      path.basename(testPair.test, engineTools.OUTPUT_FORMAT_SUFFIX),
+    );
+    const control = pool.load('control');
+    const experiment = pool.load('experiment');
+    const visualComparisonCount = budget.comparisons.get(testPair.test) ?? 0;
+    // A worker restart must not recapture a selector whose saved frames already match.
+    const result = visualComparisonCount && control.length && experiment.length
+      ? compareFrames(control, experiment)
+      : null;
+    return {
+      visualComparisonCount,
+      selector,
+      testPair,
+      pool,
+      control,
+      experiment,
+      result,
+      done: result?.pass === true,
+    };
+  });
+
+  for (let attempt = 0; runs.some(r => !r.done) && (attempt === 0 || budget.retriesStarted < maxRetries); attempt++) {
     if (attempt > 0) {
       // Linear backoff: 5s, 10s, 15s, ...
       budget.retriesStarted++;
       const delay = retryDelayMs * budget.retriesStarted;
       logger.log(`Retry ${budget.retriesStarted}/${maxRetries} for "${scenario.label}" - chilling for ${delay}ms`);
       await sleep(delay);
-    }
-
-    // The selector set is declarative on the scenario. Build the pools before
-    // launching the concurrent side lifecycles so both sides capture the same
-    // set of still-pending selectors.
-    if (attempt === 0) {
-      const selectors = scenario.selectors?.length
-        ? scenario.selectors
-        : [DOCUMENT_SELECTOR];
-      runs = selectors.map((selector, selectorIndex) => {
-        const testPair = engineTools.generateTestPair(
-          config,
-          scenario,
-          viewport,
-          scenarioLabelSafe,
-          selectorIndex,
-          selector,
-        );
-        const pool = new ScreenshotPool(
-          path.dirname(testPair.reference),
-          path.dirname(testPair.test),
-          path.basename(testPair.test, engineTools.OUTPUT_FORMAT_SUFFIX),
-        );
-        return {
-          visualComparisonCount: 0,
-          selector,
-          testPair,
-          pool,
-          control: pool.load('control'),
-          experiment: pool.load('experiment'),
-          result: null,
-          done: false,
-        };
-      });
     }
 
     const activeSides = new Set<ComparisonSide>();
@@ -265,8 +268,6 @@ export async function runCompareAttempts(
 
     for (const run of runs) {
       if (run.done) continue;
-      run.visualComparisonCount = (budget.comparisons.get(run.selector) ?? 0) + 1;
-      budget.comparisons.set(run.selector, run.visualComparisonCount);
       const refBuffer = refCaptures.get(run.selector)!;
       const testBuffer = testCaptures.get(run.selector)!;
 
@@ -278,11 +279,9 @@ export async function runCompareAttempts(
       run.control = run.pool.load('control');
       run.experiment = run.pool.load('experiment');
 
-      run.result = crossMatch(
-        run.control.map((f) => f.buffer),
-        run.experiment.map((f) => f.buffer),
-        compareOpts,
-      );
+      run.result = compareFrames(run.control, run.experiment);
+      run.visualComparisonCount++;
+      budget.comparisons.set(run.testPair.test, run.visualComparisonCount);
       // A retry that added no frames is pixel-stable — retrying can't change it.
       const pixelStable = attempt > 0 &&
         run.control.length + run.experiment.length === framesBefore;

@@ -174,6 +174,26 @@ it('keeps a clean selector at one attempt while another selector retries', async
   ]);
 });
 
+it('resumes pending selectors after a worker failure without recapturing a matched selector', async () => {
+  const { deps } = makeDeps(() => png(BLUE));
+  deps.visualRetries = { retriesStarted: 0, comparisons: new Map() };
+  let changedCaptures = 0;
+  deps.captureScreenshot = async (_page, selector) => {
+    if (selector === '.clean') return png(GREEN);
+    if (++changedCaptures > 2) throw new Error('worker failure');
+    return png(changedCaptures === 1 ? RED : BLUE);
+  };
+  const selectors = ['.clean', '.changed'];
+  await expect(run(deps, makeConfig(), selectors)).rejects.toThrow('worker failure');
+  deps.captureScreenshot = async (_page, selector) => {
+    expect(selector).toBe('.changed');
+    return png(GREEN);
+  };
+  const resumed = await run(deps, makeConfig(), selectors);
+  expect(resumed.map(row => [row.result.pass, row.visualComparisonCount])).toEqual([[true, 1], [true, 2]]);
+  expect(deps.visualRetries.retriesStarted).toBe(1);
+});
+
 it('persistent mismatch: spends the retry budget, returns the closest pair with a diff', async () => {
   // Distinct frames per attempt (dirty=attempt) so the pool grows; ref stays
   // red-ish, test blue-ish, so nothing ever matches.
