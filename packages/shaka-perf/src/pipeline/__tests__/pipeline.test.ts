@@ -385,9 +385,10 @@ describe('runPipeline', () => {
     fs.writeFileSync(file, source);
     const selected = pipeline();
     selected.stages[0]!.run = async (ctx) => {
-      const snapshots = fs.readdirSync(ctx.artifacts.dir).filter((name) => name.startsWith('test-source-'));
+      const sharedDir = path.dirname(ctx.artifacts.dir);
+      const snapshots = fs.readdirSync(sharedDir).filter((name) => name.startsWith('test-source-'));
       expect(snapshots).toHaveLength(1);
-      expect(fs.readFileSync(path.join(ctx.artifacts.dir, snapshots[0]!), 'utf8')).toBe(source);
+      expect(fs.readFileSync(path.join(sharedDir, snapshots[0]!), 'utf8')).toBe(source);
       fs.writeFileSync(file, changed);
       if (failed) throw new Error('measurement failed');
       return { measurement: {}, metadata: {} };
@@ -1284,7 +1285,7 @@ describe('per-side visreg failures', () => {
 
     expect(outcome.kind).toBe('error');
     expect(outcome.failure?.media)
-      .toMatch(/\/artifacts\/experiment-visreg-failure-screenshot\.png$/);
+      .toMatch(/\/artifacts\/visreg\/experiment-visreg-failure-screenshot\.png$/);
     expect(mediaBytes).toEqual(EXPERIMENT_SCREENSHOT);
     expect(selfContainedReport)
       .toContain(`data:image/png;base64,${Base64('experiment')}`);
