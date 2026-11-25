@@ -205,7 +205,7 @@ describe('visual preview metadata', () => {
     } finally { await page.close(); }
   });
 
-  it('uses the clicked card and selector for metadata', async () => {
+  it('uses the clicked card and selector for metadata and restores focus on Escape', async () => {
     const second = structuredClone(data.tests[0]!);
     second.id = 'checkout';
     second.name = 'Checkout';
@@ -236,6 +236,7 @@ describe('visual preview metadata', () => {
         expect(await dialog.locator('.card__code').textContent()).toContain('results/checkout/desktop');
         await page.keyboard.press('Escape');
         await dialog.waitFor({ state: 'hidden' });
+        expect(await trigger.evaluate(button => button === document.activeElement)).toBe(true);
       }
     } finally {
       await page.close();

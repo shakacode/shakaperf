@@ -16,7 +16,7 @@ import {
   StageNote,
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
-import { FramePlayerButton } from './frame-player';
+import { FramePlayer } from './frame-player';
 import { ReportSection, useReportSection } from '../../../pipeline/report-section';
 
 const GROUPS: PerfMetricGroup[] = ['vitals', 'diagnostics'];
@@ -203,7 +203,16 @@ function ArtifactLinks({ entry }: { entry: StageRenderEntry<PerfArtifact> }) {
   return (
     <FullReportOnly>
       <div className="artifact-links">
-        {perf.framesHref ? <FramePlayerButton executionDetails={entry.executionDetails} href={perf.framesHref} /> : null}
+        {perf.framesHref ? (
+          <DetailedArtifactDialog
+            href={perf.framesHref}
+            label="play frames"
+            title="frames side by side"
+            dialogVariant="wide"
+            executionDetails={entry.executionDetails}
+            body={<FramePlayer href={perf.framesHref} />}
+          />
+        ) : null}
         {links.map(([label, href]) => (
           <DetailedArtifactDialog executionDetails={entry.executionDetails} key={`${label}-${href}`} href={href} label={label}>
             {label}
