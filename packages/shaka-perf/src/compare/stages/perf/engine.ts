@@ -54,7 +54,6 @@ export async function runPerfEngineStage(
   const perfConfig = config;
   const unitId = ctx.testAndViewportId;
   const artifactsDir = ctx.artifacts.dir;
-  fs.mkdirSync(artifactsDir, { recursive: true });
 
   ensureLighthousePatchRegistered();
   // Per-test effective lighthouseConfig (config.perf.lighthouseConfig in an

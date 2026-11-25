@@ -61,7 +61,6 @@ export async function runBuildAnnotatedTimelineStage(
     });
   }
 
-  fs.mkdirSync(artifactsDir, { recursive: true });
 
   // The whole build runs inside a single pool submit: it holds the slot
   // for the full timeline (well under the default 120 s per-task timeout

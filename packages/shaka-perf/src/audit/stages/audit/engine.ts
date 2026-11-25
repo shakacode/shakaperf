@@ -6,7 +6,6 @@
  */
 
 import type { PerformanceEngineResult } from '../../../stage/performance-metadata';
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { execFile } from 'node:child_process';
@@ -96,7 +95,6 @@ export async function runAuditStage(
   config: AuditStageConfig,
 ): Promise<PerformanceEngineResult<AuditResult>> {
   const artifactsDir = ctx.artifacts.dir;
-  fs.mkdirSync(artifactsDir, { recursive: true });
 
   ensureLighthousePatchRegistered();
   const realChrome = process.env.SHAKAPERF_REAL_CHROME === '1';

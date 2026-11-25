@@ -599,7 +599,9 @@ async function runConfiguredPipelineWithSelection(
       const { test, viewport } = unit;
       const selected = executableStages.filter(stage => testDeclaresStageCategory(test, stage)
         && resolveViewportsForTest(test, runtime.config, stage.category).some(vp => vp.label === viewport.label));
-      unit.testSourceHref = store.prepareMeasurement(test, viewport.label, selected.map(stage => stage.name), unit.testSource);
+      unit.testSourceHref = store.resetSelectedStageResults(
+        test, viewport.label, selected.map(stage => stage.name), unit.testSource,
+      );
     }
   }
   let invocation: RunInvocation | undefined;

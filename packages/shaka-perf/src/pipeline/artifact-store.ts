@@ -110,29 +110,51 @@ export class ArtifactStore {
     );
   }
 
-  prepareMeasurement(test: AbTestDefinition, label: string, stages: readonly StageName[], source: string | null): ArtifactPath | null {
+  resetSelectedStageResults(
+    test: AbTestDefinition,
+    viewportLabel: string,
+    stages: readonly StageName[],
+    source: string | null,
+  ): ArtifactPath | null {
     if (!stages.length) return null;
-    const unit = this.unitDirForViewport(test, label);
-    const scope = this.scopeFor(test, label);
-    // Invalidate every selected outcome before cleanup can fail partway through.
+
+    const scope = this.scopeFor(test, viewportLabel);
+    // Invalidate every selected outcome before directory cleanup can fail partway through.
+    this.removeStageOutcomes(this.unitDirForViewport(test, viewportLabel), stages);
+    this.resetStageDirectories(scope, stages);
+
+    const sourceHref = source === null ? null : this.writeTestSource(test, viewportLabel, source);
+    const remainingOutcomes = this.readOutcomesForViewport(test, viewportLabel);
+    this.removeUnusedTestSources(scope, remainingOutcomes, sourceHref);
+    return sourceHref;
+  }
+
+  private removeStageOutcomes(unitDir: string, stages: readonly StageName[]): void {
     for (const stage of stages) {
-      fs.rmSync(localArtifactPath(unit, `${stage}.json`), { force: true });
+      fs.rmSync(localArtifactPath(unitDir, `${stage}.json`), { force: true });
     }
+  }
+
+  private resetStageDirectories(scope: ArtifactScope, stages: readonly StageName[]): void {
     for (const stage of stages) {
       const dir = scope.stageDirectory(stage).dir;
       fs.rmSync(dir, { recursive: true, force: true });
       fs.mkdirSync(dir, { recursive: true });
     }
-    const sourceHref = source === null ? null : this.writeTestSource(test, label, source);
-    const retained = new Set(this.readOutcomesForViewport(test, label)
-      .map(outcome => outcome.executionDetails.testSourceHref));
-    retained.add(sourceHref);
+  }
+
+  private removeUnusedTestSources(
+    scope: ArtifactScope,
+    remainingOutcomes: readonly Outcome[],
+    currentSourceHref: ArtifactPath | null,
+  ): void {
+    const retained = new Set(remainingOutcomes.map(outcome => outcome.executionDetails.testSourceHref));
+    retained.add(currentSourceHref);
     for (const file of fs.readdirSync(scope.dir)) {
       if (/^test-source-[a-f0-9]{64}\.ts$/.test(file) && !retained.has(scope.pathFor(file))) {
         fs.rmSync(path.join(scope.dir, file), { force: true });
       }
     }
-    return sourceHref;
   }
 
   readOutcome(test: AbTestDefinition, viewportLabel: string, stage: StageName): Outcome | null {
