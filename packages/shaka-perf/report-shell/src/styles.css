@@ -3185,8 +3185,8 @@ input {
     overflow-wrap: anywhere;
   }
 }
-.card__metadata-content .ui-dialog__meta { padding: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 100px), 1fr)); }
-.card__metadata-content .ui-dialog__meta > div { flex-wrap: wrap; }
+.card__metadata-content .ui-dialog__meta { padding: 0; display: flex; flex-wrap: wrap; }
+.card__metadata-content .ui-dialog__meta > div { max-width: 100%; flex-wrap: wrap; }
 .card__metadata-content .ui-dialog__meta dt { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .card__metadata-content .ui-dialog__meta dd { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 .card__metadata .card__urls { padding: 0; margin: 0; border: 0; }
@@ -3308,4 +3308,4 @@ input {
 .perf-run-settings .ui-dialog__meta dd { white-space: normal; overflow: visible; word-break: normal; overflow-wrap: anywhere; }
 .perf-viewport__dimensions { color: var(--fg-muted); font-size: 11px; font-weight: 400; white-space: nowrap; }
 
-.card__metadata-content .ui-dialog__meta-wide { grid-column: 1 / -1; }
+.card__metadata-content .ui-dialog__meta-wide { flex-basis: 100%; }

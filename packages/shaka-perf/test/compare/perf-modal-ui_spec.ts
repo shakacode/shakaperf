@@ -122,6 +122,10 @@ describe('performance modal metadata', () => {
         const settings = metadata.locator('.ui-dialog__meta').filter({ has: page.locator('dt', { hasText: 'number of measurements' }) });
         expect(await settings.locator('dt').allTextContents()).toEqual(['throttling', 'number of measurements']);
         expect(await settings.locator('dd').nth(1).innerText()).toBe(example.count);
+        const label = (await settings.locator('dt').nth(1).boundingBox())!;
+        const value = (await settings.locator('dd').nth(1).boundingBox())!;
+        expect(value.x).toBeGreaterThanOrEqual(label.x + label.width);
+        expect(value.y).toBeLessThan(label.y + label.height);
         expect(await settings.innerText()).toContain(example.cpu);
         expect(await settings.innerText()).not.toContain('13 per side');
         const targetsBox = (await metadata.locator('.card__targets').boundingBox())!;
