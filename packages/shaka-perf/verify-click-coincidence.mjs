@@ -11,7 +11,7 @@
 //   BLUE — the measured "click NNms" interaction chip. Since the
 //   annotated-timeline moved chips out of the frame pixels ("Annotation
 //   labels/rects are persisted as metadata and rendered later by React"),
-//   the blue chips live in each test's artifacts/timeline_frames.json as
+//   the blue chips live in each test's artifacts/build_annotated_timeline/timeline_frames.json as
 //   `pw-interaction` annotations pinned to a kept frame.
 //
 //   RED — the in-page "Click" overlay chip that interaction-overlay.ts
@@ -131,7 +131,7 @@ const isClickChip = (a) => a.kind === 'pw-interaction' && /^click \d+(\.\d+)?ms$
 let allPass = true;
 let validatedCount = 0;
 for (const sub of fs.readdirSync(RESULTS)) {
-  const dir = path.join(RESULTS, sub, 'artifacts');
+  const dir = path.join(RESULTS, sub, 'artifacts', 'build_annotated_timeline');
   const metadataPath = path.join(dir, 'timeline_frames.json');
   if (!fs.existsSync(metadataPath)) continue;
   const frames = [...JSON.parse(fs.readFileSync(metadataPath, 'utf-8'))]

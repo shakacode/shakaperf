@@ -56,10 +56,10 @@ describe('coverage-baseline.mts save', function () {
     ...executionFixture(), kind: 'ok', stage: stageIds.codeCoverage }] })),
     }));
     for (const { id, file, ran } of tests) {
-      write(`audit-results/${id}/artifacts/coverage.json`, JSON.stringify({
+      write(`audit-results/${id}/artifacts/code_coverage/coverage.json`, JSON.stringify({
         [path.join(dir, file)]: { statementMap: { 0: { start: { line: 2 } }, 1: { start: { line: 4 } } }, s: ran },
       }));
-      write(`audit-results/${id}/artifacts/visibility-map.txt`, FOOTER_ROW);
+      write(`audit-results/${id}/artifacts/code_coverage/visibility-map.txt`, FOOTER_ROW);
     }
     return dir;
   }
@@ -83,6 +83,17 @@ describe('coverage-baseline.mts save', function () {
 
   it('reads sources from SOURCE_ROOT', function () {
     assert.match(save(fixture()), /^saved \S+ — 2 sources/);
+  });
+
+  it('ignores coverage left in the flat artifact directory', function () {
+    const dir = fixture();
+    const root = path.join(dir, 'audit-results/beta/artifacts');
+    for (const file of ['coverage.json', 'visibility-map.txt']) {
+      fs.renameSync(path.join(root, 'code_coverage', file), path.join(root, file));
+    }
+    fs.rmdirSync(path.join(root, 'code_coverage'));
+    save(dir);
+    assert.match(footerLine(dir), /\| A=100%$/);
   });
 
   it('credits an element to every test that rendered it', function () {
