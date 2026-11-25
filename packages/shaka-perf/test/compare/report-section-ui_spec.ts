@@ -33,16 +33,16 @@ function reportData(mode: 'full' | 'self-contained'): ReportData {
     tests: ['Homepage', 'Product'].map((name) => ({
       id: name, name, filePath: 'example.abtest.ts', startingPath: '/',
       controlUrl: 'http://control.test', experimentUrl: 'http://experiment.test',
-      code: null, chips: [], sorts: [], durationMs: 1000, measuredAt: 1, runId: 'run-1',
+       chips: [], sorts: [], durationMs: 1000, measuredAt: 1, runId: 'run-1',
       viewportArtifactPaths: [],
       outcomes: [
-        { ...executionFixture(), kind: 'ok', stage: 'visreg', measurement: [] },
+        { ...executionFixture(), kind: 'ok', stage: 'visreg',  measurement: [] },
         ...[DESKTOP_VIEWPORT, PHONE_VIEWPORT].map((viewport) => ({
           ...executionFixture({ viewport }),
-          kind: 'ok' as const, stage: 'perf', measurement: { metrics: [] },
+          kind: 'ok' as const, stage: 'perf',  measurement: { metrics: [] },
         })),
-        { ...executionFixture(), kind: 'ok', stage: 'accessibility', measurement: cleanAccessibility },
-        { ...executionFixture({ viewport: PHONE_VIEWPORT }), kind: 'error', stage: 'accessibility', error: { message: 'Intentional phone failure' } },
+        { ...executionFixture(), kind: 'ok', stage: 'accessibility',  measurement: cleanAccessibility },
+        { ...executionFixture({ viewport: PHONE_VIEWPORT }), kind: 'error', stage: 'accessibility',  error: { message: 'Intentional phone failure' } },
       ],
     })),
   };

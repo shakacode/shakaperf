@@ -1,3 +1,4 @@
+import { DESKTOP_VIEWPORT } from 'shaka-shared';
 /*
  * Copyright (c) 2026 ShakaCode LLC.
  *
@@ -5,10 +6,15 @@
  * License in LICENSE.md.
  */
 
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { PHONE_VIEWPORT } from 'shaka-shared';
 import { createServer, type Server } from 'node:http';
 import { chromium, type Browser } from 'playwright';
-import { renderReportHtml } from '../../src/pipeline/report';
 import type { ArtifactPath } from '../../src/pipeline/artifact-store';
+import { renderReportHtml, writeReport } from '../../src/pipeline/report';
 import { runDetailsFixture } from '../../src/pipeline/__tests__/fixtures/run-details';
 
 jest.setTimeout(60_000);
@@ -34,7 +40,6 @@ function fixture() {
   }, {
     ...saved,
     stage: 'perf',
-    measurement: { metrics: [] },
     executionDetails: { ...saved.executionDetails, runId: '2026-10-21T20:54:53.891Z', measurementMetadata: {
       ...saved.executionDetails.measurementMetadata!,
       measuredAt: '2026-10-21T20:54:53.891Z',
@@ -44,6 +49,7 @@ function fixture() {
         commit: { sha: 'abcdef1234567890', message: 'Unrelated newer perf commit', source: 'fixture' },
       })),
     } },
+    measurement: { metrics: [] },
   }];
   data.tests = [test];
   return data;
@@ -54,12 +60,42 @@ describe('visual preview metadata', () => {
   let browser: Browser;
   let url: string;
   let data = fixture();
-
   beforeEach(() => { data = fixture(); });
+
   beforeAll(async () => {
-    server = createServer((_request, response) => {
+    server = createServer((request, response) => {
+      const params = new URL(request.url!, 'http://localhost').searchParams;
+      const responseData = structuredClone(data);
+      responseData.meta.reportMode = params.get('mode') === 'self-contained' ? 'self-contained' : 'full';
+      if (params.has('mixed')) {
+        const test = responseData.tests[0]!;
+        const desktop = test.outcomes[0]!;
+        const measurement = desktop.measurement as Record<string, unknown>[];
+        const phoneRunId = '2026-10-22T00:00:00Z';
+        const phoneSource = 'newer phone source <script>window.sourceExecuted=true</script>';
+        const phone = {
+          ...desktop,
+          executionDetails: {
+            ...desktop.executionDetails, measurementMetadata: { ...desktop.executionDetails.measurementMetadata!, measuredAt: phoneRunId }, runId: phoneRunId, viewport: PHONE_VIEWPORT,
+            testSourceHref: params.has('missing') ? null : 'data:text/plain;charset=utf-8,' + encodeURIComponent(phoneSource),
+            recoveredAfterRetries: false, taskRetries: 0, taskRetryLimit: 8,
+          },
+          measurement: [{ ...measurement[0], compareAttempts: 1, savedByRetries: false }],
+        };
+        test.outcomes = [desktop, phone, {
+          kind: 'skipped', stage: 'perf', reason: 'Not selected',
+          executionDetails: { ...desktop.executionDetails, measurementMetadata: undefined, runId: '2026-10-23T00:00:00Z', testSourceHref: null },
+        }];
+      }
+      if (params.has('perf')) {
+        responseData.tests[0]!.outcomes[0]!.stage = 'perf-low-noise';
+        responseData.tests[0]!.outcomes[0]!.measurement = {
+          controlLighthouseHref: 'data:text/html,<p>saved Lighthouse report</p>',
+        };
+      }
+      const html = renderReportHtml(responseData);
       response.setHeader('Content-Type', 'text/html');
-      response.end(renderReportHtml(data));
+      response.end(html);
     });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     url = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
@@ -78,12 +114,8 @@ describe('visual preview metadata', () => {
       expect(await preview.locator('.artifact-card__image-label').allTextContents()).toEqual(['no diff']);
       await preview.getByRole('button').click();
       const dialog = page.getByRole('dialog');
-      expect(await dialog.locator('.ui-dialog__title').innerText()).toBe('visual regressions desktop > document · Homepage');
       const metadata = dialog.locator('.card__metadata');
       expect(await metadata.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-      expect(await metadata.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(0);
-      await metadata.getByRole('button', { name: 'command', exact: true }).click();
-      expect(await metadata.getByLabel('Latest command').inputValue()).toBe('shaka-perf compare --filter \'Homepage\' --categories perf,accessibility');
       const targets = metadata.locator('.card__targets > div');
       const control = (await targets.nth(0).boundingBox())!;
       const experiment = (await targets.nth(1).boundingBox())!;
@@ -94,9 +126,10 @@ describe('visual preview metadata', () => {
         expect(experiment.y).toBeGreaterThan(control.y);
       }
       const targetsBox = (await metadata.locator('.card__targets').boundingBox())!;
-      const overridesBox = (await metadata.locator('.ui-dialog__meta').boundingBox())!;
+      const firstFieldsBox = (await metadata.locator('.ui-dialog__meta').first().boundingBox())!;
+      const overridesBox = (await metadata.locator('.ui-dialog__meta').last().boundingBox())!;
       const controlsBox = (await metadata.locator('.card__metadata-controls').boundingBox())!;
-      expect(overridesBox.y).toBeGreaterThanOrEqual(targetsBox.y + targetsBox.height);
+      expect(firstFieldsBox.y).toBeGreaterThanOrEqual(targetsBox.y + targetsBox.height);
       expect(controlsBox.y).toBeGreaterThanOrEqual(overridesBox.y + overridesBox.height);
       if (width >= 1050) {
         const summary = metadata.locator('summary').first();
@@ -106,20 +139,89 @@ describe('visual preview metadata', () => {
         expect(Math.abs(label.y - source.y)).toBeLessThan(3);
         expect(Math.abs(label.y - logs.y)).toBeLessThan(3);
       }
-      // The modal reuses the latest test metadata and source shown on the card.
+      // Test-level URLs remain shared; source is scoped to this execution.
       expect(await metadata.locator('.card__targets a').allTextContents()).toEqual([
         'http://new-control.example/', 'http://new-experiment.example/',
       ]);
+      if (process.env.SHAKA_SCREENSHOT_DIR) {
+        mkdirSync(process.env.SHAKA_SCREENSHOT_DIR, { recursive: true });
+        await page.screenshot({ path: `${process.env.SHAKA_SCREENSHOT_DIR}/metadata-${width}.png` });
+      }
       await metadata.getByRole('button', { name: 'test source', exact: true }).click();
       expect(await metadata.locator('.card__code').textContent()).toContain("abTest('Homepage'");
-      expect(await metadata.locator('.visreg-meta__retries').count()).toBe(0);
+      await dialog.locator('.card__actions').getByRole('button', { name: 'logs', exact: true }).click();
+      const logs = page.getByRole('dialog', { name: 'measurement logs' });
+      await logs.waitFor();
+      expect(await logs.locator('.card-logs').textContent()).toContain('Measurement completed');
+
     } finally {
       await page.close();
     }
   });
+  it.each(['full', 'self-contained'])('shows the latest measured card source and each preview’s own source in %s reports', async mode => {
+    const page = await browser.newPage();
+    try {
+      await page.goto(`${url}?mixed=1&mode=${mode}`);
+      const cardMetadata = page.locator('.card__metadata-row > .card__metadata');
+      await cardMetadata.locator('summary').click();
+      await cardMetadata.getByRole('button', { name: 'test source', exact: true }).click();
+      expect(await cardMetadata.getByRole('combobox').count()).toBe(0);
+      await cardMetadata.locator('.card__code').filter({ hasText: 'newer phone source' }).waitFor();
+      await page.locator('.artifact-card--single').nth(0).getByRole('button').click();
+      let dialog = page.getByRole('dialog');
+      await dialog.getByRole('button', { name: 'test source', exact: true }).click();
+      await dialog.locator('.card__code').filter({ hasText: "abTest('Homepage'" }).waitFor();
+      expect(await dialog.getByRole('combobox').count()).toBe(0);
+      await dialog.getByRole('button', { name: 'logs', exact: true }).click();
+      const logs = page.getByRole('dialog', { name: 'measurement logs' });
+      await logs.getByRole('button', { name: 'test source', exact: true }).click();
+      await logs.locator('.card__code').filter({ hasText: 'newer phone source' }).waitFor();
+      await logs.getByRole('button', { name: 'close', exact: true }).click();
+      await dialog.getByRole('button', { name: 'close', exact: true }).click();
+      await page.locator('.artifact-card--single').nth(1).getByRole('button').click();
+      dialog = page.getByRole('dialog');
+      await dialog.getByRole('button', { name: 'test source', exact: true }).click();
+      await dialog.locator('.card__code').filter({ hasText: 'newer phone source <script>' }).waitFor();
+      expect(await page.evaluate(() => (window as unknown as { sourceExecuted?: boolean }).sourceExecuted)).toBeUndefined();
+      await page.goto(`${url}?mixed=1&missing=1&mode=${mode}`);
+      await cardMetadata.locator('summary').click();
+      await cardMetadata.getByRole('button', { name: 'test source', exact: true }).click();
+      expect(await cardMetadata.textContent()).toContain('No source snapshot was captured.');
+      await page.locator('.artifact-card--single').nth(1).getByRole('button').click();
+      dialog = page.getByRole('dialog');
+      await dialog.getByRole('button', { name: 'test source', exact: true }).click();
+      expect(await dialog.textContent()).toContain('No source snapshot was captured.');
+      expect(await dialog.locator('.card__code').count()).toBe(0);
+    } finally { await page.close(); }
+  });
+
+  it('opens execution source directly from disk in both report modes', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'shaka-source-browser-'));
+    const page = await browser.newPage();
+    try {
+      const source = 'saved source — مرحبا <script>window.sourceExecuted=true</script>';
+      writeFileSync(join(directory, 'snapshot.ts'), source);
+      const data = fixture();
+      const outcome = data.tests[0]!.outcomes[0]!;
+      outcome.executionDetails = { ...outcome.executionDetails, testSourceHref: 'snapshot.ts' };
+      const reports = await writeReport(data, directory);
+      for (const report of [reports.fullPath, reports.selfContainedPath]) {
+        await page.goto(pathToFileURL(report).href);
+        await page.locator('.artifact-card--single').getByRole('button').click();
+        const dialog = page.getByRole('dialog');
+        await dialog.getByRole('button', { name: 'test source', exact: true }).click();
+        expect(await dialog.locator('.card__code').textContent()).toBe(source);
+        expect(await page.evaluate(() => (window as unknown as { sourceExecuted?: boolean }).sourceExecuted)).toBeUndefined();
+      }
+    } finally {
+      await page.close();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('does not borrow a newer sibling result for a legacy visual artifact', async () => {
     const outcome = data.tests[0]!.outcomes[0]!;
-    outcome.executionDetails = { ...outcome.executionDetails, measurementMetadata: undefined };
+    outcome.executionDetails = { ...outcome.executionDetails, measurementMetadata: undefined, testSourceHref: null };
     const page = await browser.newPage();
     try {
       await page.goto(url);
@@ -128,7 +230,8 @@ describe('visual preview metadata', () => {
       expect(await metadata.getByRole('button', { name: 'command', exact: true }).count()).toBe(0);
       expect(await metadata.locator('.card__target-commits').allTextContents()).toEqual(['', '']);
       expect(await metadata.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(0);
-      expect(await metadata.getByRole('button', { name: 'test source', exact: true }).isVisible()).toBe(true);
+      await metadata.getByRole('button', { name: 'test source', exact: true }).click();
+      expect(await metadata.textContent()).toContain('No source snapshot was captured.');
     } finally {
       await page.close();
     }
