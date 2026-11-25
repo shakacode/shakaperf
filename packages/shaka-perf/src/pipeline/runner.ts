@@ -578,7 +578,8 @@ async function runConfiguredPipelineWithSelection(
     // Aggregate caches (e.g. Istanbul) are rebuildable copies outside the
     // saved measurement. Remove obsolete inputs without deleting archived outcomes.
     for (const derived of pipeline.derivedResultsDirs ?? []) {
-      if (!executableStages.some(stage => stage.name === derived.stage)) continue;
+      const producer = executableStages.find(stage => stage.name === derived.stage);
+      if (!producer) continue;
       const cache = path.join(resultsRoot, derived.path);
       const wholeSuite = !runtime.viewportsFilter && !runtime.filter && !runtime.testPathPattern
         && !runtime.tests && !runtime.skipReport && runtime.burn == null;
@@ -587,8 +588,8 @@ async function runConfiguredPipelineWithSelection(
         continue;
       }
       for (const test of testsSelectedForMeasurement) {
-        const labels = runtime.viewportsFilter ?? applyPerTestConfigOverrides(runtime.config, test)
-          .shared.viewportDefinitions.map(viewport => viewport.label);
+        const labels = runtime.viewportsFilter ?? viewportsForTestAcrossStages(test, [producer], runtime.config)
+          .map(viewport => viewport.label);
         for (const label of labels) {
           for (const file of derived.unitFiles(unitIdForTest(test, label))) {
             fs.rmSync(path.join(cache, file), { force: true });

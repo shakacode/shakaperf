@@ -275,7 +275,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     } finally { failCleanup.mockRestore(); error.mockRestore(); }
   });
 
-  if (command === 'audit') it.each([false, true])('invalidates replaced coverage mirrors before a failed rerun (shard=%s)', async (skipReport) => {
+  if (command === 'audit') it.each([false, true])('invalidates only measured coverage mirrors (explicit viewport=%s)', async (explicitViewport) => {
     const built = buildAbTestsConfig(config as never);
     const actual = jest.requireActual<typeof import('../../audit/pipeline')>('../../audit/pipeline');
     const pipeline = actual.createAuditPipeline({
@@ -283,7 +283,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
       accessibility: { ...built.accessibility, playwrightOptions: built.shared.playwrightOptions },
       agentReadiness: { ...built.agentReadiness, playwrightOptions: built.shared.playwrightOptions },
     });
-    const test = tests[0]!;
+    const test = definition('Phone coverage', ['phone']);
     const rawCoverage = path.join(cwd, 'coverage.json');
     fs.writeFileSync(rawCoverage, JSON.stringify({ '/app.js': { s: { 0: 1 } } }));
     for (const label of ['desktop', 'phone']) {
@@ -298,7 +298,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     try {
       const result = await runPipeline(pipeline, {
         config: built, tests: [test], controlURL: built.shared.controlURL, experimentURL: built.shared.experimentURL,
-        categories: 'code_coverage', viewportsFilter: ['phone'], preserveOtherViewports: true, skipReport,
+        categories: 'code_coverage', ...(explicitViewport ? { viewportsFilter: ['phone'], preserveOtherViewports: true } : {}), skipReport: explicitViewport,
       });
       expect(result.hasFailures).toBe(true);
       expect(store().readOutcome(test, 'phone', 'code_coverage')?.kind).toBe('error');
