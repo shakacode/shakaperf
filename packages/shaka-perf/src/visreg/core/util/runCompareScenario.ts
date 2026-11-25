@@ -87,7 +87,7 @@ async function processCompareView (
   // back one outcome per selector for us to turn into a report entry.
   const resumedComparisons = runtime.comparisonCounts.size > 0;
   const outcomes = await runCompareAttempts(
-    { captureScreenshot, captureFailure: runtime.captureFailure, comparisonCounts: runtime.comparisonCounts },
+    { ...runtime, captureScreenshot },
     { browser, config, viewport, scenario, scenarioLabelSafe, pixelmatchThreshold },
   );
 

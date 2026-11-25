@@ -35,6 +35,7 @@ export type CaptureScreenshotFn = (
 /** Injected collaborators — defaulted to the real implementations; overridden in tests. */
 export interface CompareAttemptsDeps {
   comparisonCounts: Map<string, number>;
+  onAttempt?: (() => void) | undefined;
   captureScreenshot: CaptureScreenshotFn;
   createSide?: CreateSideFn;
   preparePage?: PreparePageFn;
@@ -243,6 +244,14 @@ export async function runCompareAttempts(
       await sleep(delay);
     }
 
+    // Count the round before either side can fail during setup or capture.
+    deps.onAttempt?.();
+    for (const run of runs) {
+      if (run.done) continue;
+      run.visualComparisonCount++;
+      deps.comparisonCounts.set(run.testPair.test, run.visualComparisonCount);
+    }
+
     const activeSides = new Set<ComparisonSide>();
     const commonSideParams = {
       browser,
@@ -282,8 +291,6 @@ export async function runCompareAttempts(
       run.experiment = run.pool.load('experiment');
 
       run.result = compareFrames(run.control, run.experiment);
-      run.visualComparisonCount++;
-      deps.comparisonCounts.set(run.testPair.test, run.visualComparisonCount);
       // A retry that added no frames is pixel-stable — retrying can't change it.
       const pixelStable = attempt > 0 &&
         run.control.length + run.experiment.length === framesBefore;

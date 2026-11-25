@@ -17,6 +17,7 @@ export type { PlaywrightPage, BrowserContext, Browser };
  */
 export interface VisregRunRuntime {
   comparisonCounts: Map<string, number>;
+  onAttempt?: (() => void) | undefined;
   captureFailure?: (
     err: unknown,
     page: PlaywrightPage,

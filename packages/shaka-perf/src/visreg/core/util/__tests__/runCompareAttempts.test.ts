@@ -190,7 +190,7 @@ it('resumes pending selectors after a worker failure without recapturing a match
     return png(GREEN);
   };
   const resumed = await run(deps, makeConfig(), selectors);
-  expect(resumed.map(row => [row.result.pass, row.visualComparisonCount])).toEqual([[true, 1], [true, 2]]);
+  expect(resumed.map(row => [row.result.pass, row.visualComparisonCount])).toEqual([[true, 1], [true, 3]]);
 });
 
 it('stops at the local retry limit and reports the closest pair when only one pool grows', async () => {
