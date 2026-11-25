@@ -85,7 +85,7 @@ export class ArtifactStore {
     );
   }
 
-  /** One immutable snapshot shared by every measuring stage at this viewport. */
+  /** Stages that use the same test source share a snapshot. A change to the source creates a new snapshot. */
   private writeTestSource(scope: ArtifactScope, source: string): ArtifactPath {
     const hash = createHash('sha256').update(source).digest('hex');
     const name = `test-source-${hash}.ts`;
@@ -107,6 +107,10 @@ export class ArtifactStore {
     );
   }
 
+  /**
+   * The runner resets the selected stage directories once per test and viewport, before the first stage starts.
+   * Retries reuse these directories so visreg can compare screenshots from earlier attempts in the same measurement.
+   */
   resetSelectedStageResults(
     test: AbTestDefinition,
     viewportLabel: string,
@@ -116,7 +120,7 @@ export class ArtifactStore {
     if (!stages.length) return null;
 
     const scope = this.scopeFor(test, viewportLabel);
-    // Invalidate every selected outcome before directory cleanup can fail partway through.
+    // Remove the selected outcomes first so a cleanup failure cannot leave an old success in the report.
     this.removeStageOutcomes(this.unitDirForViewport(test, viewportLabel), stages);
     this.resetStageDirectories(scope, stages);
 
@@ -145,6 +149,8 @@ export class ArtifactStore {
     remainingOutcomes: readonly Outcome[],
     currentSourceHref: ArtifactPath | null,
   ): void {
+    // An outcome from an earlier run can still link to an older snapshot.
+    // The current run also needs its snapshot before any stage saves an outcome.
     const retained = new Set(remainingOutcomes.map(outcome => outcome.executionDetails.testSourceHref));
     retained.add(currentSourceHref);
     for (const file of fs.readdirSync(scope.dir)) {
