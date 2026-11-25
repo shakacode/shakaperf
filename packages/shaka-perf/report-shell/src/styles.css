@@ -3158,7 +3158,6 @@ input {
 .card__metadata[open] > summary { padding-bottom: 3px; }
 .card__metadata-row { position: relative; }
 .card__metadata-row:has(> .card__actions) .card__metadata > summary { margin-right: 65px; padding-right: 0; }
-.card__metadata-row--dialog:has(> .card__actions) .card__metadata > summary { margin-right: 65px; }
 .card__actions { position: absolute; top: 9px; right: 20px; display: flex; align-items: baseline; gap: 14px; }
 .card__metadata--dialog > summary .card__metadata-provenance { flex: 1 1 100%; order: 1; }
 @container (min-width: 900px) {
