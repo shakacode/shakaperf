@@ -73,7 +73,6 @@ export function TestMetadataSection({
             text={executionDetails.command}
             label="Latest command"
             copyLabel="Copy command"
-            singleRow
           />
         </>
       ) : null,
@@ -153,6 +152,7 @@ export function TestMetadataSection({
             <div
               id={panelId}
               className="card__metadata-panel"
+              data-section={active?.id}
               hidden={!active}
               aria-labelledby={active ? `${panelId}-${active.id}` : undefined}
             >

@@ -7,15 +7,13 @@
 
 import { useRef, useState } from 'react';
 
-export function CopyableText({ text, label, copyLabel, prefix, singleRow = false }: {
+export function CopyableText({ text, label, copyLabel, prefix }: {
   text: string;
   label: string;
   copyLabel: string;
   prefix?: string;
-  singleRow?: boolean;
 }) {
   const [status, setStatus] = useState('');
-  const field = useRef<HTMLTextAreaElement>(null);
   const pre = useRef<HTMLPreElement>(null);
   const code = useRef<HTMLElement>(null);
 
@@ -24,10 +22,7 @@ export function CopyableText({ text, label, copyLabel, prefix, singleRow = false
       await navigator.clipboard.writeText(text);
       setStatus('Copied');
     } catch {
-      if (field.current) {
-        field.current.focus();
-        field.current.select();
-      } else if (code.current) {
+      if (code.current) {
         pre.current?.focus();
         const range = document.createRange();
         range.selectNodeContents(code.current);
@@ -41,11 +36,7 @@ export function CopyableText({ text, label, copyLabel, prefix, singleRow = false
 
   return (
     <div className="copyable-text">
-      {singleRow ? (
-        <textarea aria-label={label} ref={field} value={text} readOnly rows={1} />
-      ) : (
-        <pre className="card__code" aria-label={label} ref={pre} tabIndex={0}>{prefix}<code ref={code}>{text}</code></pre>
-      )}
+      <pre className="card__code" aria-label={label} ref={pre} tabIndex={0}>{prefix}<code ref={code}>{text}</code></pre>
       <button type="button" onClick={copy} aria-label={copyLabel} title={copyLabel}>
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
           <rect x="8" y="8" width="12" height="13" rx="2" />

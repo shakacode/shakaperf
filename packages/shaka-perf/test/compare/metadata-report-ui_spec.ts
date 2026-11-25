@@ -200,7 +200,9 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     const metadata = page.locator('[data-report-test-id="homepage"] .card__metadata');
     await metadata.locator('summary').first().click();
     await metadata.getByRole('button', { name: 'command', exact: true }).click();
-    expect(await metadata.getByLabel('Latest command').inputValue()).toBe(command);
+    const field = metadata.getByLabel('Latest command');
+    expect(await field.textContent()).toBe(command);
+    expect(await field.evaluate(el => getComputedStyle(el).resize === 'none' && el.clientHeight >= el.scrollHeight)).toBe(true);
     await metadata.getByRole('button', { name: 'Copy command' }).click();
     await page.waitForFunction(() => document.body.dataset.copied !== undefined);
     expect(await page.locator('body').getAttribute('data-copied')).toBe(command);
@@ -251,8 +253,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     await metadata.getByRole('button', { name: 'command', exact: true }).click();
     await metadata.getByRole('button', { name: 'Copy command' }).click();
     const field = metadata.getByLabel('Latest command');
-    await page.waitForFunction(() => document.activeElement?.tagName === 'TEXTAREA');
-    expect(await field.evaluate((el: HTMLTextAreaElement) => el.value.slice(el.selectionStart, el.selectionEnd))).toBe(await field.inputValue());
+    expect(await field.evaluate(el => document.activeElement === el && window.getSelection()?.toString() === el.textContent)).toBe(true);
     expect(await metadata.getByRole('status').innerText()).toContain('copy manually');
   });
 });
