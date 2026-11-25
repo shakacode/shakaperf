@@ -121,7 +121,7 @@ describe('artifact modal measurement context', () => {
       } else {
         expect(await metadata.textContent()).toContain('Selected artifact commit');
         await command.click();
-        expect(await metadata.getByLabel('Latest command').inputValue()).toBe('shaka-perf selected-artifact');
+        expect(await metadata.getByLabel('Latest command').textContent()).toBe('shaka-perf selected-artifact');
       }
       if (example.opener === '.a11y-thumb-button') {
         // Preserve the measured URL independently of framework target URLs.

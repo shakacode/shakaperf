@@ -6,7 +6,7 @@
  */
 
 import type { ReportMeta, TestResult } from '../types';
-import { MeasurementCommand } from '../../../src/report-ui/MeasurementCommand';
+import { CopyableText } from '../../../src/report-ui/CopyableText';
 
 export function MissingArtifactsToggle({ count, expanded, onToggle, controlsId }: {
   count: number;
@@ -58,7 +58,7 @@ export function MissingArtifactsDetails({ meta, tests, expanded, id }: {
           {group.map((test) => <li key={test.id}>{test.name}</li>)}
         </ul>
       </div>)}
-      <MeasurementCommand command={command} autoSize label="Recovery command" />
+      <CopyableText text={command} copyLabel="Copy command" label="Recovery command" />
     </> : null}
   </section>;
 }

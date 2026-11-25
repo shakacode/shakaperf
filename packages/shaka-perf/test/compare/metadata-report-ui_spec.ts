@@ -76,7 +76,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     expect(await card.getByLabel('URLs', { exact: true }).isVisible()).toBe(true);
     expect(await metadata.getByText('1e04e038', { exact: true }).count()).toBe(pipeline === 'compare' ? 2 : 1);
     expect(await metadata.locator('.card__targets dt').allTextContents()).toEqual(pipeline === 'compare' ? ['control', 'experiment'] : ['url']);
-    const source = metadata.getByRole('button', { name: 'test source' });
+    const source = metadata.getByRole('button', { name: 'test source', exact: true });
     expect(await source.getAttribute('aria-expanded')).toBe('false');
     await source.click();
     await metadata.getByText("abTest('Homepage'", { exact: false }).waitFor({ state: 'visible' });
@@ -158,7 +158,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     const metadata = card.locator('.card__metadata');
     await tags.locator('summary').click();
     await metadata.locator('summary').first().click();
-    await metadata.getByRole('button', { name: 'test source' }).click();
+    await metadata.getByRole('button', { name: 'test source', exact: true }).click();
     const expandedHeight = (await card.boundingBox())!.height;
     await title.click();
     expect(await title.getAttribute('aria-expanded')).toBe('false');
@@ -174,7 +174,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     expect(await title.getAttribute('aria-expanded')).toBe('true');
     expect(await tags.getAttribute('open')).toBeNull();
     expect(await metadata.getAttribute('open')).not.toBeNull();
-    expect(await metadata.getByRole('button', { name: 'test source' }).getAttribute('aria-expanded')).toBe('true');
+    expect(await metadata.getByRole('button', { name: 'test source', exact: true }).getAttribute('aria-expanded')).toBe('true');
     expect(await metadata.locator('.card__code').isVisible()).toBe(true);
     await title.press('Enter');
     expect(await title.getAttribute('aria-expanded')).toBe('false');
@@ -200,7 +200,9 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     const metadata = page.locator('[data-report-test-id="homepage"] .card__metadata');
     await metadata.locator('summary').first().click();
     await metadata.getByRole('button', { name: 'command', exact: true }).click();
-    expect(await metadata.getByLabel('Latest command').inputValue()).toBe(command);
+    const field = metadata.getByLabel('Latest command');
+    expect(await field.textContent()).toBe(command);
+    expect(await field.evaluate(el => getComputedStyle(el).resize === 'none' && el.clientHeight >= el.scrollHeight)).toBe(true);
     await metadata.getByRole('button', { name: 'Copy command' }).click();
     await page.waitForFunction(() => document.body.dataset.copied !== undefined);
     expect(await page.locator('body').getAttribute('data-copied')).toBe(command);
@@ -209,6 +211,37 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     expect(await legacy.getByText('Latest command', { exact: true }).count()).toBe(0);
     expect(await legacy.getByText('Latest command unavailable').count()).toBe(0);
     expect(await legacy.getByLabel('Latest command').count()).toBe(0);
+  });
+
+  it('copies the source and each individual troubleshoot command and artifact path', async () => {
+    const paths = [
+      { viewport: 'desktop', path: 'results/desktop run' },
+      { viewport: 'phone', path: 'results/phone run' },
+    ];
+    data.tests[0]!.viewportArtifactPaths = paths;
+    await page.reload();
+    await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', {
+      configurable: true, value: { writeText: async (value: string) => { document.body.dataset.copied = value; } },
+    }));
+    const metadata = page.locator('[data-report-test-id="homepage"] .card__metadata');
+    await metadata.locator('summary').first().click();
+    const panel = metadata.locator('.card__metadata-panel');
+    await metadata.getByRole('button', { name: 'test source', exact: true }).click();
+    await panel.getByRole('button', { name: 'Copy test source' }).click();
+    expect(await page.locator('body').getAttribute('data-copied')).toBe(await panel.locator('code').textContent());
+
+    await metadata.getByRole('button', { name: 'troubleshoot', exact: true }).click();
+    const commands = await panel.locator('code').allTextContents();
+    expect(commands).toHaveLength(2);
+    for (const [index, command] of commands.entries()) {
+      await panel.getByRole('button').nth(index).click();
+      expect(await page.locator('body').getAttribute('data-copied')).toBe(command);
+    }
+    await metadata.getByRole('button', { name: 'artifact paths', exact: true }).click();
+    for (const { viewport, path } of paths) {
+      await panel.getByRole('button', { name: `Copy ${viewport} artifact path` }).click();
+      expect(await page.locator('body').getAttribute('data-copied')).toBe(path);
+    }
   });
 
   it('selects the full command when clipboard access is unavailable', async () => {
@@ -220,8 +253,7 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     await metadata.getByRole('button', { name: 'command', exact: true }).click();
     await metadata.getByRole('button', { name: 'Copy command' }).click();
     const field = metadata.getByLabel('Latest command');
-    await page.waitForFunction(() => document.activeElement?.tagName === 'TEXTAREA');
-    expect(await field.evaluate((el: HTMLTextAreaElement) => el.value.slice(el.selectionStart, el.selectionEnd))).toBe(await field.inputValue());
+    expect(await field.evaluate(el => document.activeElement === el && window.getSelection()?.toString() === el.textContent)).toBe(true);
     expect(await metadata.getByRole('status').innerText()).toContain('copy manually');
   });
 });

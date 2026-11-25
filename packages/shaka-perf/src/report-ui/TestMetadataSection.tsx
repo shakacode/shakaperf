@@ -9,7 +9,7 @@ import { useId, useState, type ReactNode } from 'react';
 import type { ExecutionDetails } from '../pipeline/outcome';
 import { TargetLink } from './TargetLink';
 import { SourceText } from './SourceText';
-import { MeasurementCommand } from './MeasurementCommand';
+import { CopyableText } from './CopyableText';
 import { useTestCard } from './TestCardProvider';
 
 // Full-word units so "12m" isn't mistaken for "12 months" — especially
@@ -68,10 +68,11 @@ export function TestMetadataSection({
       content: executionDetails?.measurementMetadata ? (
         <>
           <div className="run-details__label">Latest command</div>
-          <MeasurementCommand
+          <CopyableText
             key={executionDetails.command}
-            command={executionDetails.command}
-            compact
+            text={executionDetails.command}
+            label="Latest command"
+            copyLabel="Copy command"
           />
         </>
       ) : null,
@@ -84,20 +85,18 @@ export function TestMetadataSection({
     {
       id: 'troubleshoot',
       label: 'troubleshoot',
-      content: troubleshoot.length ? (
-        <pre className="card__code">{troubleshoot.join('\n')}</pre>
-      ) : null,
+      content: troubleshoot.length ? troubleshoot.map((command, index) => (
+        <CopyableText key={command} text={command} label="Troubleshoot command"
+          copyLabel={`Copy troubleshoot command ${index + 1}`} />
+      )) : null,
     },
     {
       id: 'artifacts',
       label: 'artifact paths',
-      content: test.viewportArtifactPaths?.length ? (
-        <pre className="card__code">
-          {test.viewportArtifactPaths
-            .map(({ viewport, path }) => `${viewport}: ${path}`)
-            .join('\n')}
-        </pre>
-      ) : null,
+      content: test.viewportArtifactPaths?.length ? test.viewportArtifactPaths.map(({ viewport, path }) => (
+        <CopyableText key={viewport} text={path} prefix={`${viewport}: `} label={`${viewport} artifact path`}
+          copyLabel={`Copy ${viewport} artifact path`} />
+      )) : null,
     },
   ].filter((section) => section.content !== null);
   const active = sections.find((section) => section.id === activeSection);
@@ -153,6 +152,7 @@ export function TestMetadataSection({
             <div
               id={panelId}
               className="card__metadata-panel"
+              data-section={active?.id}
               hidden={!active}
               aria-labelledby={active ? `${panelId}-${active.id}` : undefined}
             >

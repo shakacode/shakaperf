@@ -184,7 +184,7 @@ describe('visual preview metadata', () => {
       const cardMetadata = page.locator('.card__metadata-row > .card__metadata');
       await cardMetadata.locator('summary').click();
       await cardMetadata.getByRole('button', { name: 'command', exact: true }).click();
-      expect(await cardMetadata.getByLabel('Latest command').inputValue()).toBe('shaka-perf compare --viewport phone');
+      expect(await cardMetadata.getByLabel('Latest command').textContent()).toBe('shaka-perf compare --viewport phone');
       await cardMetadata.getByRole('button', { name: 'test source', exact: true }).click();
       expect(await cardMetadata.getByRole('combobox').count()).toBe(0);
       await cardMetadata.locator('.card__code').filter({ hasText: 'newer phone source' }).waitFor();
@@ -198,7 +198,7 @@ describe('visual preview metadata', () => {
       await page.getByRole('button', { name: 'logs', exact: true }).click();
       const logs = page.getByRole('dialog', { name: 'measurement logs' });
       await logs.getByRole('button', { name: 'command', exact: true }).click();
-      expect(await logs.getByLabel('Latest command').inputValue()).toBe('shaka-perf compare --viewport phone');
+      expect(await logs.getByLabel('Latest command').textContent()).toBe('shaka-perf compare --viewport phone');
       await logs.getByRole('button', { name: 'test source', exact: true }).click();
       await logs.locator('.card__code').filter({ hasText: 'newer phone source' }).waitFor();
       await logs.getByRole('button', { name: 'close', exact: true }).click();
@@ -322,7 +322,7 @@ describe('visual preview metadata', () => {
       await dialog.getByRole('slider', { name: 'time' }).waitFor();
       expect(await dialog.getByRole('button', { name: 'logs', exact: true }).count()).toBe(0);
       await dialog.getByRole('button', { name: 'command', exact: true }).click();
-      expect(await dialog.getByLabel('Latest command').inputValue()).toContain('--categories perf,accessibility');
+      expect(await dialog.getByLabel('Latest command').textContent()).toContain('--categories perf,accessibility');
       expect(await dialog.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(0);
     } finally {
       await page.close();
@@ -352,7 +352,7 @@ describe('visual preview metadata', () => {
       expect(await panel.locator('.card__code').textContent()).toContain('phone');
       expect(await panel.locator('.card__code').textContent()).not.toContain('desktop');
       await panel.getByRole('button', { name: 'command', exact: true }).click();
-      expect(await panel.getByRole('textbox').inputValue()).toBe(phone.executionDetails.command);
+      expect(await panel.getByLabel('Latest command').textContent()).toBe(phone.executionDetails.command);
       await panel.getByRole('button', { name: 'test source' }).click();
       await panel.locator('.card__code').filter({ hasText: 'older phone source' }).waitFor();
     } finally {
@@ -394,7 +394,7 @@ describe('visual preview metadata', () => {
       const metadata = dialog.locator('.card__metadata');
       expect(await metadata.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(0);
       await metadata.getByRole('button', { name: 'command', exact: true }).click();
-      expect(await metadata.getByLabel('Latest command').inputValue()).toContain('--categories perf,accessibility');
+      expect(await metadata.getByLabel('Latest command').textContent()).toContain('--categories perf,accessibility');
     } finally {
       await page.close();
     }
@@ -411,7 +411,7 @@ describe('visual preview metadata', () => {
       expect(await metadata.getByText('Unrelated newer perf commit', { exact: true }).count()).toBe(2);
       expect(await metadata.getByText('1e04e038', { exact: true }).count()).toBe(0);
       await metadata.getByRole('button', { name: 'command', exact: true }).click();
-      expect(await metadata.getByLabel('Latest command').inputValue()).toBe('shaka-perf compare --categories perf --filter Homepage');
+      expect(await metadata.getByLabel('Latest command').textContent()).toBe('shaka-perf compare --categories perf --filter Homepage');
     } finally {
       await page.close();
     }
