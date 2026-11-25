@@ -28,11 +28,7 @@ import type { AccessibilityResult, AccessibilityScan } from './types';
 
 export class AccessibilityStage implements Stage<AccessibilityResult> {
   artifactsToClear() {
-    return [
-      'accessibility-report.json',
-      'accessibility-screenshot.png',
-      'accessibility-failure-screenshot.png',
-    ];
+    return [this.name];
   }
 
   readonly measuresApplication = true;

@@ -18,12 +18,29 @@ import { toPosixRelative } from './path-utils';
 declare const artifactPathBrand: unique symbol;
 export type ArtifactPath = string & { readonly [artifactPathBrand]: true };
 
+function localArtifactPath(dir: string, name: string): string {
+  if (!name || name === '.' || path.isAbsolute(name) || name.includes('..') || name.includes('/') || name.includes('\\')) {
+    throw new Error(`artifact name must be a local filename: ${name}`);
+  }
+  return path.join(dir, name);
+}
+
+/** Legacy measurements stored the producer's files directly under artifacts/. */
+export function savedArtifactDirectory(root: string, stage: StageName): string {
+  const dir = localArtifactPath(root, stage);
+  return fs.existsSync(dir) ? dir : root;
+}
+
 export class ArtifactScope {
   constructor(readonly dir: string, private readonly reportRoot: string) {}
 
+  stageDirectory(stage: StageName): ArtifactScope {
+    return new ArtifactScope(localArtifactPath(this.dir, stage), this.reportRoot);
+  }
+
   async writeFile(name: string, bytes: string | Buffer): Promise<ArtifactPath> {
     fs.mkdirSync(this.dir, { recursive: true });
-    await fs.promises.writeFile(this.resolveSafeName(name), bytes);
+    await fs.promises.writeFile(localArtifactPath(this.dir, name), bytes);
     return this.pathFor(name);
   }
 
@@ -36,13 +53,6 @@ export class ArtifactScope {
       this.reportRoot,
       this.resolveScopedPath(name),
     ) as ArtifactPath;
-  }
-
-  private resolveSafeName(name: string): string {
-    if (path.isAbsolute(name) || name.includes('..') || name.includes('/') || name.includes('\\')) {
-      throw new Error(`artifact name must be a local filename: ${name}`);
-    }
-    return path.join(this.dir, name);
   }
 
   private resolveScopedPath(name: string): string {
@@ -80,6 +90,11 @@ export class ArtifactStore {
       this.artifactsDirForViewport(test, viewportLabel),
       this.resultsRoot,
     );
+  }
+
+  savedStageScope(test: AbTestDefinition, label: string, stage: StageName): ArtifactScope {
+    const shared = this.scopeFor(test, label);
+    return new ArtifactScope(savedArtifactDirectory(shared.dir, stage), this.resultsRoot);
   }
 
   /** One immutable snapshot shared by every measuring stage at this viewport. */

@@ -672,7 +672,7 @@ export function writeMachineReport(
         summary: machineSummaryForOutcome(stagesByName, outcome, {
           test,
           viewport: outcome.executionDetails.viewport,
-          artifacts: store.scopeFor(test, viewport.label),
+          artifacts: store.savedStageScope(test, viewport.label, outcome.stage),
           logger: new ReportSummaryLogger(),
           runtime,
           controlURL: resolveUrl(

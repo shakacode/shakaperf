@@ -10,7 +10,7 @@ import * as path from 'node:path';
 
 /**
  * The raw istanbul map, under the name the `shaka-perf-coverage` skill's
- * `view-coverage.js` reads (`<results>/<unit>/artifacts/coverage.json`).
+ * `view-coverage.js` reads (`<results>/<unit>/artifacts/code_coverage/coverage.json`).
  */
 export const COVERAGE_FILENAME = 'coverage.json';
 

@@ -1101,11 +1101,13 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   const [raceCancellation] = cancellableRace();
   const recorder = new MeasurementRecorder();
   let measurementStart: MeasurementMetadata | undefined;
+  const artifacts = store.scopeFor(unit.test, unit.viewport.label).stageDirectory(stage.name);
   const ctx: TestContext = {
     recordMeasurementOptions: (options) => recorder.recordOptions(options),
     test: unit.test,
     viewport: unit.viewport,
-    artifacts: store.scopeFor(unit.test, unit.viewport.label),
+    artifacts,
+    priorArtifacts: producer => store.savedStageScope(unit.test, unit.viewport.label, producer),
     logger,
     runtime,
     controlURL: resolveUrl(

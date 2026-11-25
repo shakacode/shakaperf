@@ -62,12 +62,7 @@ export interface CodeCoverageResult {
  */
 export class CodeCoverageStage implements Stage<CodeCoverageResult> {
   artifactsToClear() {
-    return [
-      'coverage.json',
-      'coverage-page.png',
-      'visibility-map.txt',
-      'code-coverage-failure-screenshot.png',
-    ];
+    return [this.name];
   }
 
   readonly measuresApplication = true;

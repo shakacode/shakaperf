@@ -5,7 +5,6 @@
  * License in LICENSE.md.
  */
 
-import { screenshotPoolPaths } from '../../visreg/core/util/screenshotPoolPaths';
 import { createElement } from 'react';
 import type { VisregConfig } from '../../config';
 import {
@@ -62,10 +61,7 @@ export interface VisregStageConfig extends Omit<VisregConfig, 'viewports'> {
 export function createVisregStage(config: VisregStageConfig): Stage<VisregResult> {
   return {
     measuresApplication: true,
-    artifactsToClear: () => [
-      ...Object.values(screenshotPoolPaths('')),
-      'control-visreg-failure-screenshot.png', 'experiment-visreg-failure-screenshot.png',
-    ],
+    artifactsToClear: () => ['visreg'],
     name: 'visreg',
     label: 'Visual Diff',
     category: 'visreg',
