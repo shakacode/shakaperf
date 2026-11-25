@@ -1094,7 +1094,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     test: unit.test,
     viewport: unit.viewport,
     artifacts,
-    priorArtifacts: producer => unitArtifacts.stageDirectory(producer),
+    priorStageArtifactScope: producer => unitArtifacts.stageDirectory(producer),
     logger,
     runtime,
     controlURL: resolveUrl(

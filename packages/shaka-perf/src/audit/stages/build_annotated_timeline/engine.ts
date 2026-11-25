@@ -52,7 +52,7 @@ export async function runBuildAnnotatedTimelineStage(
   limitVideoFramesCount: number,
 ): Promise<BuildAnnotatedTimelineResult> {
   const artifactsDir = ctx.artifacts.dir;
-  const auditArtifacts = ctx.priorArtifacts(stageIds.audit);
+  const auditArtifacts = ctx.priorStageArtifactScope(stageIds.audit);
   const profilePath = path.join(auditArtifacts.dir, 'experiment_performance_profile.json');
   if (!fs.existsSync(profilePath)) {
     console.log(chalk.dim(`annotated-timeline: no performance profile at ${profilePath}; reading cached artifact`));

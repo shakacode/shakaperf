@@ -97,7 +97,7 @@ export interface StageRenderContext {
 }
 
 export interface TestContext extends StageRenderContext {
-  priorArtifacts(stage: StageName): ArtifactScope;
+  priorStageArtifactScope(stage: StageName): ArtifactScope;
   recordMeasurementOptions(options: MeasurementOptions): void;
   readonly testAndViewportId: string;
   /**
