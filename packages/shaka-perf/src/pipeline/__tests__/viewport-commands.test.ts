@@ -309,7 +309,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     } finally { failure.mockRestore(); error.mockRestore(); }
   });
 
-  if (command === 'audit') it.each([false, true])('preserves unselected coverage when a test narrows its viewports (registry replaced=%s)', async (replaceRegistry) => {
+  if (command === 'audit') it.each([false, true])('prunes obsolete selected coverage mirrors while retaining the saved measurement (registry replaced=%s)', async (replaceRegistry) => {
     const built = buildAbTestsConfig(config as never);
     const narrowed = definition('Narrowed', ['desktop']);
     if (replaceRegistry) narrowed.config = { shared: {
@@ -345,7 +345,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
       });
       expect(store().readOutcome(narrowed, 'phone', 'code_coverage')?.kind).toBe('ok');
       for (const test of [narrowed, active]) {
-        expect(fs.existsSync(path.join(mirrors, `${unitIdForTest(test, 'phone')}.json`))).toBe(test === narrowed);
+        expect(fs.existsSync(path.join(mirrors, `${unitIdForTest(test, 'phone')}.json`))).toBe(false);
       }
       for (const entry of desktops) {
         expect(fs.readFileSync(entry.file, 'utf8')).toBe(entry.bytes);
