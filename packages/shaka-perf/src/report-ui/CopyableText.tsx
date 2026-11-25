@@ -41,17 +41,17 @@ export function CopyableText({ text, label, copyLabel, prefix, singleRow = false
 
   return (
     <div className="copyable-text">
+      {singleRow ? (
+        <textarea aria-label={label} ref={field} value={text} readOnly rows={1} />
+      ) : (
+        <pre className="card__code" aria-label={label} ref={pre} tabIndex={0}>{prefix}<code ref={code}>{text}</code></pre>
+      )}
       <button type="button" onClick={copy} aria-label={copyLabel} title={copyLabel}>
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
           <rect x="8" y="8" width="12" height="13" rx="2" />
           <path d="M16 5V4a1 1 0 0 0-1-1H5a2 2 0 0 0-2 2v10a1 1 0 0 0 1 1h1" />
         </svg>
       </button>
-      {singleRow ? (
-        <textarea aria-label={label} ref={field} value={text} readOnly rows={1} />
-      ) : (
-        <pre className="card__code" aria-label={label} ref={pre} tabIndex={0}>{prefix}<code ref={code}>{text}</code></pre>
-      )}
       <span className="run-details__copy-status" role="status">{status}</span>
     </div>
   );

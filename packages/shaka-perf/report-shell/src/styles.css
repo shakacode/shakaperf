@@ -3190,7 +3190,7 @@ input {
 }
 .copyable-text {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
   gap: 0 4px;
   padding: 3px;
@@ -3225,7 +3225,7 @@ input {
 }
 .copyable-text textarea { resize: vertical; }
 .card__metadata .copyable-text pre { max-height: 220px; overflow: auto; }
-.run-details__copy-status { grid-column: 2; font-size: 10px; color: var(--fg-muted); }
+.run-details__copy-status { grid-column: 1 / -1; font-size: 10px; color: var(--fg-muted); }
 .run-details__copy-status:empty { display: none; }
 
 /* Shared rows keep hidden categories compact and always restorable. */
