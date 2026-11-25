@@ -118,6 +118,7 @@ function PerfBody({
               variant="preview"
               href={perf.timelineHref}
               label="timeline"
+              title={`${viewportLabel} timeline`}
             >
               {timelinePreview}
             </DetailedArtifactDialog>
@@ -207,14 +208,20 @@ function ArtifactLinks({ entry }: { entry: StageRenderEntry<PerfArtifact> }) {
           <DetailedArtifactDialog
             href={perf.framesHref}
             label="play frames"
-            title="frames side by side"
+            title={`${entry.executionDetails.viewport.label} frames side by side`}
             dialogVariant="wide"
             executionDetails={entry.executionDetails}
             body={<FramePlayer href={perf.framesHref} />}
           />
         ) : null}
         {links.map(([label, href]) => (
-          <DetailedArtifactDialog executionDetails={entry.executionDetails} key={`${label}-${href}`} href={href} label={label}>
+          <DetailedArtifactDialog
+            executionDetails={entry.executionDetails}
+            key={`${label}-${href}`}
+            href={href}
+            label={label}
+            title={`${entry.executionDetails.viewport.label} ${label}`}
+          >
             {label}
           </DetailedArtifactDialog>
         ))}

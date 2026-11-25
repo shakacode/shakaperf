@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import type { PerformanceEngineResult } from '../../../stage/performance-metadata';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -93,7 +94,7 @@ export async function runAuditStage(
   ctx: TestContext,
   workerPool: WorkerPool,
   config: AuditStageConfig,
-): Promise<AuditResult> {
+): Promise<PerformanceEngineResult<AuditResult>> {
   const artifactsDir = ctx.artifacts.dir;
   fs.mkdirSync(artifactsDir, { recursive: true });
 
@@ -140,10 +141,11 @@ export async function runAuditStage(
   });
   const numberOfMeasurements = 1;
   ctx.recordMeasurementOptions({ numberOfMeasurements });
+  const benchmarks = [benchmark];
   let sampleGroups;
   try {
     sampleGroups = await measureTest(
-      [benchmark],
+      benchmarks,
       numberOfMeasurements,
       pool,
       { testKey: `${ctx.testAndViewportId}:audit` },
@@ -185,11 +187,15 @@ export async function runAuditStage(
 
   const metrics = sample.phases.map(auditMetricForPhase);
   printAuditLevels(ctx, metrics);
-  return readAuditArtifact({
+  const measurement = await readAuditArtifact({
     artifacts: ctx.artifacts,
     metrics,
     title: `${ctx.test.name} · ${ctx.viewport.label}`,
   });
+  return {
+    measurement,
+    settings: { numberOfMeasurements, measuredSideCount: benchmarks.length, throttling: sample.measurementThrottling },
+  };
 }
 
 function auditMetricForPhase(phase: PhaseSample): AuditMetric {
