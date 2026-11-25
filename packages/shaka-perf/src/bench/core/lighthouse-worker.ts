@@ -347,18 +347,17 @@ class LighthouseWorkerSampler {
     // taken before teardown. Returns the filename written, or null. `livePage`
     // may be null if lighthouse rejected before waitForPage; fall back to
     // whatever page the context still has.
-    const failureFilename = options.failureScreenshot ?? FAILURE_SCREENSHOT_FILENAME;
     const captureFailureScreenshot = async (): Promise<string | null> => {
       const resultsFolder = options.resultsFolder;
       const page = livePage ?? browser.contexts()[0]?.pages()[0] ?? null;
       if (!resultsFolder || !page) return null;
       try {
         await page.screenshot({
-          path: join(resultsFolder, failureFilename),
+          path: join(resultsFolder, FAILURE_SCREENSHOT_FILENAME),
           fullPage: true,
           timeout: 3000,
         });
-        return failureFilename;
+        return FAILURE_SCREENSHOT_FILENAME;
       } catch (err) {
         console.warn(
           `[shaka-perf failure-screenshot] capture failed for ${sampleLabel}: ${(err as Error).message}`,

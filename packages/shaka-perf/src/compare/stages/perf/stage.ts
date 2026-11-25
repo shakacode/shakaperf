@@ -70,10 +70,6 @@ export class PerfEngineStage<M> implements Stage<M> {
     return [this.name];
   }
 
-  private get failureScreenshot() {
-    return `${this.name}-failure-screenshot.png`;
-  }
-
   applies(
     test: AbTestDefinition,
     viewport: Viewport,
@@ -88,7 +84,7 @@ export class PerfEngineStage<M> implements Stage<M> {
   ): Promise<StageRunResult<M>> {
     const runImpl = './engine';
     const { runPerfEngineStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    const { measurement, settings } = await runPerfEngineStage(ctx, pool, this.options.config, this.failureScreenshot);
+    const { measurement, settings } = await runPerfEngineStage(ctx, pool, this.options.config);
     return { measurement: measurement as M, metadata: performanceMetadataFields(settings) };
   }
 
