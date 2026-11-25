@@ -56,7 +56,7 @@ export class ScreenshotPool {
     const prefix = this.key + FRAME_SEP;
     let names: string[];
     try {
-      names = fs.readdirSync(dir).filter((n) => n.startsWith(prefix) && n.endsWith('.png')).sort();
+      names = fs.readdirSync(dir).filter((n) => n.startsWith(prefix) && /^[a-f0-9]{40}\.png$/.test(n.slice(prefix.length))).sort();
     } catch {
       return [];
     }

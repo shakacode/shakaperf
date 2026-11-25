@@ -575,6 +575,27 @@ async function runConfiguredPipelineWithSelection(
   };
 
   if (!runtime.reportOnly) {
+    // Aggregate caches (e.g. Istanbul) are rebuildable copies outside the
+    // saved measurement. Remove obsolete inputs without deleting archived outcomes.
+    for (const derived of pipeline.derivedResultsDirs ?? []) {
+      if (!executableStages.some(stage => stage.name === derived.stage)) continue;
+      const cache = path.join(resultsRoot, derived.path);
+      const wholeSuite = !runtime.viewportsFilter && !runtime.filter && !runtime.testPathPattern
+        && !runtime.tests && !runtime.skipReport && runtime.burn == null;
+      if (wholeSuite) {
+        fs.rmSync(cache, { recursive: true, force: true });
+        continue;
+      }
+      for (const test of testsSelectedForMeasurement) {
+        const labels = runtime.viewportsFilter ?? applyPerTestConfigOverrides(runtime.config, test)
+          .shared.viewportDefinitions.map(viewport => viewport.label);
+        for (const label of labels) {
+          for (const file of derived.unitFiles(unitIdForTest(test, label))) {
+            fs.rmSync(path.join(cache, file), { force: true });
+          }
+        }
+      }
+    }
     for (const unit of units) {
       const { test, viewport } = unit;
       const selected = executableStages.filter(stage => testDeclaresStageCategory(test, stage)
@@ -595,13 +616,6 @@ async function runConfiguredPipelineWithSelection(
         if (/^test-source-[a-f0-9]{64}\.ts$/.test(file) && !retainedSources.has(scope.pathFor(file))) paths.push(file);
       }
       store.clearArtifacts(test, viewport.label, paths);
-      for (const derived of pipeline.derivedResultsDirs ?? []) {
-        if (!selected.some(stage => stage.name === derived.stage)) continue;
-        for (const file of derived.unitFiles(unitIdForTest(test, viewport.label))) {
-          fs.rmSync(path.join(resultsRoot, derived.path, file), { force: true });
-        }
-      }
-
     }
   }
   let invocation: RunInvocation | undefined;
