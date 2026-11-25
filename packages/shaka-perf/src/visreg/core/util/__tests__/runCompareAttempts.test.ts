@@ -114,6 +114,7 @@ function makeDeps(produce: Produce, consoleBySide: ConsoleBySide = {}) {
   });
 
   const deps: CompareAttemptsDeps = {
+    comparisonCounts: new Map(),
     captureScreenshot,
     createSide,
     preparePage,
@@ -176,7 +177,6 @@ it('keeps a clean selector at one attempt while another selector retries', async
 
 it('resumes pending selectors after a worker failure without recapturing a matched selector', async () => {
   const { deps } = makeDeps(() => png(BLUE));
-  deps.comparisonCounts = new Map();
   let changedCaptures = 0;
   deps.captureScreenshot = async (_page, selector) => {
     if (selector === '.clean') return png(GREEN);

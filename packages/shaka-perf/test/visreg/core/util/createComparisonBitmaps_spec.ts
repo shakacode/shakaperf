@@ -128,7 +128,7 @@ describe('createComparisonBitmaps', function () {
 
   it('should pass compare config options to scenarios', async function () {
     const createComparisonBitmaps = createModule();
-    await createComparisonBitmaps(mockConfig);
+    await createComparisonBitmaps(mockConfig, { comparisonCounts: new Map() });
 
     assert(capturedConfig, 'Should have captured config');
     assert.strictEqual(capturedConfig.compareRetries, 3, 'Should pass compareRetries');
@@ -151,7 +151,7 @@ describe('createComparisonBitmaps', function () {
       },
     });
 
-    await assert.rejects(() => createComparisonBitmaps(mockConfig), /scenario blew up/);
+    await assert.rejects(() => createComparisonBitmaps(mockConfig, { comparisonCounts: new Map() }), /scenario blew up/);
     assert(disposed, 'Should dispose the browser after a scenario rejection');
   });
 
@@ -189,7 +189,7 @@ describe('createComparisonBitmaps', function () {
 
     let errorThrown = false;
     try {
-      await createComparisonBitmaps(mockConfig);
+      await createComparisonBitmaps(mockConfig, { comparisonCounts: new Map() });
     } catch (e: unknown) {
       errorThrown = true;
       assert(e instanceof Error);
@@ -219,7 +219,7 @@ describe('createComparisonBitmaps', function () {
       args: { ...mockConfig.args, filter: 'Scenario 1' },
     };
 
-    await createComparisonBitmaps(configWithFilter);
+    await createComparisonBitmaps(configWithFilter, { comparisonCounts: new Map() });
 
     // With filter 'Scenario 1', only 1 scenario should match (Test Scenario 1)
     // multiplied by 2 viewports = 2 calls
@@ -247,7 +247,7 @@ describe('createComparisonBitmaps', function () {
       },
     });
 
-    await createComparisonBitmaps(mockConfig);
+    await createComparisonBitmaps(mockConfig, { comparisonCounts: new Map() });
 
     assert(capturedConfig, 'Should have captured config');
     // 1 scenario × 2 viewports = 2 scenario views
@@ -278,7 +278,7 @@ describe('createComparisonBitmaps', function () {
 
     let errorThrown = false;
     try {
-      await createComparisonBitmaps(configWithoutURLs);
+      await createComparisonBitmaps(configWithoutURLs, { comparisonCounts: new Map() });
     } catch (e: unknown) {
       errorThrown = true;
       assert(e instanceof Error);
@@ -316,7 +316,7 @@ describe('createComparisonBitmaps', function () {
       },
     };
 
-    await createComparisonBitmaps(configWithoutTestFile);
+    await createComparisonBitmaps(configWithoutTestFile, { comparisonCounts: new Map() });
 
     assert(capturedScenarios.length > 0, 'Should have processed auto-discovered scenarios');
     assert.strictEqual(capturedScenarios[0].label, 'Auto-discovered test');
@@ -365,7 +365,7 @@ describe('createComparisonBitmaps', function () {
 
     let errorThrown = false;
     try {
-      await createComparisonBitmaps(configNoTestFile);
+      await createComparisonBitmaps(configNoTestFile, { comparisonCounts: new Map() });
     } catch (e: unknown) {
       errorThrown = true;
       assert(e instanceof Error);

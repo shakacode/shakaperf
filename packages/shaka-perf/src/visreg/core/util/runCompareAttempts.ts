@@ -34,7 +34,7 @@ export type CaptureScreenshotFn = (
 
 /** Injected collaborators — defaulted to the real implementations; overridden in tests. */
 export interface CompareAttemptsDeps {
-  comparisonCounts?: Map<string, number>;
+  comparisonCounts: Map<string, number>;
   captureScreenshot: CaptureScreenshotFn;
   createSide?: CreateSideFn;
   preparePage?: PreparePageFn;
@@ -224,7 +224,7 @@ export async function runCompareAttempts(
       ? compareFrames(control, experiment)
       : null;
     return {
-      visualComparisonCount: deps.comparisonCounts?.get(testPair.test) ?? (result ? 1 : 0),
+      visualComparisonCount: deps.comparisonCounts.get(testPair.test) ?? (result ? 1 : 0),
       selector,
       testPair,
       pool,
@@ -283,7 +283,7 @@ export async function runCompareAttempts(
 
       run.result = compareFrames(run.control, run.experiment);
       run.visualComparisonCount++;
-      deps.comparisonCounts?.set(run.testPair.test, run.visualComparisonCount);
+      deps.comparisonCounts.set(run.testPair.test, run.visualComparisonCount);
       // A retry that added no frames is pixel-stable — retrying can't change it.
       const pixelStable = attempt > 0 &&
         run.control.length + run.experiment.length === framesBefore;

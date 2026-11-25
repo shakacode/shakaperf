@@ -14,6 +14,13 @@ version being released and updates the "Current version" line at the bottom.
 
 ## Unreleased
 
+### The `shaka-perf/visreg` runner requires comparison counts
+
+Direct callers must pass a second argument to the runner:
+`runVisregCompare(options, { comparisonCounts })`. Create
+`const comparisonCounts = new Map<string, number>()` for each test and
+viewport. Reuse that map across retries of the same measurement.
+
 ### `--keep-old-results` removed from `audit` and `compare`
 
 Both commands now reject `--keep-old-results` as an unknown option. Remove
