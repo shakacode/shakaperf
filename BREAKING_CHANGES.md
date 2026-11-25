@@ -12,6 +12,15 @@ version being released and updates the "Current version" line at the bottom.
 
 ---
 
+## Unreleased
+
+### `--keep-old-results` removed from `audit` and `compare`
+
+Both commands now reject `--keep-old-results` as an unknown option. Remove
+the flag from scripts and rerun commands copied from older reports. Reruns
+now replace only the selected stages’ results and artifacts for each measured
+test and viewport. Other stages and viewports retain their saved results.
+
 ## 0.7.0 — 2026-11-04
 
 ### `init` creates config only; install agent skills separately
@@ -165,7 +174,7 @@ nothing.
 
 The persisted stage-measurement and report-artifact schema has changed.
 Artifacts written by older shaka-perf versions are not supported by
-`--report-only`. Remove the existing `test-results`
+`--report-only` or `--keep-old-results`. Remove the existing `test-results`
 directory (or your configured results directory) and run the measurements
 again before generating reports with this version.
 
