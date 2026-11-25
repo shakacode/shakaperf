@@ -31,7 +31,7 @@ const SINGLE_UNIT_ENGINE_PARALLELISM = 1;
 export async function runVisregUnit(
   ctx: TestContext,
   stageConfig: VisregStageConfig,
-  comparisonCounts?: Map<string, number>,
+  comparisonCounts: Map<string, number>,
 ): Promise<VisregResult> {
   console.log(
     'Loading every test page on both the control server and the experiment server, taking a screenshot of each once the page has settled, and comparing the two screenshots pixel-by-pixel. ' +
