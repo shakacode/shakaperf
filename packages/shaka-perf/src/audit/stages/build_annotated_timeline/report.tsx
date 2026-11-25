@@ -37,36 +37,37 @@ export function BuildAnnotatedTimelineArtifactView({
   measurements: readonly StageRenderEntry<BuildAnnotatedTimelineResult>[];
 }) {
   const mode = useReportMode();
-  const rows = measurements
-    .map((entry) => ({ timeline: entry.measurement, viewportLabel: entry.executionDetails.viewport.label, latestRun: entry.latestRun }))
-    .filter(({ timeline }) => {
-      const frames = timeline.frames;
-      if (!frames || frames.length === 0) return false;
-      return frames.some((f) => resolveFrameImageSrc(f) != null);
-    });
+  const rows = measurements.filter(({ measurement: timeline }) => {
+    const frames = timeline.frames;
+    if (!frames || frames.length === 0) return false;
+    return frames.some((f) => resolveFrameImageSrc(f) != null);
+  });
   if (rows.length === 0) return null;
 
   return (
     <StageArtifact>
       <StageArtifactTitle title="annotated timeline" />
       <div className="stage-stack">
-        {rows.map((row, index) => {
-          const frames = row.timeline.frames!;
+        {rows.map((entry, index) => {
+          const { measurement: timeline, latestRun } = entry;
+          const viewportLabel = entry.executionDetails.viewport.label;
+          const frames = timeline.frames!;
           return (
-            <div key={`${row.viewportLabel}-${index}`} className="stage-stack__viewport">
+            <div key={`${viewportLabel}-${index}`} className="stage-stack__viewport">
               <div className="stage-section">
                 <ReportHeading
                   className="stage-section__head"
                   level={5}
-                  title={row.viewportLabel}
-                  badge={<OldRunChip latestRun={row.latestRun} />}
+                  title={viewportLabel}
+                  badge={<OldRunChip latestRun={latestRun} />}
                 />
                 <DetailedArtifactDialog
+                  executionDetails={entry.executionDetails}
                   body={
                     <AnnotatedTimelineDialog
                       frames={frames}
-                      screencastHref={mode === 'self-contained' ? undefined : row.timeline.screencastHref}
-                      debugAllFrames={row.timeline.debugAllFrames}
+                      screencastHref={mode === 'self-contained' ? undefined : timeline.screencastHref}
+                      debugAllFrames={timeline.debugAllFrames}
                     />
                   }
                   variant="preview"

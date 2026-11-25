@@ -7,7 +7,7 @@
 
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { RunCommits } from '../report-shell/src/components/RunDetails';
+import { CommitDetails } from '../src/report-ui/CommitDetails';
 import { runDetailsFixture } from '../src/pipeline/__tests__/fixtures/run-details';
 import { reportDataForMode } from '../src/pipeline/report';
 
@@ -25,17 +25,15 @@ it.each(['full', 'self-contained'] as const)('retains metadata verbatim in the %
 });
 
 it('keeps commit-message body whitespace in the expandable details', () => {
-  const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(0, 1);
-  outcomes[0]!.executionDetails.measurementMetadata!.targets[0]!.commit!.message = 'Subject\n\n  Indented body\n\n';
-  const html = renderToStaticMarkup(createElement(RunCommits, { outcomes }));
+  const commit = { sha: '1e04e0380000', message: 'Subject\n\n  Indented body\n\n' };
+  const html = renderToStaticMarkup(createElement(CommitDetails, { commit }));
   expect(html.match(/<summary>/g)).toHaveLength(1);
   expect(html).toContain('  Indented body\n\n</pre>');
 });
 
 it.each(['Subject', 'Subject\n\n', ''])('does not expand a commit without body content: %p', (message) => {
-  const outcomes = runDetailsFixture('audit').tests[0]!.outcomes.slice(0, 1);
-  outcomes[0]!.executionDetails.measurementMetadata!.targets[0]!.commit!.message = message;
-  const html = renderToStaticMarkup(createElement(RunCommits, { outcomes }));
+  const commit = { sha: '1e04e0380000', message };
+  const html = renderToStaticMarkup(createElement(CommitDetails, { commit }));
   expect(html).not.toContain('<summary>');
   expect(html).toContain('>1e04e038<');
 });

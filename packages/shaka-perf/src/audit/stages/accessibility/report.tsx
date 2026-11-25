@@ -52,11 +52,7 @@ export function AccessibilityArtifactView({
       <div className="stage-stack">
         {rows.map((entry, index) => (
           <div key={`${entry.executionDetails.viewport.label}-${index}`} className="stage-stack__viewport">
-            <AccessibilityBody
-              result={entry.measurement}
-              viewportLabel={entry.executionDetails.viewport.label}
-              latestRun={entry.latestRun}
-            />
+            <AccessibilityBody entry={entry} />
           </div>
         ))}
       </div>
@@ -64,15 +60,9 @@ export function AccessibilityArtifactView({
   );
 }
 
-function AccessibilityBody({
-  result,
-  viewportLabel,
-  latestRun,
-}: {
-  result: AccessibilityResult;
-  viewportLabel: string;
-  latestRun: boolean;
-}) {
+function AccessibilityBody({ entry }: { entry: StageRenderEntry<AccessibilityResult> }) {
+  const { measurement: result, latestRun } = entry;
+  const viewportLabel = entry.executionDetails.viewport.label;
   const filterState = useAccessibilityFilterState();
   const localOptions = useMemo(() => collectConfiguredFilterOptions([result]), [result]);
   const scan = result.scans[0];
@@ -84,6 +74,7 @@ function AccessibilityBody({
       <ReportHeading className="stage-section__head" level={5} title={viewportLabel} badge={<OldRunChip latestRun={latestRun} />} />
       <div style={SCAN_STYLE}>
         <ScreenshotPreview
+          entry={entry}
           filterOptions={filterState?.options ?? localOptions}
           includeFilterStyles={!filterState}
           rawArtifactHref={result.rawArtifactHref}
