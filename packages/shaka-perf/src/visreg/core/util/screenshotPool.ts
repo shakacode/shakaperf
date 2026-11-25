@@ -33,6 +33,7 @@ import { compareBuffers } from './compare/pixelmatch-inline';
 export type PoolSide = 'control' | 'experiment';
 
 const FRAME_SEP = '__';
+const SHA1_PNG_FILENAME = /^[a-f0-9]{40}\.png$/;
 
 export interface PoolFrame {
   /** Absolute path of the frame on disk (becomes the report's reference/test). */
@@ -57,7 +58,13 @@ export class ScreenshotPool {
     const prefix = this.key + FRAME_SEP;
     let names: string[];
     try {
-      names = fs.readdirSync(dir).filter((n) => n.startsWith(prefix) && /^[a-f0-9]{40}\.png$/.test(n.slice(prefix.length))).sort();
+      names = fs.readdirSync(dir)
+        .filter((filename) => {
+          if (!filename.startsWith(prefix)) return false;
+          const hashAndExtension = filename.slice(prefix.length);
+          return SHA1_PNG_FILENAME.test(hashAndExtension);
+        })
+        .sort();
     } catch {
       return [];
     }
