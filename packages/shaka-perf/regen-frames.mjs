@@ -21,7 +21,8 @@ for (const root of dirs) {
   const audit = path.join(root, 'audit');
   const profilePath = path.join(fs.existsSync(audit) ? audit : root, 'experiment_performance_profile.json');
   if (!fs.existsSync(profilePath)) continue;
-  const dir = fs.existsSync(audit) ? path.join(root, 'build_annotated_timeline') : root;
+  const timeline = path.join(root, 'build_annotated_timeline');
+  const dir = fs.existsSync(timeline) || fs.existsSync(audit) ? timeline : root;
   fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(dir)) {
     if (f.startsWith('timeline_frame_') && f.endsWith('.avif')) fs.unlinkSync(path.join(dir, f));
