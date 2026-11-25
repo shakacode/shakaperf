@@ -393,7 +393,7 @@ describe('runPipeline', () => {
     };
     try {
       const first = await runWithFrozenTest({ cwd, tests: [test], categories: 'visreg', skipReport: true }, selected);
-      expect(first.testResults[0]!).not.toHaveProperty('code');
+      expect(first.testResults[0]).not.toHaveProperty('code');
       const store = new ArtifactStore(first.resultsRoot);
       const measured = first.testResults[0]!.outcomes.filter((o) => o.stage === 'visreg');
       expect(measured.length).toBeGreaterThan(0);
@@ -405,7 +405,7 @@ describe('runPipeline', () => {
       for (const deleted of [false, true]) {
         if (deleted) fs.unlinkSync(file);
         const report = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
-        expect(report.testResults[0]!).not.toHaveProperty('code');
+        expect(report.testResults[0]).not.toHaveProperty('code');
         expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'visreg')?.executionDetails.testSourceHref).toBeTruthy();
       }
     } finally {
@@ -442,10 +442,10 @@ describe('runPipeline', () => {
           .map((o) => o.executionDetails.testSourceHref).filter(Boolean));
         expect(measuredPaths.size).toBe(1);
       }
-      expect(second.testResults[0]!).not.toHaveProperty('code');
+      expect(second.testResults[0]).not.toHaveProperty('code');
       fs.unlinkSync(file);
       const report = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
-      expect(report.testResults[0]!).not.toHaveProperty('code');
+      expect(report.testResults[0]).not.toHaveProperty('code');
       clock.mockReturnValue(Date.parse('2026-10-20T12:00:00Z'));
       // Source capture fails before new work or cleanup can replace old results.
       const pending = pipeline();
@@ -454,14 +454,14 @@ describe('runPipeline', () => {
         .rejects.toThrow('Cannot capture abTest source');
       for (const engine of engines) expect(engine).not.toHaveBeenCalled();
       const retained = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
-      expect(retained.testResults[0]!).not.toHaveProperty('code');
+      expect(retained.testResults[0]).not.toHaveProperty('code');
       for (const outcome of outcomes) {
         if (outcome.executionDetails.measurementMetadata && outcome.executionDetails.runId !== original.executionDetails.runId) {
           fs.rmSync(path.join(second.resultsRoot, outcome.executionDetails.testSourceHref!), { force: true });
         }
       }
       const missing = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
-      expect(missing.testResults[0]!).not.toHaveProperty('code');
+      expect(missing.testResults[0]).not.toHaveProperty('code');
       expect(missing.testResults[0]!.outcomes).toHaveLength(retained.testResults[0]!.outcomes.length);
       expect(store.readTextArtifact(originalPath)).toBe(source);
       // A normal rerun removes obsolete snapshots with the other unit artifacts.
@@ -515,6 +515,66 @@ describe('runPipeline', () => {
         expect(outcome.executionDetails.measurementMetadata?.targets.map(({ side }) => side)).toEqual(['control', 'experiment']);
       }
     }
+    expect(result.testResults[0]!.chips.filter((chip) => chip.tag === 'flaky')).toEqual(exhausted ? [] : [expect.objectContaining({
+      text: 'flaky (recovered after 1 retry)',
+    })]);
+    if (exhausted) {
+      expect(result.testResults[0]!.chips.find((chip) => chip.tag === 'broken')?.tooltip).toBe(
+        'Tasks still failed after 1 of 1 allowed retries.',
+      );
+    }
+  });
+
+  it('shows the largest retry count across recovered tasks', async () => {
+    const selected = pipeline();
+    selected.stages[0]!.run = async (ctx, pool) => {
+      const failures = ctx.viewport.label === 'desktop' ? 2 : 1;
+      let attempts = 0;
+      return pool.submit(async () => {
+        if (++attempts <= failures) throw new Error('temporary failure');
+        return { measurement: {}, metadata: {} };
+      });
+    };
+    const test: AbTestDefinition = { ...frozenTest, config: { shared: { retries: 2, retryDelay: 0 }, visreg: { viewports: ['desktop', 'phone'] } } };
+    const { testResults } = await runWithFrozenTest({ tests: [test], categories: 'visreg', skipReport: true }, selected);
+    const card = testResults[0]!;
+    const counts = card.outcomes.filter(o => o.executionDetails.recoveredAfterRetries).map(o => o.executionDetails.taskRetries);
+    expect(counts.sort()).toEqual([1, 2]);
+    expect(card.chips.find(chip => chip.tag === 'flaky')?.text).toBe('flaky (recovered after 2 retries)');
+  });
+
+  it.each([undefined, 1, 3])('reports visual attempts and their limit on mismatches (%p attempts)', async (attempts) => {
+    const config = buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, timeoutMs: 1_000, retries: 0, retryDelay: 0 } });
+    const selected = createComparePipeline(comparePipelineConfigFromAbTests(config));
+    selected.stages[0]!.run = async (ctx) => {
+      return { measurement: [{ selector: 'document', controlImage: '', experimentImage: '', diffImage: 'diff.png',
+        misMatchPercentage: 1, diffPixels: 1, threshold: 0, diffBbox: null, savedByRetries: false,
+        visualComparisonCount: attempts, visualComparisonLimit: 3 }], metadata: {} };
+    };
+    const test: AbTestDefinition = { ...frozenTest, config: { visreg: { viewports: ['desktop'], compareRetries: 2 } } };
+    const result = await runWithFrozenTest({ tests: [test], categories: 'visreg', skipReport: true }, selected);
+    expect(result.testResults[0]!.chips).toEqual([expect.objectContaining({
+      tag: 'visual change', text: 'visual change: 1 diff',
+      tooltip: attempts === undefined ? 'Screenshots still differ.'
+        : `Screenshots still differ after ${attempts} of 3 allowed comparisons.`,
+    })]);
+  });
+
+  it.each([1, 2])('keeps screenshot recovery separate from worker retries (%i visual retries)', async (retries) => {
+    const config = buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, timeoutMs: 1_000, retries: 0, retryDelay: 0 } });
+    const selected = createComparePipeline(comparePipelineConfigFromAbTests(config));
+    selected.stages[0]!.run = async (ctx) => {
+      return { measurement: [0, 1].map((selector) => ({
+        selector: String(selector), controlImage: '', experimentImage: '', diffImage: null,
+        misMatchPercentage: 0, diffPixels: 0, threshold: 0, diffBbox: null, savedByRetries: true,
+        visualComparisonCount: retries + 1,
+      })), metadata: {} };
+    };
+    const test: AbTestDefinition = { ...frozenTest, config: { visreg: { viewports: ['desktop'] } } };
+    const result = await runWithFrozenTest({ tests: [test], categories: 'visreg', skipReport: true }, selected);
+    expect(result.testResults[0]!.chips).toEqual([expect.objectContaining({
+      tag: 'visreg unstable', text: `visreg unstable (matched after ${retries + 1} comparisons)`,
+    })]);
   });
 
   it('keeps the recorded viewport when report configuration changes its dimensions', async () => {

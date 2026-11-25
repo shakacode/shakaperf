@@ -46,6 +46,7 @@ import {
   type ReportOutcome,
   type TestResult,
 } from './report';
+import { retryUsageTooltip } from './retry-usage-tooltip';
 import {
   persistedOutcomeInScope,
   resolveViewportsForTest,
@@ -834,10 +835,10 @@ async function runConfiguredPipelineWithSelection(
     return testPartials.map((p) => {
       // Cross-cutting, runner-owned chip (not a pipeline concern): any stage task
       // that crashed/timed out and recovered on a retry makes the test flaky.
-      const recovered = p.partialResult.outcomes.some((o) => o.executionDetails.recoveredAfterRetries);
-      const flaky = recovered ? [flakyChip()] : [];
+      const recovered = p.partialResult.outcomes.filter((o) => o.executionDetails.recoveredAfterRetries);
+      const flaky = recovered.length > 0 ? [flakyChip(recovered)] : [];
       if (p.hasError) {
-        const chips = [brokenChip(), ...flaky];
+        const chips = [brokenChip(p.partialResult.outcomes, pipeline.stages), ...flaky];
         // Failed tests have no measured values to sort by.
         return { ...p.partialResult, chips, sorts: [] };
       }
@@ -1631,8 +1632,16 @@ function chipResultsForOutcomes(
   return results;
 }
 
-function brokenChip(): ChipDescriptor {
-  return { tag: 'broken', text: 'broken', color: 'red', sortingWeight: 0 };
+function brokenChip(outcomes: readonly ReportOutcome[], stages: readonly Pick<Stage, 'name' | 'label'>[]): ChipDescriptor {
+  const failedTasks = outcomes.filter((outcome) => outcome.kind === 'error');
+  const usage = failedTasks.map((outcome) => ({
+    stage: stages.find((stage) => stage.name === outcome.stage)?.label ?? outcome.stage,
+    viewport: outcome.executionDetails.viewport.label,
+    count: outcome.executionDetails.taskRetries,
+    limit: outcome.executionDetails.taskRetryLimit,
+  }));
+  const tooltip = retryUsageTooltip('Tasks still failed', 'retries', usage);
+  return { tag: 'broken', text: 'broken', color: 'red', sortingWeight: 0, tooltip };
 }
 
 // Cross-cutting warning chip the runner attaches to any test whose stage task
@@ -1640,15 +1649,24 @@ function brokenChip(): ChipDescriptor {
 // retry. Informational (doesn't drive card order); filterable to isolate flaky
 // tests. Distinct from the compare pipeline's "visreg unstable" chip, which is
 // about visual-comparison instability rather than crash recovery.
-function flakyChip(): ChipDescriptor {
+function flakyChip(recovered: readonly ReportOutcome[]): ChipDescriptor {
+  let maxRetries = 0;
+  for (const { executionDetails } of recovered) {
+    maxRetries = Math.max(maxRetries, executionDetails.taskRetries ?? 0);
+  }
   return {
     tag: 'flaky',
-    text: 'flaky (recovered after retries)',
+    text: `flaky (recovered after ${retryCountText(maxRetries)})`,
     color: 'yellow',
     sortingWeight: 16,
     affectsCardOrder: false,
     tooltip: 'A stage task failed on an earlier attempt but a retry succeeded — the test is flaky but recovered.',
   };
+}
+
+function retryCountText(count: number): string {
+  if (count === 0) return 'retries';
+  return `${count} ${count === 1 ? 'retry' : 'retries'}`;
 }
 
 function hasChipTag(test: TestResult, tag: string): boolean {

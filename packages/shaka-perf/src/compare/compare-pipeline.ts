@@ -8,6 +8,7 @@
 import type { AbTestDefinition } from 'shaka-shared';
 import type { PerfLighthouseConfig } from '../bench/core/lighthouse-config';
 import type { ChipDescriptor, SortDescriptor } from '../pipeline/report';
+import { retryUsageTooltip } from '../pipeline/retry-usage-tooltip';
 import {
   createPipeline,
   type ChipStageResults,
@@ -25,9 +26,8 @@ import {
   type AccessibilityCompareSummary,
 } from './stages/accessibility';
 import { PerfEngineStage } from './stages/perf/stage';
-import { createVisregStage, type VisregResult } from './stages/visreg';
+import { createVisregStage, type VisregResult, type VisregArtifact } from './stages/visreg';
 import type { AccessibilityStageConfig } from '../audit/stages/accessibility';
-import { hasSavedByRetries, hasVisualChange, visualChangeCount } from './stages/visreg/selectors';
 import { comparePipelineReport } from './pipeline-report';
 import type { AbTestsConfig } from '../config';
 // From the type-only-imports leaf module, NOT '../config': this file is part
@@ -207,16 +207,16 @@ export function createComparePipeline(input: ComparePipelineConfig) {
               text: metricChipText('regressed', regressedMetrics),
               color: 'red',
               sortingWeight: 10,
-              tooltip: metricChipTooltip('Regressed metrics', regressedMetrics),
             });
           }
-          const visualChanges = totalVisualChanges(results.visreg);
-          if (visualChanges > 0) {
+          const changed = comparisonUsage(results.visreg, artifact => artifact.diffImage !== null);
+          if (changed.length > 0) {
             chips.push({
               tag: 'visual change',
-              text: `visual change: ${visualChanges} diff${visualChanges === 1 ? '' : 's'}`,
+              text: `visual change: ${changed.length} diff${changed.length === 1 ? '' : 's'}`,
               color: 'red',
               sortingWeight: 10,
+              tooltip: retryUsageTooltip('Screenshots still differ', 'comparisons', changed),
             });
           }
           const improvedMetrics = collectPerfMetrics('improvedMetrics', results.perf, results['perf-low-noise']);
@@ -226,19 +226,21 @@ export function createComparePipeline(input: ComparePipelineConfig) {
               text: metricChipText('improved', improvedMetrics),
               color: 'blue',
               sortingWeight: 30,
-              tooltip: metricChipTooltip('Improved metrics', improvedMetrics),
             });
           }
-          // A visual comparison that initially mismatched but matched on a
-          // later retry — the screenshots are unstable. Ranked with the
-          // regressions so flaky tests surface at the top of the grid.
-          if (entriesHave(results.visreg, hasSavedByRetries)) {
+          const recovered = comparisonUsage(results.visreg, artifact => artifact.savedByRetries);
+          if (recovered.length > 0) {
+            const count = recovered[0]!.count;
+            const match = count !== undefined && recovered.every(entry => entry.count === count)
+              ? `matched after ${count} ${count === 1 ? 'comparison' : 'comparisons'}`
+              : 'matched on a later comparison';
+
             chips.push({
               tag: 'visreg unstable',
-              text: 'visreg unstable (matched after retries)',
+              text: `visreg unstable (${match})`,
               color: 'red',
               sortingWeight: 12,
-              tooltip: 'A visual comparison initially mismatched but matched on a later retry — the screenshots are unstable.',
+              tooltip: retryUsageTooltip('Screenshots matched', 'comparisons', recovered),
             });
           }
           out.set(test, chips.length > 0
@@ -311,13 +313,6 @@ function collectDiffingPerfMetrics(
     }
   }
   return out;
-}
-
-function entriesHave<M>(
-  entries: ChipStageResults<M>,
-  predicate: (measurement: M) => boolean,
-): boolean {
-  return entries.some((entry) => predicate(entry.measurement));
 }
 
 type PerfMetricListKey = 'regressedMetrics' | 'improvedMetrics';
@@ -482,11 +477,16 @@ function metricChipText(prefix: string, metrics: readonly string[]): string {
   return `${prefix}: ${metrics.join(', ')}`;
 }
 
-function metricChipTooltip(label: string, metrics: readonly string[]): string {
-  return `${label}: ${metrics.join(', ')}`;
-}
-
-function totalVisualChanges(entries: ChipStageResults<VisregResult>): number {
-  if (!entriesHave(entries, hasVisualChange)) return 0;
-  return entries.reduce((sum, entry) => sum + visualChangeCount(entry.measurement), 0);
+function comparisonUsage(
+  entries: ChipStageResults<VisregResult>,
+  include: (artifact: VisregArtifact) => boolean,
+) {
+  return entries.flatMap(({ measurement, outcome: { executionDetails: { viewport } } }) => measurement
+    .filter(include)
+    .map((artifact) => ({
+      stage: 'Visual comparison',
+      viewport: measurement.length > 1 ? `${viewport.label} · ${artifact.selector}` : viewport.label,
+      count: artifact.visualComparisonCount,
+      limit: artifact.visualComparisonLimit,
+    })));
 }

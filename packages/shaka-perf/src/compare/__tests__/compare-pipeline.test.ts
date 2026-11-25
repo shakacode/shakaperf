@@ -16,6 +16,7 @@ import {
   createComparePipeline,
 } from '../compare-pipeline';
 import type { AccessibilityCompareResult, AccessibilityCompareSummary } from '../stages/accessibility';
+import type { VisregArtifact, VisregResult } from '../stages/visreg';
 import { runPipeline } from '../../pipeline/runner';
 import { buildAbTestsConfig, type AbTestsConfig } from '../../config';
 
@@ -308,3 +309,62 @@ function testDefinition(): AbTestDefinition {
     testFn: async () => {},
   };
 }
+
+function artifact(selector: string, overrides: Partial<VisregArtifact> = {}): VisregArtifact {
+  return {
+    selector, controlImage: '', experimentImage: '', diffImage: null,
+    misMatchPercentage: 0, diffPixels: 0, threshold: 0, diffBbox: null,
+    savedByRetries: true, visualComparisonCount: 2, visualComparisonLimit: 3, ...overrides,
+  };
+}
+
+function visualChips(measurement: VisregResult) {
+  const test = testDefinition();
+  const visreg = [{
+    stage: 'visreg',
+    measurement,
+    outcome: { ...executionFixture(), kind: 'ok' as const, stage: 'visreg', measurement },
+  }];
+  const chips = createComparePipeline(baseConfig()).chipsForAllTests([{
+    test, results: { visreg, accessibility: [], perf: [], 'perf-warmup': [], 'perf-low-noise': [] },
+  }]).get(test) ?? [];
+  return {
+    unstable: chips.find(chip => chip.tag === 'visreg unstable'),
+    changed: chips.find(chip => chip.tag === 'visual change'),
+  };
+}
+
+it('shows comparison counts for recovered and differing selectors separately', () => {
+  const result = visualChips([
+    artifact('header'), artifact('footer'),
+    artifact('main', { diffImage: 'diff.png', savedByRetries: false, visualComparisonCount: 3 }),
+  ]);
+  expect(result.unstable?.text).toBe('visreg unstable (matched after 2 comparisons)');
+  expect(result.unstable?.tooltip).toBe('Screenshots matched after 2 of 3 allowed comparisons.');
+  expect(result.changed?.tooltip).toBe('Screenshots still differ after 3 of 3 allowed comparisons.');
+});
+
+it('scopes differing attempt counts to their selectors', () => {
+  const result = visualChips([
+    artifact('header', { diffImage: 'header.png', savedByRetries: false, visualComparisonCount: 2 }),
+    artifact('footer', { diffImage: 'footer.png', savedByRetries: false, visualComparisonCount: 3 }),
+  ]);
+  expect(result.changed?.tooltip).toContain('desktop · header — 2 of 3 comparisons used');
+  expect(result.changed?.tooltip).toContain('desktop · footer — 3 of 3 comparisons used');
+  expect(result.unstable).toBeUndefined();
+});
+
+it('keeps legacy retry counts unknown instead of substituting viewport totals', () => {
+  const result = visualChips([artifact('document', { visualComparisonCount: undefined })]);
+  expect(result.unstable?.tooltip).toBe('Screenshots matched.');
+});
+
+it.each([3, undefined])('uses the generic label when a second count is %s', secondCount => {
+  const result = visualChips([artifact('header'), artifact('footer', { visualComparisonCount: secondCount })]);
+  expect(result.unstable?.text).toBe('visreg unstable (matched on a later comparison)');
+});
+
+it('uses the singular for one recorded comparison', () => {
+  const result = visualChips([artifact('header', { visualComparisonCount: 1 })]);
+  expect(result.unstable?.text).toBe('visreg unstable (matched after 1 comparison)');
+});
