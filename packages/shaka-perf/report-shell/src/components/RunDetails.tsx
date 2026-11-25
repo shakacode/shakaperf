@@ -8,15 +8,15 @@
 import { useRef, useState } from 'react';
 import type { ReportOutcome } from '../types';
 import type { ExecutionDetails } from '../../../src/pipeline/outcome';
-import type { RunMetadata } from '../../../src/pipeline/run-metadata';
+import type { MeasurementMetadata } from '../../../src/pipeline/run-metadata';
 
 export function savedRunDetails(outcomes: readonly ReportOutcome[]) {
   const groups = new Map<string, Entry[]>();
   for (const outcome of outcomes) {
-    if (!outcome.runMetadata) continue;
+    if (!outcome.executionDetails.measurementMetadata) continue;
     const label = outcome.executionDetails.viewport.label;
     const entries = groups.get(label) ?? [];
-    entries.push({ stage: outcome.stage, metadata: outcome.runMetadata, executionDetails: outcome.executionDetails });
+    entries.push({ stage: outcome.stage, metadata: outcome.executionDetails.measurementMetadata, executionDetails: outcome.executionDetails });
     groups.set(label, entries);
   }
   return [...groups];
@@ -61,7 +61,7 @@ export function MeasurementCommand({ command, compact = false, autoSize = false,
   );
 }
 
-type Entry = { stage: string; metadata: RunMetadata; executionDetails: ExecutionDetails };
+type Entry = { stage: string; metadata: MeasurementMetadata; executionDetails: ExecutionDetails };
 
 function groupValues<T, V>(items: readonly T[], select: (item: T) => V) {
   const groups = new Map<string, { value: V; items: T[] }>();
@@ -85,7 +85,7 @@ function Scope({ items, entries, runs, always = false }: { items: Entry[]; entri
   ).join(' / ')}</span>;
 }
 
-function CommitDetails({ commit }: { commit: Pick<NonNullable<RunMetadata['targets'][number]['commit']>, 'sha' | 'message'> }) {
+function CommitDetails({ commit }: { commit: Pick<NonNullable<MeasurementMetadata['targets'][number]['commit']>, 'sha' | 'message'> }) {
   const [subject = '', ...body] = commit.message.split('\n');
   const heading = <><code title={commit.sha}>{commit.sha.slice(0, 8)}</code><span>{subject || (body.join('\n').trim() ? 'Commit message' : 'Empty commit message')}</span></>;
   if (!body.join('\n').trim()) return <div className="run-details__commit"><div className="run-details__commit-heading">{heading}</div></div>;

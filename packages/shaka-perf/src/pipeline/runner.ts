@@ -8,7 +8,7 @@
 import { MeasurementRecorder } from './measurement-recorder';
 import { captureMeasurementStartMetadata, type MeasurementInvocation } from './measurement-start-metadata';
 import { measurementCommand } from './run-metadata';
-import type { RunMetadata } from './run-metadata';
+import type { MeasurementMetadata } from './run-metadata';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
@@ -78,7 +78,7 @@ import type { StageSelection } from './pipeline';
 import { testIdForTest, unitIdForTest } from './unit-id';
 import { burnDisplayName, expandTestsForBurn } from './burn';
 import { ArtifactStore, type ArtifactPath } from './artifact-store';
-import type { Outcome, ErrorInfo } from './outcome';
+import type { Outcome, OutcomeKind, ErrorInfo } from './outcome';
 import { findFailureArtifacts, findLastAnnotation } from '../stage/stage-failure';
 import { colorizedLogPrefix, testSourcePrefix } from '../visreg/core/util/testContext';
 import { attachStickyStatus, formatPoolProgress } from '../bench/cli/commands/compare/sticky-status';
@@ -125,7 +125,7 @@ interface WorkUnit {
   testSource: string | null;
   testSourceHref: ArtifactPath | null;
   viewport: Viewport;
-  priorOutcomes: Map<StageName, Outcome>;
+  priorOutcomeKinds: Map<StageName, OutcomeKind>;
 }
 
 interface StageProgress {
@@ -335,9 +335,9 @@ export interface RuntimeOptions {
   readonly stages?: string | string[] | undefined;
   /**
    * Restart the run from this stage: discard this stage's and every later
-   * stage's results, then re-run them. Earlier stages are retained — their
-   * on-disk artifacts and outcomes survive and are hydrated into
-   * `priorOutcomes` so the restarted stages' `applies()` can read them. Lets
+   * stage's results, then re-run them. Earlier stages keep their
+   * saved artifacts and outcomes. Restarted stages receive their outcome
+   * kinds in `applies()`. Lets
    * you iterate on a late stage (e.g. a report-shaping stage) without paying
    * to re-run the expensive earlier measurement stages.
    */
@@ -670,8 +670,6 @@ async function runConfiguredPipelineWithSelection(
     runId = new Date(startedAt).toISOString();
     const invocation = {
       command: measurementCommand(),
-      stages: stageSelection.stageNames,
-      categories,
       sides: pipeline.measurementSides,
     };
     installConsoleCapture();
@@ -1114,7 +1112,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   try {
     selected = testDeclaresStageCategory(unit.test, stage) &&
       viewportApplies &&
-      stage.applies(unit.test, unit.viewport, unit.priorOutcomes);
+      stage.applies(unit.test, unit.viewport, unit.priorOutcomeKinds);
   } catch (err) {
     progress.queued -= 1;
     progress.error += 1;
@@ -1149,14 +1147,13 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   // contract so stages don't need to special-case its absence.
   const [raceCancellation] = cancellableRace();
   const recorder = new MeasurementRecorder();
-  let measurementStart: RunMetadata | undefined;
+  let measurementStart: MeasurementMetadata | undefined;
   const ctx: TestContext = {
     recordMeasurementOptions: (options) => recorder.recordOptions(options),
     test: unit.test,
     viewport: unit.viewport,
     artifacts: store.scopeFor(unit.test, unit.viewport.label),
     logger,
-    priorOutcomes: unit.priorOutcomes,
     runtime,
     controlURL: resolveUrl(
       unit.test.startingPath,
@@ -1169,10 +1166,6 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     testAndViewportId,
     raceCancellation,
     config: applyPerTestConfigOverrides(config, unit.test),
-    // Lazy on-demand read of an earlier stage's persisted result. Earlier
-    // stages have already written their `<stage>.json` (with full measurement)
-    // to this unit's dir, so a consequent stage can pull their data even though
-    // the in-memory `priorOutcomes` map is lean.
     readPriorResult: <M = unknown>(priorStage: StageName): M | undefined =>
       store.readOutcome(unit.test, unit.viewport.label, priorStage)?.measurement as M | undefined,
   };
@@ -1234,9 +1227,12 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     outcome = {
       kind: 'ok',
       stage: stage.name,
-      ...(measurementStart ? recorder.snapshot(measurementStart) : {}),
       measurement,
-      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, taskRetries: recorder.taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0 },
+      executionDetails: {
+        runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref,
+        measurementMetadata: measurementStart && recorder.snapshot(measurementStart),
+        taskRetries: recorder.taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: failedAttempts > 0,
+      },
     };
   } catch (err) {
     // Walk the cause chain, don't instanceof: a stage that throws from inside a
@@ -1245,9 +1241,12 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     const failure = findFailureArtifacts(err);
     outcome = {
       kind: 'error',
-      executionDetails: { runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref, taskRetries: recorder.taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false },
+      executionDetails: {
+        runId, viewport: unit.viewport, testSourceHref: unit.testSourceHref,
+        measurementMetadata: measurementStart && recorder.snapshot(measurementStart),
+        taskRetries: recorder.taskRetries, taskRetryLimit: taskLimits.retries, recoveredAfterRetries: false,
+      },
       stage: stage.name,
-      ...(measurementStart ? recorder.snapshot(measurementStart) : {}),
       error: errorInfo(err),
       ...(failure ? { failure } : {}),
     };
@@ -1270,15 +1269,7 @@ function persistStageOutcome(
   const logs = logger.flush();
   if (logs) outcome.logs = logs;
   store.writeOutcome(unit.test, unit.viewport.label, outcome);
-  // priorOutcomes is consulted only by `Stage.applies(...)` which reads
-  // `.kind`. The full `outcome` carries `measurement`, `logs`, `error`,
-  // `failure` — for the audit stage `measurement.lighthouseHref` alone is a
-  // multi-MB base64 data URI of the entire Lighthouse HTML report. Stashing
-  // the whole outcome here (× every unit × every stage, for the run's
-  // lifetime) leaks O(units × MB) into the JS heap. Strip to the only fields
-  // any applies() consumer reads; the heavy payload is already on disk via
-  // store.writeOutcome above.
-  unit.priorOutcomes.set(outcome.stage, leanPriorOutcome(outcome));
+  unit.priorOutcomeKinds.set(outcome.stage, outcome.kind);
 }
 
 // The stages whose outcomes a report can carry: the ones this run executes
@@ -1319,11 +1310,6 @@ function persistCliSkippedStageOutcomes(
   }
 }
 
-function leanPriorOutcome(outcome: Outcome): Outcome {
-  const lean: Outcome = { kind: outcome.kind, stage: outcome.stage, executionDetails: outcome.executionDetails };
-  return lean;
-}
-
 interface ExpandWorkUnitsOptions {
   store?: ArtifactStore;
   hydratePriorStages?: readonly Stage[];
@@ -1353,12 +1339,12 @@ function expandWorkUnits(
           throw new Error(`Cannot capture abTest source for "${test.name}" (${test.file ?? 'unknown file'}:${test.line ?? '?'}). No measurements were started.`);
         }
       }
-      const priorOutcomes = new Map<StageName, Outcome>();
+      const priorOutcomeKinds = new Map<StageName, OutcomeKind>();
       for (const stage of options.hydratePriorStages ?? []) {
         const outcome = options.store?.readOutcome(test, viewport.label, stage.name);
-        if (outcome) priorOutcomes.set(stage.name, leanPriorOutcome(outcome));
+        if (outcome) priorOutcomeKinds.set(stage.name, outcome.kind);
       }
-      units.push({ test, testSource, testSourceHref: null, viewport, priorOutcomes });
+      units.push({ test, testSource, testSourceHref: null, viewport, priorOutcomeKinds });
     }
   }
   // Otherwise the run does nothing and exits 0, which reads as success.
@@ -1683,7 +1669,7 @@ function newestRunId(outcomes: readonly Outcome[]): string | null {
 function savedTestSource(outcomes: readonly Outcome[], store: ArtifactStore): string | null {
   let newest: Outcome | undefined;
   for (const outcome of outcomes) {
-    if (outcome.runMetadata && (!newest || outcome.executionDetails.runId > newest.executionDetails.runId)) newest = outcome;
+    if (outcome.executionDetails.measurementMetadata && (!newest || outcome.executionDetails.runId > newest.executionDetails.runId)) newest = outcome;
   }
   // Unavailable snapshots must not borrow today's or an older run's source.
   if (typeof newest?.executionDetails.testSourceHref === 'string') {
