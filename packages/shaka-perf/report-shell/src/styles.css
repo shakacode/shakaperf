@@ -1424,19 +1424,6 @@ input {
   gap: 12px;
 }
 
-.card__code {
-  margin: 0;
-  padding: 12px 14px;
-  background: var(--bg-sunken);
-  border: 1px solid var(--border);
-  font-size: 11px;
-  line-height: 1.5;
-  overflow-x: auto;
-  white-space: pre;
-  color: var(--fg);
-  max-height: 220px;
-}
-
 .card__code-toggle {
   font-size: 10px;
   color: var(--fg-muted);
@@ -2116,7 +2103,6 @@ input {
 
   .header__search-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .header__search-actions { justify-content: flex-end; flex-wrap: wrap; }
-  .missing-artifacts .run-details__command--auto-size pre { flex-basis: 100%; width: 100%; }
 
   .filterbar-wrap {
     align-items: stretch;
@@ -3144,11 +3130,6 @@ input {
 .run-details__commit summary > span, .run-details__commit-heading > span { min-width: 0; overflow-wrap: anywhere; }
 .run-details__commit-body { margin: 10px 0 0; padding: 0 0 0 12px; border-left: 2px solid var(--border-strong); color: var(--fg-muted); }
 .run-details__commit-body pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; margin: 0 0 8px; color: var(--fg); }
-.run-details__command { position: relative; }
-.run-details__command :is(textarea, pre) { display: block; box-sizing: border-box; width: 100%; min-height: 74px; margin: 0; padding: 12px; font: 11px/1.7 monospace; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 0; }
-.run-details__command textarea { resize: vertical; }
-.run-details__command button { margin-top: 8px; padding: 5px 9px; font: inherit; font-size: 10px; background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); cursor: pointer; }
-.run-details__command button:hover { background: var(--bg-hover); }
 @media (max-width: 540px) {
   .run-details__commit summary { gap: 8px; }
 }
@@ -3191,7 +3172,6 @@ input {
 .card__metadata-content .ui-dialog__meta dd { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 .card__metadata .card__urls { padding: 0; margin: 0; border: 0; }
 .card__metadata .run-details__commit code { font-size: 10px; line-height: 1; }
-.card__metadata .card__code { margin-top: 4px; }
 .card__targets { gap: 16px; align-items: start; }
 .card__targets > div { align-items: start; gap: 8px; }
 .card__targets dd { display: grid; gap: 8px; }
@@ -3208,13 +3188,44 @@ input {
   .card__targets > div { grid-template-columns: minmax(0, 1fr); }
   .card__targets > div:only-child { grid-column: 1 / -1; }
 }
-.run-details__command--compact { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 4px; }
-.run-details__command--compact textarea { flex: 1; min-width: 0; width: auto; min-height: 30px; padding: 5px 7px; line-height: 18px; }
-.run-details__command--compact button { flex-shrink: 0; margin: 0; padding: 5px 7px; line-height: 18px; }
-.run-details__command--auto-size { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 8px; }
-.run-details__command--auto-size pre { flex: 1; min-width: 0; width: auto; min-height: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.run-details__command--auto-size button { flex-shrink: 0; margin-top: 0; }
-.run-details__copy-status { flex-basis: 100%; font-size: 10px; color: var(--fg-muted); }
+.copyable-text {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0 4px;
+  padding: 3px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.copyable-text + .copyable-text { margin-top: 4px; }
+.copyable-text button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+.copyable-text button:hover, .copyable-text button:focus-visible { background: var(--bg-hover); color: var(--fg); }
+.copyable-text :is(textarea, pre) {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 4px 3px;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: 11px/18px monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.copyable-text textarea { resize: vertical; }
+.card__metadata .copyable-text pre { max-height: 220px; overflow: auto; }
+.run-details__copy-status { grid-column: 2; font-size: 10px; color: var(--fg-muted); }
 .run-details__copy-status:empty { display: none; }
 
 /* Shared rows keep hidden categories compact and always restorable. */

@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { CopyableText } from './CopyableText';
 
 type SourceLoadState =
   | { status: 'loading' }
@@ -38,5 +39,5 @@ export function SourceText({ href }: { href: string | null }) {
   if (!href) return <p>No source snapshot was captured.</p>;
   if (source.status === 'loading') return <p>Loading source…</p>;
   if (source.status === 'failed') return <p>Source snapshot unavailable.</p>;
-  return <pre className="card__code">{source.text}</pre>;
+  return <CopyableText text={source.text} label="Source snapshot" copyLabel="Copy test source" />;
 }
