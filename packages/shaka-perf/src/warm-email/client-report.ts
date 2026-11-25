@@ -5,7 +5,6 @@
  * License in LICENSE.md.
  */
 
-import { savedArtifactDirectory } from '../pipeline/artifact-store';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -178,8 +177,8 @@ function containedJoin(root: string, ...segs: string[]): string | null {
 }
 
 function stageArtifact(resultsDir: string, pageId: string, stage: string, filename: string): string | null {
-  const root = containedJoin(resultsDir, pageId, 'artifacts');
-  return root && containedJoin(savedArtifactDirectory(root, stage), filename);
+  const root = containedJoin(resultsDir, pageId, 'artifacts', stage);
+  return root && containedJoin(root, filename);
 }
 
 // Read the page's `timeline_frames.json` - the build_annotated_timeline stage's

@@ -131,9 +131,7 @@ const isClickChip = (a) => a.kind === 'pw-interaction' && /^click \d+(\.\d+)?ms$
 let allPass = true;
 let validatedCount = 0;
 for (const sub of fs.readdirSync(RESULTS)) {
-  const root = path.join(RESULTS, sub, 'artifacts');
-  const scoped = path.join(root, 'build_annotated_timeline');
-  const dir = fs.existsSync(scoped) ? scoped : root;
+  const dir = path.join(RESULTS, sub, 'artifacts', 'build_annotated_timeline');
   const metadataPath = path.join(dir, 'timeline_frames.json');
   if (!fs.existsSync(metadataPath)) continue;
   const frames = [...JSON.parse(fs.readFileSync(metadataPath, 'utf-8'))]

@@ -25,12 +25,6 @@ function localArtifactPath(dir: string, name: string): string {
   return path.join(dir, name);
 }
 
-/** Legacy measurements stored the producer's files directly under artifacts/. */
-export function savedArtifactDirectory(root: string, stage: StageName): string {
-  const dir = localArtifactPath(root, stage);
-  return fs.existsSync(dir) ? dir : root;
-}
-
 export class ArtifactScope {
   constructor(readonly dir: string, private readonly reportRoot: string) {}
 
@@ -92,11 +86,6 @@ export class ArtifactStore {
     );
   }
 
-  savedStageScope(test: AbTestDefinition, label: string, stage: StageName): ArtifactScope {
-    const shared = this.scopeFor(test, label);
-    return new ArtifactScope(savedArtifactDirectory(shared.dir, stage), this.resultsRoot);
-  }
-
   /** One immutable snapshot shared by every measuring stage at this viewport. */
   writeTestSource(test: AbTestDefinition, viewportLabel: string, source: string): ArtifactPath {
     const hash = createHash('sha256').update(source).digest('hex');
@@ -132,7 +121,6 @@ export class ArtifactStore {
     for (const stage of stages) {
       const dir = scope.stageDirectory(stage).dir;
       fs.rmSync(dir, { recursive: true, force: true });
-      // An empty directory also distinguishes this run from a legacy flat result.
       fs.mkdirSync(dir, { recursive: true });
     }
     const sourceHref = source === null ? null : this.writeTestSource(test, label, source);

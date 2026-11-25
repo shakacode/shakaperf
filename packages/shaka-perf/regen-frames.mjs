@@ -18,11 +18,9 @@ const dirs = fs.readdirSync(ROOT)
   .filter((d) => fs.existsSync(d));
 
 for (const root of dirs) {
-  const audit = path.join(root, 'audit');
-  const profilePath = path.join(fs.existsSync(audit) ? audit : root, 'experiment_performance_profile.json');
+  const profilePath = path.join(root, 'audit', 'experiment_performance_profile.json');
   if (!fs.existsSync(profilePath)) continue;
-  const timeline = path.join(root, 'build_annotated_timeline');
-  const dir = fs.existsSync(timeline) || fs.existsSync(audit) ? timeline : root;
+  const dir = path.join(root, 'build_annotated_timeline');
   fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(dir)) {
     if (f.startsWith('timeline_frame_') && f.endsWith('.avif')) fs.unlinkSync(path.join(dir, f));
@@ -32,5 +30,5 @@ for (const root of dirs) {
     profilePath,
     outputPath: path.join(dir, 'timeline_frames.svg'),
   });
-  console.log(`${path.basename(path.dirname(dir))}: ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+  console.log(`${path.basename(path.dirname(root))}: ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 }
