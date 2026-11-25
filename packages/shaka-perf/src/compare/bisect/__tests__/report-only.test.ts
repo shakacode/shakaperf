@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import { executionFixture } from '../../../pipeline/__tests__/fixtures/execution';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -172,7 +173,7 @@ function savedReport(): BisectReportData {
       outcomes: [{
         ...executionFixture(),
         kind: 'ok',
-        stage: 'visreg',
+        stage: stageIds.visreg,
         measurement: { screenshot: 'data:image/png;base64,fixture' },
       }],
       viewportArtifactPaths: [],

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import { executionFixture } from './fixtures/execution';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -52,7 +53,7 @@ describe.each(['compare', 'audit'] as const)('%s report discovery', (name) => {
     'measures the selected %s despite a broken sibling and preserves saved report results',
     async (selection) => {
       const measuredTests: string[] = [];
-      const stageName = name === 'compare' ? 'visreg' : 'audit';
+      const stageName = name === 'compare' ? stageIds.visreg : stageIds.audit;
       const pipeline = createPipeline({
         measurementSides: name === 'compare' ? ['control', 'experiment'] : ['experiment'],
         name,

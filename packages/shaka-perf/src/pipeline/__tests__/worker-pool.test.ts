@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import { attachLatestTestAnnotation } from '../../test-annotation';
 import { StageFailureError } from '../../stage/stage-failure';
 import type { ArtifactPath } from '../artifact-store';
@@ -37,7 +38,7 @@ describe('WorkerPool worker state ownership', () => {
   }
 
   it('reuses disposable worker state for tasks from the same stage', async () => {
-    let stageName = 'perf';
+    const stageName = stageIds.perf;
     const pool = createPoolForStage(() => stageName);
     const dispose = jest.fn();
 
@@ -56,7 +57,7 @@ describe('WorkerPool worker state ownership', () => {
   });
 
   it('disposes disposable worker state before running a different stage task', async () => {
-    let stageName = 'perf';
+    let stageName: string = stageIds.perf;
     const pool = createPoolForStage(() => stageName);
     const dispose = jest.fn();
 
@@ -66,7 +67,7 @@ describe('WorkerPool worker state ownership', () => {
       return workerState;
     });
 
-    stageName = 'build_annotated_timeline';
+    stageName = stageIds.buildAnnotatedTimeline;
     const secondState = await pool.submit(async (state) => state as TestWorkerState);
 
     expect(dispose).toHaveBeenCalledTimes(1);
@@ -79,7 +80,7 @@ describe('WorkerPool worker state ownership', () => {
   });
 
   it('logs the latest test annotation on failed attempts', async () => {
-    const stageName = 'visreg';
+    const stageName = stageIds.visreg;
     const pool = createPoolForStage(() => stageName);
     const log = jest.spyOn(console, 'log').mockImplementation(() => {});
     const err = new Error('Failed while waiting for the validation result');
@@ -104,7 +105,7 @@ describe('WorkerPool worker state ownership', () => {
   });
 
   it('does not repeat Playwright call logs when logging annotated stage failures', async () => {
-    const stageName = 'visreg';
+    const stageName = stageIds.visreg;
     const pool = createPoolForStage(() => stageName);
     const log = jest.spyOn(console, 'log').mockImplementation(() => {});
     const cause = new Error([

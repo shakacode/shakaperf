@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import { executionFixture } from '../../../pipeline/__tests__/fixtures/execution';
 import { createElement, type ComponentType } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -125,7 +126,7 @@ describe('bisect report App rendering', () => {
       outcomes: [{
         ...executionFixture(),
         kind: 'skipped',
-        stage: 'visreg',
+        stage: stageIds.visreg,
         reason: 'fixture skip',
 
       }],
@@ -189,7 +190,7 @@ describe('bisect report App rendering', () => {
       outcomes: [{
         ...executionFixture(),
         kind: 'skipped',
-        stage: 'visreg',
+        stage: stageIds.visreg,
         reason: 'fixture skip',
 
       }],
@@ -351,7 +352,7 @@ function reportTest(): TestResult {
     id: 'product-card',
     name: 'Product page',
     startingPath: '/products/1',
-    stages: ['perf', 'perf-low-noise'],
+    stages: [stageIds.perf, stageIds.perfLowNoise],
   });
 }
 
@@ -430,13 +431,13 @@ function bisectReport(): AppReportData {
   return {
     ...ordinaryReport(),
     tests: [
-      testResult({ id: 'homepage-card', name: 'Homepage', startingPath: '/', stages: ['visreg'] }),
+      testResult({ id: 'homepage-card', name: 'Homepage', startingPath: '/', stages: [stageIds.visreg] }),
       reportTest(),
       testResult({
         id: 'unrelated-card',
         name: 'Unrelated page',
         startingPath: '/unrelated',
-        stages: ['visreg', 'perf', 'perf-low-noise'],
+        stages: [stageIds.visreg, stageIds.perf, stageIds.perfLowNoise],
       }),
     ],
     bisect: {

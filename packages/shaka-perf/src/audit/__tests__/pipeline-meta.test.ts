@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import { executionFixture } from '../../pipeline/__tests__/fixtures/execution';
 import { PHONE_VIEWPORT, DESKTOP_VIEWPORT, TABLET_VIEWPORT, type Viewport } from 'shaka-shared';
 import { DEFAULT_LH_CONFIG, reportMetaForLighthouseRun } from '../../bench/core/lighthouse-config';
@@ -13,7 +14,7 @@ import type { PipelineMachineReportRow } from '../../pipeline/pipeline';
 
 function row(
   viewport: Viewport,
-  outcomes: PipelineMachineReportRow['outcomes'] = [{ ...executionFixture({ viewport }), kind: 'ok', stage: 'audit', measurement: {} }],
+  outcomes: PipelineMachineReportRow['outcomes'] = [{ ...executionFixture({ viewport }), kind: 'ok', stage: stageIds.audit, measurement: {} }],
 ): PipelineMachineReportRow {
   return { outcomes };
 }
@@ -73,7 +74,7 @@ describe('auditMachineReportMeta', () => {
   });
 
   it('omits audit meta when no row has a successful audit outcome', () => {
-    expect(auditMachineReportMeta({}, [row(PHONE_VIEWPORT, [{ ...executionFixture(), kind: 'skipped', stage: 'audit', reason: 'skip' }])])).toEqual({});
+    expect(auditMachineReportMeta({}, [row(PHONE_VIEWPORT, [{ ...executionFixture(), kind: 'skipped', stage: stageIds.audit, reason: 'skip' }])])).toEqual({});
   });
 
   it('keeps viewport but omits Slow-4G when throttling is customized', () => {

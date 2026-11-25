@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import { executionFixture } from './fixtures/execution';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -41,12 +42,12 @@ jest.mock('../../config-loader', () => ({
   loadTests: jest.fn(),
 }));
 jest.mock('../../compare/compare-pipeline', () => ({
-  comparePipelineMetadata: { description: 'Compare', categories: ['visreg', 'perf'], stages: ['visreg', 'perf'] },
+  comparePipelineMetadata: { description: 'Compare', categories: ['visreg', 'perf'], stages: [stageIds.visreg, stageIds.perf] },
   comparePipelineConfigFromAbTests: jest.fn(),
   createComparePipeline: () => mockPipeline('compare'),
 }));
 jest.mock('../../audit/pipeline', () => ({
-  auditPipelineMetadata: { description: 'Audit', categories: ['audit', 'accessibility'], defaultCategories: ['audit', 'accessibility'], stages: ['audit', 'accessibility'] },
+  auditPipelineMetadata: { description: 'Audit', categories: ['audit', 'accessibility'], defaultCategories: ['audit', 'accessibility'], stages: [stageIds.audit, stageIds.accessibility] },
   createAuditPipeline: () => mockPipeline('audit'),
 }));
 
@@ -102,7 +103,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
   let oldExitCode: typeof process.exitCode;
   let tests: AbTestDefinition[];
   let log: jest.SpyInstance;
-  const stages = command === 'compare' ? ['visreg', 'perf'] : ['audit', 'accessibility'];
+  const stages = command === 'compare' ? [stageIds.visreg, stageIds.perf] : [stageIds.audit, stageIds.accessibility];
   const run = (...args: string[]) => (command === 'compare' ? createCompareCommand() : createAuditCommand())
     .exitOverride()
     .parseAsync(['--config', path.join(cwd, 'abtests.config.ts'), ...args], { from: 'user' });
@@ -292,7 +293,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     const mirror = (label: string) => path.join(store().resultsRoot, '.nyc_output', `${unitIdForTest(test, label)}.json`);
     const desktop = fs.readFileSync(mirror('desktop'), 'utf8');
     const desktopMtime = fs.statSync(mirror('desktop')).mtimeMs;
-    const stage = pipeline.stages.find((stage) => stage.name === 'code_coverage')!;
+    const stage = pipeline.stages.find((stage) => stage.name === stageIds.codeCoverage)!;
     const failure = jest.spyOn(stage, 'run').mockRejectedValue(new Error('bundle is not instrumented'));
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
     try {
@@ -301,7 +302,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
         categories: 'code_coverage', viewportsFilter: ['phone'], preserveOtherViewports: true, skipReport,
       });
       expect(result.hasFailures).toBe(true);
-      expect(store().readOutcome(test, 'phone', 'code_coverage')?.kind).toBe('error');
+      expect(store().readOutcome(test, 'phone', stageIds.codeCoverage)?.kind).toBe('error');
       expect(fs.existsSync(mirror('phone'))).toBe(false);
       expect(fs.readFileSync(mirror('desktop'), 'utf8')).toBe(desktop);
       expect(fs.statSync(mirror('desktop')).mtimeMs).toBe(desktopMtime);
@@ -326,7 +327,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     for (const test of [narrowed, active]) {
       for (const label of ['desktop', 'phone']) {
         mirrorCoverageToNycOutput(coverage, store().resultsRoot, unitIdForTest(test, label));
-        store().writeOutcome(test, label, { ...executionFixture({ viewport: built.shared.viewportDefinitions.find(viewport => viewport.label === label)! }), kind: 'ok', stage: 'code_coverage' });
+        store().writeOutcome(test, label, { ...executionFixture({ viewport: built.shared.viewportDefinitions.find(viewport => viewport.label === label)! }), kind: 'ok', stage: stageIds.codeCoverage });
       }
     }
     const mirrors = path.join(store().resultsRoot, '.nyc_output');
@@ -334,7 +335,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
       const file = path.join(mirrors, `${unitIdForTest(test, 'desktop')}.json`);
       return { file, bytes: fs.readFileSync(file, 'utf8'), mtime: fs.statSync(file).mtimeMs };
     });
-    const stage = pipeline.stages.find((stage) => stage.name === 'code_coverage')!;
+    const stage = pipeline.stages.find((stage) => stage.name === stageIds.codeCoverage)!;
     const failure = jest.spyOn(stage, 'run').mockRejectedValue(new Error('bundle is not instrumented'));
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
     try {

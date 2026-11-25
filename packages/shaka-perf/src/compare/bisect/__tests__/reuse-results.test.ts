@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import { executionFixture } from '../../../pipeline/__tests__/fixtures/execution';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -47,13 +48,13 @@ describe('reusable compare results', () => {
     store.writeOutcome(test, DESKTOP_VIEWPORT.label, {
       ...executionFixture(),
       kind: 'ok',
-      stage: 'visreg',
+      stage: stageIds.visreg,
       measurement: [{ diffImage: 'diff.png' }],
     });
     store.writeOutcome(test, DESKTOP_VIEWPORT.label, {
       ...executionFixture(),
       kind: 'ok',
-      stage: 'accessibility',
+      stage: stageIds.accessibility,
       measurement: { findings: [{ ruleId: 'button-name', status: 'new' }] },
     });
 
@@ -77,7 +78,7 @@ describe('reusable compare results', () => {
       controlUrl: 'http://per-test-control.test/control-path',
       experimentUrl: 'http://per-test-experiment.test/experiment-path',
       outcomes: [{
-        stage: 'accessibility',
+        stage: stageIds.accessibility,
         viewport: DESKTOP_VIEWPORT,
       }],
     }]);

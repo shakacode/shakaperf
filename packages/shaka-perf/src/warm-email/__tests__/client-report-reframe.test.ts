@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import { shakaPerfVersion } from '../../pipeline/saved-result-version';
 import { executionFixture } from '../../pipeline/__tests__/fixtures/execution';
 import * as fs from 'node:fs';
@@ -160,7 +161,7 @@ function writeResults(pages: PageFixture[], siteUrl = 'http://localhost:1'): str
     fs.mkdirSync(pageDir, { recursive: true });
     fs.writeFileSync(path.join(pageDir, 'audit.json'), `${JSON.stringify({
       shakaPerfVersion,
-      stage: 'audit',
+      stage: stageIds.audit,
       measurement: {
         metrics: Object.entries(page.metrics).map(([label, value]) => ({ label, value, display: display(label, value) })),
       },
@@ -170,7 +171,7 @@ function writeResults(pages: PageFixture[], siteUrl = 'http://localhost:1'): str
       fs.writeFileSync(path.join(pageDir, 'accessibility.json'), `${JSON.stringify({
         shakaPerfVersion,
         ...executionFixture(),
-        kind: 'ok', stage: 'accessibility', measurement: a11y(url, page.a11y, page.id),
+        kind: 'ok', stage: stageIds.accessibility, measurement: a11y(url, page.a11y, page.id),
       }, null, 2)}\n`);
       if (typeof page.a11y.score === 'number') {
         fs.writeFileSync(path.join(pageDir, 'accessibility-client.json'), `${JSON.stringify({ score: page.a11y.score })}\n`);
@@ -180,7 +181,7 @@ function writeResults(pages: PageFixture[], siteUrl = 'http://localhost:1'): str
       fs.writeFileSync(path.join(pageDir, 'agent-readiness.json'), `${JSON.stringify({
         shakaPerfVersion,
         ...executionFixture(),
-        kind: 'ok', stage: 'agent-readiness', measurement: agent(url, page.agent),
+        kind: 'ok', stage: stageIds.agentReadiness, measurement: agent(url, page.agent),
       }, null, 2)}\n`);
     }
   }

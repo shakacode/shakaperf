@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import { executionFixture } from './fixtures/execution';
 import { measurementCommand } from '../run-metadata';
 import type { MeasurementMetadata } from '../run-metadata';
@@ -42,7 +43,7 @@ describe('source artifacts at the persistence boundary', () => {
     const mtime = fs.statSync(file).mtimeMs;
     expect(store.writeTestSource(test, 'desktop', source)).toBe(testSourceHref);
     expect(fs.statSync(file).mtimeMs).toBe(mtime);
-    for (const stage of ['visreg', 'perf'] as const) {
+    for (const stage of [stageIds.visreg, stageIds.perf] as const) {
       store.writeOutcome(test, 'desktop', { ...executionFixture({ testSourceHref, measurementMetadata: metadata }), kind: 'ok', stage });
       const saved = JSON.parse(fs.readFileSync(path.join(store.unitDirForViewport(test, 'desktop'), `${stage}.json`), 'utf8'));
       expect(saved.executionDetails).toMatchObject({ testSourceHref });
@@ -59,10 +60,10 @@ describe('source artifacts at the persistence boundary', () => {
 
   it('keeps measured outcomes readable when their source artifact is missing', () => {
     const testSourceHref = store.writeTestSource(test, 'desktop', source);
-    store.writeOutcome(test, 'desktop', { ...executionFixture({ testSourceHref, measurementMetadata: metadata }), kind: 'ok', stage: 'visreg' });
+    store.writeOutcome(test, 'desktop', { ...executionFixture({ testSourceHref, measurementMetadata: metadata }), kind: 'ok', stage: stageIds.visreg });
     fs.unlinkSync(path.join(dir, testSourceHref));
-    expect(store.readOutcome(test, 'desktop', 'visreg')?.kind).toBe('ok');
-    expect(store.readOutcome(test, 'desktop', 'visreg')?.executionDetails.testSourceHref).toBe(testSourceHref);
+    expect(store.readOutcome(test, 'desktop', stageIds.visreg)?.kind).toBe('ok');
+    expect(store.readOutcome(test, 'desktop', stageIds.visreg)?.executionDetails.testSourceHref).toBe(testSourceHref);
     expect(store.readTextArtifact(testSourceHref)).toBeUndefined();
   });
 

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import type { BisectReportModel, BisectReportTarget } from '../report-model';
 import { pipelineStagesForReport, type ReportStage } from '../../../pipeline/pipeline-artifacts';
 
@@ -126,7 +127,7 @@ function expectSelection(
 describe('bisect report selection', () => {
   it('keeps both report stages owned by a perf commit category', () => {
     const reportStages = pipelineStagesForReport('compare', comparePipelineConfig())
-      .filter((stage) => stage.name === 'perf' || stage.name === 'perf-low-noise');
+      .filter((stage) => stage.name === stageIds.perf || stage.name === stageIds.perfLowNoise);
     const visibleStageNames = new Set(reportStages.map((stage) => stage.name));
     const categories = selectionCategories(model, { kind: 'commit', sha: 'perf-only' });
 

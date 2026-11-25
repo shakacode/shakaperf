@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
 import { buildAbTestsConfig } from '../../../config';
 import { comparePipelineConfigFromAbTests } from '../../../compare/compare-pipeline';
@@ -20,7 +21,7 @@ const secondRun = '2026-10-20T21:00:50.722Z';
 export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode: 'full' | 'self-contained' = 'full', bisect = false): ReportData {
   const audit = pipelineName === 'audit';
   const config = buildAbTestsConfig({ shared: { controlURL: 'http://127.0.0.1:3910', experimentURL: 'http://127.0.0.1:3910', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60000 }, browserConsole: { failOn: ['error'], allowList: [] }, timeoutMs: 60000, retries: 0, retryDelay: 0 } });
-  const stage = audit ? 'audit' : 'perf';
+  const stage = audit ? stageIds.audit : stageIds.perf;
   const measurement = audit ? { metrics: [{ label: 'LCP', value: 1800, unit: 'ms', display: '1.8 s', group: 'vitals', level: 'good' }] } : { metrics: [{
     label: 'LCP', group: 'vitals', controlValue: 1800, experimentValue: 2100, deltaValue: 300,
     controlDisplay: '1.8 s', experimentDisplay: '2.1 s', deltaDisplay: '+300 ms', percentDisplay: '+16.7%', deltaPercent: 16.7,
@@ -58,7 +59,7 @@ export function runDetailsFixture(pipelineName: 'compare' | 'audit', reportMode:
         },
       },
       {
-        kind: 'error', stage: 'accessibility', error: { message: 'Accessibility scan timed out; performance result was retained.' },
+        kind: 'error', stage: stageIds.accessibility, error: { message: 'Accessibility scan timed out; performance result was retained.' },
         executionDetails: {
           viewport: DESKTOP_VIEWPORT, testSourceHref, command, runId: secondRun, recoveredAfterRetries: false,
           measurementMetadata: withMetadata ? metadata(secondRun) : undefined,

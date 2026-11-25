@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import { shakaPerfVersion } from '../../pipeline/saved-result-version';
 import { executionFixture } from '../../pipeline/__tests__/fixtures/execution';
 import * as fs from 'node:fs';
@@ -73,7 +74,7 @@ describe('synthesizeSite', () => {
       shakaPerfVersion,
       ...executionFixture(),
       kind: 'ok',
-      stage: 'agent-readiness',
+      stage: stageIds.agentReadiness,
       measurement: agentReadinessResult(),
     }));
 
@@ -98,7 +99,7 @@ describe('synthesizeSite', () => {
       shakaPerfVersion,
       ...executionFixture(),
       kind: 'ok',
-      stage: 'agent-readiness',
+      stage: stageIds.agentReadiness,
       measurement: agentReadinessResult(signals({ textSample: 'A useful sentence survives synthesis for later consumers.' })),
     }));
 

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import { executionFixture } from '../../pipeline/__tests__/fixtures/execution';
 import fs from 'fs';
 import os from 'os';
@@ -122,11 +123,11 @@ describe('compare accessibility pipeline integration', () => {
     const actualChips = pipeline.chipsForAllTests([{
       test,
       results: {
-        visreg: [],
-        accessibility: [entry(result)],
-        'perf-warmup': [],
-        perf: [],
-        'perf-low-noise': [],
+        [stageIds.visreg]: [],
+        [stageIds.accessibility]: [entry(result)],
+        [stageIds.perfWarmup]: [],
+        [stageIds.perf]: [],
+        [stageIds.perfLowNoise]: [],
       },
     }]).get(test) ?? [];
 
@@ -148,11 +149,11 @@ describe('compare accessibility pipeline integration', () => {
     const sorts = pipeline.sortsForAllTests([{
       test,
       results: {
-        visreg: [],
-        accessibility: [entry(result)],
-        'perf-warmup': [],
-        perf: [],
-        'perf-low-noise': [],
+        [stageIds.visreg]: [],
+        [stageIds.accessibility]: [entry(result)],
+        [stageIds.perfWarmup]: [],
+        [stageIds.perf]: [],
+        [stageIds.perfLowNoise]: [],
       },
     }]).get(test) ?? [];
     expect(sorts.map((sort) => [sort.tag, sort.value])).toEqual([
@@ -168,8 +169,8 @@ describe('compare accessibility pipeline integration', () => {
     const chips = pipeline.chipsForAllTests([{
       test,
       results: {
-        visreg: [],
-        accessibility: [entry(accessibilityResult({
+        [stageIds.visreg]: [],
+        [stageIds.accessibility]: [entry(accessibilityResult({
           new: 1,
           fixed: 0,
           changed: 0,
@@ -179,9 +180,9 @@ describe('compare accessibility pipeline integration', () => {
           fixedByImpact: {},
           changedByImpact: {},
         }, false))],
-        'perf-warmup': [],
-        perf: [],
-        'perf-low-noise': [],
+        [stageIds.perfWarmup]: [],
+        [stageIds.perf]: [],
+        [stageIds.perfLowNoise]: [],
       },
     }]).get(test) ?? [];
 
@@ -209,11 +210,11 @@ describe('compare accessibility pipeline integration', () => {
     const chips = pipeline.chipsForAllTests([{
       test,
       results: {
-        visreg: [],
-        accessibility: [entry(result)],
-        'perf-warmup': [],
-        perf: [],
-        'perf-low-noise': [],
+        [stageIds.visreg]: [],
+        [stageIds.accessibility]: [entry(result)],
+        [stageIds.perfWarmup]: [],
+        [stageIds.perf]: [],
+        [stageIds.perfLowNoise]: [],
       },
     }]).get(test) ?? [];
     expect(chips[0]).toMatchObject({
@@ -225,11 +226,11 @@ describe('compare accessibility pipeline integration', () => {
     const sorts = pipeline.sortsForAllTests([{
       test,
       results: {
-        visreg: [],
-        accessibility: [entry(result)],
-        'perf-warmup': [],
-        perf: [],
-        'perf-low-noise': [],
+        [stageIds.visreg]: [],
+        [stageIds.accessibility]: [entry(result)],
+        [stageIds.perfWarmup]: [],
+        [stageIds.perf]: [],
+        [stageIds.perfLowNoise]: [],
       },
     }]).get(test) ?? [];
     expect(sorts.map((sort) => [sort.tag, sort.value])).toEqual([
@@ -262,12 +263,12 @@ function baseConfig(): Parameters<typeof createComparePipeline>[0] {
 
 function entry(result: AccessibilityCompareResult) {
   return {
-    stage: 'accessibility',
+    stage: stageIds.accessibility,
     measurement: result,
     outcome: {
       ...executionFixture(),
       kind: 'ok' as const,
-      stage: 'accessibility',
+      stage: stageIds.accessibility,
       measurement: result,
     },
   };
@@ -321,12 +322,12 @@ function artifact(selector: string, overrides: Partial<VisregArtifact> = {}): Vi
 function visualChips(measurement: VisregResult) {
   const test = testDefinition();
   const visreg = [{
-    stage: 'visreg',
+    stage: stageIds.visreg,
     measurement,
-    outcome: { ...executionFixture(), kind: 'ok' as const, stage: 'visreg', measurement },
+    outcome: { ...executionFixture(), kind: 'ok' as const, stage: stageIds.visreg, measurement },
   }];
   const chips = createComparePipeline(baseConfig()).chipsForAllTests([{
-    test, results: { visreg, accessibility: [], perf: [], 'perf-warmup': [], 'perf-low-noise': [] },
+    test, results: { [stageIds.visreg]: visreg, [stageIds.accessibility]: [], [stageIds.perf]: [], [stageIds.perfWarmup]: [], [stageIds.perfLowNoise]: [] },
   }]).get(test) ?? [];
   return {
     unstable: chips.find(chip => chip.tag === 'visreg unstable'),
