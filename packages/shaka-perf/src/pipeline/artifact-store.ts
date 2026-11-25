@@ -33,7 +33,6 @@ export class ArtifactScope {
   }
 
   async writeFile(name: string, bytes: string | Buffer): Promise<ArtifactPath> {
-    fs.mkdirSync(this.dir, { recursive: true });
     await fs.promises.writeFile(localArtifactPath(this.dir, name), bytes);
     return this.pathFor(name);
   }
@@ -87,11 +86,9 @@ export class ArtifactStore {
   }
 
   /** One immutable snapshot shared by every measuring stage at this viewport. */
-  writeTestSource(test: AbTestDefinition, viewportLabel: string, source: string): ArtifactPath {
+  private writeTestSource(scope: ArtifactScope, source: string): ArtifactPath {
     const hash = createHash('sha256').update(source).digest('hex');
     const name = `test-source-${hash}.ts`;
-    const scope = this.scopeFor(test, viewportLabel);
-    fs.mkdirSync(scope.dir, { recursive: true });
     const file = path.join(scope.dir, name);
     try {
       fs.writeFileSync(file, source, { flag: 'wx' });
@@ -123,7 +120,7 @@ export class ArtifactStore {
     this.removeStageOutcomes(this.unitDirForViewport(test, viewportLabel), stages);
     this.resetStageDirectories(scope, stages);
 
-    const sourceHref = source === null ? null : this.writeTestSource(test, viewportLabel, source);
+    const sourceHref = source === null ? null : this.writeTestSource(scope, source);
     const remainingOutcomes = this.readOutcomesForViewport(test, viewportLabel);
     this.removeUnusedTestSources(scope, remainingOutcomes, sourceHref);
     return sourceHref;
