@@ -15,7 +15,13 @@ export type { PlaywrightPage, BrowserContext, Browser };
  * stays outside the JSON bridge config so artifact ownership remains with the
  * framework that created the stage's ArtifactScope.
  */
+export interface VisualRetryState {
+  retriesStarted: number;
+  comparisons: Map<string, number>;
+}
+
 export interface VisregRunRuntime {
+  visualRetries?: VisualRetryState;
   captureFailure?: (
     err: unknown,
     page: PlaywrightPage,

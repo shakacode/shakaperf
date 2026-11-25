@@ -76,8 +76,9 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
       // even when --keep-old-results or --restart-from-stage retains artifacts.
       // Reset ONCE, outside the retried task: its attempts share the fresh pools.
       resetVisregScreenshots(ctx.artifacts.dir);
+      const visualRetries = { retriesStarted: 0, comparisons: new Map<string, number>() };
       const artifacts = await pool.submit(
-        () => runVisregUnit(ctx, config),
+        () => runVisregUnit(ctx, config, visualRetries),
         { key: ctx.testAndViewportId },
       );
       const { label, width, height } = ctx.viewport;

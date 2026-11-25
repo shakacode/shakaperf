@@ -10,6 +10,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import chalk from 'chalk';
+import type { VisualRetryState } from '../../../visreg/core/types';
 import visregRunner from '../../../visreg/core/runner';
 import { screenshotPoolPaths } from '../../../visreg/core/util/screenshotPoolPaths';
 import { resolvePlaywrightOptions } from '../../../config';
@@ -40,6 +41,7 @@ export function resetVisregScreenshots(unitArtifactsDir: string): void {
 export async function runVisregUnit(
   ctx: TestContext,
   stageConfig: VisregStageConfig,
+  visualRetries?: VisualRetryState,
 ): Promise<VisregResult> {
   console.log(
     'Loading every test page on both the control server and the experiment server, taking a screenshot of each once the page has settled, and comparing the two screenshots pixel-by-pixel. ' +
@@ -88,6 +90,7 @@ export async function runVisregUnit(
       testPathPattern: testPathPatternForSingleTest(ctx.test, testPathPattern),
       filter: exactTestNameFilter(ctx.test.name),
     }, {
+      visualRetries,
       captureFailure: async (err, page, isControl) => {
         const media = await captureFailureScreenshot(
           ctx.artifacts,

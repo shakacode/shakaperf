@@ -23,7 +23,7 @@ import { withPreparedSide, type CreateSideFn, type PreparePageFn } from './prepa
 import { ScreenshotPool, crossMatch, type PoolFrame, type CrossMatchResult } from './screenshotPool';
 import { assertConsoleClean, type BrowserConsolePolicy } from '../../../browser-console';
 import { reconstructEffectiveConfig } from '../../../effective-config';
-import type { Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig } from '../types';
+import type { VisualRetryState, Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig } from '../types';
 
 const logger = createLogger('runCompareAttempts');
 
@@ -34,6 +34,7 @@ export type CaptureScreenshotFn = (
 
 /** Injected collaborators — defaulted to the real implementations; overridden in tests. */
 export interface CompareAttemptsDeps {
+  visualRetries?: VisualRetryState;
   captureScreenshot: CaptureScreenshotFn;
   createSide?: CreateSideFn;
   preparePage?: PreparePageFn;
@@ -193,11 +194,13 @@ export async function runCompareAttempts(
   const beforeNavigate = effectiveConfig.shared.beforeNavigate;
   const browserConsole = effectiveConfig.shared.browserConsole;
 
-  for (let attempt = 0; attempt <= maxRetries && (attempt === 0 || runs.some((r) => !r.done)); attempt++) {
+  const budget = deps.visualRetries ?? { retriesStarted: 0, comparisons: new Map<string, number>() };
+  for (let attempt = 0; attempt === 0 || (budget.retriesStarted < maxRetries && runs.some((r) => !r.done)); attempt++) {
     if (attempt > 0) {
       // Linear backoff: 5s, 10s, 15s, ...
-      const delay = retryDelayMs * attempt;
-      logger.log(`Retry ${attempt}/${maxRetries} for "${scenario.label}" - chilling for ${delay}ms`);
+      budget.retriesStarted++;
+      const delay = retryDelayMs * budget.retriesStarted;
+      logger.log(`Retry ${budget.retriesStarted}/${maxRetries} for "${scenario.label}" - chilling for ${delay}ms`);
       await sleep(delay);
     }
 
@@ -262,7 +265,8 @@ export async function runCompareAttempts(
 
     for (const run of runs) {
       if (run.done) continue;
-      run.visualComparisonCount = attempt + 1;
+      run.visualComparisonCount = (budget.comparisons.get(run.selector) ?? 0) + 1;
+      budget.comparisons.set(run.selector, run.visualComparisonCount);
       const refBuffer = refCaptures.get(run.selector)!;
       const testBuffer = testCaptures.get(run.selector)!;
 
@@ -279,12 +283,10 @@ export async function runCompareAttempts(
         run.experiment.map((f) => f.buffer),
         compareOpts,
       );
-      const budgetSpent = run.control.length > maxRetries &&
-        run.experiment.length > maxRetries;
       // A retry that added no frames is pixel-stable — retrying can't change it.
       const pixelStable = attempt > 0 &&
         run.control.length + run.experiment.length === framesBefore;
-      run.done = run.result.pass || budgetSpent || pixelStable;
+      run.done = run.result.pass || pixelStable;
     }
   }
 
