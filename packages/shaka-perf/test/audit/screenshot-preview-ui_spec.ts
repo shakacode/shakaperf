@@ -5,12 +5,13 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium, type Browser, type Page } from 'playwright';
-import { DESKTOP_VIEWPORT } from 'shaka-shared';
+
 import { renderReportHtml, type ReportData, type ReportOutcome } from '../../src/pipeline/report';
 
 jest.setTimeout(60_000);
@@ -21,10 +22,12 @@ const BROKEN_IMAGE = 'data:image/png;base64,broken';
 
 function fixture(): ReportData {
   const ok = (stage: 'audit' | 'code_coverage', measurement: unknown): ReportOutcome => ({
-    kind: 'ok', stage, viewport: DESKTOP_VIEWPORT, measurement,
+    ...executionFixture(),
+    kind: 'ok', stage, measurement,
   } as ReportOutcome);
   const error = (stage: 'audit' | 'code_coverage'): ReportOutcome => ({
-    kind: 'error', stage, viewport: DESKTOP_VIEWPORT,
+    ...executionFixture(),
+    kind: 'error', stage,
     error: { message: 'Navigation timed out' }, failure: { media: TALL_IMAGE },
   } as ReportOutcome);
   return {
@@ -169,7 +172,8 @@ describe('audit and coverage screenshot previews', () => {
     data.meta.reportMode = 'self-contained';
     data.tests = [data.tests[0]];
     data.tests[0].outcomes = [{
-      kind: 'ok', stage: 'code_coverage', viewport: DESKTOP_VIEWPORT,
+      ...executionFixture(),
+      kind: 'ok', stage: 'code_coverage',
       measurement: { files: 0, totalStatements: 0, coveredStatements: 0, coverageHref: 'data:application/json,{}', visibilityMapHref: 'data:text/plain,map' },
     } as ReportOutcome];
     const file = path.join(directory, 'no-screenshot.html');

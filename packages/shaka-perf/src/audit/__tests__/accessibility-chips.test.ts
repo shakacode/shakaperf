@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../pipeline/__tests__/fixtures/execution';
 import { DESKTOP_VIEWPORT, type AbTestDefinition } from 'shaka-shared';
 import { createAuditPipeline } from '../pipeline';
 import type { AccessibilityResult } from '../stages/accessibility';
@@ -70,6 +71,7 @@ function chipsFor(result: AccessibilityResult) {
         viewport: DESKTOP_VIEWPORT,
         measurement: result,
         outcome: {
+          ...executionFixture(),
           kind: 'ok',
           stage: 'accessibility',
           measurement: result,

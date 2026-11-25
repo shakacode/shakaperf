@@ -5,11 +5,12 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../../pipeline/__tests__/fixtures/execution';
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { DESKTOP_VIEWPORT } from 'shaka-shared';
+
 import type { AbTestsConfig } from '../../../config';
 import type { TestResult } from '../../../pipeline/report';
 import type { ResolvedConfig } from '../../../twin-servers/types';
@@ -424,9 +425,9 @@ function regressionResult(
     ...baseResult(first.testFile, first.testName),
     outcomes: [
       ...(visualTargets.length === 0 ? [] : [{
+        ...executionFixture(),
         kind: 'ok' as const,
         stage: 'visreg',
-        viewport: DESKTOP_VIEWPORT,
         measurement: visualTargets.map((target) => ({
           selector: target.subject,
           controlImage: `${target.id}-control.png`,
@@ -440,9 +441,9 @@ function regressionResult(
         })),
       }]),
       ...(perfTargets.length === 0 ? [] : [{
+        ...executionFixture(),
         kind: 'ok' as const,
         stage: 'perf',
-        viewport: DESKTOP_VIEWPORT,
         measurement: {
           metrics: perfTargets.map((target) => ({
             label: target.subject,
@@ -461,9 +462,9 @@ function regressionResult(
         },
       }]),
       ...(accessibilityTargets.length === 0 ? [] : [{
+        ...executionFixture(),
         kind: 'ok' as const,
         stage: 'accessibility',
-        viewport: DESKTOP_VIEWPORT,
         measurement: accessibilityMeasurement(accessibilityTargets, targetsWithRegression),
       }]),
     ],
@@ -546,9 +547,9 @@ function visregResult(regressionDetected: boolean): TestResult {
   return {
     ...baseResult('tests/homepage.abtest.ts', 'Homepage'),
     outcomes: [{
+      ...executionFixture(),
       kind: 'ok',
       stage: 'visreg',
-      viewport: DESKTOP_VIEWPORT,
       measurement: [{
         selector: 'document',
         controlImage: 'control.png',

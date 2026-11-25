@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from './fixtures/execution';
 import type { AbTestDefinition } from 'shaka-shared';
 import { buildAbTestsConfig } from '../../config';
 import { persistedOutcomeInScope, viewportsForTestAcrossStages } from '../viewport-plan';
@@ -27,8 +28,8 @@ function makeStage(name: string, category: Stage['category']): Stage {
   return { name, category, measuresApplication: true } as Stage;
 }
 
-const okOutcome = (stage: string): Outcome => ({ kind: 'ok', stage });
-const skippedOutcome = (stage: string): Outcome => ({ kind: 'skipped', stage, reason: 'r' });
+const okOutcome = (stage: string): Outcome => ({ ...executionFixture(), kind: 'ok', stage });
+const skippedOutcome = (stage: string): Outcome => ({ ...executionFixture(), kind: 'skipped', stage, reason: 'r' });
 
 // Default config: shared viewports desktop/tablet/phone; visreg at all three,
 // accessibility at desktop/phone.

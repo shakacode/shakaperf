@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../pipeline/__tests__/fixtures/execution';
 import { chromium } from 'playwright';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -526,6 +527,7 @@ function writePerfResultsForPages(
     if (page.agent) {
       const url = `http://localhost${page.startingPath || '/'}`;
       fs.writeFileSync(path.join(dir, page.id, 'agent-readiness.json'), `${JSON.stringify({
+        ...executionFixture(),
         kind: 'ok',
         stage: 'agent-readiness',
         measurement: agentReadinessFixture(url, page.agent),
@@ -534,6 +536,7 @@ function writePerfResultsForPages(
     if (page.a11y) {
       const url = `http://localhost${page.startingPath || '/'}`;
       fs.writeFileSync(path.join(dir, page.id, 'accessibility.json'), `${JSON.stringify({
+        ...executionFixture(),
         kind: 'ok',
         stage: 'accessibility',
         measurement: accessibilityResultFixture(url, page.a11y),

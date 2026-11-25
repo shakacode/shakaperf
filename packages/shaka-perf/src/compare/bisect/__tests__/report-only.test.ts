@@ -5,10 +5,11 @@
  * License in LICENSE.md.
  */
 
+import { executionFixture } from '../../../pipeline/__tests__/fixtures/execution';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { DESKTOP_VIEWPORT } from 'shaka-shared';
+
 import type { BisectReportData } from '../report-model';
 import type { BisectSession } from '../types';
 import { regenerateBisectReport } from '../report-only';
@@ -169,9 +170,9 @@ function savedReport(): BisectReportData {
       measuredAt: null,
       runId: null,
       outcomes: [{
+        ...executionFixture(),
         kind: 'ok',
         stage: 'visreg',
-        viewport: DESKTOP_VIEWPORT,
         measurement: { screenshot: 'data:image/png;base64,fixture' },
       }],
       viewportArtifactPaths: [],
