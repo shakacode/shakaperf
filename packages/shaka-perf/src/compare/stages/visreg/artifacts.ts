@@ -158,21 +158,21 @@ export interface VisregArtifactSet {
 
 /**
  * Harvests one unit's engine output into the stage's measurement: reads the
- * visreg-report.json the engine wrote into the artifact scope, and turns each captured
+ * report.json the engine wrote into the artifact scope, and turns each captured
  * pair into a `VisregArtifact` containing report-relative image paths.
  *
  * The reader half of a pair whose writer is the visreg engine's report command.
  * Both take this dir from the framework (`ctx.artifacts.dir`) rather than
  * deriving it, so they cannot drift apart.
  *
- * Returns null when there is no visreg-report.json — the test wasn't measured here
+ * Returns null when there is no report.json — the test wasn't measured here
  * (the shard didn't run it, or visreg filtered it out). Throws if one exists
  * but is unreadable, so a corrupt run can't masquerade as an unmeasured one.
  */
 export function readVisregArtifacts(opts: ReadVisregArtifactsOptions): VisregArtifactSet | null {
   const { artifacts: artifactScope, viewport } = opts;
   const perTestDir = artifactScope.dir;
-  const reportPath = path.join(perTestDir, 'visreg-report.json');
+  const reportPath = path.join(perTestDir, 'report.json');
   if (!fs.existsSync(reportPath)) return null;
 
   let report: VisregPerTestReport;
@@ -180,7 +180,7 @@ export function readVisregArtifacts(opts: ReadVisregArtifactsOptions): VisregArt
     report = JSON.parse(fs.readFileSync(reportPath, 'utf8')) as VisregPerTestReport;
   } catch (err) {
     throw new Error(
-      `visreg visreg-report.json unreadable at ${reportPath}: ${(err as Error).message}`,
+      `visreg report.json unreadable at ${reportPath}: ${(err as Error).message}`,
     );
   }
 

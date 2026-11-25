@@ -67,7 +67,23 @@ export class PerfEngineStage<M> implements Stage<M> {
   }
 
   artifactsToClear() {
-    return [this.name];
+    const { saveArtifacts, statisticalAnalysis } = this.options.config;
+    const files = [this.failureScreenshot];
+    if (statisticalAnalysis) files.push('ab-measurements.json', 'report.txt');
+    if (saveArtifacts) {
+      for (const side of ['control', 'experiment']) {
+        files.push(`${side}_lighthouse_report.html`, `${side}_performance_profile.json`,
+          `${side}_performance_profile.summary.txt`, `${side}_network_activity.txt`);
+      }
+      files.push('timeline_comparison.html', 'timeline_preview.svg', 'side_by_side_frames.js',
+        'review_frames', 'performance_profile.summary.diff.html', 'network_activity.diff.html',
+        'the_only_file_ai_needs_to_analyze.diff');
+    }
+    return files;
+  }
+
+  private get failureScreenshot() {
+    return `${this.name}-failure-screenshot.png`;
   }
 
   applies(
@@ -84,7 +100,7 @@ export class PerfEngineStage<M> implements Stage<M> {
   ): Promise<StageRunResult<M>> {
     const runImpl = './engine';
     const { runPerfEngineStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    const { measurement, settings } = await runPerfEngineStage({ ...ctx, artifacts: ctx.artifacts.child(this.name) }, pool, this.options.config);
+    const { measurement, settings } = await runPerfEngineStage(ctx, pool, this.options.config, this.failureScreenshot);
     return { measurement: measurement as M, metadata: performanceMetadataFields(settings) };
   }
 

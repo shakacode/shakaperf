@@ -38,7 +38,7 @@ function writePerTestReport(
 ) {
   const dir = path.join(resultsRoot, slug, 'artifacts');
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, 'visreg-report.json'), JSON.stringify(data));
+  fs.writeFileSync(path.join(dir, 'report.json'), JSON.stringify(data));
 }
 
 describe('readVisregArtifacts', function () {

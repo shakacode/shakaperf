@@ -21,10 +21,6 @@ export type ArtifactPath = string & { readonly [artifactPathBrand]: true };
 export class ArtifactScope {
   constructor(readonly dir: string, private readonly reportRoot: string) {}
 
-  child(directory: string): ArtifactScope {
-    return new ArtifactScope(this.resolveSafeName(directory), this.reportRoot);
-  }
-
   async writeFile(name: string, bytes: string | Buffer): Promise<ArtifactPath> {
     fs.mkdirSync(this.dir, { recursive: true });
     await fs.promises.writeFile(this.resolveSafeName(name), bytes);

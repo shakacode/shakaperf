@@ -168,6 +168,7 @@ export function getCpuSlowdownMultiplier(lhSettings: LighthouseConfig): number {
 }
 
 export interface LighthouseBenchmarkOptions {
+  failureScreenshot?: string;
   /**
    * Viewport being measured. Sole source of truth for the sampler's
    * `TestFnContext.viewport`; Lighthouse's `formFactor` / `screenEmulation`

@@ -21,11 +21,11 @@ const PNG_FIELDS = ['reference', 'test', 'pixelmatchDiffImage', 'diffImage'] as 
 type PngField = typeof PNG_FIELDS[number];
 
 /**
- * Writes this invocation's visreg-report.json into the unit artifacts dir the caller
+ * Writes this invocation's report.json into the unit artifacts dir the caller
  * pinned (`paths.artifacts`), mirroring the unified compare per-unit layout.
  *
  * PNGs captured by the engine into the flat `{control,experiment}_screenshots/`
- * dirs are moved in alongside it; no monolithic intermediate visreg-report.json is
+ * dirs are moved in alongside it; no monolithic intermediate report.json is
  * produced. One invocation measures one unit (the compare stage pins a single
  * test and viewport), so every pair the reporter holds belongs in that one dir.
  */
@@ -47,7 +47,7 @@ async function writePerTestReports(config: RuntimeConfig, reporter: Reporter): P
   }
 
   fs.writeFileSync(
-    path.join(destDir, 'visreg-report.json'),
+    path.join(destDir, 'report.json'),
     JSON.stringify({ shakaPerfVersion, testSuite: reporter.testSuite, tests: movedTests }, null, 2),
   );
 
@@ -112,8 +112,7 @@ export interface VisregCompareResult {
 export async function execute(config: RuntimeConfig): Promise<VisregCompareResult> {
   const compareResult = await compare(config);
   if (!compareResult) {
-    logger.error('Comparison failed, no report generated.');
-    return { passed: 0, failed: 0 };
+    throw new Error('Comparison failed, no report generated.');
   }
   const report = compareResult as Reporter;
 

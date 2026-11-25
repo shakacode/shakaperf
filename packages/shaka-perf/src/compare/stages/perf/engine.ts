@@ -49,6 +49,7 @@ export async function runPerfEngineStage(
   ctx: TestContext,
   workerPool: WorkerPool,
   config: PerfStageConfig,
+  failureScreenshot: string,
 ): Promise<PerformanceEngineResult<PerfResult | PerfLowNoiseResult | PerfWarmupResult>> {
   // The engine measures at ctx.viewport, so config.viewports is unused.
   const perfConfig = config;
@@ -73,6 +74,7 @@ export async function runPerfEngineStage(
   const benchmarkOptions: Omit<LighthouseBenchmarkOptions, 'targetUrl'> = {
     viewport: ctx.viewport,
     resultsFolder: artifactsDir,
+    failureScreenshot,
     lhConfig,
     saveArtifacts: config.saveArtifacts,
     // Effective launch options (shared.playwrightOptions ← perf override ←

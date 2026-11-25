@@ -63,7 +63,7 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
   return {
     measuresApplication: true,
     artifactsToClear: () => [
-      ...Object.values(screenshotPoolPaths('')), 'visreg-report.json',
+      ...Object.values(screenshotPoolPaths('')),
       'control-visreg-failure-screenshot.png', 'experiment-visreg-failure-screenshot.png',
     ],
     name: 'visreg',
