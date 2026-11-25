@@ -67,7 +67,6 @@ function stage(
   observedUrls?: ObservedStageUrls[],
 ): Stage<Record<string, never>> {
   return {
-    artifactsToClear: () => category === 'visreg' ? ['experiment_screenshots'] : [],
     measuresApplication: true,
     name,
     label: name,
@@ -439,7 +438,7 @@ describe('runPipeline', () => {
       expect(store.readTextArtifact(originalPath)).toBe(source);
       expect(store.readTextArtifact(changedPath)).toBe(changed);
       for (const viewport of new Set(outcomes.map((o) => o.executionDetails.viewport.label))) {
-        expect(fs.readdirSync(store.artifactsDirForViewport(test, viewport))).toHaveLength(2);
+        expect(fs.readdirSync(store.artifactsDirForViewport(test, viewport)).filter(file => file.startsWith('test-source-'))).toHaveLength(2);
         const measuredPaths = new Set(outcomes.filter((o) => o.executionDetails.viewport.label === viewport && o.stage !== 'visreg')
           .map((o) => o.executionDetails.testSourceHref).filter(Boolean));
         expect(measuredPaths.size).toBe(1);
@@ -470,7 +469,7 @@ describe('runPipeline', () => {
       fs.writeFileSync(file, changed);
       await runWithFrozenTest({ cwd, tests: [test], skipReport: true });
       expect(store.readTextArtifact(originalPath)).toBeUndefined();
-      expect(fs.readdirSync(store.artifactsDirForViewport(test, original.executionDetails.viewport.label))).toHaveLength(1);
+      expect(fs.readdirSync(store.artifactsDirForViewport(test, original.executionDetails.viewport.label)).filter(file => file.startsWith('test-source-'))).toHaveLength(1);
     } finally {
       clock.mockRestore();
       fs.rmSync(cwd, { recursive: true, force: true });
@@ -1029,7 +1028,7 @@ describe('pre-run wipe', () => {
     const unitDir = store.unitDirForViewport(narrowedTest, 'tablet');
     const staleVisreg = path.join(unitDir, 'visreg.json');
     seedOutcome('tablet', 'perf');
-    const staleFrame = path.join(unitDir, 'artifacts', 'experiment_screenshots', 'S_0_document_0_tablet__deadbeef.png');
+    const staleFrame = path.join(unitDir, 'artifacts', 'visreg', 'experiment_screenshots', 'S_0_document_0_tablet__deadbeef.png');
     fs.mkdirSync(path.dirname(staleFrame), { recursive: true });
     fs.writeFileSync(staleFrame, 'stale frame from a previous run');
 

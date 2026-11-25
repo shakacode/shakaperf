@@ -121,28 +121,30 @@ export class ArtifactStore {
     );
   }
 
-  deleteOutcome(test: AbTestDefinition, viewportLabel: string, stage: StageName): void {
-    fs.rmSync(
-      path.join(this.unitDirForViewport(test, viewportLabel), `${stage}.json`),
-      { force: true },
-    );
-  }
-
-  clearArtifacts(test: AbTestDefinition, label: string, paths: readonly string[]): void {
-    const dir = this.artifactsDirForViewport(test, label);
-    for (const name of new Set(paths)) {
-      if (path.isAbsolute(name) || name.split(/[\\/]/).some(part => !part || part === '.' || part === '..')) {
-        throw new Error(`Invalid relative artifact path: ${name}`);
-      }
-      let parent = dir;
-      for (const segment of name.split(path.sep).slice(0, -1)) {
-        parent = path.join(parent, segment);
-        if (fs.lstatSync(parent, { throwIfNoEntry: false })?.isSymbolicLink()) {
-          throw new Error(`Artifact path traverses a symbolic link: ${name}`);
-        }
-      }
-      fs.rmSync(path.join(dir, name), { recursive: true, force: true });
+  prepareMeasurement(test: AbTestDefinition, label: string, stages: readonly StageName[], source: string | null): ArtifactPath | null {
+    if (!stages.length) return null;
+    const unit = this.unitDirForViewport(test, label);
+    const scope = this.scopeFor(test, label);
+    // Invalidate every selected outcome before cleanup can fail partway through.
+    for (const stage of stages) {
+      fs.rmSync(localArtifactPath(unit, `${stage}.json`), { force: true });
     }
+    for (const stage of stages) {
+      const dir = scope.stageDirectory(stage).dir;
+      fs.rmSync(dir, { recursive: true, force: true });
+      // An empty directory also distinguishes this run from a legacy flat result.
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const sourceHref = source === null ? null : this.writeTestSource(test, label, source);
+    const retained = new Set(this.readOutcomesForViewport(test, label)
+      .map(outcome => outcome.executionDetails.testSourceHref));
+    retained.add(sourceHref);
+    for (const file of fs.readdirSync(scope.dir)) {
+      if (/^test-source-[a-f0-9]{64}\.ts$/.test(file) && !retained.has(scope.pathFor(file))) {
+        fs.rmSync(path.join(scope.dir, file), { force: true });
+      }
+    }
+    return sourceHref;
   }
 
   readOutcome(test: AbTestDefinition, viewportLabel: string, stage: StageName): Outcome | null {

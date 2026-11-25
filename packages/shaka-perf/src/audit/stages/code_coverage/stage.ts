@@ -61,10 +61,6 @@ export interface CodeCoverageResult {
  * why the audit stage collects only Lighthouse and video.
  */
 export class CodeCoverageStage implements Stage<CodeCoverageResult> {
-  artifactsToClear() {
-    return [this.name];
-  }
-
   readonly measuresApplication = true;
   readonly category = 'code_coverage';
   readonly name: StageName = 'code_coverage';

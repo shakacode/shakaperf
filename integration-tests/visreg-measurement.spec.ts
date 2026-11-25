@@ -65,8 +65,8 @@ test('desktop measurements preserve perf and bound visreg retries across restart
     const observedCli = path.join(cwd, 'compare.cjs');
     fs.writeFileSync(observedCli, `
       const { ArtifactStore } = require(${JSON.stringify(path.join(path.dirname(cli), 'pipeline/artifact-store.js'))});
-      const clear = ArtifactStore.prototype.clearArtifacts;
-      ArtifactStore.prototype.clearArtifacts = function (...args) {
+      const clear = ArtifactStore.prototype.prepareMeasurement;
+      ArtifactStore.prototype.prepareMeasurement = function (...args) {
         require('node:fs').appendFileSync(${JSON.stringify(cleanupLog)}, 'clear\\n');
         return clear.apply(this, args);
       };
@@ -102,7 +102,7 @@ test('desktop measurements preserve perf and bound visreg retries across restart
     expect(old.kind).toBe('ok');
     const artifacts = path.join(unit, 'artifacts');
     const perfFiles = fs.readdirSync(artifacts, { recursive: true, encoding: 'utf8' }).filter(name =>
-      name !== 'report.json' && fs.statSync(path.join(artifacts, name)).isFile());
+      fs.statSync(path.join(artifacts, name)).isFile());
     const hashes = () => perfFiles.map(name =>
       createHash('sha256').update(fs.readFileSync(path.join(artifacts, name))).digest('hex'));
     const originalHashes = hashes();

@@ -63,7 +63,6 @@ function mockPipeline(name: 'compare' | 'audit') {
     for (const category of categories) {
       builder.runStage(pool, {
         name: category, category, label: category, description: category,
-        artifactsToClear: () => [],
         measuresApplication: false,
         selfContainedReportStrip: {}, applies: () => true,
         run: async (ctx: TestContext) => {

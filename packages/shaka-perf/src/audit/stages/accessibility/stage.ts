@@ -27,10 +27,6 @@ import {
 import type { AccessibilityResult, AccessibilityScan } from './types';
 
 export class AccessibilityStage implements Stage<AccessibilityResult> {
-  artifactsToClear() {
-    return [this.name];
-  }
-
   readonly measuresApplication = true;
   readonly category = 'accessibility';
   readonly name: StageName = 'accessibility';

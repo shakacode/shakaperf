@@ -47,10 +47,6 @@ export interface AuditResult {
 }
 
 export class AuditStage implements Stage<AuditResult> {
-  artifactsToClear() {
-    return [this.name];
-  }
-
   readonly measuresApplication = true;
   readonly category = 'audit';
   readonly name: StageName = 'audit';

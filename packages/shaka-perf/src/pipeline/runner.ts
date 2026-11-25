@@ -600,22 +600,7 @@ async function runConfiguredPipelineWithSelection(
       const { test, viewport } = unit;
       const selected = executableStages.filter(stage => testDeclaresStageCategory(test, stage)
         && resolveViewportsForTest(test, runtime.config, stage.category).some(vp => vp.label === viewport.label));
-      const dir = store.artifactsDirForViewport(test, viewport.label);
-      fs.mkdirSync(dir, { recursive: true });
-      for (const stage of selected) store.deleteOutcome(test, viewport.label, stage.name);
-      if (unit.testSource !== null) {
-        unit.testSourceHref = store.writeTestSource(test, viewport.label, unit.testSource);
-      }
-      const existingFiles = fs.readdirSync(dir);
-      const paths = selected.flatMap(stage => stage.artifactsToClear({ existingFiles }));
-      const retainedSources = new Set(store.readOutcomesForViewport(test, viewport.label)
-        .map(outcome => outcome.executionDetails.testSourceHref));
-      retainedSources.add(unit.testSourceHref);
-      const scope = store.scopeFor(test, viewport.label);
-      for (const file of existingFiles) {
-        if (/^test-source-[a-f0-9]{64}\.ts$/.test(file) && !retainedSources.has(scope.pathFor(file))) paths.push(file);
-      }
-      store.clearArtifacts(test, viewport.label, paths);
+      unit.testSourceHref = store.prepareMeasurement(test, viewport.label, selected.map(stage => stage.name), unit.testSource);
     }
   }
   let invocation: RunInvocation | undefined;

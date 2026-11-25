@@ -121,10 +121,6 @@ export interface BuildAnnotatedTimelineResult {
 }
 
 export class BuildAnnotatedTimelineStage implements Stage<BuildAnnotatedTimelineResult> {
-  artifactsToClear() {
-    return [this.name];
-  }
-
   readonly measuresApplication = false;
   readonly category = 'audit';
   readonly name: StageName = 'build_annotated_timeline';

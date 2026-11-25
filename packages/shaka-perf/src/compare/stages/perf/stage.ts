@@ -66,10 +66,6 @@ export class PerfEngineStage<M> implements Stage<M> {
     this.description = options.description;
   }
 
-  artifactsToClear() {
-    return [this.name];
-  }
-
   applies(
     test: AbTestDefinition,
     viewport: Viewport,
