@@ -59,13 +59,14 @@ import {
   type StageRunResult,
   type TestContext,
 } from '../../../stage/stage';
+import { stageIds } from '../../../stage/stage-ids';
 import { MyStageArtifactView } from './report';
 
 export interface MyResult { /* measured values */ }
 
 export class MyStage implements Stage<MyResult> {
   readonly category = 'audit';          // shaka-shared TestType
-  readonly name: StageName = 'my_stage';
+  readonly name = stageIds.myStage;
   readonly description = 'One-liner shown in CLI help and the report.';
 
   constructor(private readonly config: MyStageConfig) {}
@@ -75,7 +76,7 @@ export class MyStage implements Stage<MyResult> {
     _viewport: Viewport,
     priorOutcomeKinds: ReadonlyMap<StageName, OutcomeKind>,
   ): boolean {
-    return priorOutcomeKinds.get('audit') === 'ok';
+    return priorOutcomeKinds.get(stageIds.audit) === 'ok';
   }
 
   async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<MyResult>> {
@@ -95,8 +96,9 @@ export class MyStage implements Stage<MyResult> {
 
 Field-by-field:
 
-- **`name`** — unique within the pipeline. Used as the outcome JSON
-  filename (`<testAndViewportId>/<name>.json`), the report shell's
+- **`name`** — unique within the pipeline. For a built-in stage, define the ID once in
+  `src/stage/stage-ids.ts` and import it wherever code refers to that stage.
+  The ID determines the outcome JSON filename (`<testAndViewportId>/<name>.json`), the report shell's
   `<section data-stage="<name>">`, the CLI's `--stages` / `--skip-stages` value, and
   the key in `chipsForAllTests`'s `results` map. Stage names with
   spaces or non-`[a-zA-Z0-9_-]+` characters will fight you later.
@@ -113,7 +115,7 @@ Field-by-field:
   framework-supplied reason. Use this for cross-stage dependencies:
   ```ts
   applies(_test, _viewport, priorOutcomeKinds) {
-    return priorOutcomeKinds.get('audit') === 'ok';
+    return priorOutcomeKinds.get(stageIds.audit) === 'ok';
   }
   ```
   Per-test category opt-outs (`testTypes: [...]`) and viewport filters

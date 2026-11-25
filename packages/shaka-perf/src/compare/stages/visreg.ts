@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import { createElement } from 'react';
 import type { VisregConfig } from '../../config';
 import {
@@ -61,7 +62,7 @@ export interface VisregStageConfig extends Omit<VisregConfig, 'viewports'> {
 export function createVisregStage(config: VisregStageConfig): Stage<VisregResult> {
   return {
     measuresApplication: true,
-    name: 'visreg',
+    name: stageIds.visreg,
     label: 'Visual Diff',
     category: 'visreg',
     description: 'Capture and compare control vs experiment screenshots.',

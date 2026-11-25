@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { Viewport } from '../../../config';
@@ -30,7 +31,7 @@ import type { AgentReadinessResult } from './types';
 export class AgentReadinessStage implements Stage<AgentReadinessResult> {
   readonly measuresApplication = true;
   readonly category = 'audit';
-  readonly name: StageName = 'agent-readiness';
+  readonly name: StageName = stageIds.agentReadiness;
   readonly label = 'Agent Readiness';
   readonly description = 'Measure how readable the page is to AI agents and answer engines (raw HTML vs rendered DOM, structured data, semantic HTML).';
   readonly selfContainedReportStrip = {};

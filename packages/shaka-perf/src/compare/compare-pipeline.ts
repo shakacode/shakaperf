@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../stage/stage-ids';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { PerfLighthouseConfig } from '../bench/core/lighthouse-config';
 import type { ChipDescriptor, SortDescriptor } from '../pipeline/report';
@@ -39,7 +40,13 @@ import { pairedBenchmarkParallelism } from './stages/shared/runtime';
 export const comparePipelineMetadata = {
   description: 'Run visreg + perf + accessibility stages side-by-side and produce a unified A/B report.',
   categories: ['visreg', 'perf', 'accessibility'],
-  stages: ['visreg', 'perf-warmup', 'perf', 'perf-low-noise', 'accessibility'],
+  stages: [
+    stageIds.visreg,
+    stageIds.perfWarmup,
+    stageIds.perf,
+    stageIds.perfLowNoise,
+    stageIds.accessibility,
+  ],
 } as const;
 
 interface VisregResembleOutputOptions {
@@ -97,6 +104,14 @@ export function comparePipelineConfigFromAbTests(
   };
 }
 
+type CompareStageResults = {
+  [stageIds.visreg]: VisregResult;
+  [stageIds.accessibility]: AccessibilityCompareResult;
+  [stageIds.perfWarmup]: PerfWarmupResult;
+  [stageIds.perf]: PerfResult;
+  [stageIds.perfLowNoise]: PerfLowNoiseResult;
+};
+
 export function createComparePipeline(input: ComparePipelineConfig) {
   return createPipeline({
     measurementSides: ['control', 'experiment'],
@@ -125,7 +140,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
       plotTitle: input.perfPlotTitle,
     };
     pipeline.runStage(parallelWorkerPool, new PerfEngineStage<PerfWarmupResult>({
-      name: 'perf-warmup',
+      name: stageIds.perfWarmup,
       description: 'Warm pages before statistical Lighthouse sampling.',
       label: 'Perf warmup',
       artifactTitle: 'Perf warmup',
@@ -138,12 +153,12 @@ export function createComparePipeline(input: ComparePipelineConfig) {
       },
       machineReadableSummary: emptyMachineReadableSummary,
       applies(_test, _viewport, priorOutcomeKinds) {
-        const visregKind = priorOutcomeKinds.get('visreg');
+        const visregKind = priorOutcomeKinds.get(stageIds.visreg);
         return visregKind === undefined || visregKind === 'skipped';
       },
     }));
     pipeline.runStage(parallelWorkerPool, new PerfEngineStage<PerfResult>({
-      name: 'perf',
+      name: stageIds.perf,
       description: 'Run statistical Lighthouse sampling and classify perf changes.',
       label: 'Performance',
       artifactTitle: 'Performance',
@@ -156,15 +171,15 @@ export function createComparePipeline(input: ComparePipelineConfig) {
       },
       machineReadableSummary: emptyMachineReadableSummary,
       applies(_test, _viewport, priorOutcomeKinds) {
-        return priorOutcomeKinds.get('visreg') !== 'error' &&
-          priorOutcomeKinds.get('perf-warmup') !== 'error';
+        return priorOutcomeKinds.get(stageIds.visreg) !== 'error' &&
+          priorOutcomeKinds.get(stageIds.perfWarmup) !== 'error';
       },
     }));
     pipeline.waitForAllTasksFinishAndDispose(parallelWorkerPool);
 
     const singleThreadedWorkerPool = pipeline.registerWorkerPool(1);
     pipeline.runStage(singleThreadedWorkerPool, new PerfEngineStage<PerfLowNoiseResult>({
-      name: 'perf-low-noise',
+      name: stageIds.perfLowNoise,
       description: 'Capture final serial low-noise Lighthouse reports and traces.',
       label: 'Low-noise perf',
       artifactTitle: 'Low-noise perf comparison (results are random!)',
@@ -177,9 +192,9 @@ export function createComparePipeline(input: ComparePipelineConfig) {
       },
       machineReadableSummary: lowNoisePerfSummary,
       applies(_test, _viewport, priorOutcomeKinds) {
-        return priorOutcomeKinds.get('visreg') !== 'error' &&
-          priorOutcomeKinds.get('perf-warmup') !== 'error' &&
-          priorOutcomeKinds.get('perf') !== 'error';
+        return priorOutcomeKinds.get(stageIds.visreg) !== 'error' &&
+          priorOutcomeKinds.get(stageIds.perfWarmup) !== 'error' &&
+          priorOutcomeKinds.get(stageIds.perf) !== 'error';
       },
     }));
     pipeline.waitForAllTasksFinishAndDispose(singleThreadedWorkerPool);
@@ -188,19 +203,13 @@ export function createComparePipeline(input: ComparePipelineConfig) {
     pipeline.runStage(accessibilityWorkerPool, new AccessibilityCompareStage(input.accessibility));
     pipeline.waitForAllTasksFinishAndDispose(accessibilityWorkerPool);
 
-    pipeline.buildChips<{
-      visreg: VisregResult;
-      accessibility: AccessibilityCompareResult;
-      'perf-warmup': PerfWarmupResult;
-      perf: PerfResult;
-      'perf-low-noise': PerfLowNoiseResult;
-    }>({
+    pipeline.buildChips<CompareStageResults>({
       chipsForAllTests(perTest) {
         const out = new Map<AbTestDefinition, readonly ChipDescriptor[]>();
         for (const { test, results } of perTest) {
           const chips: ChipDescriptor[] = [];
-          chips.push(...accessibilityChips(results.accessibility ?? []));
-          const regressedMetrics = collectPerfMetrics('regressedMetrics', results.perf, results['perf-low-noise']);
+          chips.push(...accessibilityChips(results[stageIds.accessibility] ?? []));
+          const regressedMetrics = collectPerfMetrics('regressedMetrics', results[stageIds.perf], results[stageIds.perfLowNoise]);
           if (regressedMetrics.length > 0) {
             chips.push({
               tag: 'regression',
@@ -209,7 +218,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
               sortingWeight: 10,
             });
           }
-          const changed = comparisonUsage(results.visreg, artifact => artifact.diffImage !== null);
+          const changed = comparisonUsage(results[stageIds.visreg], artifact => artifact.diffImage !== null);
           if (changed.length > 0) {
             chips.push({
               tag: 'visual change',
@@ -219,7 +228,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
               tooltip: retryUsageTooltip('Screenshots still differ', 'comparisons', changed),
             });
           }
-          const improvedMetrics = collectPerfMetrics('improvedMetrics', results.perf, results['perf-low-noise']);
+          const improvedMetrics = collectPerfMetrics('improvedMetrics', results[stageIds.perf], results[stageIds.perfLowNoise]);
           if (improvedMetrics.length > 0) {
             chips.push({
               tag: 'improvement',
@@ -228,7 +237,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
               sortingWeight: 30,
             });
           }
-          const recovered = comparisonUsage(results.visreg, artifact => artifact.savedByRetries);
+          const recovered = comparisonUsage(results[stageIds.visreg], artifact => artifact.savedByRetries);
           if (recovered.length > 0) {
             const count = recovered[0]!.count;
             const match = count !== undefined && recovered.every(entry => entry.count === count)
@@ -261,20 +270,14 @@ export function createComparePipeline(input: ComparePipelineConfig) {
     // diffing metrics (those that regressed or improved). The sort value is the
     // signed percent change (regression positive, improvement negative) so the
     // worst-first default surfaces the biggest regressions.
-    pipeline.buildSorts<{
-      visreg: VisregResult;
-      accessibility: AccessibilityCompareResult;
-      'perf-warmup': PerfWarmupResult;
-      perf: PerfResult;
-      'perf-low-noise': PerfLowNoiseResult;
-    }>({
+    pipeline.buildSorts<CompareStageResults>({
       sortsForAllTests(perTest) {
         const out = new Map<AbTestDefinition, readonly SortDescriptor[]>();
         for (const { test, results } of perTest) {
           // Collapse each diffing metric to its largest-magnitude appearance
           // across perf + low-noise so a dimension has one value per test.
           const worstByLabel = new Map<string, PerfMetric>();
-          for (const metric of collectDiffingPerfMetrics(results.perf, results['perf-low-noise'])) {
+          for (const metric of collectDiffingPerfMetrics(results[stageIds.perf], results[stageIds.perfLowNoise])) {
             const prev = worstByLabel.get(metric.label);
             if (!prev || Math.abs(metric.deltaPercent) > Math.abs(prev.deltaPercent)) {
               worstByLabel.set(metric.label, metric);
@@ -290,7 +293,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
             higherIsWorse: true,
             color: metric.direction === 'regression' ? 'red' : 'blue',
           }));
-          sorts.push(...accessibilitySorts(results.accessibility ?? []));
+          sorts.push(...accessibilitySorts(results[stageIds.accessibility] ?? []));
           if (sorts.length > 0) out.set(test, sorts);
         }
         return out;

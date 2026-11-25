@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { Viewport } from '../../../config';
@@ -35,7 +36,7 @@ export interface AiSummaryResult {
 export class AiSummaryStage implements Stage<AiSummaryResult> {
   readonly measuresApplication = false;
   readonly category = 'audit';
-  readonly name: StageName = 'ai_summary';
+  readonly name: StageName = stageIds.aiSummary;
   readonly label = 'Summary';
   readonly description = 'Summarise the audit results in plain language via an AI model.';
   readonly selfContainedReportStrip = {};
@@ -44,7 +45,7 @@ export class AiSummaryStage implements Stage<AiSummaryResult> {
 
   applies(_test: AbTestDefinition, _viewport: Viewport, priorOutcomeKinds: ReadonlyMap<StageName, OutcomeKind>): boolean {
     // Nothing to summarise unless the audit produced metrics.
-    return priorOutcomeKinds.get('audit') === 'ok';
+    return priorOutcomeKinds.get(stageIds.audit) === 'ok';
   }
 
   async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<AiSummaryResult>> {

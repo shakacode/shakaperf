@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../stage/stage-ids';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -151,7 +152,7 @@ export function synthesizeSite(resultsDir: string): SiteScorecard {
 
   const pages: PagePerf[] = tests.map((t): PagePerf => {
     const metrics: Record<string, PageMetric> = {};
-    const auditPath = path.join(resultsDir, String(t.id), 'audit.json');
+    const auditPath = path.join(resultsDir, String(t.id), `${stageIds.audit}.json`);
     if (fs.existsSync(auditPath)) {
       try {
         // audit.json is the audit stage's persisted Outcome (artifact-store
@@ -182,7 +183,7 @@ export function synthesizeSite(resultsDir: string): SiteScorecard {
     // AccessibilityResult carrying the per-page axe violations + the inline
     // full-page screenshot. Absent on audits that did not run the stage.
     let a11y: AccessibilityResult | undefined;
-    const a11yPath = path.join(resultsDir, String(t.id), 'accessibility.json');
+    const a11yPath = path.join(resultsDir, String(t.id), `${stageIds.accessibility}.json`);
     if (fs.existsSync(a11yPath)) {
       try {
         const outcome = parseOutcome(fs.readFileSync(a11yPath, 'utf8'));
@@ -196,7 +197,7 @@ export function synthesizeSite(resultsDir: string): SiteScorecard {
     // `${stage}.json` convention as audit.json / accessibility.json); its
     // measurement is an AgentReadinessResult. Absent on audits that did not run it.
     let agentReady: AgentReadinessResult | undefined;
-    const agentPath = path.join(resultsDir, String(t.id), 'agent-readiness.json');
+    const agentPath = path.join(resultsDir, String(t.id), `${stageIds.agentReadiness}.json`);
     if (fs.existsSync(agentPath)) {
       try {
         const outcome = parseOutcome(fs.readFileSync(agentPath, 'utf8'));
