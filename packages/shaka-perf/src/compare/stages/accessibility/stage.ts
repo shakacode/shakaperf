@@ -80,10 +80,10 @@ function accessibilityComparisonFields(
   viewport: Viewport,
 ): AccessibilityComparisonFields {
   return {
-    viewport: viewport.label,
     new: String(summary.new),
     fixed: String(summary.fixed),
     changed: String(summary.changed),
     unchanged: String(summary.unchanged),
+    viewport: `${viewport.label} ${viewport.width} × ${viewport.height}`,
   };
 }
