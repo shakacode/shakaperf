@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import type { ExecutionDetails } from '../pipeline/outcome';
+import type { ExecutionDetails } from '../../pipeline/outcome';
 
 export function ArtifactMetadataFields({ executionDetails }: { executionDetails: ExecutionDetails }) {
   const fields = executionDetails.stageMetadata;

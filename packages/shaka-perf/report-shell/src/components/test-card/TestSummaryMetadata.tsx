@@ -5,10 +5,13 @@
  * License in LICENSE.md.
  */
 
-import type { ReportOutcome, TestResult } from '../types';
-import { pipelineTroubleshootCommands } from '../../../src/pipeline/pipeline-artifacts';
-import { TestMetadataSection, type TestMetadataDisplayOptions } from '../../../src/report-ui/TestMetadataSection';
-import { useTestCard } from '../../../src/report-ui/TestCardProvider';
+import type { ReportOutcome, TestResult } from '../../types';
+import { pipelineTroubleshootCommands } from '../../../../src/pipeline/pipeline-artifacts';
+import {
+  type TestMetadataDisplayOptions,
+  TestMetadataSection,
+  useTestCard,
+} from '../../../../src/report-ui/metadata';
 
 function latestMeasuredExecution(outcomes: readonly ReportOutcome[]) {
   let latest: ReportOutcome['executionDetails'] | undefined;

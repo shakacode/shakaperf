@@ -6,8 +6,7 @@
  */
 
 import { createContext, useContext, type ReactNode } from 'react';
-
-export type ReportMode = 'full' | 'self-contained';
+import type { ReportMode } from '../pipeline/report';
 
 const ReportModeContext = createContext<ReportMode>('full');
 
@@ -17,8 +16,4 @@ export function ReportModeProvider({ mode, children }: { mode: ReportMode; child
 
 export function useReportMode(): ReportMode {
   return useContext(ReportModeContext);
-}
-
-export function FullReportOnly({ children }: { children: ReactNode }) {
-  return useReportMode() === 'full' ? <>{children}</> : null;
 }

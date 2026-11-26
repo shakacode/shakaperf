@@ -11,13 +11,15 @@ import {
   DetailedArtifactDialog,
   StageArtifact,
   StageArtifactTitle,
-  ReportHeading,
   StageNote,
-} from '../../../pipeline/stage-report-components';
-import { FullReportOnly } from '../../../pipeline/report-mode';
+} from '../../../report-ui/artifacts';
+import {
+  PerformanceViewportSection,
+  ReportHeading,
+  useReportSection,
+} from '../../../report-ui/sections';
+import { FullReportOnly } from '../../../report-ui';
 import { FramePlayer } from './frame-player';
-import { useReportSection } from '../../../pipeline/report-section';
-import { PerformanceViewportSection } from '../../../report-ui/PerformanceViewportSection';
 
 const GROUPS: PerfMetricGroup[] = ['vitals', 'diagnostics'];
 

@@ -5,18 +5,18 @@
  * License in LICENSE.md.
  */
 
-import { ImageViewport } from '../../../pipeline/image-viewport';
-import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { FullReportOnly } from '../../../pipeline/report-mode';
-import type { StageRenderEntry } from '../../../stage/stage';
 import {
   DetailedArtifactDialog,
+  ImageViewport,
+  OldRunChip,
   StageArtifact,
   StageArtifactTitle,
-  ReportHeading,
-  OldRunChip,
   StageNote,
-} from '../../../pipeline/stage-report-components';
+} from '../../../report-ui/artifacts';
+import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { FullReportOnly } from '../../../report-ui';
+import type { StageRenderEntry } from '../../../stage/stage';
+import { ReportHeading } from '../../../report-ui/sections';
 import {
   hotspotZIndex,
   impactColor,

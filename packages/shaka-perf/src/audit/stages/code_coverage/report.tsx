@@ -8,14 +8,14 @@
 import type { StageRenderEntry } from '../../../stage/stage';
 import {
   DetailedArtifactDialog,
+  OldRunChip,
+  ScreenshotPreview,
   StageArtifact,
   StageArtifactTitle,
-  ReportHeading,
-  OldRunChip,
-} from '../../../pipeline/stage-report-components';
-import { FullReportOnly } from '../../../pipeline/report-mode';
-import { ScreenshotPreview } from '../../../pipeline/screenshot-preview';
-import { TooltipLabel } from '../../../pipeline/report-tooltip';
+} from '../../../report-ui/artifacts';
+import { ReportHeading } from '../../../report-ui/sections';
+import { FullReportOnly } from '../../../report-ui';
+import { TooltipLabel } from '../../../report-ui/tooltips';
 import type { CodeCoverageResult } from './stage';
 
 const count = (value: number) => value.toLocaleString('en-US');

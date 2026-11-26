@@ -6,10 +6,10 @@
  */
 
 import { useId, useState, type ReactNode } from 'react';
-import type { ExecutionDetails } from '../pipeline/outcome';
+import type { ExecutionDetails } from '../../pipeline/outcome';
 import { TargetLink } from './TargetLink';
 import { SourceText } from './SourceText';
-import { CopyableText } from './CopyableText';
+import { CopyableText } from '../controls/CopyableText';
 import { useTestCard } from './TestCardProvider';
 
 // Full-word units so "12m" isn't mistaken for "12 months" — especially

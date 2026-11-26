@@ -6,12 +6,8 @@
  */
 
 import type { StageRenderEntry } from '../../../stage/stage';
-import {
-  StageArtifact,
-  StageArtifactTitle,
-  ReportHeading,
-  OldRunChip,
-} from '../../../pipeline/stage-report-components';
+import { OldRunChip, StageArtifact, StageArtifactTitle } from '../../../report-ui/artifacts';
+import { ReportHeading } from '../../../report-ui/sections';
 import type { AgentReadinessResult } from './types';
 
 // Technical (self-contained dev report) view of the agent-readiness measurement.

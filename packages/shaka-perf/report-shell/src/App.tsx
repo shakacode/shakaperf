@@ -27,8 +27,8 @@ import { BisectSelectionSummary } from './components/BisectSelectionSummary';
 import { SearchBar } from './components/SearchBar';
 import { ChipFilter, type ChipFilterOption } from './components/ChipFilter';
 import { SortChips, type SortChipOption, type SortDirection } from './components/SortChips';
-import { reviewedKey } from './components/ReviewedCheckbox';
-import { TestCard } from './components/TestCard';
+import { reviewedKey } from './components/test-card/ReviewedCheckbox';
+import { TestCard } from './components/test-card/TestCard';
 import { ErrorBanner } from './components/ErrorBanner';
 import { MissingArtifactsDetails, MissingArtifactsToggle } from './components/MissingArtifacts';
 import { pipelineStagesForReport, type ReportStage } from '../../src/pipeline/pipeline-artifacts';
@@ -42,7 +42,7 @@ import {
   type AccessibilityFilterState,
 } from '../../src/audit/stages/accessibility/report';
 import type { AccessibilityResult } from '../../src/audit/stages/accessibility/types';
-import { ReportSectionVisibilityProvider } from '../../src/pipeline/report-section';
+import { ReportSectionVisibilityProvider } from '../../src/report-ui/sections';
 
 const ALL_FILTER_KEY = '__all__';
 

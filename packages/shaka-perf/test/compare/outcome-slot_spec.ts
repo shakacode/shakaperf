@@ -10,7 +10,7 @@ import { executionFixture } from '../../src/pipeline/__tests__/fixtures/executio
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import { OutcomeSlot } from '../../report-shell/src/components/OutcomeSlot';
+import { OutcomeSlot } from '../../report-shell/src/components/test-card/OutcomeSlot';
 import type { ReportMeta, ReportOutcome } from '../../src/pipeline/report';
 
 const META = {

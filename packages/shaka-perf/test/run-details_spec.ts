@@ -7,7 +7,7 @@
 
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { CommitDetails } from '../src/report-ui/CommitDetails';
+import { CommitDetails } from '../src/report-ui/metadata';
 import { runDetailsFixture } from '../src/pipeline/__tests__/fixtures/run-details';
 import { reportDataForMode } from '../src/pipeline/report';
 

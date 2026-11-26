@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { CopyableText } from './CopyableText';
+import { CopyableText } from '../controls/CopyableText';
 
 type SourceLoadState =
   | { status: 'loading' }

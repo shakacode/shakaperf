@@ -9,12 +9,12 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import {
   DetailedArtifactDialog,
+  OldRunChip,
   StageArtifact,
   StageArtifactTitle,
-  ReportHeading,
-  OldRunChip,
-} from '../../../pipeline/stage-report-components';
-import { useReportMode } from '../../../pipeline/report-mode';
+} from '../../../report-ui/artifacts';
+import { ReportHeading } from '../../../report-ui/sections';
+import { useReportMode } from '../../../report-ui';
 import {
   groupFramesByAnnotation,
   type AnnotatedFrame,

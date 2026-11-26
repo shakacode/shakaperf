@@ -9,12 +9,12 @@ import type { CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import {
   DetailedArtifactDialog,
+  ScreenshotPreview,
   StageArtifact,
   StageArtifactTitle,
-} from '../../../pipeline/stage-report-components';
-import { PerformanceViewportSection } from '../../../report-ui/PerformanceViewportSection';
-import { FullReportOnly } from '../../../pipeline/report-mode';
-import { ScreenshotPreview } from '../../../pipeline/screenshot-preview';
+} from '../../../report-ui/artifacts';
+import { PerformanceViewportSection } from '../../../report-ui/sections';
+import { FullReportOnly } from '../../../report-ui';
 import { METRIC_LEVEL_CSS_VAR } from './metrics';
 import type { AuditMetric, AuditMetricGroup, AuditResult } from './stage';
 

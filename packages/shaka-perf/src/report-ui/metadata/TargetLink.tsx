@@ -5,8 +5,8 @@
  * License in LICENSE.md.
  */
 
-import type { TestTarget } from '../pipeline/pipeline';
-import type { MeasuredCommit } from '../pipeline/run-metadata';
+import type { TestTarget } from '../../pipeline/pipeline';
+import type { MeasuredCommit } from '../../pipeline/run-metadata';
 import { CommitDetails } from './CommitDetails';
 
 export function TargetLink({ target, commit }: {

@@ -6,10 +6,8 @@
  */
 
 import type { StageRenderEntry } from '../../../stage/stage';
-import {
-  DetailedArtifactDialog,
-} from '../../../pipeline/stage-report-components';
-import { FullReportOnly } from '../../../pipeline/report-mode';
+import { DetailedArtifactDialog } from '../../../report-ui/artifacts';
+import { FullReportOnly } from '../../../report-ui';
 import type {
   AccessibilityScan,
   AccessibilityViolation,
@@ -27,7 +25,7 @@ import {
   type AccessibilityFilterOptions,
 } from './report-utils';
 
-export function ScreenshotPreview({
+export function AccessibilityScreenshotPreview({
   entry,
   filterOptions,
   includeFilterStyles = true,

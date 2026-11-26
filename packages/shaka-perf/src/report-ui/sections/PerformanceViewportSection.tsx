@@ -6,10 +6,10 @@
  */
 
 import { useId, useState, type ReactNode } from 'react';
-import type { ExecutionDetails } from '../pipeline/outcome';
-import { ReportSection } from '../pipeline/report-section';
-import { OldRunChip } from '../pipeline/stage-report-components';
-import { MetadataRows } from './ArtifactMetadataFields';
+import type { ExecutionDetails } from '../../pipeline/outcome';
+import { ReportSection } from './ReportSection';
+import { OldRunChip } from '../artifacts/OldRunChip';
+import { MetadataRows } from '../metadata/ArtifactMetadataFields';
 
 export function PerformanceViewportSection({ sectionKey, executionDetails, latestRun, children }: {
   sectionKey: string;
