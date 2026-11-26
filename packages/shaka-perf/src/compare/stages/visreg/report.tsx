@@ -8,8 +8,13 @@
 import type { CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { VisregArtifact, VisregResult } from '../visreg';
-import { DetailedArtifactDialog, StageArtifact, StageArtifactTitle, ReportHeading, OldRunChip, StageNote } from '../../../pipeline/stage-report-components';
-import { ImageViewport } from '../../../pipeline/image-viewport';
+import { DetailedArtifactDialog } from '../../../report-ui/DetailedArtifactDialog';
+import { StageArtifact } from '../../../report-ui/StageArtifact';
+import { StageArtifactTitle } from '../../../report-ui/StageArtifactTitle';
+import { ReportHeading } from '../../../report-ui/ReportHeading';
+import { OldRunChip } from '../../../report-ui/OldRunChip';
+import { StageNote } from '../../../report-ui/StageNote';
+import { ImageViewport } from '../../../report-ui/ImageViewport';
 import { visualComparisonFields } from './metadata';
 import { Scrubber } from './scrubber';
 

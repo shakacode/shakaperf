@@ -7,10 +7,12 @@
 
 import type { ReactNode } from 'react';
 import { pipelineStagesForReport, renderPersistedStageArtifacts, renderPersistedStageHeadingBadge } from '../../../src/pipeline/pipeline-artifacts';
-import { ScreenshotPreview } from '../../../src/pipeline/screenshot-preview';
-import { DetailedArtifactDialog, OldRunChip, StageRunChipsProvider } from '../../../src/pipeline/stage-report-components';
+import { ScreenshotPreview } from '../../../src/report-ui/ScreenshotPreview';
+import { DetailedArtifactDialog } from '../../../src/report-ui/DetailedArtifactDialog';
+import { OldRunChip } from '../../../src/report-ui/OldRunChip';
+import { StageRunChipsProvider } from '../../../src/report-ui/StageRunChipsProvider';
 import type { ReportMeta, ReportOutcome } from '../types';
-import { ReportSection } from '../../../src/pipeline/report-section';
+import { ReportSection } from '../../../src/report-ui/ReportSection';
 
 // V8 stack traces start with `<ErrorName>: <message>` — `Error`,
 // `TypeError`, `RangeError`, custom subclasses. We strip that prefix

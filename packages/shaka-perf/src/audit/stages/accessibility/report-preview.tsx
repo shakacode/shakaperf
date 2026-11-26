@@ -6,10 +6,8 @@
  */
 
 import type { StageRenderEntry } from '../../../stage/stage';
-import {
-  DetailedArtifactDialog,
-} from '../../../pipeline/stage-report-components';
-import { FullReportOnly } from '../../../pipeline/report-mode';
+import { DetailedArtifactDialog } from '../../../report-ui/DetailedArtifactDialog';
+import { FullReportOnly } from '../../../report-ui/FullReportOnly';
 import type {
   AccessibilityScan,
   AccessibilityViolation,

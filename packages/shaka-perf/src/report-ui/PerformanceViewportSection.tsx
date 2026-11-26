@@ -7,8 +7,8 @@
 
 import { useId, useState, type ReactNode } from 'react';
 import type { ExecutionDetails } from '../pipeline/outcome';
-import { ReportSection } from '../pipeline/report-section';
-import { OldRunChip } from '../pipeline/stage-report-components';
+import { ReportSection } from './ReportSection';
+import { OldRunChip } from './OldRunChip';
 import { MetadataRows } from './ArtifactMetadataFields';
 
 export function PerformanceViewportSection({ sectionKey, executionDetails, latestRun, children }: {

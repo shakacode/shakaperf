@@ -27,7 +27,6 @@ import type {
   StageRenderContext,
   StageRuntime,
 } from '../stage/stage';
-import type { ReportMode } from './report-mode';
 import { resolveUrl } from './unit-urls';
 
 export interface ChipDescriptor {
@@ -154,6 +153,8 @@ export interface ReportMeta {
    */
   reportMode: ReportMode;
 }
+
+export type ReportMode = 'full' | 'self-contained';
 
 export interface ReportData {
   meta: ReportMeta;

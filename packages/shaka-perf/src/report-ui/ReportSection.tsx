@@ -5,30 +5,11 @@
  * License in LICENSE.md.
  */
 
-import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { ReportHeading } from './report-heading';
+import { createContext, useContext, useEffect, useId, useRef, type ReactNode } from 'react';
+import { ReportHeading } from './ReportHeading';
+import { useReportSectionVisibility } from './ReportSectionVisibilityProvider';
 
-const VisibilityContext = createContext<{
-  hidden: ReadonlySet<string>;
-  toggle: (key: string) => void;
-} | null>(null);
 const SectionContext = createContext<string | null>(null);
-
-export function ReportSectionVisibilityProvider({ children }: { children: ReactNode }) {
-  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
-  return (
-    <VisibilityContext.Provider value={{ hidden, toggle: (key) => {
-      setHidden((previous) => {
-        const next = new Set(previous);
-        if (next.has(key)) next.delete(key);
-        else next.add(key);
-        return next;
-      });
-    } }}>
-      {children}
-    </VisibilityContext.Provider>
-  );
-}
 
 export function useReportSection(): string | null {
   return useContext(SectionContext);
@@ -42,7 +23,7 @@ export function ReportSection({ sectionKey, title, children, badge, actions, nes
   children: ReactNode;
   nested?: boolean;
 }) {
-  const visibility = useContext(VisibilityContext);
+  const visibility = useReportSectionVisibility();
   const contentId = useId();
   const hidden = visibility?.hidden.has(sectionKey) ?? false;
   const buttonRef = useRef<HTMLButtonElement>(null);

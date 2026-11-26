@@ -6,16 +6,14 @@
  */
 
 import type { StageRenderEntry } from '../../../stage/stage';
-import {
-  DetailedArtifactDialog,
-  StageArtifact,
-  StageArtifactTitle,
-  ReportHeading,
-  OldRunChip,
-} from '../../../pipeline/stage-report-components';
-import { FullReportOnly } from '../../../pipeline/report-mode';
-import { ScreenshotPreview } from '../../../pipeline/screenshot-preview';
-import { TooltipLabel } from '../../../pipeline/report-tooltip';
+import { DetailedArtifactDialog } from '../../../report-ui/DetailedArtifactDialog';
+import { StageArtifact } from '../../../report-ui/StageArtifact';
+import { StageArtifactTitle } from '../../../report-ui/StageArtifactTitle';
+import { ReportHeading } from '../../../report-ui/ReportHeading';
+import { OldRunChip } from '../../../report-ui/OldRunChip';
+import { FullReportOnly } from '../../../report-ui/FullReportOnly';
+import { ScreenshotPreview } from '../../../report-ui/ScreenshotPreview';
+import { TooltipLabel } from '../../../report-ui/TooltipLabel';
 import type { CodeCoverageResult } from './stage';
 
 const count = (value: number) => value.toLocaleString('en-US');

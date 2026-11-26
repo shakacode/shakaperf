@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { ImageSizeContext } from '../pipeline/image-viewport';
+import { ImageSizeContext } from './ImageViewport';
 
 interface DialogProps {
   open: boolean;

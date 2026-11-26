@@ -10,9 +10,9 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import type { ReportData } from './types';
 import { parseReportData } from './report-data';
-import { ReportModeProvider } from '../../src/pipeline/report-mode';
+import { ReportModeProvider } from '../../src/report-ui/ReportModeProvider';
 import './styles.css';
-import { REPORT_TOOLTIP_CSS } from '../../src/pipeline/report-tooltip-controller';
+import { REPORT_TOOLTIP_CSS } from '../../src/report-ui/report-tooltip-controller';
 
 function readReportData(): ReportData | null {
   const node = document.getElementById('__shaka_report_data__');

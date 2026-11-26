@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { Dialog } from '../../../src/pipeline/stage-report-components';
+import { Dialog } from '../../../src/report-ui/Dialog';
 import type {
   BisectCategory,
   BisectReportCommit,

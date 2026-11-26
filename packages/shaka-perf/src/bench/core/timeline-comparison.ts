@@ -10,7 +10,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { PNG } from 'pngjs';
 import sharp from 'sharp';
-import { attachReportTooltip, renderTooltipHelp, REPORT_TOOLTIP_CSS } from '../../pipeline/report-tooltip-controller';
+import { attachReportTooltip, renderTooltipHelp, REPORT_TOOLTIP_CSS } from '../../report-ui/report-tooltip-controller';
 import { pipeAndFilterStderr } from './ffmpeg-stderr';
 import { getFfmpegSyncOption } from './ffmpeg-sync-option';
 import { rendererMainThreadEvents } from './main-thread-tasks';

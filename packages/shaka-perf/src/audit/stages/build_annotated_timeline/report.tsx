@@ -7,14 +7,12 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
-import {
-  DetailedArtifactDialog,
-  StageArtifact,
-  StageArtifactTitle,
-  ReportHeading,
-  OldRunChip,
-} from '../../../pipeline/stage-report-components';
-import { useReportMode } from '../../../pipeline/report-mode';
+import { DetailedArtifactDialog } from '../../../report-ui/DetailedArtifactDialog';
+import { StageArtifact } from '../../../report-ui/StageArtifact';
+import { StageArtifactTitle } from '../../../report-ui/StageArtifactTitle';
+import { ReportHeading } from '../../../report-ui/ReportHeading';
+import { OldRunChip } from '../../../report-ui/OldRunChip';
+import { useReportMode } from '../../../report-ui/ReportModeProvider';
 import {
   groupFramesByAnnotation,
   type AnnotatedFrame,
