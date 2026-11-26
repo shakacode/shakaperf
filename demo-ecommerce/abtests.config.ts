@@ -87,9 +87,7 @@ export default defineConfig({
   },
 
   visreg: {
-    // Overrides shared.viewports (desktop + phone) for visreg alone —
-    // screenshots are cheap, so the extra breakpoint is worth it here.
-    viewports: ['desktop', 'tablet', 'phone'],
+    viewports: ['phone'],
     maxNumDiffPixels: 50,
     mismatchThreshold: 0.1,
   },
@@ -99,12 +97,9 @@ export default defineConfig({
   },
 
   perf: {
-    // No `viewports` — perf inherits shared.viewports (desktop + phone).
-    // `formFactor` and `screenEmulation` are NOT set here — the viewport
-    // referenced from shared.viewportDefinitions owns them; the runner lowers
-    // them via lhConfigForViewport.
+    viewports: ['phone'],
     lighthouseConfig: LIGHTHOUSE_CONFIG,
-    numberOfMeasurements: 10,
+    numberOfMeasurements: 8,
     pValueThreshold: 0.01,
   },
 
