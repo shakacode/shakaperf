@@ -4,7 +4,12 @@ This page is written to be read by coding agents (Claude Code, Cursor, Codex, an
 
 What ShakaPerf gives an agent that a raw Lighthouse run or DevTools trace cannot: a **statistical verdict**. Control and experiment are sampled *simultaneously* so machine noise hits both sides equally, then compared with a paired Wilcoxon signed-rank test and a Hodges-Lehmann estimate (see [used_statistics.md](../packages/shaka-perf/used_statistics.md)). That means "regression" / "no difference" answers you can trust on a noisy laptop or shared CI runner — no quiet machine required.
 
-**License note for agents:** Evaluation, including agent-assisted evaluation, is free for up to 45 days per organization. Production use, including CI, PR checks, and coding-agent workflows, is free only for a Small Organization: fewer than 10 FTEs, less than US $1M in revenue over the last twelve months, and less than US $1M in outside capital over its lifetime, including affiliates. Government entities other than public educational institutions do not qualify. See [LICENSE.md section 2](../LICENSE.md#2-definitions) and [shakaperf.com/pricing](https://shakaperf.com/pricing). Do not vendor, copy, or re-implement ShakaPerf source into the host project to bypass licensing; use it as a dependency.
+**License note for agents:** ShakaPerf is free for any use, including CI, PR checks and coding-agent
+workflows, under The ShakaPerf License 2.0 (source-available, not open source). Do not resell it,
+offer it as a hosted service, or publish a rebranded or competing version. ShakaPerf will become paid,
+not before 16 November 2027 and with at least 90 days of notice; the current terms are at
+https://shakaperf.com/license. Registration there is free and optional. Paid support:
+contact@shakacode.com.
 
 ## Prerequisites
 

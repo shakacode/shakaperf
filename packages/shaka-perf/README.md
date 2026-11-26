@@ -1,6 +1,6 @@
 # shaka-perf
 
-[![License: ShakaPerf License](https://img.shields.io/badge/license-ShakaPerf%20License-blue.svg)](../../LICENSE.md)
+[![License: ShakaPerf License 2.0](https://img.shields.io/badge/license-ShakaPerf%20License%202.0-blue.svg)](../../LICENSE.md)
 
 Frontend performance testing toolkit for web applications. A single CLI and a single project-level config (`abtests.config.ts`) that drives:
 
@@ -55,13 +55,11 @@ yarn shaka-perf servers start-containers
 yarn shaka-perf servers start-servers
 ```
 
-## License
+## Free & Pro
 
-ShakaPerf is source-available under
-[The ShakaPerf License](../../LICENSE.md) — free to read, study, and
-evaluate for everyone; free in production (including CI and coding-agent
-workflows) for organizations under 10 people, $1M revenue, and $1M raised;
-paid subscription otherwise: https://shakaperf.com/pricing.
-
-Questions or commercial licensing:
-[contact@shakacode.com](mailto:contact@shakacode.com).
+ShakaPerf is source-available under [The ShakaPerf License 2.0](../../LICENSE.md) and free for
+everyone, for any use, including CI, coding agents and client work. It will become paid, not before
+16 November 2027 and with at least 90 days of notice at https://shakaperf.com/license. Do not resell
+it, run it as a hosted service for others, or publish a rebranded or competing version. Please
+register your organization at https://shakaperf.com/license (free and optional). Paid support:
+contact@shakacode.com.
