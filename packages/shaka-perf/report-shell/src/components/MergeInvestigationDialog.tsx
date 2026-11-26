@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { Dialog } from '../../../src/report-ui/controls/Dialog';
+import { Dialog } from '../../../src/report-ui/controls';
 import type {
   BisectCategory,
   BisectReportCommit,

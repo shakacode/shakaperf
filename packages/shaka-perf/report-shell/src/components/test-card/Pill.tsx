@@ -6,7 +6,7 @@
  */
 
 import type { ChipDescriptor } from '../../types';
-import { TooltipLabel } from '../../../../src/report-ui/tooltips/TooltipLabel';
+import { TooltipLabel } from '../../../../src/report-ui/tooltips';
 
 export function Pill({ chip }: { chip: ChipDescriptor }) {
   return (

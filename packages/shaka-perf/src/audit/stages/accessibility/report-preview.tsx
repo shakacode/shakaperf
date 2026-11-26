@@ -6,7 +6,7 @@
  */
 
 import type { StageRenderEntry } from '../../../stage/stage';
-import { DetailedArtifactDialog } from '../../../report-ui/artifacts/DetailedArtifactDialog';
+import { DetailedArtifactDialog } from '../../../report-ui/artifacts';
 import { FullReportOnly } from '../../../report-ui/FullReportOnly';
 import type {
   AccessibilityScan,

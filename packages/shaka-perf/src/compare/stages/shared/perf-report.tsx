@@ -7,15 +7,19 @@
 
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { PerfArtifact, PerfMetric, PerfMetricGroup } from '../perf';
-import { DetailedArtifactDialog } from '../../../report-ui/artifacts/DetailedArtifactDialog';
-import { StageArtifact } from '../../../report-ui/artifacts/StageArtifact';
-import { StageArtifactTitle } from '../../../report-ui/artifacts/StageArtifactTitle';
-import { ReportHeading } from '../../../report-ui/sections/ReportHeading';
-import { StageNote } from '../../../report-ui/artifacts/StageNote';
+import {
+  DetailedArtifactDialog,
+  StageArtifact,
+  StageArtifactTitle,
+  StageNote,
+} from '../../../report-ui/artifacts';
+import {
+  PerformanceViewportSection,
+  ReportHeading,
+  useReportSection,
+} from '../../../report-ui/sections';
 import { FullReportOnly } from '../../../report-ui/FullReportOnly';
 import { FramePlayer } from './frame-player';
-import { useReportSection } from '../../../report-ui/sections/ReportSection';
-import { PerformanceViewportSection } from '../../../report-ui/sections/PerformanceViewportSection';
 
 const GROUPS: PerfMetricGroup[] = ['vitals', 'diagnostics'];
 

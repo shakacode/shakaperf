@@ -7,9 +7,7 @@
 
 import type { CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
-import { StageArtifact } from '../../../report-ui/artifacts/StageArtifact';
-import { StageArtifactTitle } from '../../../report-ui/artifacts/StageArtifactTitle';
-import { OldRunChip } from '../../../report-ui/artifacts/OldRunChip';
+import { OldRunChip, StageArtifact, StageArtifactTitle } from '../../../report-ui/artifacts';
 import type { AiSummaryResult } from './stage';
 
 const SUMMARY_BOX_STYLE: CSSProperties = {

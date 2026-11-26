@@ -5,16 +5,18 @@
  * License in LICENSE.md.
  */
 
-import { ImageViewport } from '../../../report-ui/artifacts/ImageViewport';
+import {
+  DetailedArtifactDialog,
+  ImageViewport,
+  OldRunChip,
+  StageArtifact,
+  StageArtifactTitle,
+  StageNote,
+} from '../../../report-ui/artifacts';
 import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { FullReportOnly } from '../../../report-ui/FullReportOnly';
 import type { StageRenderEntry } from '../../../stage/stage';
-import { DetailedArtifactDialog } from '../../../report-ui/artifacts/DetailedArtifactDialog';
-import { StageArtifact } from '../../../report-ui/artifacts/StageArtifact';
-import { StageArtifactTitle } from '../../../report-ui/artifacts/StageArtifactTitle';
-import { ReportHeading } from '../../../report-ui/sections/ReportHeading';
-import { OldRunChip } from '../../../report-ui/artifacts/OldRunChip';
-import { StageNote } from '../../../report-ui/artifacts/StageNote';
+import { ReportHeading } from '../../../report-ui/sections';
 import {
   hotspotZIndex,
   impactColor,

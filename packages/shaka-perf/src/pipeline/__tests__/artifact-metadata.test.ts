@@ -8,7 +8,7 @@
 import { executionFixture } from './fixtures/execution';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ArtifactMetadataFields } from '../../report-ui/metadata/ArtifactMetadataFields';
+import { ArtifactMetadataFields } from '../../report-ui/metadata';
 
 it('escapes values and keeps stage fields separate from execution details', () => {
   const html = renderToStaticMarkup(createElement(ArtifactMetadataFields, {
