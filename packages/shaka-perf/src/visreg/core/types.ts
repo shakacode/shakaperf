@@ -16,7 +16,7 @@ export type { PlaywrightPage, BrowserContext, Browser };
  * framework that created the stage's ArtifactScope.
  */
 export interface VisregRunRuntime {
-  comparisonCounts: ReadonlyMap<string, number>;
+  comparisonCountsBySelector: ReadonlyMap<string, number>;
   incrementVisualRoundCounts(selectorKeysToCompareThisRound: readonly string[]): void;
   captureFailure?: (
     err: unknown,

@@ -11,7 +11,7 @@ import type { RuntimeConfig } from '../../../../src/visreg/core/types';
 describe('createComparisonBitmaps', function () {
   let capturedConfig: Record<string, unknown> | null;
 
-  const runtime = { comparisonCounts: new Map<string, number>(), incrementVisualRoundCounts: jest.fn() };
+  const runtime = { comparisonCountsBySelector: new Map<string, number>(), incrementVisualRoundCounts: jest.fn() };
 
   const mockConfig = {
     configFileName: '/tmp/dummy-config.json',

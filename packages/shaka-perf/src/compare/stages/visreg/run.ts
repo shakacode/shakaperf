@@ -31,7 +31,7 @@ const SINGLE_UNIT_ENGINE_PARALLELISM = 1;
 export async function runVisregUnit(
   ctx: TestContext,
   stageConfig: VisregStageConfig,
-  comparisonCounts: ReadonlyMap<string, number>,
+  comparisonCountsBySelector: ReadonlyMap<string, number>,
   incrementVisualRoundCounts: (selectorKeysToCompareThisRound: readonly string[]) => void,
 ): Promise<VisregResult> {
   console.log(
@@ -81,7 +81,7 @@ export async function runVisregUnit(
       testPathPattern: testPathPatternForSingleTest(ctx.test, testPathPattern),
       filter: exactTestNameFilter(ctx.test.name),
     }, {
-      comparisonCounts,
+      comparisonCountsBySelector,
       incrementVisualRoundCounts,
       captureFailure: async (err, page, isControl) => {
         const media = await captureFailureScreenshot(
