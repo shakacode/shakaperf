@@ -15,7 +15,7 @@ import { chromium, type Browser } from 'playwright';
 import { PHONE_VIEWPORT } from 'shaka-shared';
 import { renderReportHtml, type ReportData, type TestResult } from '../../src/pipeline/report';
 
-import { OutcomeSlot } from '../../report-shell/src/components/test-card/OutcomeSlot';
+import { TestCard } from '../../report-shell/src/components/test-card/TestCard';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
@@ -72,11 +72,11 @@ describe('latest measurement run visibility', () => {
 
   it.each([null, LATEST])('labels an older-only stage using the report run %s', async (latestRunId) => {
     const data = fixture('compare', 'full');
-    const outcome = data.tests[2].outcomes.find((item) => item.stage === stageIds.visreg)!;
+    const test = data.tests.find((item) => item.name === 'Mixed')!;
     const page = await browser.newPage();
     try {
-      await page.setContent(renderToStaticMarkup(createElement(OutcomeSlot, {
-        meta: data.meta, outcomes: [outcome], latestRunId, showRunChips: true,
+      await page.setContent(renderToStaticMarkup(createElement(TestCard, {
+        meta: data.meta, test, latestRunId, animationDelayMs: 0, visibleStages: new Set([stageIds.visreg]),
       })));
       const label = page.locator('.slot-error__label');
       expect(await label.textContent()).toContain('desktop');

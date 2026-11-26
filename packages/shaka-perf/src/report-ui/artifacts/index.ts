@@ -7,9 +7,8 @@
 
 export { DetailedArtifactDialog } from './DetailedArtifactDialog';
 export { ImageViewport } from './ImageViewport';
-export { OldRunChip } from './OldRunChip';
+export { OldRunChip, OldRunChipProvider } from './OldRunChip';
 export { ScreenshotPreview } from './ScreenshotPreview';
 export { StageArtifact } from './StageArtifact';
 export { StageArtifactTitle } from './StageArtifactTitle';
 export { StageNote } from './StageNote';
-export { StageRunChipsProvider } from './StageRunChipsProvider';

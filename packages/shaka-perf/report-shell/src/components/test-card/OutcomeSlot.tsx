@@ -11,7 +11,6 @@ import {
   DetailedArtifactDialog,
   OldRunChip,
   ScreenshotPreview,
-  StageRunChipsProvider,
 } from '../../../../src/report-ui/artifacts';
 import type { ReportMeta, ReportOutcome } from '../../types';
 import { ReportSection } from '../../../../src/report-ui/sections';
@@ -121,13 +120,9 @@ function stageSection(
 export function OutcomeSlot({
   meta,
   outcomes,
-  latestRunId,
-  showRunChips,
 }: {
   meta: ReportMeta;
   outcomes: readonly ReportOutcome[];
-  latestRunId?: string | null;
-  showRunChips?: boolean;
 }) {
   const first = outcomes[0];
   const section = stageSection(meta, outcomes);
@@ -138,17 +133,15 @@ export function OutcomeSlot({
 
   return (
     <section className="outcome-slot" data-stage={first.stage} tabIndex={-1}>
-      <StageRunChipsProvider value={{ visible: showRunChips === true, latestRunId: latestRunId ?? null }}>
-        <ReportSection sectionKey={first.stage} title={title} badge={badge}>
-          {errorOutcomes.map((outcome, index) => (
-            <OutcomeError
-              key={`error-${outcome.executionDetails.viewport.label}-${index}`}
-              outcome={outcome}
-            />
-          ))}
-          {artifact ? <div className="stage-artifact">{artifact}</div> : null}
-        </ReportSection>
-      </StageRunChipsProvider>
+      <ReportSection sectionKey={first.stage} title={title} badge={badge}>
+        {errorOutcomes.map((outcome, index) => (
+          <OutcomeError
+            key={`error-${outcome.executionDetails.viewport.label}-${index}`}
+            outcome={outcome}
+          />
+        ))}
+        {artifact ? <div className="stage-artifact">{artifact}</div> : null}
+      </ReportSection>
     </section>
   );
 }

@@ -5,11 +5,14 @@
  * License in LICENSE.md.
  */
 
-import { useStageRunChips } from './StageRunChipsProvider';
+import { createContext, useContext } from 'react';
+
+const OldRunChipContext = createContext<string | null>(null);
+export const OldRunChipProvider = OldRunChipContext.Provider;
 
 export function OldRunChip({ runId }: { runId: string }) {
-  const { visible, latestRunId } = useStageRunChips();
-  return visible && latestRunId != null && runId !== latestRunId
+  const latestRunId = useContext(OldRunChipContext);
+  return latestRunId !== null && runId !== latestRunId
     ? <span className="pill pill--gray old-run-chip">old run</span>
     : null;
 }

@@ -7,6 +7,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../../types';
+import { OldRunChipProvider } from '../../../../src/report-ui/artifacts';
 import { TestCardProvider } from '../../../../src/report-ui/metadata';
 import { pipelineTestTargets } from '../../../../src/pipeline/pipeline-artifacts';
 import { TestSummaryMetadata } from './TestSummaryMetadata';
@@ -43,7 +44,7 @@ export function TestCard({
   meta,
   animationDelayMs,
   oldRun,
-  latestRunId,
+  latestRunId = null,
   showViewportRunChips = true,
   dimmed,
   visibleStages,
@@ -100,6 +101,7 @@ export function TestCard({
   const groups = outcomeGroups(test, visibleStages);
   const chips = [...test.chips].sort(compareChips);
   const mixedRuns = new Set(test.outcomes.map((outcome) => outcome.executionDetails.runId === latestRunId)).size > 1;
+  const latestRunIdForChips = showViewportRunChips && mixedRuns ? latestRunId : null;
 
   const testCardData = {
     meta,
@@ -173,15 +175,15 @@ export function TestCard({
 
           {reviewed ? null : (
             <div className="card__body">
-              {groups.map((outcomes, index) => (
-                <OutcomeSlot
-                  key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
-                  meta={meta}
-                  outcomes={outcomes}
-                  latestRunId={latestRunId}
-                  showRunChips={showViewportRunChips && mixedRuns}
-                />
-              ))}
+              <OldRunChipProvider value={latestRunIdForChips}>
+                {groups.map((outcomes, index) => (
+                  <OutcomeSlot
+                    key={`${outcomes[0]?.stage ?? 'stage'}-${index}`}
+                    meta={meta}
+                    outcomes={outcomes}
+                  />
+                ))}
+              </OldRunChipProvider>
             </div>
           )}
         </div>
