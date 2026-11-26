@@ -458,6 +458,44 @@ async function loadReportSuiteDefinitions(
   });
 }
 
+function clearDerivedResultsForRun(
+  pipeline: Pipeline,
+  resultsRoot: string,
+  executableStages: readonly Stage[],
+  testsSelectedForMeasurement: readonly AbTestDefinition[],
+  runtime: RuntimeOptions,
+): void {
+  const clearEntireCache = !runtime.viewportsFilter
+    && !runtime.filter
+    && !runtime.testPathPattern
+    && !runtime.tests
+    && !runtime.skipReport
+    && runtime.burn == null;
+
+  for (const derived of pipeline.derivedResultsDirs ?? []) {
+    const selectedStage = executableStages.find(stage => stage.name === derived.stage);
+    if (!selectedStage) continue;
+
+    const cacheDir = path.join(resultsRoot, derived.path);
+    if (clearEntireCache) {
+      // A full run also removes cache files for deleted or renamed tests.
+      fs.rmSync(cacheDir, { recursive: true, force: true });
+      continue;
+    }
+
+    for (const test of testsSelectedForMeasurement) {
+      const viewportLabels = runtime.viewportsFilter
+        ?? viewportsForTestAcrossStages(test, [selectedStage], runtime.config).map(viewport => viewport.label);
+      for (const viewportLabel of viewportLabels) {
+        const unitId = unitIdForTest(test, viewportLabel);
+        for (const file of derived.unitFiles(unitId)) {
+          fs.rmSync(path.join(cacheDir, file), { force: true });
+        }
+      }
+    }
+  }
+}
+
 async function runConfiguredPipelineWithSelection(
   pipeline: Pipeline,
   stageSelection: StageSelection,
@@ -573,28 +611,7 @@ async function runConfiguredPipelineWithSelection(
   };
 
   if (!runtime.reportOnly) {
-    // Aggregate caches (e.g. Istanbul) are rebuildable copies outside the
-    // saved measurement. Remove obsolete inputs without deleting archived outcomes.
-    for (const derived of pipeline.derivedResultsDirs ?? []) {
-      const producer = executableStages.find(stage => stage.name === derived.stage);
-      if (!producer) continue;
-      const cache = path.join(resultsRoot, derived.path);
-      const wholeSuite = !runtime.viewportsFilter && !runtime.filter && !runtime.testPathPattern
-        && !runtime.tests && !runtime.skipReport && runtime.burn == null;
-      if (wholeSuite) {
-        fs.rmSync(cache, { recursive: true, force: true });
-        continue;
-      }
-      for (const test of testsSelectedForMeasurement) {
-        const labels = runtime.viewportsFilter ?? viewportsForTestAcrossStages(test, [producer], runtime.config)
-          .map(viewport => viewport.label);
-        for (const label of labels) {
-          for (const file of derived.unitFiles(unitIdForTest(test, label))) {
-            fs.rmSync(path.join(cache, file), { force: true });
-          }
-        }
-      }
-    }
+    clearDerivedResultsForRun(pipeline, resultsRoot, executableStages, testsSelectedForMeasurement, runtime);
     for (const unit of units) {
       const { test, viewport } = unit;
       const selected = executableStages.filter(stage => testDeclaresStageCategory(test, stage)

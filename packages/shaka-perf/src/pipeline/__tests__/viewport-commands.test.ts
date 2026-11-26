@@ -276,6 +276,25 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     } finally { failCleanup.mockRestore(); error.mockRestore(); }
   });
 
+  it('clears obsolete cache files on a full run only when the owning stage is selected', async () => {
+    const [owningStage, otherStage] = stages;
+    const pipeline = {
+      ...mockPipeline(command),
+      derivedResultsDirs: [{ stage: owningStage!, path: 'derived', unitFiles: (id: string) => [`${id}.json`] }],
+    };
+    const cacheDir = path.join(store().resultsRoot, 'derived');
+    fs.mkdirSync(cacheDir, { recursive: true });
+    const obsoleteFile = path.join(cacheDir, 'deleted-test.json');
+    fs.writeFileSync(obsoleteFile, '{}');
+
+    const built = buildAbTestsConfig(config as never);
+    const runtime = { config: built, controlURL: built.shared.controlURL, experimentURL: built.shared.experimentURL };
+    await runPipeline(pipeline, { ...runtime, stages: otherStage! });
+    expect(fs.existsSync(obsoleteFile)).toBe(true);
+    await runPipeline(pipeline, { ...runtime, stages: owningStage! });
+    expect(fs.existsSync(obsoleteFile)).toBe(false);
+  });
+
   if (command === 'audit') it.each([false, true])('invalidates only measured coverage mirrors (explicit viewport=%s)', async (explicitViewport) => {
     const built = buildAbTestsConfig(config as never);
     const actual = jest.requireActual<typeof import('../../audit/pipeline')>('../../audit/pipeline');
