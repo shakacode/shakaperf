@@ -16,9 +16,9 @@ import { pathToFileURL } from 'node:url';
 import { chromium, type Browser } from 'playwright';
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
 import { renderPersistedStageArtifacts } from '../../src/pipeline/pipeline-artifacts';
-import { ReportSection } from '../../src/report-ui/ReportSection';
-import { StageArtifactTitle } from '../../src/report-ui/StageArtifactTitle';
-import { StageRunChipsProvider } from '../../src/report-ui/StageRunChipsProvider';
+import { ReportSection } from '../../src/report-ui/sections/ReportSection';
+import { StageArtifactTitle } from '../../src/report-ui/artifacts/StageArtifactTitle';
+import { StageRunChipsProvider } from '../../src/report-ui/artifacts/StageRunChipsProvider';
 import { renderReportHtml, type ReportData, type ReportOutcome } from '../../src/pipeline/report';
 
 const LATEST = '2026-10-02T00:00:00.000Z';

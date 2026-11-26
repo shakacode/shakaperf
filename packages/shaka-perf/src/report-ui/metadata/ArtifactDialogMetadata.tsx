@@ -5,8 +5,8 @@
  * License in LICENSE.md.
  */
 
-import type { ExecutionDetails } from '../pipeline/outcome';
-import { pipelineTroubleshootCommands } from '../pipeline/pipeline-artifacts';
+import type { ExecutionDetails } from '../../pipeline/outcome';
+import { pipelineTroubleshootCommands } from '../../pipeline/pipeline-artifacts';
 import { ArtifactMetadataFields } from './ArtifactMetadataFields';
 import { TestMetadataSection } from './TestMetadataSection';
 import { useTestCard } from './TestCardProvider';

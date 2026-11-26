@@ -8,13 +8,13 @@
 import type { CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
 import type { VisregArtifact, VisregResult } from '../visreg';
-import { DetailedArtifactDialog } from '../../../report-ui/DetailedArtifactDialog';
-import { StageArtifact } from '../../../report-ui/StageArtifact';
-import { StageArtifactTitle } from '../../../report-ui/StageArtifactTitle';
-import { ReportHeading } from '../../../report-ui/ReportHeading';
-import { OldRunChip } from '../../../report-ui/OldRunChip';
-import { StageNote } from '../../../report-ui/StageNote';
-import { ImageViewport } from '../../../report-ui/ImageViewport';
+import { DetailedArtifactDialog } from '../../../report-ui/artifacts/DetailedArtifactDialog';
+import { StageArtifact } from '../../../report-ui/artifacts/StageArtifact';
+import { StageArtifactTitle } from '../../../report-ui/artifacts/StageArtifactTitle';
+import { ReportHeading } from '../../../report-ui/sections/ReportHeading';
+import { OldRunChip } from '../../../report-ui/artifacts/OldRunChip';
+import { StageNote } from '../../../report-ui/artifacts/StageNote';
+import { ImageViewport } from '../../../report-ui/artifacts/ImageViewport';
 import { visualComparisonFields } from './metadata';
 import { Scrubber } from './scrubber';
 

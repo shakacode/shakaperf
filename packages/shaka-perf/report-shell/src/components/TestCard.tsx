@@ -7,7 +7,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
-import { TestCardProvider } from '../../../src/report-ui/TestCardProvider';
+import { TestCardProvider } from '../../../src/report-ui/metadata/TestCardProvider';
 import { pipelineTestTargets } from '../../../src/pipeline/pipeline-artifacts';
 import { TestSummaryMetadata } from './TestSummaryMetadata';
 import { ReviewedCheckbox, useReviewed } from './ReviewedCheckbox';

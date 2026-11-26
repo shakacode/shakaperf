@@ -7,8 +7,8 @@
 
 import type { ReportOutcome, TestResult } from '../types';
 import { pipelineTroubleshootCommands } from '../../../src/pipeline/pipeline-artifacts';
-import { TestMetadataSection, type TestMetadataDisplayOptions } from '../../../src/report-ui/TestMetadataSection';
-import { useTestCard } from '../../../src/report-ui/TestCardProvider';
+import { TestMetadataSection, type TestMetadataDisplayOptions } from '../../../src/report-ui/metadata/TestMetadataSection';
+import { useTestCard } from '../../../src/report-ui/metadata/TestCardProvider';
 
 function latestMeasuredExecution(outcomes: readonly ReportOutcome[]) {
   let latest: ReportOutcome['executionDetails'] | undefined;

@@ -5,8 +5,8 @@
  * License in LICENSE.md.
  */
 
-import { ReportHeading, type ReportHeadingProps } from './ReportHeading';
-import { useReportSection } from './ReportSection';
+import { ReportHeading, type ReportHeadingProps } from '../sections/ReportHeading';
+import { useReportSection } from '../sections/ReportSection';
 
 export function StageArtifactTitle(
   { title, badge, verbatim = false }: Pick<ReportHeadingProps, 'title' | 'badge'> & { verbatim?: boolean },

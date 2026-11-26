@@ -12,7 +12,7 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
-import { ImageViewport } from '../../../report-ui/ImageViewport';
+import { ImageViewport } from '../../../report-ui/artifacts/ImageViewport';
 import type {
   AccessibilityNodeTarget,
   AccessibilityScan,

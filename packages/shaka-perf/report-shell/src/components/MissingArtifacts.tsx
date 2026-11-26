@@ -6,7 +6,7 @@
  */
 
 import type { ReportMeta, TestResult } from '../types';
-import { CopyableText } from '../../../src/report-ui/CopyableText';
+import { CopyableText } from '../../../src/report-ui/controls/CopyableText';
 
 export function MissingArtifactsToggle({ count, expanded, onToggle, controlsId }: {
   count: number;

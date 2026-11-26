@@ -13,7 +13,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useCloseOnOutsideInteraction } from '../../../report-ui/use-close-on-outside-interaction';
+import { useCloseOnOutsideInteraction } from '../../../report-ui/controls/use-close-on-outside-interaction';
 import { ACCESSIBILITY_FILTER_CSS } from './report-styles';
 import {
   defaultAccessibilityFilterSelection,

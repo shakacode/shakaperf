@@ -7,11 +7,11 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
-import { DetailedArtifactDialog } from '../../../report-ui/DetailedArtifactDialog';
-import { StageArtifact } from '../../../report-ui/StageArtifact';
-import { StageArtifactTitle } from '../../../report-ui/StageArtifactTitle';
-import { ReportHeading } from '../../../report-ui/ReportHeading';
-import { OldRunChip } from '../../../report-ui/OldRunChip';
+import { DetailedArtifactDialog } from '../../../report-ui/artifacts/DetailedArtifactDialog';
+import { StageArtifact } from '../../../report-ui/artifacts/StageArtifact';
+import { StageArtifactTitle } from '../../../report-ui/artifacts/StageArtifactTitle';
+import { ReportHeading } from '../../../report-ui/sections/ReportHeading';
+import { OldRunChip } from '../../../report-ui/artifacts/OldRunChip';
 import { useReportMode } from '../../../report-ui/ReportModeProvider';
 import {
   groupFramesByAnnotation,

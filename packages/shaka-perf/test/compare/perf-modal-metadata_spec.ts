@@ -10,7 +10,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { performanceMetadataFields } from '../../src/stage/performance-metadata';
 import { runDetailsFixture } from '../../src/pipeline/__tests__/fixtures/run-details';
 import { reportDataForMode } from '../../src/pipeline/report';
-import { MetadataRows } from '../../src/report-ui/ArtifactMetadataFields';
+import { MetadataRows } from '../../src/report-ui/metadata/ArtifactMetadataFields';
 
 const throttling = { engine: 'Lighthouse', method: 'simulate', cpuSlowdownMultiplier: 4,
   network: { rttMs: 150, throughputKbps: 1638.4 } };

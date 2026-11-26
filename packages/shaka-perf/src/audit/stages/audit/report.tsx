@@ -7,12 +7,12 @@
 
 import type { CSSProperties } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
-import { DetailedArtifactDialog } from '../../../report-ui/DetailedArtifactDialog';
-import { StageArtifact } from '../../../report-ui/StageArtifact';
-import { StageArtifactTitle } from '../../../report-ui/StageArtifactTitle';
-import { PerformanceViewportSection } from '../../../report-ui/PerformanceViewportSection';
+import { DetailedArtifactDialog } from '../../../report-ui/artifacts/DetailedArtifactDialog';
+import { StageArtifact } from '../../../report-ui/artifacts/StageArtifact';
+import { StageArtifactTitle } from '../../../report-ui/artifacts/StageArtifactTitle';
+import { PerformanceViewportSection } from '../../../report-ui/sections/PerformanceViewportSection';
 import { FullReportOnly } from '../../../report-ui/FullReportOnly';
-import { ScreenshotPreview } from '../../../report-ui/ScreenshotPreview';
+import { ScreenshotPreview } from '../../../report-ui/artifacts/ScreenshotPreview';
 import { METRIC_LEVEL_CSS_VAR } from './metrics';
 import type { AuditMetric, AuditMetricGroup, AuditResult } from './stage';
 

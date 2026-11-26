@@ -6,9 +6,9 @@
  */
 
 import { useState, type ComponentProps, type ReactNode } from 'react';
-import { ArtifactDialogMetadata } from './ArtifactDialogMetadata';
+import { ArtifactDialogMetadata } from '../metadata/ArtifactDialogMetadata';
 import { ArtifactDialogTitle } from './ArtifactDialogTitle';
-import { Dialog } from './Dialog';
+import { Dialog } from '../controls/Dialog';
 import { ImageViewport } from './ImageViewport';
 import { PreviewButton } from './PreviewButton';
 

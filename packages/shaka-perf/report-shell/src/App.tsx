@@ -42,7 +42,7 @@ import {
   type AccessibilityFilterState,
 } from '../../src/audit/stages/accessibility/report';
 import type { AccessibilityResult } from '../../src/audit/stages/accessibility/types';
-import { ReportSectionVisibilityProvider } from '../../src/report-ui/ReportSectionVisibilityProvider';
+import { ReportSectionVisibilityProvider } from '../../src/report-ui/sections/ReportSectionVisibilityProvider';
 
 const ALL_FILTER_KEY = '__all__';
 

@@ -6,7 +6,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { useTestCard } from './TestCardProvider';
+import { useTestCard } from '../metadata/TestCardProvider';
 
 export function ArtifactDialogTitle({ children }: { children: ReactNode }) {
   const { test } = useTestCard();

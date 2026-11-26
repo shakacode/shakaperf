@@ -9,7 +9,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import { accessibilityStageMetadata } from '../../src/audit/stages/accessibility/stage';
-import { MetadataRows } from '../../src/report-ui/ArtifactMetadataFields';
+import { MetadataRows } from '../../src/report-ui/metadata/ArtifactMetadataFields';
 
 it.each([
   'https://experiment.test',

@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { Dialog } from '../../../src/report-ui/Dialog';
+import { Dialog } from '../../../src/report-ui/controls/Dialog';
 import type {
   BisectReportCommit,
   BisectReportCounts,

@@ -6,8 +6,8 @@
  */
 
 import { createContext, useContext } from 'react';
-import type { TestTarget } from '../pipeline/pipeline';
-import type { ReportMeta, TestResult } from '../pipeline/report';
+import type { TestTarget } from '../../pipeline/pipeline';
+import type { ReportMeta, TestResult } from '../../pipeline/report';
 
 interface TestCardData {
   meta: ReportMeta;

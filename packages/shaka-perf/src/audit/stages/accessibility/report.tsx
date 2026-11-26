@@ -7,10 +7,10 @@
 
 import { useMemo } from 'react';
 import type { StageRenderEntry } from '../../../stage/stage';
-import { StageArtifact } from '../../../report-ui/StageArtifact';
-import { StageArtifactTitle } from '../../../report-ui/StageArtifactTitle';
-import { ReportHeading } from '../../../report-ui/ReportHeading';
-import { OldRunChip } from '../../../report-ui/OldRunChip';
+import { StageArtifact } from '../../../report-ui/artifacts/StageArtifact';
+import { StageArtifactTitle } from '../../../report-ui/artifacts/StageArtifactTitle';
+import { ReportHeading } from '../../../report-ui/sections/ReportHeading';
+import { OldRunChip } from '../../../report-ui/artifacts/OldRunChip';
 import type { AccessibilityResult } from './types';
 import { AccessibilityScreenshotPreview } from './report-preview';
 import { SCAN_STYLE } from './report-styles';
