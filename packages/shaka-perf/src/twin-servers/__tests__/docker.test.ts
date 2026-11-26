@@ -16,6 +16,7 @@ import {
   getUsername,
   projectBuildxBuilderName,
   ensureProjectBuildxBuilder,
+  stopProjectBuildxBuilder,
   assertProjectBuildxBuilderIsIsolated,
 } from '../helpers/docker';
 import * as shell from '../helpers/shell';
@@ -77,6 +78,54 @@ describe('project Buildx builder', () => {
       ['buildx', 'create', '--name', 'shaka-perf-printivity', '--driver', 'docker-container'],
       { silent: true },
     );
+  });
+});
+
+describe('stopProjectBuildxBuilder', () => {
+  const config = { projectSlug: `code--${'a'.repeat(100)}` } as ResolvedConfig;
+  const builderName = projectBuildxBuilderName(config.projectSlug);
+  const isolated = { code: 0, stdout: 'Driver: docker-container\n', stderr: '' };
+
+  beforeEach(() => mockExec.mockReset());
+
+  it('stops the exact project builder without removing its cache', async () => {
+    mockExec.mockResolvedValueOnce(isolated)
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' });
+
+    await stopProjectBuildxBuilder(config);
+
+    expect(mockExec.mock.calls).toEqual([
+      ['docker', ['buildx', 'inspect', builderName], { silent: true }],
+      ['docker', ['buildx', 'stop', builderName], { silent: true }],
+    ]);
+  });
+
+  it('does nothing when the project has no builder', async () => {
+    mockExec.mockResolvedValue({ code: 1, stdout: '', stderr: `ERROR: no builder "${builderName}" found` });
+
+    await expect(stopProjectBuildxBuilder(config)).resolves.toBeUndefined();
+    expect(mockExec).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports inspection failures instead of claiming cleanup succeeded', async () => {
+    mockExec.mockResolvedValue({ code: 1, stdout: '', stderr: 'Cannot connect to Docker daemon' });
+
+    await expect(stopProjectBuildxBuilder(config)).rejects.toThrow(/Cannot connect to Docker daemon/);
+    expect(mockExec).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses to stop a same-named builder using a shared driver', async () => {
+    mockExec.mockResolvedValue({ code: 0, stdout: 'Driver: docker\n', stderr: '' });
+
+    await expect(stopProjectBuildxBuilder(config)).rejects.toThrow(/must use the docker-container driver/);
+    expect(mockExec).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a failed stop', async () => {
+    mockExec.mockResolvedValueOnce(isolated)
+      .mockResolvedValueOnce({ code: 1, stdout: '', stderr: 'stop failed' });
+
+    await expect(stopProjectBuildxBuilder(config)).rejects.toThrow(/Failed to stop project Buildx builder.*stop failed/);
   });
 });
 

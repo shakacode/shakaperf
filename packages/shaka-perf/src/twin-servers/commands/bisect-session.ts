@@ -6,6 +6,7 @@
  */
 
 import type { ResolvedConfig } from '../types';
+import { stopProjectBuildxBuilderSafely } from '../helpers/buildx-lifecycle';
 import { build } from './build';
 import { runCmd } from './run-cmd';
 import { recreateExperimentContainer } from '../helpers/docker';
@@ -27,6 +28,7 @@ export interface BisectExperimentReloadOptions {
 }
 
 export interface BisectSessionDependencies {
+  stopBuilder(config: ResolvedConfig): Promise<void>;
   buildExperiment(config: ResolvedConfig, noCache: boolean): Promise<void>;
   recreateExperimentContainer(config: ResolvedConfig): Promise<void>;
   runExperimentCommand(config: ResolvedConfig, command: string): Promise<void>;
@@ -43,7 +45,8 @@ interface ActiveSession {
 }
 
 const defaultDependencies: BisectSessionDependencies = {
-  buildExperiment: (config, noCache) => build(config, { target: 'experiment', noCache }),
+  stopBuilder: stopProjectBuildxBuilderSafely,
+  buildExperiment: (config, noCache) => build(config, { target: 'experiment', noCache, keepBuilderRunning: true }),
   recreateExperimentContainer,
   runExperimentCommand: (config, command) => runCmd(config, 'experiment', command),
   restartExperimentProcesses,
@@ -120,9 +123,10 @@ export class BisectSessionController {
     }
   }
 
-  endSession(sessionId: string): void {
+  async endSession(sessionId: string): Promise<void> {
     this.requireSession(sessionId);
     this.activeSession = null;
+    await this.dependencies.stopBuilder(this.config);
   }
 
   private requireSession(sessionId: string): void {
@@ -151,6 +155,7 @@ export class BisectSessionController {
     if (!this.activeSession) return;
     if (!this.dependencies.ownerProcessAlive(this.activeSession.ownerPid)) {
       this.activeSession = null;
+      void this.dependencies.stopBuilder(this.config);
     }
   }
 }

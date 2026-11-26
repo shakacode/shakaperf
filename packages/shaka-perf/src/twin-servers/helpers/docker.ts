@@ -79,6 +79,23 @@ export async function ensureProjectBuildxBuilder(config: ResolvedConfig): Promis
   );
 }
 
+/** Stop only this project's BuildKit daemon, retaining its builder and cached layers. */
+export async function stopProjectBuildxBuilder(config: ResolvedConfig): Promise<void> {
+  const builderName = projectBuildxBuilderName(config.projectSlug);
+  const inspect = await exec('docker', ['buildx', 'inspect', builderName], { silent: true });
+  if (inspect.code !== 0) {
+    // Projects that have never built an image have no builder to stop.
+    if (inspect.stderr.includes(`no builder "${builderName}" found`)) return;
+    throw new Error(`Failed to inspect project Buildx builder ${builderName}: ${inspect.stderr.trim()}`);
+  }
+  assertProjectBuildxBuilderIsIsolated(builderName, inspect.stdout);
+
+  const stop = await exec('docker', ['buildx', 'stop', builderName], { silent: true });
+  if (stop.code !== 0) {
+    throw new Error(`Failed to stop project Buildx builder ${builderName}: ${stop.stderr.trim()}`);
+  }
+}
+
 export async function dockerBuild(options: DockerBuildOptions): Promise<void> {
   const { imageName, dockerfile, buildContext, buildArgs = {} } = options;
 

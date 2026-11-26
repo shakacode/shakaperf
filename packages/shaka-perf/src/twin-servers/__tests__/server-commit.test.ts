@@ -167,6 +167,7 @@ it.each(['rebuild', 'bisect'] as const)('publishes the applied snapshot when the
   } else {
     const controller = new BisectSessionController(config(), {
       ...dependencies, runExperimentCommand: moveCheckout,
+      stopBuilder: async () => {},
       buildExperiment: async () => {}, recreateExperimentContainer: async () => {}, ownerProcessAlive: () => true,
     });
     controller.beginSession('snapshot', process.pid);

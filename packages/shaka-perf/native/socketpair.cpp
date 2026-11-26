@@ -1,4 +1,4 @@
-// Minimal N-API binding exposing a single AF_LOCAL socketpair() with both fds
+// AF_LOCAL socketpair() support for the package's N-API addon, with both fds
 // set to CLOEXEC + NONBLOCK. Used by the Lighthouse sampling worker pool to
 // build the barrier-sync channel between paired workers.
 //
@@ -31,6 +31,8 @@
 #define SOCK_NONBLOCK 0
 #define SHAKA_SOCKETPAIR_FALLBACK_NONBLOCK 1
 #endif
+
+napi_value add_file_lock(napi_env env, napi_value exports);
 
 namespace {
 
@@ -86,7 +88,7 @@ napi_value init(napi_env env, napi_value exports) {
   napi_value fn;
   napi_create_function(env, "socketpair", NAPI_AUTO_LENGTH, socketpair_impl, nullptr, &fn);
   napi_set_named_property(env, exports, "socketpair", fn);
-  return exports;
+  return add_file_lock(env, exports);
 }
 
 }  // namespace

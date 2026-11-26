@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type * as Ink from 'ink';
 import type { ResolvedConfig } from '../types';
-import { spawnOvermind, startServers, cleanupContainerPids, type OvermindHandle } from './start-servers';
+import { spawnOvermind, startServers, cleanupContainerPids, type OvermindHandle, type StartServersOptions } from './start-servers';
 import { syncPendingPaths } from '../helpers/auto-sync';
 import { logServerCommits, prepareSyncedServerCommits, stageSyncedServerCommit } from '../helpers/server-commit';
 import { build, type BuildTarget } from './build';
@@ -53,13 +53,14 @@ import {
   repositoryRelativeCopyPath,
 } from '../helpers/copy-ignore';
 import { getGitRootDirectory } from '../helpers/git';
+import { cancelProjectBuildxOperations, stopProjectBuildxBuilderSafely } from '../helpers/buildx-lifecycle';
 import { BisectSessionController, type BisectExperimentReloadResult } from './bisect-session';
 import {
   experimentRebuildMenuDefinition,
   rebuildExperimentInContainer,
 } from './rebuild-experiment';
 
-export interface ServersMenuOptions {
+export interface ServersMenuOptions extends StartServersOptions {
   verbose?: boolean;
   /**
    * Receives a `MenuController` once `runServersMenu` has set up its state.
@@ -255,7 +256,7 @@ export async function runServersMenu(
 
   const view = (): React.ReactElement =>
     React.createElement(AppShell, { state, items, onKey: dispatchKey, ink });
-  const mount = (): void => { inkInstance = ink.render(view()); };
+  const mount = (): void => { inkInstance = ink.render(view(), { exitOnCtrlC: false }); };
   const repaint = (): void => { if (inkInstance) inkInstance.rerender(view()); };
   const unmount = async (): Promise<void> => {
     const inst = inkInstance;
@@ -288,13 +289,21 @@ export async function runServersMenu(
   await logCommits();
   let overmind: OvermindHandle = spawnOvermindWithLog(config, appendLog);
   const stopOvermind = async (): Promise<void> => { await overmind.stop(); };
+  options.onShutdownReady?.(async () => {
+    stopping = true;
+    await stopOvermind();
+    await unmount();
+    serverLogs.close();
+  });
   const startOvermindFresh = async (activity: ActivityStatus = STARTING_ACTIVITY): Promise<void> => {
+    if (stopping) return;
     state.serversReady = false;
     state.serverStatus = initialServerStatus(config);
     statusStabilizer.reset();
     state.activity = activity;
     await prepareSyncedServerCommits(config);
     await logCommits();
+    if (stopping) return;
     overmind = spawnOvermindWithLog(config, appendLog);
     repaint();
   };
@@ -428,8 +437,8 @@ export async function runServersMenu(
         state.lastMessage = 'Up to date — nothing to rebuild.';
         return;
       }
-      await stopContainers(config, options);
-      for (const t of targets) await build(config, { ...options, target: t, noCache: opts.noCache });
+      await stopContainers(config, { ...options, keepBuilderRunning: true });
+      for (const t of targets) await build(config, { ...options, target: t, noCache: opts.noCache, keepBuilderRunning: true });
       await startContainers(config, options);
       state.autoSyncCount = 0;
       await refreshDecision();
@@ -438,12 +447,14 @@ export async function runServersMenu(
       runError = err;
       throw err;
     } finally {
-      await startOvermindFresh();
-      try {
-        await waitForCurrentOvermindStartup();
-      } catch (startErr) {
-        if (!runError) throw startErr;
-        state.logLines = state.logLines.concat(`[restart-after-rebuild] ${(startErr as Error).message}`);
+      if (!stopping) {
+        await startOvermindFresh();
+        try {
+          await waitForCurrentOvermindStartup();
+        } catch (startErr) {
+          if (!runError) throw startErr;
+          state.logLines = state.logLines.concat(`[restart-after-rebuild] ${(startErr as Error).message}`);
+        }
       }
     }
   };
@@ -456,7 +467,7 @@ export async function runServersMenu(
    */
   const runRestartContainersAndServers = async (): Promise<void> => {
     await stopOvermind();
-    await stopContainers(config, options);
+    await stopContainers(config, { ...options, keepBuilderRunning: true });
     await startContainers(config, options);
     state.autoSyncCount = 0;
     await refreshDecision();
@@ -775,7 +786,7 @@ export async function runServersMenu(
     endBisectSession: (sessionId) => runProxiedAction(
       'ending bisect session',
       async () => {
-        state.bisectSession.endSession(sessionId);
+        await state.bisectSession.endSession(sessionId);
         state.lastMessage = 'Bisect finished; auto-sync resumed.';
       },
       { allowDuringBisect: true },
@@ -846,6 +857,8 @@ export async function runServersMenu(
   const dispatchKey = async (key: string): Promise<void> => {
     if (key === 'ctrl-c') {
       stopping = true;
+      cancelProjectBuildxOperations(config);
+      await stopProjectBuildxBuilderSafely(config);
       try { await overmind.stop(); } catch { /* best effort */ }
       await unmount();
       serverLogs.close();
@@ -1147,6 +1160,7 @@ export async function runServersMenu(
     if (syncTimer) clearTimeout(syncTimer);
     if (statusTimer) clearInterval(statusTimer);
     if (watcher) { try { watcher.close(); } catch { /* best effort */ } }
+    await stopProjectBuildxBuilderSafely(config);
     await unmount();
     serverLogs.close();
   }

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { withProjectBuildxOperation } from '../helpers/buildx-lifecycle';
 import type { ResolvedConfig } from '../types';
 import {
   assertProjectBuildxBuilderIsIsolated,
@@ -58,37 +59,42 @@ export async function pruneBuildCache(
 ): Promise<void> {
   requireCommand('docker', 'Install Docker from https://docs.docker.com/get-docker/');
 
-  const builderName = projectBuildxBuilderName(config.projectSlug);
-  const inspect = await exec('docker', ['buildx', 'inspect', builderName], { silent: true });
-  if (inspect.code !== 0) {
-    printInfo(`No project Buildx builder found: ${builderName}`);
-    console.log('There is no isolated build cache to prune yet.');
-  } else {
-    assertProjectBuildxBuilderIsIsolated(builderName, inspect.stdout);
+  let startedBuilder = false;
+  await withProjectBuildxOperation(config, () => startedBuilder, async (signal) => {
+    const builderName = projectBuildxBuilderName(config.projectSlug);
+    const inspect = await exec('docker', ['buildx', 'inspect', builderName], { silent: true });
+    if (inspect.code !== 0) {
+      printInfo(`No project Buildx builder found: ${builderName}`);
+      console.log('There is no isolated build cache to prune yet.');
+    } else {
+      assertProjectBuildxBuilderIsIsolated(builderName, inspect.stdout);
+      startedBuilder = !/^Status:\s+running\s*$/m.test(inspect.stdout);
 
-    // `buildx create` registers a docker-container builder before its BuildKit
-    // container exists. Bootstrapping makes `prune-cache` work even when it is
-    // the first command run after builder creation (before any image build).
-    const bootstrap = await exec(
-      'docker',
-      ['buildx', 'inspect', '--bootstrap', builderName],
-      { silent: true },
-    );
-    if (bootstrap.code !== 0) {
-      throw new Error(`Failed to start project Buildx builder ${builderName}`);
+      // `buildx create` registers a docker-container builder before its BuildKit
+      // container exists. Bootstrapping makes `prune-cache` work even when it is
+      // the first command run after builder creation (before any image build).
+      const bootstrap = await exec(
+        'docker',
+        ['buildx', 'inspect', '--bootstrap', builderName],
+        { silent: true, signal },
+      );
+      if (bootstrap.code !== 0) {
+        throw new Error(`Failed to start project Buildx builder ${builderName}`);
+      }
+
+      console.log(`Pruning BuildKit cache for ${builderName}...`);
+      const result = await exec(
+        'docker',
+        ['buildx', 'prune', '--builder', builderName, '--all', '--force'],
+        { signal },
+      );
+      if (result.code !== 0) {
+        throw new Error(`Failed to prune Buildx cache for ${builderName}`);
+      }
+
+      printSuccess(`Pruned project Buildx cache: ${builderName}`);
     }
-
-    console.log(`Pruning BuildKit cache for ${builderName}...`);
-    const result = await exec(
-      'docker',
-      ['buildx', 'prune', '--builder', builderName, '--all', '--force'],
-    );
-    if (result.code !== 0) {
-      throw new Error(`Failed to prune Buildx cache for ${builderName}`);
-    }
-
-    printSuccess(`Pruned project Buildx cache: ${builderName}`);
-  }
+  });
 
   if (options.images) await removeProjectImages(config);
 }
