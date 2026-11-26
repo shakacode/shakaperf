@@ -50,6 +50,7 @@ export const auditPipelineMetadata = {
 } as const;
 
 export interface AuditPipelineConfig {
+  readonly coverageReport?: boolean;
   readonly parallelism: number;
   readonly lighthouseConfig?: PerfLighthouseConfig;
   readonly accessibility: AccessibilityStageConfig;

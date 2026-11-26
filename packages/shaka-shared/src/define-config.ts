@@ -130,7 +130,20 @@ export interface PerfConfigInput {
   playwrightOptions?: Partial<PlaywrightOptionsInput>;
 }
 
+/** Paths are relative to projectRoot (itself relative to abtests.config.ts). */
+export interface CodeCoverageConfigInput {
+  projectRoot?: string;
+  /** Omitted: loaded instrumented files only, never whole-project coverage. */
+  include?: string[];
+  exclude?: string[];
+  /** Container/build source prefixes mapped to project-relative directories. */
+  pathMappings?: Record<string, string>;
+  /** Return Istanbul FileCoverage data using the application's build transforms. */
+  instrument?: (source: string, filename: string) => unknown | Promise<unknown>;
+}
+
 export interface AuditConfigInput {
+  codeCoverage?: CodeCoverageConfigInput;
   viewports?: [string, ...string[]];
   // Raw Lighthouse flags (see `PerfConfigInput.lighthouseConfig`).
   lighthouseConfig?: Record<string, unknown>;

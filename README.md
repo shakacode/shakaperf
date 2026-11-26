@@ -113,3 +113,5 @@ TL;DR: free for orgs under 10 people, $1M revenue, and $1M raised, and for chari
 Registration is free, optional, and encouraged for every organization:
 [shakaperf.com/license](https://shakaperf.com/license). Questions:
 [contact@shakacode.com](mailto:contact@shakacode.com).
+
+See [cumulative executed-code coverage](docs/code-coverage.md) for Istanbul setup, source scope, unvisited files and saved-report regeneration.
