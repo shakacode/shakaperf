@@ -14,7 +14,7 @@ import {
   StageArtifactTitle,
 } from '../../../report-ui/artifacts';
 import { PerformanceViewportSection } from '../../../report-ui/sections';
-import { FullReportOnly } from '../../../report-ui/FullReportOnly';
+import { FullReportOnly } from '../../../report-ui';
 import { METRIC_LEVEL_CSS_VAR } from './metrics';
 import type { AuditMetric, AuditMetricGroup, AuditResult } from './stage';
 

@@ -14,7 +14,7 @@ import {
   StageArtifactTitle,
 } from '../../../report-ui/artifacts';
 import { ReportHeading } from '../../../report-ui/sections';
-import { useReportMode } from '../../../report-ui/ReportModeProvider';
+import { useReportMode } from '../../../report-ui';
 import {
   groupFramesByAnnotation,
   type AnnotatedFrame,

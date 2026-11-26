@@ -7,7 +7,7 @@
 
 import type { StageRenderEntry } from '../../../stage/stage';
 import { DetailedArtifactDialog } from '../../../report-ui/artifacts';
-import { FullReportOnly } from '../../../report-ui/FullReportOnly';
+import { FullReportOnly } from '../../../report-ui';
 import type {
   AccessibilityScan,
   AccessibilityViolation,

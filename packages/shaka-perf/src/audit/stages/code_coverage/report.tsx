@@ -14,7 +14,7 @@ import {
   StageArtifactTitle,
 } from '../../../report-ui/artifacts';
 import { ReportHeading } from '../../../report-ui/sections';
-import { FullReportOnly } from '../../../report-ui/FullReportOnly';
+import { FullReportOnly } from '../../../report-ui';
 import { TooltipLabel } from '../../../report-ui/tooltips';
 import type { CodeCoverageResult } from './stage';
 

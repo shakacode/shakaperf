@@ -18,7 +18,7 @@ import {
   ReportHeading,
   useReportSection,
 } from '../../../report-ui/sections';
-import { FullReportOnly } from '../../../report-ui/FullReportOnly';
+import { FullReportOnly } from '../../../report-ui';
 import { FramePlayer } from './frame-player';
 
 const GROUPS: PerfMetricGroup[] = ['vitals', 'diagnostics'];

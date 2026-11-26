@@ -14,7 +14,7 @@ import {
   StageNote,
 } from '../../../report-ui/artifacts';
 import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { FullReportOnly } from '../../../report-ui/FullReportOnly';
+import { FullReportOnly } from '../../../report-ui';
 import type { StageRenderEntry } from '../../../stage/stage';
 import { ReportHeading } from '../../../report-ui/sections';
 import {
