@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -64,7 +65,7 @@ it('automatically persists original metadata and reuses it unchanged in every re
       const pool = builder.registerWorkerPool(1);
       builder.runStage(pool, {
         measuresApplication: true,
-        name: 'visreg', label: 'Visual Diff', category: 'visreg', description: 'Fake measurement; real identity lookup and persistence', selfContainedReportStrip: {},
+        name: stageIds.visreg, label: 'Visual Diff', category: 'visreg', description: 'Fake measurement; real identity lookup and persistence', selfContainedReportStrip: {},
         applies: () => true, renderArtifacts: () => null, machineReadableSummary: () => ({}),
         async run() { return { measurement: [], metadata: { sample: 'saved stage value' } }; },
       });
@@ -79,10 +80,10 @@ it('automatically persists original metadata and reuses it unchanged in every re
     for (const outcome of result.testResults[0]!.outcomes) {
       expect(outcome.executionDetails.measurementMetadata).not.toHaveProperty('viewport');
       expect(Object.keys(outcome.executionDetails.measurementMetadata!).sort()).toEqual(['measuredAt', 'targets']);
-      expect(store.readOutcome(test, outcome.executionDetails.viewport.label, 'visreg')?.executionDetails.stageMetadata).toEqual({ sample: 'saved stage value' });
+      expect(store.readOutcome(test, outcome.executionDetails.viewport.label, stageIds.visreg)?.executionDetails.stageMetadata).toEqual({ sample: 'saved stage value' });
       expect(outcome).not.toHaveProperty('runMetadata');
       expect(outcome.executionDetails.viewport.width).toBeGreaterThan(0);
-      expect(store.readOutcome(test, outcome.executionDetails.viewport.label, 'visreg')?.executionDetails.measurementMetadata).toEqual(outcome.executionDetails.measurementMetadata);
+      expect(store.readOutcome(test, outcome.executionDetails.viewport.label, stageIds.visreg)?.executionDetails.measurementMetadata).toEqual(outcome.executionDetails.measurementMetadata);
       expect(outcome.executionDetails.measurementMetadata?.targets.every((target) => target.commit?.sha === deployed.sha)).toBe(true);
       expect(outcome.executionDetails.measurementMetadata?.targets[0]?.commit?.message).toBe(message);
       expect(outcome.executionDetails.measurementMetadata?.targets[0]?.url).toBe(`${url}/cart?mode=demo#anchor`);

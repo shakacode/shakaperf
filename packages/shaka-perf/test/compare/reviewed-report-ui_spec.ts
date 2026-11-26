@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../src/stage/stage-ids';
 import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import { createServer, type Server } from 'node:http';
 import { chromium, type Browser, type Page } from 'playwright';
@@ -117,7 +118,7 @@ describe.each([
 
   it('resets review when an older outcome changes even if the newest run stays the same', async () => {
     data.tests[0] = testResult('home', 'run-3');
-    data.tests[0].outcomes.push({ ...data.tests[0].outcomes[0], stage: 'perf', executionDetails: { ...data.tests[0].outcomes[0].executionDetails, runId: 'run-1' } });
+    data.tests[0].outcomes.push({ ...data.tests[0].outcomes[0], stage: stageIds.perf, executionDetails: { ...data.tests[0].outcomes[0].executionDetails, runId: 'run-1' } });
     await regenerate();
     await reviewed().check();
     data.tests[0].outcomes.reverse();
@@ -138,7 +139,7 @@ function testResult(id: string, runId: string): TestResult {
     measuredAt: 1_790_000_000_000, runId, viewportArtifactPaths: [],
     outcomes: [{
       ...executionFixture({ runId }),
-      kind: 'error', stage: 'visreg',
+      kind: 'error', stage: stageIds.visreg,
       error: { message: 'Screenshot capture failed' },
     }],
   };

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import { executionFixture } from '../../../pipeline/__tests__/fixtures/execution';
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
@@ -427,7 +428,7 @@ function regressionResult(
       ...(visualTargets.length === 0 ? [] : [{
         ...executionFixture(),
         kind: 'ok' as const,
-        stage: 'visreg',
+        stage: stageIds.visreg,
         measurement: visualTargets.map((target) => ({
           selector: target.subject,
           controlImage: `${target.id}-control.png`,
@@ -443,7 +444,7 @@ function regressionResult(
       ...(perfTargets.length === 0 ? [] : [{
         ...executionFixture(),
         kind: 'ok' as const,
-        stage: 'perf',
+        stage: stageIds.perf,
         measurement: {
           metrics: perfTargets.map((target) => ({
             label: target.subject,
@@ -464,7 +465,7 @@ function regressionResult(
       ...(accessibilityTargets.length === 0 ? [] : [{
         ...executionFixture(),
         kind: 'ok' as const,
-        stage: 'accessibility',
+        stage: stageIds.accessibility,
         measurement: accessibilityMeasurement(accessibilityTargets, targetsWithRegression),
       }]),
     ],
@@ -549,7 +550,7 @@ function visregResult(regressionDetected: boolean): TestResult {
     outcomes: [{
       ...executionFixture(),
       kind: 'ok',
-      stage: 'visreg',
+      stage: stageIds.visreg,
       measurement: [{
         selector: 'document',
         controlImage: 'control.png',

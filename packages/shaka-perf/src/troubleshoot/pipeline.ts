@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../stage/stage-ids';
 import { createPipeline, type PipelineReport } from '../pipeline/pipeline';
 import { emptyMachineReadableSummary } from '../stage/stage';
 import { PerfEngineStage } from '../compare/stages/perf/stage';
@@ -28,7 +29,7 @@ const NO_REPORT: PipelineReport = {
 export const troubleshootPipelineMetadata = {
   description: 'Run one test at one viewport and leave every browser open for inspection.',
   categories: ['visreg', 'perf'],
-  stages: ['visreg', 'perf'],
+  stages: [stageIds.visreg, stageIds.perf],
 } as const;
 
 /** A pool serializes its stages, so each track needs its own. */
@@ -68,7 +69,7 @@ export function createTroubleshootPipeline(config: AbTestsConfig) {
     // Warmup-shaped, not measuring: the held gather means no LHR, so statistical
     // analysis would only add a misleading error about a missing report.json.
     pipeline.runStage(perfPool, new PerfEngineStage<PerfWarmupResult>({
-      name: 'perf',
+      name: stageIds.perf,
       description: 'Load the page under Lighthouse and leave its browser open.',
       label: 'Performance',
       artifactTitle: 'Performance',

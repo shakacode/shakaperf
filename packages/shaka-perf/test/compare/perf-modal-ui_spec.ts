@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../src/stage/stage-ids';
 import { performanceMetadataFields } from '../../src/stage/performance-metadata';
 import { createServer, type Server } from 'node:http';
 import { chromium, type Browser } from 'playwright';
@@ -34,7 +35,7 @@ function fixture() {
   };
   const lowNoise: ReportOutcome = {
     ...saved,
-    stage: 'perf-low-noise',
+    stage: stageIds.perfLowNoise,
     measurement: { metrics: [], timelineHref: '/timeline.html', timelinePreviewHref: image, framesHref: '/frames.js' },
     executionDetails: { ...saved.executionDetails, measurementMetadata: { ...saved.executionDetails.measurementMetadata!, numberOfMeasurements: 1,
       throttling: { engine: 'Lighthouse', method: 'devtools', cpuSlowdownMultiplier: 2,

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import { executionFixture } from '../../pipeline/__tests__/fixtures/execution';
 import { DESKTOP_VIEWPORT, type AbTestDefinition } from 'shaka-shared';
 import { createAuditPipeline } from '../pipeline';
@@ -65,14 +66,14 @@ function chipsFor(result: AccessibilityResult) {
   const chips = pipeline.chipsForAllTests([{
     test,
     results: {
-      audit: [],
-      accessibility: [{
-        stage: 'accessibility',
+      [stageIds.audit]: [],
+      [stageIds.accessibility]: [{
+        stage: stageIds.accessibility,
         measurement: result,
         outcome: {
           ...executionFixture(),
           kind: 'ok',
-          stage: 'accessibility',
+          stage: stageIds.accessibility,
           measurement: result,
         },
       }],

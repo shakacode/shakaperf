@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import { executionFixture } from './fixtures/execution';
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT, TABLET_VIEWPORT } from 'shaka-shared';
 import fs from 'fs';
@@ -110,13 +111,13 @@ function pipeline(): Pipeline {
     },
   }, (builder) => {
     const pool = builder.registerWorkerPool(2);
-    builder.runStage(pool, stage('visreg', 'visreg'));
-    builder.runStage(pool, stage('perf-warmup'));
-    builder.runStage(pool, stage('perf'));
+    builder.runStage(pool, stage(stageIds.visreg, 'visreg'));
+    builder.runStage(pool, stage(stageIds.perfWarmup));
+    builder.runStage(pool, stage(stageIds.perf));
     builder.waitForAllTasksFinishAndDispose(pool);
 
     const serial = builder.registerWorkerPool(1);
-    builder.runStage(serial, stage('perf-low-noise'));
+    builder.runStage(serial, stage(stageIds.perfLowNoise));
     builder.waitForAllTasksFinishAndDispose(serial);
 
     builder.buildChips({
@@ -132,17 +133,17 @@ function pipeline(): Pipeline {
 
 const ALL_PIPELINE_STAGE_CATEGORIES: readonly [StageName, StageCategory][] = [
   // compare + troubleshoot
-  ['visreg', 'visreg'],
-  ['perf-warmup', 'perf'],
-  ['perf', 'perf'],
-  ['perf-low-noise', 'perf'],
+  [stageIds.visreg, 'visreg'],
+  [stageIds.perfWarmup, 'perf'],
+  [stageIds.perf, 'perf'],
+  [stageIds.perfLowNoise, 'perf'],
   // compare + audit
-  ['accessibility', 'accessibility'],
+  [stageIds.accessibility, 'accessibility'],
   // audit (the last two consume prior artifacts rather than navigating)
-  ['audit', 'audit'],
-  ['agent-readiness', 'audit'],
-  ['build_annotated_timeline', 'audit'],
-  ['ai_summary', 'audit'],
+  [stageIds.audit, 'audit'],
+  [stageIds.agentReadiness, 'audit'],
+  [stageIds.buildAnnotatedTimeline, 'audit'],
+  [stageIds.aiSummary, 'audit'],
 ];
 
 function allPipelineStages(observedUrls: ObservedStageUrls[]): Pipeline {
@@ -170,33 +171,33 @@ function allPipelineStages(observedUrls: ObservedStageUrls[]): Pipeline {
 
 describe('resolveStageSelection', () => {
   it('selects the restart stage and later stages', () => {
-    const selected = resolveStageSelection(pipeline(), { restartFromStage: 'perf' });
+    const selected = resolveStageSelection(pipeline(), { restartFromStage: stageIds.perf });
 
-    expect(selected.stageNames).toEqual(['perf', 'perf-low-noise']);
-    expect(selected.restartFromStage).toBe('perf');
+    expect(selected.stageNames).toEqual([stageIds.perf, stageIds.perfLowNoise]);
+    expect(selected.restartFromStage).toBe(stageIds.perf);
     expect(selected.skippedStages.map((entry) => ({
       stage: entry.stage.name,
       persistOutcome: entry.persistOutcome,
     }))).toEqual([
-      { stage: 'visreg', persistOutcome: false },
-      { stage: 'perf-warmup', persistOutcome: false },
+      { stage: stageIds.visreg, persistOutcome: false },
+      { stage: stageIds.perfWarmup, persistOutcome: false },
     ]);
   });
 
   it('does not persist skipped outcomes for stages before the restart point', () => {
     const selected = resolveStageSelection(pipeline(), {
-      restartFromStage: 'perf',
-      skipStages: 'perf-low-noise',
+      restartFromStage: stageIds.perf,
+      skipStages: stageIds.perfLowNoise,
     });
 
-    expect(selected.stageNames).toEqual(['perf']);
+    expect(selected.stageNames).toEqual([stageIds.perf]);
     expect(selected.skippedStages.map((entry) => ({
       stage: entry.stage.name,
       persistOutcome: entry.persistOutcome,
     }))).toEqual([
-      { stage: 'visreg', persistOutcome: false },
-      { stage: 'perf-warmup', persistOutcome: false },
-      { stage: 'perf-low-noise', persistOutcome: true },
+      { stage: stageIds.visreg, persistOutcome: false },
+      { stage: stageIds.perfWarmup, persistOutcome: false },
+      { stage: stageIds.perfLowNoise, persistOutcome: true },
     ]);
   });
 
@@ -208,22 +209,22 @@ describe('resolveStageSelection', () => {
   it('runs only the --stages list and marks the rest skipped by it', () => {
     const selected = resolveStageSelection(pipeline(), { stages: 'visreg,perf' });
 
-    expect(selected.stageNames).toEqual(['visreg', 'perf']);
+    expect(selected.stageNames).toEqual([stageIds.visreg, stageIds.perf]);
     expect(selected.skippedStages.map((entry) => ({
       stage: entry.stage.name,
       reason: entry.reason,
       persistOutcome: entry.persistOutcome,
     }))).toEqual([
-      { stage: 'perf-warmup', reason: 'skipped by --stages visreg,perf', persistOutcome: true },
-      { stage: 'perf-low-noise', reason: 'skipped by --stages visreg,perf', persistOutcome: true },
+      { stage: stageIds.perfWarmup, reason: 'skipped by --stages visreg,perf', persistOutcome: true },
+      { stage: stageIds.perfLowNoise, reason: 'skipped by --stages visreg,perf', persistOutcome: true },
     ]);
   });
 
   it('rejects --stages combined with --categories or --skip-stages', () => {
     const message = '--stages cannot be combined with --categories or --skip-stages.';
-    expect(() => resolveStageSelection(pipeline(), { stages: 'perf', categories: 'perf' }))
+    expect(() => resolveStageSelection(pipeline(), { stages: stageIds.perf, categories: 'perf' }))
       .toThrow(message);
-    expect(() => resolveStageSelection(pipeline(), { stages: 'perf', skipStages: 'visreg' }))
+    expect(() => resolveStageSelection(pipeline(), { stages: stageIds.perf, skipStages: stageIds.visreg }))
       .toThrow(message);
   });
 
@@ -239,7 +240,7 @@ describe('resolveStageSelection', () => {
         skipStages: 'perf-warmup,does-not-exist',
       });
 
-      expect(selected.stageNames).toEqual(['visreg', 'perf', 'perf-low-noise']);
+      expect(selected.stageNames).toEqual([stageIds.visreg, stageIds.perf, stageIds.perfLowNoise]);
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining('ignoring unknown stage "does-not-exist" in --skip-stages'),
       );
@@ -395,7 +396,7 @@ describe('runPipeline', () => {
       const first = await runWithFrozenTest({ cwd, tests: [test], categories: 'visreg', skipReport: true }, selected);
       expect(first.testResults[0]).not.toHaveProperty('code');
       const store = new ArtifactStore(first.resultsRoot);
-      const measured = first.testResults[0]!.outcomes.filter((o) => o.stage === 'visreg');
+      const measured = first.testResults[0]!.outcomes.filter((o) => o.stage === stageIds.visreg);
       expect(measured.length).toBeGreaterThan(0);
       for (const outcome of measured) {
         expect(outcome.kind).toBe(failed ? 'error' : 'ok');
@@ -406,7 +407,7 @@ describe('runPipeline', () => {
         if (deleted) fs.unlinkSync(file);
         const report = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
         expect(report.testResults[0]).not.toHaveProperty('code');
-        expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'visreg')?.executionDetails.testSourceHref).toBeTruthy();
+        expect(report.testResults[0]!.outcomes.find((o) => o.stage === stageIds.visreg)?.executionDetails.testSourceHref).toBeTruthy();
       }
     } finally {
       fs.rmSync(cwd, { recursive: true, force: true });
@@ -424,21 +425,21 @@ describe('runPipeline', () => {
     try {
       fs.writeFileSync(file, source);
       const first = await runWithFrozenTest({ cwd, tests: [test], categories: 'visreg', skipReport: true });
-      const original = first.testResults[0]!.outcomes.find((o) => o.stage === 'visreg')!;
+      const original = first.testResults[0]!.outcomes.find((o) => o.stage === stageIds.visreg)!;
       fs.writeFileSync(file, changed);
       clock.mockReturnValue(Date.parse('2026-10-20T11:00:00Z'));
-      const second = await runWithFrozenTest({ cwd, tests: [test], restartFromStage: 'perf', skipReport: true });
+      const second = await runWithFrozenTest({ cwd, tests: [test], restartFromStage: stageIds.perf, skipReport: true });
       const outcomes = second.testResults[0]!.outcomes;
-      expect(outcomes.find((o) => o.stage === 'visreg')?.executionDetails.measurementMetadata).toEqual(original.executionDetails.measurementMetadata);
+      expect(outcomes.find((o) => o.stage === stageIds.visreg)?.executionDetails.measurementMetadata).toEqual(original.executionDetails.measurementMetadata);
       const store = new ArtifactStore(second.resultsRoot);
       const originalPath = original.executionDetails.testSourceHref!;
-      const changedPath = outcomes.find((o) => o.stage === 'perf')!.executionDetails.testSourceHref!;
+      const changedPath = outcomes.find((o) => o.stage === stageIds.perf)!.executionDetails.testSourceHref!;
       expect(changedPath).not.toBe(originalPath);
       expect(store.readTextArtifact(originalPath)).toBe(source);
       expect(store.readTextArtifact(changedPath)).toBe(changed);
       for (const viewport of new Set(outcomes.map((o) => o.executionDetails.viewport.label))) {
         expect(fs.readdirSync(store.artifactsDirForViewport(test, viewport))).toHaveLength(2);
-        const measuredPaths = new Set(outcomes.filter((o) => o.executionDetails.viewport.label === viewport && o.stage !== 'visreg')
+        const measuredPaths = new Set(outcomes.filter((o) => o.executionDetails.viewport.label === viewport && o.stage !== stageIds.visreg)
           .map((o) => o.executionDetails.testSourceHref).filter(Boolean));
         expect(measuredPaths.size).toBe(1);
       }
@@ -450,7 +451,7 @@ describe('runPipeline', () => {
       // Source capture fails before new work or cleanup can replace old results.
       const pending = pipeline();
       const engines = pending.stages.map((stage) => jest.spyOn(stage, 'run'));
-      await expect(runWithFrozenTest({ cwd, tests: [test], restartFromStage: 'perf', skipReport: true }, pending))
+      await expect(runWithFrozenTest({ cwd, tests: [test], restartFromStage: stageIds.perf, skipReport: true }, pending))
         .rejects.toThrow('Cannot capture abTest source');
       for (const engine of engines) expect(engine).not.toHaveBeenCalled();
       const retained = await runWithFrozenTest({ cwd, tests: [test], reportOnly: true });
@@ -493,7 +494,7 @@ describe('runPipeline', () => {
     };
     const test = { ...frozenTest, config: { shared: { retries: 1, retryDelay: 0 } } };
     const result = await runWithFrozenTest({ tests: [test], categories: 'visreg', skipReport: true }, selected);
-    const measured = result.testResults[0]!.outcomes.filter((o) => o.stage === 'visreg');
+    const measured = result.testResults[0]!.outcomes.filter((o) => o.stage === stageIds.visreg);
     expect(measured.length).toBeGreaterThan(0);
     for (const outcome of measured) {
       expect(outcome.kind).toBe(exhausted ? 'error' : 'ok');
@@ -610,7 +611,7 @@ describe('runPipeline', () => {
       process.argv = ['node', 'shaka-perf', 'compare', '--categories', 'visreg'];
       const initialPipeline = pipeline();
       const first = await runWithFrozenTest({ cwd, tests: [configuredTest], categories: 'visreg', skipReport: true }, initialPipeline);
-      const before = first.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.kind === 'ok')!;
+      const before = first.testResults[0]!.outcomes.find((o) => o.stage === stageIds.visreg && o.kind === 'ok')!;
       expect(before.executionDetails.command).toBe('shaka-perf compare --categories visreg');
       expect(before.executionDetails.measurementMetadata).toEqual(expect.objectContaining({
         targets: [
@@ -622,16 +623,16 @@ describe('runPipeline', () => {
       clock.mockReturnValue(Date.parse('2026-10-20T11:00:00Z'));
       process.argv = ['node', 'shaka-perf', 'compare', '--categories', 'perf', '--restart-from-stage', 'perf'];
       const nextPipeline = pipeline();
-      const perfStage = nextPipeline.stages.find((entry) => entry.name === 'perf')!;
-      perfStage.applies = (_test, _viewport, priorOutcomeKinds) => priorOutcomeKinds.get('visreg') === 'ok';
+      const perfStage = nextPipeline.stages.find((entry) => entry.name === stageIds.perf)!;
+      perfStage.applies = (_test, _viewport, priorOutcomeKinds) => priorOutcomeKinds.get(stageIds.visreg) === 'ok';
       const nextRun = perfStage.run;
       perfStage.run = async (ctx, pool) => {
         ctx.recordMeasurementOptions({ numberOfMeasurements: ctx.config.perf.numberOfMeasurements });
         return nextRun(ctx, pool);
       };
-      const second = await runWithFrozenTest({ cwd, tests: [configuredTest], categories: 'perf', restartFromStage: 'perf', skipReport: true }, nextPipeline);
-      expect(second.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.executionDetails.viewport.label === before.executionDetails.viewport.label)?.executionDetails.measurementMetadata).toEqual(before.executionDetails.measurementMetadata);
-      const perf = second.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.kind === 'ok')!;
+      const second = await runWithFrozenTest({ cwd, tests: [configuredTest], categories: 'perf', restartFromStage: stageIds.perf, skipReport: true }, nextPipeline);
+      expect(second.testResults[0]!.outcomes.find((o) => o.stage === stageIds.visreg && o.executionDetails.viewport.label === before.executionDetails.viewport.label)?.executionDetails.measurementMetadata).toEqual(before.executionDetails.measurementMetadata);
+      const perf = second.testResults[0]!.outcomes.find((o) => o.stage === stageIds.perf && o.kind === 'ok')!;
       expect(perf.executionDetails.command).toContain('--restart-from-stage perf');
       expect(perf.executionDetails.measurementMetadata?.numberOfMeasurements).toBe(7);
       expect(perf.executionDetails.measurementMetadata?.targets.length).toBe(2);
@@ -644,13 +645,13 @@ describe('runPipeline', () => {
       const report = await runWithFrozenTest({ cwd, reportOnly: true, controlURL: 'http://changed.test', experimentURL: 'http://changed-again.test' }, reusedPipeline);
       for (const engine of engines) expect(engine).not.toHaveBeenCalled();
       expect(measuredCommit).not.toHaveBeenCalled();
-      expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.executionDetails.viewport.label === before.executionDetails.viewport.label)?.executionDetails.measurementMetadata).toEqual(before.executionDetails.measurementMetadata);
-      expect(report.testResults[0]!.outcomes.find((o) => o.stage === 'perf' && o.executionDetails.viewport.label === perf.executionDetails.viewport.label)?.executionDetails.measurementMetadata).toEqual(perf.executionDetails.measurementMetadata);
+      expect(report.testResults[0]!.outcomes.find((o) => o.stage === stageIds.visreg && o.executionDetails.viewport.label === before.executionDetails.viewport.label)?.executionDetails.measurementMetadata).toEqual(before.executionDetails.measurementMetadata);
+      expect(report.testResults[0]!.outcomes.find((o) => o.stage === stageIds.perf && o.executionDetails.viewport.label === perf.executionDetails.viewport.label)?.executionDetails.measurementMetadata).toEqual(perf.executionDetails.measurementMetadata);
       clock.mockReturnValue(Date.parse('2026-10-20T12:00:00Z'));
       const replaced = await runWithFrozenTest({ cwd, categories: 'visreg', keepOldResults: true, skipReport: true });
-      const latest = replaced.testResults[0]!.outcomes.find((o) => o.stage === 'visreg' && o.kind === 'ok')!;
+      const latest = replaced.testResults[0]!.outcomes.find((o) => o.stage === stageIds.visreg && o.kind === 'ok')!;
       expect(latest.executionDetails.runId).not.toBe(before.executionDetails.runId);
-      expect(replaced.testResults[0]!.outcomes.filter((o) => o.kind === 'ok').every((o) => o.stage === 'visreg')).toBe(true);
+      expect(replaced.testResults[0]!.outcomes.filter((o) => o.kind === 'ok').every((o) => o.stage === stageIds.visreg)).toBe(true);
     } finally {
       clock.mockRestore();
       process.argv = originalArgv;
@@ -711,7 +712,7 @@ describe('runPipeline', () => {
       const store = new ArtifactStore(path.join(cwd, 'test-results'));
       store.writeOutcome(sibling, 'desktop', {
         ...executionFixture({ runId: full.testResults[1]!.runId! }),
-        kind: 'error', stage: 'visreg',
+        kind: 'error', stage: stageIds.visreg,
         error: { message: 'Older saved failure' },
       });
       const saved = await run({ reportOnly: true, skipReport: false });
@@ -770,7 +771,7 @@ describe('runPipeline', () => {
       const newerArchive = await run('desktop', { config: mixedConfig, reportOnly: true, skipReport: false });
       expect(newerArchive.testResults[0]!.currentConfig!.measuredAt).toBe(scoped.testResults[0]!.currentConfig!.measuredAt);
       expect(newerArchive.testResults[0]!.measuredAt).toBe(fs.statSync(file).mtimeMs);
-      store.writeOutcome(frozenTest, 'phone', { ...executionFixture({ viewport: PHONE_VIEWPORT, runId: phone.testResults[0]!.runId! }), kind: 'error', stage: 'visreg',
+      store.writeOutcome(frozenTest, 'phone', { ...executionFixture({ viewport: PHONE_VIEWPORT, runId: phone.testResults[0]!.runId! }), kind: 'error', stage: stageIds.visreg,
          error: { message: 'Archived phone error' } });
       const contents = fs.readFileSync(file, 'utf8');
       const mtime = fs.statSync(file).mtimeMs;
@@ -1008,7 +1009,7 @@ describe('pre-run wipe', () => {
 
   it('sweeps a selected stage\'s stale outcomes at viewports outside the current plan', async () => {
     // visreg ran at desktop before the test narrowed itself to tablet.
-    const staleVisreg = seedOutcome('desktop', 'visreg');
+    const staleVisreg = seedOutcome('desktop', stageIds.visreg);
 
     await run({ categories: 'visreg' });
 
@@ -1029,8 +1030,8 @@ describe('pre-run wipe', () => {
     // wholesale so no stale artifact (notably visreg's accumulated screenshot
     // frames) survives into this run. The perf outcome does not survive as a
     // measurement — it reappears only as a `--categories` skip marker.
-    const staleVisreg = seedOutcome('desktop', 'visreg');
-    const sweptPerf = seedOutcome('desktop', 'perf');
+    const staleVisreg = seedOutcome('desktop', stageIds.visreg);
+    const sweptPerf = seedOutcome('desktop', stageIds.perf);
 
     await run({ categories: 'visreg' });
 
@@ -1050,11 +1051,11 @@ describe('pre-run wipe', () => {
     const store = new ArtifactStore(path.join(cwd, 'test-results'));
     store.writeOutcome(narrowedTest, 'tablet', {
       ...executionFixture({ viewport: TABLET_VIEWPORT }),
-      kind: 'error', stage: 'visreg', error: 'stale from previous run',
+      kind: 'error', stage: stageIds.visreg, error: 'stale from previous run',
     } as never);
     const unitDir = store.unitDirForViewport(narrowedTest, 'tablet');
     const staleVisreg = path.join(unitDir, 'visreg.json');
-    seedOutcome('tablet', 'perf');
+    seedOutcome('tablet', stageIds.perf);
     const staleFrame = path.join(unitDir, 'artifacts', 'experiment_screenshots', 'S_0_document_0_tablet__deadbeef.png');
     fs.mkdirSync(path.dirname(staleFrame), { recursive: true });
     fs.writeFileSync(staleFrame, 'stale frame from a previous run');
@@ -1069,7 +1070,7 @@ describe('pre-run wipe', () => {
   });
 
   it('leaves stale outcomes alone under --keep-old-results', async () => {
-    const staleVisreg = seedOutcome('desktop', 'visreg');
+    const staleVisreg = seedOutcome('desktop', stageIds.visreg);
 
     await run({ categories: 'visreg', keepOldResults: true });
 
@@ -1271,7 +1272,7 @@ describe('per-side visreg failures', () => {
         }));
 
       const store = new ArtifactStore(path.join(cwd, 'test-results'));
-      const outcome = store.readOutcome(test, 'tablet', 'visreg');
+      const outcome = store.readOutcome(test, 'tablet', stageIds.visreg);
       if (!outcome) throw new Error('visreg outcome was not persisted');
       const media = outcome.failure?.media;
       if (!media) throw new Error('visreg failure media was not persisted');
@@ -1362,7 +1363,7 @@ describe('per-test task limits reach the pool', () => {
       },
     }, (builder) => {
       const pool = builder.registerWorkerPool(2);
-      builder.runStage(pool, poolWorkStage('perf'));
+      builder.runStage(pool, poolWorkStage(stageIds.perf));
       builder.waitForAllTasksFinishAndDispose(pool);
       builder.buildChips({
         chipsForAllTests: (perTest) => new Map(perTest.map(({ test }) => [test, []])),

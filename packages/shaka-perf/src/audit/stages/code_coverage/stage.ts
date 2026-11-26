@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import { createElement } from 'react';
 import {
   type JsonValue,
@@ -63,7 +64,7 @@ export interface CodeCoverageResult {
 export class CodeCoverageStage implements Stage<CodeCoverageResult> {
   readonly measuresApplication = true;
   readonly category = 'code_coverage';
-  readonly name: StageName = 'code_coverage';
+  readonly name: StageName = stageIds.codeCoverage;
   readonly label = 'Code Coverage';
   readonly description = 'Run each test body in a visreg-configured browser, drain its instrumented JS coverage, and map what the finished page shows inside the capture region.';
   // The rule, since this field answers the same question two opposite ways:

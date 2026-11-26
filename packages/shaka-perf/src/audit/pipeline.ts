@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../stage/stage-ids';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { PerfLighthouseConfig } from '../bench/core/lighthouse-config';
 import { reportMetaForLighthouseRun } from '../bench/core/lighthouse-config';
@@ -38,7 +39,14 @@ export const auditPipelineMetadata = {
   // out on purpose: it re-runs every test body in a second browser, so it only
   // runs when asked for by name.
   defaultCategories: ['audit', 'accessibility'],
-  stages: ['audit', 'accessibility', 'agent-readiness', 'code_coverage', 'build_annotated_timeline', 'ai_summary'],
+  stages: [
+    stageIds.audit,
+    stageIds.accessibility,
+    stageIds.agentReadiness,
+    stageIds.codeCoverage,
+    stageIds.buildAnnotatedTimeline,
+    stageIds.aiSummary,
+  ],
 } as const;
 
 export interface AuditPipelineConfig {
@@ -86,14 +94,14 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     pipeline.runStage(workerPool, new AiSummaryStage());
     pipeline.waitForAllTasksFinishAndDispose(workerPool);
 
-    pipeline.buildChips<{ audit: AuditResult; accessibility: AccessibilityResult }>({
+    pipeline.buildChips<{ [stageIds.audit]: AuditResult; [stageIds.accessibility]: AccessibilityResult }>({
       chipsForAllTests(perTest) {
         const out = new Map<AbTestDefinition, readonly ChipDescriptor[]>();
         // Index test → metrics once and reuse across the chip builders below.
         const indexed = perTest.map((entry) => ({
           test: entry.test,
-          metrics: collectMetrics(entry.results.audit ?? []),
-          accessibilityResults: entry.results.accessibility ?? [],
+          metrics: collectMetrics(entry.results[stageIds.audit] ?? []),
+          accessibilityResults: entry.results[stageIds.accessibility] ?? [],
         }));
 
         for (const { test, metrics, accessibilityResults } of indexed) {
@@ -125,14 +133,14 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     // Sort chips: one dimension per audit metric, so the report shell can
     // order cards by any metric. Mirrors `buildChips` — the framework calls
     // `pipeline.sortsForAllTests` polymorphically; no name switch anywhere.
-    pipeline.buildSorts<{ audit: AuditResult }>({
+    pipeline.buildSorts<{ [stageIds.audit]: AuditResult }>({
       sortsForAllTests(perTest) {
         const out = new Map<AbTestDefinition, readonly SortDescriptor[]>();
         for (const { test, results } of perTest) {
           // A test may report a metric across several viewports; collapse to a
           // single value per dimension by keeping the worst one.
           const worstByLabel = new Map<string, AuditMetric>();
-          for (const metric of collectMetrics(results.audit ?? [])) {
+          for (const metric of collectMetrics(results[stageIds.audit] ?? [])) {
             if (!Number.isFinite(metric.value)) continue;
             const prev = worstByLabel.get(metric.label);
             if (!prev || isWorseMetric(metric.label, metric.value, prev.value)) {
@@ -161,7 +169,7 @@ export function auditMachineReportMeta(
   rows: readonly PipelineMachineReportRow[],
 ): PipelineMachineReportMeta {
   const auditedViewports = rows.flatMap(row => row.outcomes
-    .filter(outcome => outcome.kind === 'ok' && outcome.stage === 'audit')
+    .filter(outcome => outcome.kind === 'ok' && outcome.stage === stageIds.audit)
     .map(outcome => outcome.executionDetails.viewport));
   if (auditedViewports.length === 0) return {};
   return reportMetaForLighthouseRun(preferredLighthouseViewport(auditedViewports), input.lighthouseConfig);

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { ArrowSpec, FrameAnnotation } from '../../../bench/core';
@@ -123,7 +124,7 @@ export interface BuildAnnotatedTimelineResult {
 export class BuildAnnotatedTimelineStage implements Stage<BuildAnnotatedTimelineResult> {
   readonly measuresApplication = false;
   readonly category = 'audit';
-  readonly name: StageName = 'build_annotated_timeline';
+  readonly name: StageName = stageIds.buildAnnotatedTimeline;
   readonly label = 'Annotated Timeline';
   readonly description = 'Prepare Lighthouse trace screenshots for the annotated timeline.';
   readonly selfContainedReportStrip = {
@@ -131,7 +132,7 @@ export class BuildAnnotatedTimelineStage implements Stage<BuildAnnotatedTimeline
   };
 
   applies(_test: AbTestDefinition, _viewport: Viewport, priorOutcomeKinds: ReadonlyMap<StageName, OutcomeKind>): boolean {
-    return priorOutcomeKinds.get('audit') === 'ok';
+    return priorOutcomeKinds.get(stageIds.audit) === 'ok';
   }
 
   async run(ctx: TestContext, pool: WorkerPool): Promise<StageRunResult<BuildAnnotatedTimelineResult>> {

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import { executionFixture } from '../../../pipeline/__tests__/fixtures/execution';
 import { type AbTestDefinition } from 'shaka-shared';
 import * as fs from 'node:fs';
@@ -97,7 +98,7 @@ function resultWithVisualDiff(diffImage: string | null): TestResult {
     outcomes: [{
       ...executionFixture(),
       kind: 'ok',
-      stage: 'visreg',
+      stage: stageIds.visreg,
       measurement: [{
         selector: 'document',
         controlImage: 'control.png',
@@ -131,7 +132,7 @@ function resultWithVisualDiffAndError(diffImage: string | null): TestResult {
   result.outcomes.push({
     ...executionFixture(),
     kind: 'error',
-    stage: 'visreg',
+    stage: stageIds.visreg,
 
     error: { message: 'capture failed after one selector succeeded' },
   });

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../packages/shaka-perf/src/stage/stage-ids';
 import { test, expect } from './base-test';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
@@ -120,7 +121,7 @@ test('audit filtered pages, render v2 client report, screenshot its states @audi
   // and audit suites do. The @coverage suite owns that path end to end,
   // against a development build it instruments itself.
   expect(
-    auditReport.tests.flatMap((t) => t.outcomes).filter((o) => o.stage === 'code_coverage' && o.kind !== 'skipped'),
+    auditReport.tests.flatMap((t) => t.outcomes).filter((o) => o.stage === stageIds.codeCoverage && o.kind !== 'skipped'),
     'code_coverage must not run against the production bundle',
   ).toEqual([]);
 

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { Viewport } from '../../../config';
@@ -29,7 +30,7 @@ import type { AccessibilityResult, AccessibilityScan } from './types';
 export class AccessibilityStage implements Stage<AccessibilityResult> {
   readonly measuresApplication = true;
   readonly category = 'accessibility';
-  readonly name: StageName = 'accessibility';
+  readonly name: StageName = stageIds.accessibility;
   readonly label = 'Accessibility';
   readonly description = 'Run accessibility checks on the target URL.';
   readonly selfContainedReportStrip = {

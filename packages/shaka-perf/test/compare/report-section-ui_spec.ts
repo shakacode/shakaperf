@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../src/stage/stage-ids';
 import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import { createServer, type Server } from 'node:http';
 import { chromium, type Browser, type Page } from 'playwright';
@@ -36,13 +37,13 @@ function reportData(mode: 'full' | 'self-contained'): ReportData {
        chips: [], sorts: [], durationMs: 1000, measuredAt: 1, runId: 'run-1',
       viewportArtifactPaths: [],
       outcomes: [
-        { ...executionFixture(), kind: 'ok', stage: 'visreg',  measurement: [] },
+        { ...executionFixture(), kind: 'ok', stage: stageIds.visreg,  measurement: [] },
         ...[DESKTOP_VIEWPORT, PHONE_VIEWPORT].map((viewport) => ({
           ...executionFixture({ viewport }),
-          kind: 'ok' as const, stage: 'perf',  measurement: { metrics: [] },
+          kind: 'ok' as const, stage: stageIds.perf,  measurement: { metrics: [] },
         })),
-        { ...executionFixture(), kind: 'ok', stage: 'accessibility',  measurement: cleanAccessibility },
-        { ...executionFixture({ viewport: PHONE_VIEWPORT }), kind: 'error', stage: 'accessibility',  error: { message: 'Intentional phone failure' } },
+        { ...executionFixture(), kind: 'ok', stage: stageIds.accessibility,  measurement: cleanAccessibility },
+        { ...executionFixture({ viewport: PHONE_VIEWPORT }), kind: 'error', stage: stageIds.accessibility,  error: { message: 'Intentional phone failure' } },
       ],
     })),
   };
@@ -137,7 +138,7 @@ describe.each(['full', 'self-contained'] as const)('%s section disclosures', (mo
   it.each(['reduce', 'no-preference'] as const)('returns to only the originating control after a global layout shift (%s motion)', async (motion) => {
     data.tests[0].outcomes[0] = {
       ...executionFixture(),
-      kind: 'error', stage: 'visreg',
+      kind: 'error', stage: stageIds.visreg,
       error: { message: 'Saved visual capture failure', stack: Array(40).fill('    at savedCapture (example.abtest.ts:1:1)').join('\n') },
     };
     page = await browser.newPage({ viewport: { width: 390, height: 420 }, reducedMotion: motion });

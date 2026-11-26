@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import { performanceMetadataFields } from '../../../stage/performance-metadata';
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
@@ -49,7 +50,7 @@ export interface AuditResult {
 export class AuditStage implements Stage<AuditResult> {
   readonly measuresApplication = true;
   readonly category = 'audit';
-  readonly name: StageName = 'audit';
+  readonly name: StageName = stageIds.audit;
   readonly label = 'Audit';
   readonly description = 'Capture one absolute Lighthouse measurement on the target URL.';
   readonly selfContainedReportStrip = {

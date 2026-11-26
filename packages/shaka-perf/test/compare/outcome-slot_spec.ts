@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../src/stage/stage-ids';
 import { executionFixture } from '../../src/pipeline/__tests__/fixtures/execution';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -21,7 +22,7 @@ function renderFailureMedia(media: string): string {
   const outcome = {
     ...executionFixture(),
     kind: 'error',
-    stage: 'visreg',
+    stage: stageIds.visreg,
     error: { message: 'boom' },
     failure: { media },
   } as unknown as ReportOutcome;

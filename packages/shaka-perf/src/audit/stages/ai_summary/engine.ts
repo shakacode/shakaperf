@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -32,7 +33,7 @@ const CLAUDE_TIMEOUT_MS = 120_000;
  * and returns an empty summary - it must never fail the audit.
  */
 export async function runAiSummaryStage(ctx: TestContext, pool: WorkerPool): Promise<AiSummaryResult> {
-  const audit = ctx.readPriorResult<AuditResult>('audit');
+  const audit = ctx.readPriorResult<AuditResult>(stageIds.audit);
   const metrics = audit?.metrics ?? [];
   if (metrics.length === 0) {
     ctx.logger.log('[ai-summary] no audit metrics available; skipping AI summary.');
@@ -41,8 +42,8 @@ export async function runAiSummaryStage(ctx: TestContext, pool: WorkerPool): Pro
 
   // Sibling dimensions, present only when their stage ran (e.g. no accessibility
   // under `--categories audit`).
-  const a11y = ctx.readPriorResult<AccessibilityResult>('accessibility');
-  const agent = ctx.readPriorResult<AgentReadinessResult>('agent-readiness');
+  const a11y = ctx.readPriorResult<AccessibilityResult>(stageIds.accessibility);
+  const agent = ctx.readPriorResult<AgentReadinessResult>(stageIds.agentReadiness);
 
   // Inside the best-effort boundary: a malformed/stale prior result could throw
   // here, and that must degrade to an empty summary, not fail the audit.

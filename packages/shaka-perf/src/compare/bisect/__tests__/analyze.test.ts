@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import { executionFixture } from '../../../pipeline/__tests__/fixtures/execution';
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
 import { assertNoPipelineErrors, discoverTargets, evaluateTargetsAtCommitFromTestResults } from '../analyze';
@@ -38,7 +39,7 @@ function testResult(
         {
           ...executionFixture({ viewport }),
           kind: 'ok' as const,
-          stage: 'visreg',
+          stage: stageIds.visreg,
           measurement: [{
             selector: '[data-cy="hero-section"]',
             controlImage: 'control.png',
@@ -54,7 +55,7 @@ function testResult(
         {
           ...executionFixture({ viewport }),
           kind: 'ok' as const,
-          stage: 'perf',
+          stage: stageIds.perf,
           measurement: {
             metrics: [{
               label: 'TBT',
@@ -76,7 +77,7 @@ function testResult(
       {
         ...executionFixture({ viewport }),
         kind: 'ok' as const,
-        stage: 'accessibility',
+        stage: stageIds.accessibility,
         measurement: accessibilityResult(accessibilityStatus),
       },
     ],
@@ -259,7 +260,7 @@ describe('bisect regression analysis', () => {
     result.outcomes.push({
       ...executionFixture({ viewport: PHONE_VIEWPORT }),
       kind: 'error',
-      stage: 'visreg',
+      stage: stageIds.visreg,
 
       error: { message: 'phone capture failed' },
     });
@@ -270,7 +271,7 @@ describe('bisect regression analysis', () => {
 
   it('does not discover visreg artifacts without a diff image', () => {
     const result = testResult();
-    const visreg = result.outcomes.find((outcome) => outcome.stage === 'visreg')
+    const visreg = result.outcomes.find((outcome) => outcome.stage === stageIds.visreg)
       ?.measurement as VisregResult;
     visreg[0]!.diffImage = null;
 
@@ -280,7 +281,7 @@ describe('bisect regression analysis', () => {
 
   it('does not discover perf metrics classified as none or improvement', () => {
     const result = testResult();
-    const perf = result.outcomes.find((outcome) => outcome.stage === 'perf')
+    const perf = result.outcomes.find((outcome) => outcome.stage === stageIds.perf)
       ?.measurement as PerfArtifact;
     const metric = perf.metrics![0]!;
     perf.metrics = [

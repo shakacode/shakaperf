@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import { executionFixture } from './fixtures/execution';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -72,7 +73,7 @@ describe('reportDataForMode', () => {
       meta: { reportMode: 'full' },
       tests: [{ name: 'Checkout',  outcomes: [{
         ...executionFixture({ testSourceHref }),
-        kind: 'ok', stage: 'visreg',
+        kind: 'ok', stage: stageIds.visreg,
       }] }],
     } as unknown as ReportData;
     const dictionary = await buildSelfContainedArtifactDictionary(data, resultsRoot);
@@ -92,7 +93,7 @@ describe('reportDataForMode', () => {
     fs.mkdirSync(path.dirname(path.join(resultsRoot, asset)), { recursive: true });
     fs.writeFileSync(path.join(resultsRoot, asset), '{"ok":true}');
     const data = { meta: { title: asset }, tests: [{ filePath: asset, outcomes: [{
-      kind: 'ok', stage: 'visreg',
+      kind: 'ok', stage: stageIds.visreg,
       ...executionFixture({ runId: asset, command: asset }),
       measurement: { runMetadata: asset, executionDetails: asset },
     }] }] } as unknown as ReportData;
@@ -107,7 +108,7 @@ describe('reportDataForMode', () => {
   });
 
   it('marks a missing source unavailable without borrowing another execution source', () => {
-    const data = { meta: {}, tests: [{ outcomes: [{ kind: 'ok', stage: 'visreg',
+    const data = { meta: {}, tests: [{ outcomes: [{ kind: 'ok', stage: stageIds.visreg,
       ...executionFixture({ runId: 'run', testSourceHref: 'missing.ts' }),
     }] }] } as unknown as ReportData;
     for (const mode of ['full', 'self-contained'] as const) {
@@ -133,7 +134,7 @@ describe('reportDataForMode', () => {
         name: 'Checkout',
         outcomes: [{ executionDetails: { command: 'shaka-perf compare', viewport: { label: 'tablet' }, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'error',
-          stage: 'visreg',
+          stage: stageIds.visreg,
           failure: { media: mediaPath },
           measurement: {
             nested: [{ rawPath, timelinePath, videoPath }],
@@ -202,7 +203,7 @@ describe('reportDataForMode', () => {
         name: 'Checkout',
         outcomes: [{ executionDetails: { command: 'shaka-perf compare', viewport: { label: 'tablet' }, testSourceHref: null, runId: 'fixture-run', recoveredAfterRetries: false },
           kind: 'ok',
-          stage: 'accessibility',
+          stage: stageIds.accessibility,
           measurement: {
             visiblePath,
             hiddenPath,
@@ -213,7 +214,7 @@ describe('reportDataForMode', () => {
       }],
     } as unknown as ReportData;
     const stage = {
-      name: 'accessibility',
+      name: stageIds.accessibility,
       category: 'accessibility',
       selfContainedReportStrip: {
         visiblePath: false,
@@ -297,7 +298,7 @@ describe('reportDataForMode', () => {
             formFactor: 'desktop',
           } }),
           kind: 'ok',
-          stage: 'visreg',
+          stage: stageIds.visreg,
           measurement: { controlImage: imagePath },
         }],
         viewportArtifactPaths: [],
@@ -306,7 +307,7 @@ describe('reportDataForMode', () => {
     const stripRule = jest.fn(() => false);
     const original = JSON.stringify(data);
     const stage = {
-      name: 'visreg',
+      name: stageIds.visreg,
       category: 'visreg',
       renderArtifacts: () => null,
       selfContainedReportStrip: { get controlImage() { return stripRule(); } },

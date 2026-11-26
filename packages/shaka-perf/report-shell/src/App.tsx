@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../src/stage/stage-ids';
 import { useCallback, useId, useMemo, useState } from 'react';
 import type {
   BisectCategory,
@@ -200,7 +201,7 @@ function accessibilityResultsForTests(tests: readonly TestResult[]): Accessibili
   const results: AccessibilityResult[] = [];
   for (const test of tests) {
     for (const outcome of test.outcomes) {
-      if (outcome.kind !== 'ok' || outcome.stage !== 'accessibility') continue;
+      if (outcome.kind !== 'ok' || outcome.stage !== stageIds.accessibility) continue;
       if (isAccessibilityResult(outcome.measurement)) results.push(outcome.measurement);
     }
   }
@@ -215,7 +216,7 @@ function isAccessibilityResult(value: unknown): value is AccessibilityResult {
     candidate.effectiveConfig != null;
 }
 
-const HIDDEN_STAGE_FILTERS = new Set(['perf-warmup']);
+const HIDDEN_STAGE_FILTERS = new Set<string>([stageIds.perfWarmup]);
 
 // The stages this report can show, in pipeline order, each carrying its own
 // chip label. Sourced from the reconstructed pipeline — a pipeline that can't

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import { executionFixture } from './fixtures/execution';
 import type { AbTestDefinition } from 'shaka-shared';
 import { buildAbTestsConfig } from '../../config';
@@ -36,26 +37,26 @@ const skippedOutcome = (stage: string): Outcome => ({ ...executionFixture(), kin
 const config = buildAbTestsConfig({
   shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3031', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] } },
 });
-const visregStage = makeStage('visreg', 'visreg');
-const a11yStage = makeStage('accessibility', 'accessibility');
+const visregStage = makeStage(stageIds.visreg, 'visreg');
+const a11yStage = makeStage(stageIds.accessibility, 'accessibility');
 
 describe('persistedOutcomeInScope', () => {
   it('keeps an outcome at a viewport the category runs at', () => {
     const test = makeTest();
-    expect(persistedOutcomeInScope(test, config, visregStage, okOutcome('visreg'), 'desktop')).toBe(true);
+    expect(persistedOutcomeInScope(test, config, visregStage, okOutcome(stageIds.visreg), 'desktop')).toBe(true);
   });
 
   it('drops a stale outcome at a viewport the per-test override no longer runs at', () => {
     // The user's repro: config.visreg.viewports narrowed per-test, but a
     // previous run left visreg.json in the desktop/phone unit dirs.
     const test = makeTest({ config: { visreg: { viewports: ['tablet'] } } });
-    expect(persistedOutcomeInScope(test, config, visregStage, okOutcome('visreg'), 'desktop')).toBe(false);
-    expect(persistedOutcomeInScope(test, config, visregStage, okOutcome('visreg'), 'tablet')).toBe(true);
+    expect(persistedOutcomeInScope(test, config, visregStage, okOutcome(stageIds.visreg), 'desktop')).toBe(false);
+    expect(persistedOutcomeInScope(test, config, visregStage, okOutcome(stageIds.visreg), 'tablet')).toBe(true);
   });
 
   it('drops a stale outcome for a category the test opted out of via testTypes', () => {
     const test = makeTest({ testTypes: ['visreg'] });
-    expect(persistedOutcomeInScope(test, config, a11yStage, okOutcome('accessibility'), 'desktop')).toBe(false);
+    expect(persistedOutcomeInScope(test, config, a11yStage, okOutcome(stageIds.accessibility), 'desktop')).toBe(false);
   });
 
   it('always keeps skip markers', () => {
@@ -63,8 +64,8 @@ describe('persistedOutcomeInScope', () => {
       testTypes: ['visreg'],
       config: { visreg: { viewports: ['tablet'] } },
     });
-    expect(persistedOutcomeInScope(test, config, visregStage, skippedOutcome('visreg'), 'desktop')).toBe(true);
-    expect(persistedOutcomeInScope(test, config, a11yStage, skippedOutcome('accessibility'), 'desktop')).toBe(true);
+    expect(persistedOutcomeInScope(test, config, visregStage, skippedOutcome(stageIds.visreg), 'desktop')).toBe(true);
+    expect(persistedOutcomeInScope(test, config, a11yStage, skippedOutcome(stageIds.accessibility), 'desktop')).toBe(true);
   });
 
   it('keeps outcomes for a stage the pipeline does not know', () => {
@@ -74,7 +75,7 @@ describe('persistedOutcomeInScope', () => {
 });
 
 describe('viewportsForTestAcrossStages', () => {
-  const auditStage = makeStage('audit', 'audit');
+  const auditStage = makeStage(stageIds.audit, 'audit');
   const labels = (test: AbTestDefinition, stages: Stage[]) =>
     viewportsForTestAcrossStages(test, stages, config).map((viewport) => viewport.label);
 

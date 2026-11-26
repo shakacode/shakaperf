@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../packages/shaka-perf/src/stage/stage-ids';
 import { test, expect } from './base-test';
 import { execFileSync, execSync } from 'child_process';
 import * as fs from 'fs';
@@ -99,7 +100,7 @@ test('audit a development bundle and snapshot screenshot coverage per source @co
   // `save`. A production bundle writes the same header with 0 located.
   for (const unit of report.tests) {
     const href = unit.outcomes
-      .find((o) => o.kind === 'ok' && o.stage === 'code_coverage')?.summary?.visibilityMapHref;
+      .find((o) => o.kind === 'ok' && o.stage === stageIds.codeCoverage)?.summary?.visibilityMapHref;
     expect(href, `${unit.name} must have a code_coverage measurement referencing a visibility map`).toBeTruthy();
     const header = PLUGIN_HEADER.exec(fs.readFileSync(path.join(AUDIT_RESULTS_DIR, href!), 'utf-8'));
     expect(header, `${href} must carry the source plugin header`).not.toBeNull();

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../src/stage/stage-ids';
 import { createServer, type Server } from 'node:http';
 import { chromium, type Browser } from 'playwright';
 import { PHONE_VIEWPORT } from 'shaka-shared';
@@ -19,8 +20,8 @@ const cases = [
   { pipeline: 'compare', index: 2, opener: '.a11y-compare-card__inspect', title: 'desktop accessibility comparison' },
   { pipeline: 'audit', index: 2, opener: '.a11y-thumb-button', title: 'mobile-tall accessibility issues' },
   { pipeline: 'audit', index: 0, opener: '.coverage-preview__button', title: 'desktop code coverage screenshot' },
-  { pipeline: 'audit', index: 0, stage: 'audit', measurement: { lighthouseHref: artifactHtml }, opener: '[data-stage="audit"] button:has-text("Lighthouse report")', title: 'desktop Lighthouse report' },
-  { pipeline: 'audit', index: 0, stage: 'build_annotated_timeline', missingMetadata: true, measurement: { frames: [{ timeMs: 0, imgW: 390, imgH: 4096, imageHref: TALL_IMAGE }] }, opener: '[data-stage="build_annotated_timeline"] button:has(img)', title: 'desktop annotated timeline' },
+  { pipeline: 'audit', index: 0, stage: stageIds.audit, measurement: { lighthouseHref: artifactHtml }, opener: '[data-stage="audit"] button:has-text("Lighthouse report")', title: 'desktop Lighthouse report' },
+  { pipeline: 'audit', index: 0, stage: stageIds.buildAnnotatedTimeline, missingMetadata: true, measurement: { frames: [{ timeMs: 0, imgW: 390, imgH: 4096, imageHref: TALL_IMAGE }] }, opener: '[data-stage="build_annotated_timeline"] button:has(img)', title: 'desktop annotated timeline' },
 ] as const;
 
 function fixture(example: typeof cases[number]): ReportData {
@@ -39,7 +40,7 @@ function fixture(example: typeof cases[number]): ReportData {
     };
   }
   const sibling: ReportOutcome = {
-    ...outcome, kind: 'error', stage: 'accessibility', measurement: undefined,
+    ...outcome, kind: 'error', stage: stageIds.accessibility, measurement: undefined,
     executionDetails: {
       ...outcome.executionDetails, runId: 'unrelated-run', command: 'shaka-perf unrelated-artifact',
       measurementMetadata: metadataFor('Unrelated artifact commit'),

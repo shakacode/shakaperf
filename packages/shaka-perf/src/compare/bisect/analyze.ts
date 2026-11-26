@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import type { TestResult } from '../../pipeline/report';
 import type { AccessibilityCompareResult } from '../stages/accessibility';
 import type { PerfArtifact } from '../stages/perf';
@@ -82,7 +83,7 @@ const visregAnalyzer: CategoryAnalyzer = {
   category: 'visreg',
   discover(input) {
     return new TestResultsModel(input.testResults)
-      .successfulMeasurementsForStage('visreg', isVisregResult)
+      .successfulMeasurementsForStage(stageIds.visreg, isVisregResult)
       .flatMap(({ test, viewport, measurement }) => measurement
         .filter((artifact) => artifact.diffImage !== null)
         .map((artifact) => targetKey('visreg', test, viewport, artifact.selector)));
@@ -90,7 +91,7 @@ const visregAnalyzer: CategoryAnalyzer = {
   evaluateTargetsAtCommit(input, targets) {
     return targets.map((target) => {
       const results = new TestResultsModel(input.testResults)
-        .successfulMeasurementsForStage('visreg', isVisregResult)
+        .successfulMeasurementsForStage(stageIds.visreg, isVisregResult)
         .filter((entry) => entry.matchesTarget(target));
       assertMeasurementsExistForTarget(results, target);
       const artifacts = results
@@ -116,7 +117,7 @@ const perfAnalyzer: CategoryAnalyzer = {
   category: 'perf',
   discover(input) {
     return new TestResultsModel(input.testResults)
-      .successfulMeasurementsForStage('perf', isPerfArtifact)
+      .successfulMeasurementsForStage(stageIds.perf, isPerfArtifact)
       .flatMap(({ test, viewport, measurement }) => (measurement.metrics ?? [])
         .filter((metric) => metric.direction === 'regression')
         .map((metric) => targetKey('perf', test, viewport, metric.label)));
@@ -124,7 +125,7 @@ const perfAnalyzer: CategoryAnalyzer = {
   evaluateTargetsAtCommit(input, targets) {
     return targets.map((target) => {
       const results = new TestResultsModel(input.testResults)
-        .successfulMeasurementsForStage('perf', isPerfArtifact)
+        .successfulMeasurementsForStage(stageIds.perf, isPerfArtifact)
         .filter((entry) => entry.matchesTarget(target));
       assertMeasurementsExistForTarget(results, target);
       const metrics = results
@@ -152,7 +153,7 @@ const accessibilityAnalyzer: CategoryAnalyzer = {
   category: 'accessibility',
   discover(input) {
     return new TestResultsModel(input.testResults)
-      .successfulMeasurementsForStage('accessibility', isAccessibilityCompareResult)
+      .successfulMeasurementsForStage(stageIds.accessibility, isAccessibilityCompareResult)
       .flatMap(({ test, viewport, measurement }) => unique(
         measurement.findings
           .filter((finding) => finding.status === 'new')
@@ -162,7 +163,7 @@ const accessibilityAnalyzer: CategoryAnalyzer = {
   evaluateTargetsAtCommit(input, targets) {
     return targets.map((target) => {
       const results = new TestResultsModel(input.testResults)
-        .successfulMeasurementsForStage('accessibility', isAccessibilityCompareResult)
+        .successfulMeasurementsForStage(stageIds.accessibility, isAccessibilityCompareResult)
         .filter((entry) => entry.matchesTarget(target));
       assertMeasurementsExistForTarget(results, target);
       const findings = results.flatMap(({ measurement }) => measurement.findings

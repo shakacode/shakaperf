@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import { shakaPerfVersion } from '../../pipeline/saved-result-version';
 import { executionFixture } from '../../pipeline/__tests__/fixtures/execution';
 import { chromium } from 'playwright';
@@ -518,7 +519,7 @@ function writePerfResultsForPages(
     fs.mkdirSync(path.join(dir, page.id), { recursive: true });
     fs.writeFileSync(path.join(dir, page.id, 'audit.json'), `${JSON.stringify({
       shakaPerfVersion,
-      stage: 'audit',
+      stage: stageIds.audit,
       measurement: {
         metrics: Object.entries(page.metrics).map(([label, value]) => ({
           label,
@@ -533,7 +534,7 @@ function writePerfResultsForPages(
         shakaPerfVersion,
         ...executionFixture(),
         kind: 'ok',
-        stage: 'agent-readiness',
+        stage: stageIds.agentReadiness,
         measurement: agentReadinessFixture(url, page.agent),
       }, null, 2)}\n`);
     }
@@ -543,7 +544,7 @@ function writePerfResultsForPages(
         shakaPerfVersion,
         ...executionFixture(),
         kind: 'ok',
-        stage: 'accessibility',
+        stage: stageIds.accessibility,
         measurement: accessibilityResultFixture(url, page.a11y),
       }, null, 2)}\n`);
       if (page.a11y.score !== undefined || page.a11y.summary || page.a11y.fixes?.length) {
