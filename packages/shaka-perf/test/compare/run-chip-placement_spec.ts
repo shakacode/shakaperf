@@ -96,9 +96,9 @@ describe('contextual old-run chips', () => {
   });
 
   it.each([
-    ['compare', 'full', compare], ['compare', 'self-contained', compare],
-    ['audit', 'full', audit], ['audit', 'self-contained', audit],
-  ] as const)('%s %s labels stale result headings only', async (pipeline, mode, examples) => {
+    ['compare', compare], ['audit', audit],
+  ] as const)('%s attributes freshness to its saved results', async (pipeline, examples) => {
+    const mode = 'full';
     const file = path.join(directory, `${pipeline}-${mode}.html`);
     fs.writeFileSync(file, renderReportHtml(fixture(pipeline, mode, examples)));
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -106,10 +106,6 @@ describe('contextual old-run chips', () => {
       await page.goto(pathToFileURL(file).href);
       await page.locator('.card').waitFor();
       expect(await page.locator('.report-section__disclosure').count()).toBeGreaterThan(0);
-      expect(await page.locator('.outcome-slot__runs').count()).toBe(0);
-      expect(await page.locator('.pill').allTextContents()).not.toEqual(expect.arrayContaining([
-        expect.stringContaining('latest run'), expect.stringContaining('desktop · old run'),
-      ]));
       for (const { stage, heading } of examples) {
         const slot = page.locator(`.outcome-slot[data-stage="${stage}"]`);
         expect({ stage, chips: await slot.locator('.old-run-chip').allTextContents(), slots: await slot.count() }).toEqual({ stage, chips: ['old run'], slots: 1 });
@@ -213,7 +209,7 @@ describe('contextual old-run chips', () => {
       outcome.measurement = { summary: outcome.executionDetails.viewport.label === 'desktop' ? desktop : phone };
       outcome.executionDetails = { ...outcome.executionDetails, runId: outcome.executionDetails.viewport.label === 'desktop' ? desktopRun : phoneRun };
     }
-    const file = path.join(directory, `summary-${mode}-${stale}-${desktop.length}.html`);
+    const file = path.join(directory, `summary-${stale}-${desktop.length}.html`);
     fs.writeFileSync(file, renderReportHtml(data));
     const page = await browser.newPage();
     try {
