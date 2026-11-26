@@ -11,7 +11,7 @@ import { TestCardProvider } from '../../../../src/report-ui/metadata/TestCardPro
 import { pipelineTestTargets } from '../../../../src/pipeline/pipeline-artifacts';
 import { TestSummaryMetadata } from './TestSummaryMetadata';
 import { ReviewedCheckbox, useReviewed } from './ReviewedCheckbox';
-import { Pill } from '../Pill';
+import { Pill } from './Pill';
 import { OutcomeSlot } from './OutcomeSlot';
 import { TestLogsButton } from './TestLogsButton';
 
