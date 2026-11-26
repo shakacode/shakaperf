@@ -11,6 +11,8 @@ import type { RuntimeConfig } from '../../../../src/visreg/core/types';
 describe('createComparisonBitmaps', function () {
   let capturedConfig: Record<string, unknown> | null;
 
+  const runtime = { comparisonCounts: new Map<string, number>(), incrementVisualRoundCounts: jest.fn() };
+
   const mockConfig = {
     configFileName: '/tmp/dummy-config.json',
     tempCompareConfigFileName: '/tmp/test-compare-config.json',
@@ -128,7 +130,7 @@ describe('createComparisonBitmaps', function () {
 
   it('should pass compare config options to scenarios', async function () {
     const createComparisonBitmaps = createModule();
-    await createComparisonBitmaps(mockConfig, { comparisonCounts: new Map() });
+    await createComparisonBitmaps(mockConfig, runtime);
 
     assert(capturedConfig, 'Should have captured config');
     assert.strictEqual(capturedConfig.compareRetries, 3, 'Should pass compareRetries');
@@ -151,7 +153,7 @@ describe('createComparisonBitmaps', function () {
       },
     });
 
-    await assert.rejects(() => createComparisonBitmaps(mockConfig, { comparisonCounts: new Map() }), /scenario blew up/);
+    await assert.rejects(() => createComparisonBitmaps(mockConfig, runtime), /scenario blew up/);
     assert(disposed, 'Should dispose the browser after a scenario rejection');
   });
 
@@ -189,7 +191,7 @@ describe('createComparisonBitmaps', function () {
 
     let errorThrown = false;
     try {
-      await createComparisonBitmaps(mockConfig, { comparisonCounts: new Map() });
+      await createComparisonBitmaps(mockConfig, runtime);
     } catch (e: unknown) {
       errorThrown = true;
       assert(e instanceof Error);
@@ -219,7 +221,7 @@ describe('createComparisonBitmaps', function () {
       args: { ...mockConfig.args, filter: 'Scenario 1' },
     };
 
-    await createComparisonBitmaps(configWithFilter, { comparisonCounts: new Map() });
+    await createComparisonBitmaps(configWithFilter, runtime);
 
     // With filter 'Scenario 1', only 1 scenario should match (Test Scenario 1)
     // multiplied by 2 viewports = 2 calls
@@ -247,7 +249,7 @@ describe('createComparisonBitmaps', function () {
       },
     });
 
-    await createComparisonBitmaps(mockConfig, { comparisonCounts: new Map() });
+    await createComparisonBitmaps(mockConfig, runtime);
 
     assert(capturedConfig, 'Should have captured config');
     // 1 scenario × 2 viewports = 2 scenario views
@@ -278,7 +280,7 @@ describe('createComparisonBitmaps', function () {
 
     let errorThrown = false;
     try {
-      await createComparisonBitmaps(configWithoutURLs, { comparisonCounts: new Map() });
+      await createComparisonBitmaps(configWithoutURLs, runtime);
     } catch (e: unknown) {
       errorThrown = true;
       assert(e instanceof Error);
@@ -316,7 +318,7 @@ describe('createComparisonBitmaps', function () {
       },
     };
 
-    await createComparisonBitmaps(configWithoutTestFile, { comparisonCounts: new Map() });
+    await createComparisonBitmaps(configWithoutTestFile, runtime);
 
     assert(capturedScenarios.length > 0, 'Should have processed auto-discovered scenarios');
     assert.strictEqual(capturedScenarios[0].label, 'Auto-discovered test');
@@ -365,7 +367,7 @@ describe('createComparisonBitmaps', function () {
 
     let errorThrown = false;
     try {
-      await createComparisonBitmaps(configNoTestFile, { comparisonCounts: new Map() });
+      await createComparisonBitmaps(configNoTestFile, runtime);
     } catch (e: unknown) {
       errorThrown = true;
       assert(e instanceof Error);

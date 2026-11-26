@@ -75,9 +75,15 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
       const { runVisregUnit } = await import(/* @vite-ignore */ runImpl) as typeof import('./visreg/run');
       const comparisonCounts = new Map<string, number>();
       let visualComparisonRoundsStarted = 0;
-      const onAttempt = () => ctx.recordMeasurementOptions({ visualComparisonRoundsStarted: ++visualComparisonRoundsStarted });
+      function incrementVisualRoundCounts(selectorKeysToCompareThisRound: readonly string[]): void {
+        visualComparisonRoundsStarted++;
+        for (const key of selectorKeysToCompareThisRound) {
+          comparisonCounts.set(key, (comparisonCounts.get(key) ?? 0) + 1);
+        }
+        ctx.recordMeasurementOptions({ visualComparisonRoundsStarted });
+      }
       const artifacts = await pool.submit(
-        () => runVisregUnit(ctx, config, comparisonCounts, onAttempt),
+        () => runVisregUnit(ctx, config, comparisonCounts, incrementVisualRoundCounts),
         { key: ctx.testAndViewportId },
       );
       const { label, width, height } = ctx.viewport;

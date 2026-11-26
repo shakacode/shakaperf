@@ -44,7 +44,7 @@ describe('the runner', function () {
   });
 
   it('resolves the config, compares, then reports — in that order', function () {
-    return runner({ some: 'option' }, { comparisonCounts: new Map() }).then(function (result) {
+    return runner({ some: 'option' }, { comparisonCounts: new Map(), incrementVisualRoundCounts: jest.fn() }).then(function (result) {
       assert.deepStrictEqual(calls, ['makeConfig', 'createComparisonBitmaps', 'report']);
       assert.deepStrictEqual(capturedConfig, { args: { some: 'option' } });
       assert.deepStrictEqual(result, { args: { some: 'option' } });

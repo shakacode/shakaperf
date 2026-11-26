@@ -113,8 +113,12 @@ function makeDeps(produce: Produce, consoleBySide: ConsoleBySide = {}) {
     return produce(Math.floor(idx / 2), idx % 2 === 0 ? 'ref' : 'test');
   });
 
+  const comparisonCounts = new Map<string, number>();
   const deps: CompareAttemptsDeps = {
-    comparisonCounts: new Map(),
+    comparisonCounts,
+    incrementVisualRoundCounts(keys) {
+      for (const key of keys) comparisonCounts.set(key, (comparisonCounts.get(key) ?? 0) + 1);
+    },
     captureScreenshot,
     createSide,
     preparePage,

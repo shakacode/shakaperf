@@ -23,7 +23,7 @@ import { withPreparedSide, type CreateSideFn, type PreparePageFn } from './prepa
 import { ScreenshotPool, crossMatch, type PoolFrame, type CrossMatchResult } from './screenshotPool';
 import { assertConsoleClean, type BrowserConsolePolicy } from '../../../browser-console';
 import { reconstructEffectiveConfig } from '../../../effective-config';
-import type { Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig } from '../types';
+import type { Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig, VisregRunRuntime } from '../types';
 
 const logger = createLogger('runCompareAttempts');
 
@@ -33,18 +33,11 @@ export type CaptureScreenshotFn = (
 ) => Promise<Buffer | null>;
 
 /** Injected collaborators — defaulted to the real implementations; overridden in tests. */
-export interface CompareAttemptsDeps {
-  comparisonCounts: Map<string, number>;
-  onAttempt?: (() => void) | undefined;
+export interface CompareAttemptsDeps extends VisregRunRuntime {
   captureScreenshot: CaptureScreenshotFn;
   createSide?: CreateSideFn;
   preparePage?: PreparePageFn;
   sleep?: (ms: number) => Promise<void>;
-  captureFailure?: (
-    err: unknown,
-    page: PlaywrightPage,
-    isControl: boolean,
-  ) => Promise<unknown>;
 }
 
 export interface CompareAttemptsParams {
@@ -244,13 +237,8 @@ export async function runCompareAttempts(
     }
 
     // Count the round before either side can fail during setup or capture.
-    deps.onAttempt?.();
-    for (const run of runs) {
-      if (run.done) continue;
-      const key = run.testPair.test;
-      const previousCount = comparisonCounts.get(key) ?? 0;
-      comparisonCounts.set(key, previousCount + 1);
-    }
+    const selectorKeysToCompareThisRound = runs.filter(run => !run.done).map(run => run.testPair.test);
+    deps.incrementVisualRoundCounts(selectorKeysToCompareThisRound);
 
     const activeSides = new Set<ComparisonSide>();
     const commonSideParams = {
