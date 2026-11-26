@@ -84,8 +84,8 @@ describe('collectImageSizes', () => {
   beforeAll(async () => { browser = await chromium.launch(); });
   afterAll(async () => { await browser.close(); });
 
-  const sizesOf = async (html: string) => {
-    const page = await browser.newPage({ viewport: { width: 800, height: 600 }, deviceScaleFactor: 2 });
+  const sizesOf = async (html: string, device = { viewport: { width: 800, height: 600 }, deviceScaleFactor: 2, isMobile: false }) => {
+    const page = await browser.newPage(device);
     try {
       await page.route('https://example.test/**', (route) => route.fulfill({ contentType: 'image/png', body: png }));
       await page.setContent(html);
@@ -134,6 +134,15 @@ describe('collectImageSizes', () => {
       '<img src="https://example.test/one.png" style="position:absolute;left:200px;top:150px;width:400px;height:300px">',
     );
     expect(sizes[0].box).toEqual([0.25, 0.25, 0.5, 0.5]);
+  });
+
+  it('counts the zoom of a phone page that has no viewport meta tag', async () => {
+    const { sizes } = await sizesOf(
+      '<img src="https://example.test/one.png" style="width:200px;height:100px">',
+      { viewport: { width: 375, height: 667 }, deviceScaleFactor: 3, isMobile: true },
+    );
+    // The 980-pixel layout is drawn into the 375 pixels of the screen.
+    expect(sizes[0].devicePixelRatio).toBeCloseTo(3 * 375 / 980, 2);
   });
 
   it('returns nothing, without throwing, when the page is gone', async () => {

@@ -20,6 +20,7 @@ export interface ImageSize {
   /** CSS pixels the image covers on screen, after object-fit. */
   paintedWidth: number;
   paintedHeight: number;
+  /** Device pixels per CSS pixel, with the page zoom. */
   devicePixelRatio: number;
   /** Left, top, width and height of the element on screen, as fractions of the window. */
   box: number[];
@@ -94,7 +95,8 @@ export async function collectImageSizes(page: Page): Promise<ImageSize[]> {
           sourceHeight: img.naturalHeight * density,
           paintedWidth,
           paintedHeight,
-          devicePixelRatio,
+          // A phone page without a viewport meta tag is zoomed out to fit the screen.
+          devicePixelRatio: devicePixelRatio * (visualViewport?.scale ?? 1),
           box: [rect.left / innerWidth, rect.top / innerHeight, rect.width / innerWidth, rect.height / innerHeight],
         });
       }
