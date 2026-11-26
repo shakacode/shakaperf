@@ -12,7 +12,7 @@ import { StageArtifactTitle } from '../../../report-ui/StageArtifactTitle';
 import { ReportHeading } from '../../../report-ui/ReportHeading';
 import { OldRunChip } from '../../../report-ui/OldRunChip';
 import type { AccessibilityResult } from './types';
-import { ScreenshotPreview } from './report-preview';
+import { AccessibilityScreenshotPreview } from './report-preview';
 import { SCAN_STYLE } from './report-styles';
 import { useAccessibilityFilterState } from './report-filter';
 import { collectConfiguredFilterOptions } from './report-utils';
@@ -71,7 +71,7 @@ function AccessibilityBody({ entry }: { entry: StageRenderEntry<AccessibilityRes
     <div className="stage-section">
       <ReportHeading className="stage-section__head" level={5} title={viewportLabel} badge={<OldRunChip latestRun={latestRun} />} />
       <div style={SCAN_STYLE}>
-        <ScreenshotPreview
+        <AccessibilityScreenshotPreview
           entry={entry}
           filterOptions={filterState?.options ?? localOptions}
           includeFilterStyles={!filterState}

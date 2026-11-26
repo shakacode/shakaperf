@@ -25,7 +25,7 @@ import {
   type AccessibilityFilterOptions,
 } from './report-utils';
 
-export function ScreenshotPreview({
+export function AccessibilityScreenshotPreview({
   entry,
   filterOptions,
   includeFilterStyles = true,
