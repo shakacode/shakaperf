@@ -183,7 +183,6 @@ function finishFixture(
   const config = {
     bisect: {
       rebuildContainer: false,
-      repairs: [],
     },
     twinServers: {
       rebuildCommands: [{ description: 'Build application', command: 'yarn build' }],
