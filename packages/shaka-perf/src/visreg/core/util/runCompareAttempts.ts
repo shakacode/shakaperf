@@ -23,7 +23,7 @@ import { withPreparedSide, type CreateSideFn, type PreparePageFn } from './prepa
 import { ScreenshotPool, crossMatch, type PoolFrame, type CrossMatchResult } from './screenshotPool';
 import { assertConsoleClean, type BrowserConsolePolicy } from '../../../browser-console';
 import { reconstructEffectiveConfig } from '../../../effective-config';
-import type { Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig, VisregRunRuntime } from '../types';
+import type { Browser, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig, VisregRunRuntime } from '../types';
 
 const logger = createLogger('runCompareAttempts');
 

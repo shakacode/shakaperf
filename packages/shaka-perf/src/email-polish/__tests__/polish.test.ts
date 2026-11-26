@@ -41,7 +41,6 @@ const isCritique = (p: string): boolean => p.includes('one critic on a review pa
 const isRevise = (p: string): boolean => p.startsWith('Apply the FIXES');
 const isProfessional = (p: string): boolean =>
   PROFESSIONAL_PANEL.some((r) => p.startsWith(`You are ${r.title},`));
-const isClient = (p: string): boolean => CLIENT_PANEL.some((r) => p.startsWith(`You are ${r.title},`));
 const roleOf = (p: string): string =>
   [...PROFESSIONAL_PANEL, ...CLIENT_PANEL].find((r) => p.startsWith(`You are ${r.title},`))?.key ?? 'unknown';
 

@@ -11,7 +11,6 @@ import { createServer, type Server } from 'node:http';
 import { chromium, type Browser, type Page } from 'playwright';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import { renderReportHtml, type ReportData, type TestResult } from '../../src/pipeline/report';
-import { reviewedKey } from '../../report-shell/src/components/ReviewedCheckbox';
 
 jest.setTimeout(60_000);
 

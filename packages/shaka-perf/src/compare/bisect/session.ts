@@ -48,11 +48,9 @@ import type {
   BisectCategory,
   BisectCompatibility,
   BisectNextAction,
-  BisectSearchPhase,
   BisectSession,
   BisectTestSelection,
   BisectTarget,
-  BisectTargetGroup,
   CommitRun,
   MergeInvestigation,
   MergeTargetResult,
@@ -67,10 +65,7 @@ import {
   containsBisectInterruption,
   findCandidateEvaluationError,
   type CandidateResult,
-  type CompareRunRequest,
   type CompareRunResult,
-  type ExperimentReloadRequest,
-  type ExperimentReloadResult,
 } from './run-candidate';
 import {
   EndpointRestoreError,
@@ -83,7 +78,6 @@ import {
   configuredRebuildCommands,
   createDefaultBisectDependencies,
   preferredExperimentReloadMode,
-  type BisectDecisionLogEntry,
   type ExecuteBisectDependencies,
 } from './execution-services';
 export type {
@@ -116,7 +110,6 @@ import {
   repairAppliesToSha,
 } from './repair-runtime';
 
-type ExperimentReloadMode = CommitRun['experimentReloadMode'];
 
 export interface BisectCliOptions {
   configPath?: string;
@@ -854,7 +847,7 @@ async function completeEmptyPrimary(context: BisectExecutionContext): Promise<vo
 
 async function runPrimaryBisectSearch(context: BisectExecutionContext): Promise<void> {
   await validateBisectGoodRef(context);
-  const { input, deps, state } = context;
+  const { deps, state } = context;
   const owner = phaseSessionOwner(context);
   state.requiresExperimentRestore = true;
   try {
@@ -1066,7 +1059,7 @@ function disposeBisectSignalHandlers(context: BisectExecutionContext): void {
 }
 
 function setTerminalBisectSession(context: BisectExecutionContext): void {
-  const { deps, state } = context;
+  const { state } = context;
   state.session = terminalSession(
     state.session,
     state.primaryError,
@@ -1076,7 +1069,7 @@ function setTerminalBisectSession(context: BisectExecutionContext): void {
 }
 
 function logTerminalBisectStatus(context: BisectExecutionContext): void {
-  const { input, deps, state } = context;
+  const { input, state } = context;
   const loggedStatus = state.session.status;
   try {
     if (loggedStatus === 'complete' && input.dryRun) {
@@ -1125,7 +1118,7 @@ function logTerminalBisectStatus(context: BisectExecutionContext): void {
 }
 
 async function persistTerminalBisectState(context: BisectExecutionContext): Promise<boolean> {
-  const { deps, state } = context;
+  const { state } = context;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       await context.save();

@@ -10,7 +10,6 @@ import { performanceMetadataFields } from '../../../stage/performance-metadata';
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { PerfLighthouseConfig } from '../../../bench/core/lighthouse-config';
-import type { Viewport } from '../../../config';
 import {
   emptyMachineReadableSummary,
   type Stage,

@@ -38,7 +38,6 @@ import { durationInSec, secondsToTime, timestamp, chalkScheme } from '../../../b
 import { runAnalyze } from '../../../bench/cli/commands/compare/analyze';
 import { runReport } from '../../../bench/cli/commands/compare/report';
 import { readPerfArtifact } from './artifacts';
-import type { PerfConfig } from '../../../config';
 import type { TestContext } from '../../../stage/stage';
 import type { WorkerPool } from '../../../pipeline/worker-pool';
 import { StageFailureError, findFailureMediaName } from '../../../stage/stage-failure';
@@ -52,7 +51,6 @@ export async function runPerfEngineStage(
 ): Promise<PerformanceEngineResult<PerfResult | PerfLowNoiseResult | PerfWarmupResult>> {
   // The engine measures at ctx.viewport, so config.viewports is unused.
   const perfConfig = config;
-  const unitId = ctx.testAndViewportId;
   const artifactsDir = ctx.artifacts.dir;
 
   ensureLighthousePatchRegistered();

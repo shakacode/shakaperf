@@ -31,10 +31,6 @@ import {
   VerifiedUser,
   LocalOffer,
   Straighten,
-  Print,
-  Save,
-  FileCopy,
-  Edit,
 } from '@mui/icons-material';
 
 // Large data structure to increase bundle size

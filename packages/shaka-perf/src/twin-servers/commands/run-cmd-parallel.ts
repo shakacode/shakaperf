@@ -21,9 +21,9 @@ export interface RunCmdParallelOptions {
  *   shaka-perf servers run-cmd-parallel "bundle exec rake db:migrate"
  */
 export async function runCmdParallel(
-  config: ResolvedConfig,
+  _config: ResolvedConfig,
   command: string,
-  options: RunCmdParallelOptions = {}
+  _options: RunCmdParallelOptions = {}
 ): Promise<void> {
   console.log(`Running in parallel: ${colorize(command, 'green')} in both containers`);
 

@@ -7,7 +7,7 @@
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
-import chalk, { Instance } from 'chalk';
+import { Instance } from 'chalk';
 import { registerPrefixSource } from '../../../pipeline/console-capture';
 
 // Forced-color chalk instance for log-line composition. The captured log

@@ -40,10 +40,6 @@ function loadSide(name: string, which: 'control' | 'experiment'): Side {
   };
 }
 
-function describePairs(pairs: ReturnType<typeof selectReviewPairs>): string[] {
-  return pairs.map((p) => `${p.kind} ${p.role} ${p.controlIndex}->${p.experimentIndex}`);
-}
-
 describe('selectReviewPairs', () => {
   function fixture(name: string) {
     const control = loadSide(name, 'control');

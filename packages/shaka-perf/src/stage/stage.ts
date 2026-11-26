@@ -11,7 +11,7 @@ import type { AbTestDefinition, TestType } from 'shaka-shared';
 import type { AbTestsConfig, Viewport } from '../config';
 import type { ArtifactScope } from '../pipeline/artifact-store';
 import type { MeasurementOptions } from '../pipeline/run-metadata';
-import type { Outcome, OutcomeKind, ExecutionDetails } from '../pipeline/outcome';
+import type { OutcomeKind, ExecutionDetails } from '../pipeline/outcome';
 import type { WorkerPool } from '../pipeline/worker-pool';
 import type { CdpPorts } from '../troubleshoot/debug-session';
 

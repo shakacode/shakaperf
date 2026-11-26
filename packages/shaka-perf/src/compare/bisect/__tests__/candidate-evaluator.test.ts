@@ -7,7 +7,6 @@
  * License in LICENSE.md.
  */
 
-import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import {
   CandidateEvaluationError,
   CandidateEvaluator,

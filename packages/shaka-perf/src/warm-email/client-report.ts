@@ -710,7 +710,6 @@ export function tallyByImpact(violations: readonly AccessibilityViolation[]): Im
 }
 
 const highImpact = (c: ImpactCounts): number => c.critical + c.serious;
-const totalIssues = (c: ImpactCounts): number => c.critical + c.serious + c.moderate + c.minor;
 
 // A11y cards worst-first by the Lighthouse score on each card (lower = worse): it
 // weights every check, so it catches high-weight ARIA the axe high-impact count

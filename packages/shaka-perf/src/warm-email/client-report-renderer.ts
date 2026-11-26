@@ -8,7 +8,6 @@
 import {
   AI_READABILITY_TARGET,
   AI_STUDIES_OTHER_SITES_CAVEAT,
-  CALC_HEADLINE_LABEL,
   CALC_HOW_WE_GOT_THIS_LABEL,
   CALC_DIAL_LABEL,
   CALC_HONESTY_FOOTER,
@@ -902,19 +901,6 @@ function boldTimes(safeHtml: string): string {
     /(\d+(?:\.\d+)?(?:\s*(?:to|-)\s*\d+(?:\.\d+)?)?\+?\s?(?:seconds?|secs?|ms|s)\b)/gi,
     '<strong style="font-weight:700">$1</strong>',
   );
-}
-
-// Bold the main fact in a verdict paragraph so it jumps out: the wait time, the
-// count of issues/pages, and the score/percentage (the headline number on the
-// AI-visibility tab). We deliberately do NOT bold "search engines" etc. - the
-// highlight is for the problem, not the SEO aside. Runs on an ALREADY-ESCAPED
-// string; the <strong> tags it inserts never contain a matchable token, so a
-// later pass can't match inside an earlier tag.
-function emphasize(safeHtml: string): string {
-  let s = boldTimes(safeHtml);
-  s = s.replace(/(\b\d+\+?\s+(?:[a-z][a-z-]*\s+){0,2}(?:issues?|barriers?|pages?|problems?|controls?|errors?))/gi, '<strong style="font-weight:700">$1</strong>');
-  s = s.replace(/(\b\d+ out of \d+\b|\b\d+\/100\b|\b\d+%)/g, '<strong style="font-weight:700">$1</strong>');
-  return s;
 }
 
 // ---- PERFORMANCE ----

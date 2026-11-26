@@ -1,5 +1,4 @@
 import { stageIds } from '../../src/stage/stage-ids';
-import { DESKTOP_VIEWPORT } from 'shaka-shared';
 /*
  * Copyright (c) 2026 ShakaCode LLC.
  *

@@ -19,7 +19,6 @@ import { SCREENCAST_FILENAME, SCREENCAST_START_FILENAME } from './lighthouse-con
 import {
   alignAnnotations,
   alignedMs,
-  type SideAlignment,
   type TimelineAlignment,
 } from './timeline-alignment';
 import { decodeJpeg } from './decode-jpeg';
@@ -38,8 +37,6 @@ import {
   type SignedFrame,
 } from './frame-matching';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const jpeg = require('jpeg-js') as { decode(buf: Buffer, opts?: { useTArray: boolean }): { width: number; height: number; data: Uint8Array } };
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pixelmatch = require('pixelmatch') as (img1: Uint8Array, img2: Uint8Array, output: Uint8Array | null, width: number, height: number, options?: { threshold?: number; diffMask?: boolean }) => number;
 

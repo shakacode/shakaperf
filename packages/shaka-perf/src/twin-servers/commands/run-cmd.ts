@@ -26,7 +26,7 @@ export async function runCmd(
   config: ResolvedConfig,
   target: ServerTarget,
   command: string,
-  options: RunCmdOptions = {}
+  _options: RunCmdOptions = {}
 ): Promise<void> {
   const containerName = target === 'control' ? 'control-server' : 'experiment-server';
 
