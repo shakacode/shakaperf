@@ -74,8 +74,8 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
       const runImpl = './visreg/run';
       const { runVisregUnit } = await import(/* @vite-ignore */ runImpl) as typeof import('./visreg/run');
       const comparisonCounts = new Map<string, number>();
-      let compareAttempts = 0;
-      const onAttempt = () => ctx.recordMeasurementOptions({ compareAttempts: ++compareAttempts });
+      let visualComparisonRoundsStarted = 0;
+      const onAttempt = () => ctx.recordMeasurementOptions({ visualComparisonRoundsStarted: ++visualComparisonRoundsStarted });
       const artifacts = await pool.submit(
         () => runVisregUnit(ctx, config, comparisonCounts, onAttempt),
         { key: ctx.testAndViewportId },

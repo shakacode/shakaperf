@@ -33,10 +33,10 @@ export interface MeasurementMetadata {
   /** Effective Lighthouse samples requested per measured side. */
   numberOfMeasurements?: number;
   /** Visual rounds started for this measurement, including interrupted rounds. */
-  compareAttempts?: number;
+  visualComparisonRoundsStarted?: number;
 }
 
-export type MeasurementOptions = Pick<MeasurementMetadata, 'numberOfMeasurements' | 'throttling' | 'compareAttempts'>;
+export type MeasurementOptions = Pick<MeasurementMetadata, 'numberOfMeasurements' | 'throttling' | 'visualComparisonRoundsStarted'>;
 
 /** Reconstruct the measurement invocation without changing any argument values. */
 export function measurementCommand(argv: readonly string[] = process.argv.slice(2)): string {
