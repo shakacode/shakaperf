@@ -6,12 +6,12 @@
  */
 
 import { useEffect, useId, useRef, useState } from 'react';
-import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../types';
-import { TestCardProvider } from '../../../src/report-ui/metadata/TestCardProvider';
-import { pipelineTestTargets } from '../../../src/pipeline/pipeline-artifacts';
+import type { ChipDescriptor, ReportMeta, ReportOutcome, TestResult } from '../../types';
+import { TestCardProvider } from '../../../../src/report-ui/metadata/TestCardProvider';
+import { pipelineTestTargets } from '../../../../src/pipeline/pipeline-artifacts';
 import { TestSummaryMetadata } from './TestSummaryMetadata';
 import { ReviewedCheckbox, useReviewed } from './ReviewedCheckbox';
-import { Pill } from './Pill';
+import { Pill } from '../Pill';
 import { OutcomeSlot } from './OutcomeSlot';
 import { TestLogsButton } from './TestLogsButton';
 

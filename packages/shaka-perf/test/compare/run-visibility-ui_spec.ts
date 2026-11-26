@@ -15,7 +15,7 @@ import { chromium, type Browser } from 'playwright';
 import { PHONE_VIEWPORT } from 'shaka-shared';
 import { renderReportHtml, type ReportData, type TestResult } from '../../src/pipeline/report';
 
-import { stageSection } from '../../report-shell/src/components/OutcomeSlot';
+import { stageSection } from '../../report-shell/src/components/test-card/OutcomeSlot';
 import * as pipelineArtifacts from '../../src/pipeline/pipeline-artifacts';
 
 const OLD = '2026-10-01T00:00:00.000Z';

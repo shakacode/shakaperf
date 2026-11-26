@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import type { ReportMeta, TestResult } from '../types';
+import type { ReportMeta, TestResult } from '../../types';
 
 // Tie review to the saved results, not the report that happens to display them.
 // Include every stage/viewport: a partial rerun can replace just one outcome.
