@@ -44,7 +44,7 @@ export interface AuditResult {
   /** The one-sided halves of compare's "profile diff" / "network diff". */
   performanceProfileHref?: string;
   networkActivityHref?: string;
-  /** One line per visible image. Small, so the self-contained report keeps it. */
+  /** The visible images, listed and boxed on the screen. Small, so the self-contained report keeps it. */
   imageResolutionHref?: string;
 }
 

@@ -152,6 +152,7 @@ export async function runLighthouse(
       const images = checkImageResolution(await imageResolution.sizes, runnerResult, url, imageResolution);
       results.push(...images.phases);
       if (saveArtifacts) writeFileSync(`${namePrefix}_image_resolution.txt`, images.report);
+      if (saveArtifacts) writeFileSync(`${namePrefix}_image_resolution.html`, images.html);
     }
   }
 

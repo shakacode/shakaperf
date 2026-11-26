@@ -54,6 +54,8 @@ export class PerfEngineStage<M> implements Stage<M> {
   readonly selfContainedReportStrip = {
     controlLighthouseHref: true,
     experimentLighthouseHref: true,
+    controlImageResolutionHref: true,
+    experimentImageResolutionHref: true,
     timelineHref: true,
     framesHref: true,
     benchReportHref: true,

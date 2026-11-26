@@ -81,6 +81,10 @@ and writes every metric to `report.json` under `summary.metrics`, for scripts
 that want to fail a build. SVG images, CSS backgrounds, images outside the
 viewport, and images inside shadow DOM or iframes are not checked.
 
+The list opens under a picture of the screen, with a numbered box on each image
+that is not ok. `compare` links one per side, as "control images" and
+"experiment images".
+
 Change the limits in `abtests.config.ts`, or for one test through its `config`:
 
 ```ts

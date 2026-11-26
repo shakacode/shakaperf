@@ -15,10 +15,11 @@ const limits = { minRatio: 0.9, maxRatio: 2 };
 const image = (overrides: Partial<ImageSize> = {}): ImageSize => ({
   url: 'https://example.test/photo.png',
   sourceWidth: 600, sourceHeight: 600, paintedWidth: 300, paintedHeight: 300, devicePixelRatio: 2,
+  box: [0.1, 0.2, 0.3, 0.4],
   ...overrides,
 });
-const check = (sizes: ImageSize[], devtoolsLog: unknown[] = []) =>
-  checkImageResolution(sizes, { artifacts: { DevtoolsLog: devtoolsLog } } as unknown as RunnerResult, 'https://example.test/', limits);
+const check = (sizes: ImageSize[], devtoolsLog: unknown[] = [], audits = {}) =>
+  checkImageResolution(sizes, { artifacts: { DevtoolsLog: devtoolsLog }, lhr: { audits } } as unknown as RunnerResult, 'https://example.test/', limits);
 const counts = (sizes: ImageSize[], devtoolsLog?: unknown[]) =>
   Object.fromEntries(check(sizes, devtoolsLog).phases.map(({ phase, duration }) => [phase, duration]));
 
@@ -63,6 +64,18 @@ describe('checkImageResolution', () => {
       'ok           600x600 file, 600x600 needed  /photo.png\n',
     );
   });
+
+  it('boxes each image that is not ok on the last frame, numbered like the list', () => {
+    const sizes = [image(), image({ sourceWidth: 400, sourceHeight: 400, url: 'https://example.test/<b>.png' })];
+    const { html } = check(sizes, [], { 'final-screenshot': { details: { type: 'screenshot', data: 'data:image/jpeg;base64,AA' } } });
+    expect(html).toContain(
+      '<img src="data:image/jpeg;base64,AA" alt="">' +
+      '<div class="undersized" style="left:10.00%;top:20.00%;width:30.00%;height:40.00%"><b>2</b></div></div>',
+    );
+    expect(html).toContain('<li class="undersized">undersized   400x400 file, 600x600 needed  /&lt;b&gt;.png</li>');
+    // Without a frame the page is the list alone.
+    expect(check(sizes).html).not.toContain('class="screen"');
+  });
 });
 
 describe('collectImageSizes', () => {
@@ -93,7 +106,7 @@ describe('collectImageSizes', () => {
       <img src="${src}" style="width:300px;height:300px;visibility:hidden">
       <img src="${src}" style="position:absolute;top:5000px;width:300px;height:300px">
     `);
-    expect(sizes).toEqual([
+    expect(sizes.map(({ box, ...size }) => size)).toEqual([
       { url: 'data:image/png', sourceWidth: 400, sourceHeight: 200, paintedWidth: 300, paintedHeight: 300, devicePixelRatio: 2 },
       { url: 'data:image/png', sourceWidth: 400, sourceHeight: 200, paintedWidth: 600, paintedHeight: 300, devicePixelRatio: 2 },
       { url: 'data:image/png', sourceWidth: 400, sourceHeight: 200, paintedWidth: 150, paintedHeight: 75, devicePixelRatio: 2 },
@@ -114,6 +127,13 @@ describe('collectImageSizes', () => {
       { url: 'https://example.test/two.png', sourceWidth: 400, sourceHeight: 200 },
       { url: 'https://example.test/wide.png', sourceWidth: 400, sourceHeight: 200 },
     ]);
+  });
+
+  it('reports where each image is on screen, as fractions of the window', async () => {
+    const { sizes } = await sizesOf(
+      '<img src="https://example.test/one.png" style="position:absolute;left:200px;top:150px;width:400px;height:300px">',
+    );
+    expect(sizes[0].box).toEqual([0.25, 0.25, 0.5, 0.5]);
   });
 
   it('returns nothing, without throwing, when the page is gone', async () => {

@@ -36,6 +36,9 @@ export interface PerfArtifact {
   improvedMetrics?: string[];
   controlLighthouseHref?: string;
   experimentLighthouseHref?: string;
+  /** Each side's visible images, listed and boxed on the screen. */
+  controlImageResolutionHref?: string;
+  experimentImageResolutionHref?: string;
   /**
    * Report-relative path to the timeline comparison HTML. Self-contained
    * report generation replaces it with a data URI.

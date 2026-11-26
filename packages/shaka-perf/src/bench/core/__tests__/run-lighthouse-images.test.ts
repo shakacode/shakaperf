@@ -38,6 +38,7 @@ const runnerResult = {
 const undersized = {
   url: 'https://example.test/photo.png',
   sourceWidth: 400, sourceHeight: 400, paintedWidth: 300, paintedHeight: 300, devicePixelRatio: 2,
+  box: [0.1, 0.2, 0.3, 0.4],
 };
 
 describe('runLighthouse image resolution', () => {
@@ -60,6 +61,7 @@ describe('runLighthouse image resolution', () => {
     ]));
     expect(fs.readFileSync(path.join(dir, 'experiment_image_resolution.txt'), 'utf8'))
       .toBe('undersized   400x400 file, 600x600 needed  /photo.png\n');
+    expect(fs.readFileSync(path.join(dir, 'experiment_image_resolution.html'), 'utf8')).toContain('<li class="undersized">');
   });
 
   it('adds nothing when no image sizes were collected', async () => {

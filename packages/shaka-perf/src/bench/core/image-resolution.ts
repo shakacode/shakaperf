@@ -7,6 +7,7 @@
 
 import type { RunnerResult } from 'lighthouse';
 import type { Page } from 'playwright-core';
+import { escapeHtml } from 'shaka-shared';
 
 import type { PhaseSample } from './lighthouse-config';
 
@@ -20,6 +21,8 @@ export interface ImageSize {
   paintedWidth: number;
   paintedHeight: number;
   devicePixelRatio: number;
+  /** Left, top, width and height of the element on screen, as fractions of the window. */
+  box: number[];
 }
 
 export interface ImageResolutionLimits {
@@ -92,6 +95,7 @@ export async function collectImageSizes(page: Page): Promise<ImageSize[]> {
           paintedWidth,
           paintedHeight,
           devicePixelRatio,
+          box: [rect.left / innerWidth, rect.top / innerHeight, rect.width / innerWidth, rect.height / innerHeight],
         });
       }
       performance.mark('shaka-perf-image-sizes-end');
@@ -125,22 +129,53 @@ function isWholeMultiple(source: number, required: number): boolean {
   return Math.abs(source - Math.round(source / required) * required) <= 0.5;
 }
 
+/** The list as a page, under the screen with a numbered box on each image that is not ok. */
+function imagesHtml(lighthouseResult: RunnerResult, lines: string[], boxes: string[]): string {
+  // The last frame of the trace: the screen as the page script saw it.
+  const frame = lighthouseResult.lhr.audits['final-screenshot']?.details;
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>image resolution</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; display: flex; flex-wrap: wrap; gap: 20px; }
+    .screen { position: relative; flex: none; align-self: flex-start; overflow: hidden; border: 1px solid #ddd; }
+    .screen img { display: block; height: 60vh; }
+    .screen div { position: absolute; box-sizing: border-box; border: 2px solid var(--status); }
+    .screen b { position: absolute; padding: 0 4px; background: var(--status); color: #fff; font-size: 12px; }
+    ol { margin: 0; font-family: monospace; white-space: pre; }
+    li { color: var(--status); }
+    .undersized { --status: #d32f2f; }
+    .oversized { --status: #e65100; }
+    .scaled-small { --status: #7b1fa2; }
+  </style>
+</head>
+<body>
+  ${frame?.type === 'screenshot' ? `<div class="screen"><img src="${frame.data}" alt="">${boxes.join('')}</div>` : ''}
+  <ol>${lines.map((line) => `<li class="${line.split(' ', 1)[0]}">${escapeHtml(line)}</li>`).join('')}</ol>
+</body>
+</html>`;
+}
+
 /**
  * Compares each image's file pixels with the pixels the screen needs for it.
  * Returns one count per finding as metrics, and one line per image for the
- * `image_resolution.txt` artifact.
+ * `image_resolution.txt` artifact. The `.html` artifact also shows where each
+ * finding is on screen.
  */
 export function checkImageResolution(
   sizes: ImageSize[],
   lighthouseResult: RunnerResult,
   url: string,
   limits: ImageResolutionLimits,
-): { phases: PhaseSample[]; report: string } {
+): { phases: PhaseSample[]; report: string; html: string } {
   const svg = svgUrls(lighthouseResult);
   // Origin-relative, so the control/experiment diff only shows images that changed.
   const pageOrigin = new URL(url).origin;
   const counts = { undersized: 0, oversized: 0, 'scaled-small': 0, ok: 0 };
   const lines: string[] = [];
+  const boxes: string[] = [];
   for (const image of sizes) {
     if (image.url.startsWith('data:image/svg') || svg.has(image.url.split('#', 1)[0])) continue;
     const requiredWidth = image.paintedWidth * image.devicePixelRatio;
@@ -156,6 +191,10 @@ export function checkImageResolution(
       `${status.padEnd(12)} ${Math.round(image.sourceWidth)}x${Math.round(image.sourceHeight)} file, ` +
       `${Math.round(requiredWidth)}x${Math.round(requiredHeight)} needed  ${image.url.replace(pageOrigin, '')}`,
     );
+    if (status === 'ok') continue;
+    // The number on a box is the line number of its image.
+    const [left, top, width, height] = image.box.map((part) => `${(part * 100).toFixed(2)}%`);
+    boxes.push(`<div class="${status}" style="left:${left};top:${top};width:${width};height:${height}"><b>${lines.length}</b></div>`);
   }
   return {
     phases: (['undersized', 'oversized', 'scaled-small'] as const).map((status) => ({
@@ -166,5 +205,6 @@ export function checkImageResolution(
       unit: '',
     })),
     report: lines.join('\n') + '\n',
+    html: imagesHtml(lighthouseResult, lines, boxes),
   };
 }

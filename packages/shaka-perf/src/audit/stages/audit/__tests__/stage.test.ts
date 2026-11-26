@@ -61,7 +61,7 @@ describe('AuditStage artifact card', () => {
   it('links the per-image resolution list', () => {
     const html = render({
       metrics: [{ label: 'undersized-images', value: 1, unit: '', display: '1', group: 'diagnostics' }],
-      imageResolutionHref: 'unit/artifacts/experiment_image_resolution.txt',
+      imageResolutionHref: 'unit/artifacts/experiment_image_resolution.html',
     });
 
     expect(html).toContain('image resolution');
