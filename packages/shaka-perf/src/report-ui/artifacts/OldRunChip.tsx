@@ -7,9 +7,9 @@
 
 import { useStageRunChips } from './StageRunChipsProvider';
 
-export function OldRunChip({ latestRun }: { latestRun: boolean }) {
-  const visible = useStageRunChips();
-  return visible && latestRun === false
+export function OldRunChip({ runId }: { runId: string }) {
+  const { visible, latestRunId } = useStageRunChips();
+  return visible && latestRunId != null && runId !== latestRunId
     ? <span className="pill pill--gray old-run-chip">old run</span>
     : null;
 }

@@ -130,8 +130,6 @@ export interface TestContext extends StageRenderContext {
 export interface StageRenderEntry<M = unknown> {
   readonly measurement: M;
   readonly executionDetails: ExecutionDetails;
-  /** Whether this measurement belongs to the report's latest run. */
-  readonly latestRun: boolean;
 }
 
 /** The runner saves these fields once per test, viewport, and stage. */

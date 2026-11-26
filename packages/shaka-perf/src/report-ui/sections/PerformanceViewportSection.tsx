@@ -11,10 +11,9 @@ import { ReportSection } from './ReportSection';
 import { OldRunChip } from '../artifacts/OldRunChip';
 import { MetadataRows } from '../metadata/ArtifactMetadataFields';
 
-export function PerformanceViewportSection({ sectionKey, executionDetails, latestRun, children }: {
+export function PerformanceViewportSection({ sectionKey, executionDetails, children }: {
   sectionKey: string;
   executionDetails: ExecutionDetails;
-  latestRun: boolean;
   children: ReactNode;
 }) {
   const { viewport, stageMetadata } = executionDetails;
@@ -29,7 +28,7 @@ export function PerformanceViewportSection({ sectionKey, executionDetails, lates
       <ReportSection
         sectionKey={sectionKey}
         title={`${viewport.label} performance`}
-        badge={<OldRunChip latestRun={latestRun} />}
+        badge={<OldRunChip runId={executionDetails.runId} />}
         actions={hasSettings && (
           <>
             {showSettings ? (

@@ -49,7 +49,7 @@ export function BuildAnnotatedTimelineArtifactView({
       <StageArtifactTitle title="annotated timeline" />
       <div className="stage-stack">
         {rows.map((entry, index) => {
-          const { measurement: timeline, latestRun } = entry;
+          const { measurement: timeline } = entry;
           const viewportLabel = entry.executionDetails.viewport.label;
           const frames = timeline.frames!;
           return (
@@ -59,7 +59,7 @@ export function BuildAnnotatedTimelineArtifactView({
                   className="stage-section__head"
                   level={5}
                   title={viewportLabel}
-                  badge={<OldRunChip latestRun={latestRun} />}
+                  badge={<OldRunChip runId={entry.executionDetails.runId} />}
                 />
                 <DetailedArtifactDialog
                   executionDetails={entry.executionDetails}

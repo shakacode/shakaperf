@@ -16,7 +16,6 @@ import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { App } from '../../report-shell/src/App';
-import * as pipelineArtifacts from '../../src/pipeline/pipeline-artifacts';
 import { createComparePipeline } from '../../src/compare/compare-pipeline';
 import { writeBisectReport } from '../../src/compare/bisect/report';
 import type {
@@ -68,7 +67,7 @@ describe('bisect report browser acceptance', () => {
     await page.close();
   });
 
-  it('keeps stage freshness accurate while bisect suppresses viewport run chips', () => {
+  it('suppresses chips on mixed-run viewport headings in bisect reports', async () => {
     const latest = '2026-10-02T00:00:00.000Z';
     const old = '2026-10-01T00:00:00.000Z';
     const data = reportData();
@@ -78,16 +77,10 @@ describe('bisect report browser acceptance', () => {
     }));
     const homepage = data.tests[0];
     homepage.outcomes.push({ ...homepage.outcomes[0],  executionDetails: { ...homepage.outcomes[0].executionDetails, viewport: PHONE_VIEWPORT, runId: old } });
-    const render = jest.spyOn(pipelineArtifacts, 'renderPersistedStageArtifacts').mockReturnValue('artifact');
-    try {
-      const html = renderToStaticMarkup(createElement(App, { data }));
-      const entries = render.mock.calls.filter((call) => call[2] === 'visreg').at(-1)?.[3];
-      expect(entries?.map((entry) => entry.latestRun)).toEqual([true, false]);
-      expect(html).not.toContain('outcome-slot__runs');
-      expect(html).not.toContain('latest run');
-    } finally {
-      render.mockRestore();
-    }
+    await page.setContent(renderToStaticMarkup(createElement(App, { data })));
+    const headings = page.locator('.artifact-card__title');
+    expect(await headings.allTextContents()).toEqual(['desktop', 'phone']);
+    expect(await page.locator('.old-run-chip').count()).toBe(0);
   });
 
   it('filters saved bad-ref cards and renders every selection state', async () => {

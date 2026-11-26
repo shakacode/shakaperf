@@ -57,7 +57,7 @@ export function AccessibilityArtifactView({
 }
 
 function AccessibilityBody({ entry }: { entry: StageRenderEntry<AccessibilityResult> }) {
-  const { measurement: result, latestRun } = entry;
+  const { measurement: result } = entry;
   const viewportLabel = entry.executionDetails.viewport.label;
   const filterState = useAccessibilityFilterState();
   const localOptions = useMemo(() => collectConfiguredFilterOptions([result]), [result]);
@@ -67,7 +67,7 @@ function AccessibilityBody({ entry }: { entry: StageRenderEntry<AccessibilityRes
   if (totalCount === 0) return null;
   return (
     <div className="stage-section">
-      <ReportHeading className="stage-section__head" level={5} title={viewportLabel} badge={<OldRunChip latestRun={latestRun} />} />
+      <ReportHeading className="stage-section__head" level={5} title={viewportLabel} badge={<OldRunChip runId={entry.executionDetails.runId} />} />
       <div style={SCAN_STYLE}>
         <AccessibilityScreenshotPreview
           entry={entry}

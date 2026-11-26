@@ -22,9 +22,8 @@ import { ReportSection } from '../../../../src/report-ui/sections';
 // above in bold; the duplication is noise.
 const STACK_HEAD_PATTERN = /^[A-Z][A-Za-z]*: [^\n]*\n+/;
 
-function OutcomeError({ outcome, latestRun }: {
+function OutcomeError({ outcome }: {
   outcome: ReportOutcome;
-  latestRun: boolean;
 }) {
   const message = outcome.error?.message?.trim();
   const displayMessage = message && message.length > 0 ? message : 'stage failed';
@@ -47,7 +46,7 @@ function OutcomeError({ outcome, latestRun }: {
         <p className="slot-error__message">
           <span className="slot-error__label">
             Error during "{heading}" · {outcome.executionDetails.viewport.label}:
-            <OldRunChip latestRun={latestRun} />
+            <OldRunChip runId={outcome.executionDetails.runId} />
           </span>{' '}
           <span className="slot-error__detail">{displayMessage}</span>
         </p>
@@ -94,10 +93,9 @@ function OutcomeError({ outcome, latestRun }: {
  * means the stage is absent for every purpose: section counts, the sections
  * filter, and the card itself.
  */
-export function stageSection(
+function stageSection(
   meta: ReportMeta,
   outcomes: readonly ReportOutcome[],
-  latestRunId?: string | null,
 ): { errorOutcomes: ReportOutcome[]; artifact: ReactNode; badge: ReactNode } | null {
   const first = outcomes[0];
   if (!first) return null;
@@ -109,7 +107,6 @@ export function stageSection(
       : [{
         measurement: outcome.measurement,
         executionDetails: outcome.executionDetails,
-        latestRun: latestRunId == null || outcome.executionDetails.runId === latestRunId,
       }]
   ));
   const artifact = measurements.length > 0
@@ -133,7 +130,7 @@ export function OutcomeSlot({
   showRunChips?: boolean;
 }) {
   const first = outcomes[0];
-  const section = stageSection(meta, outcomes, latestRunId);
+  const section = stageSection(meta, outcomes);
   if (!first || !section) return null;
   const { errorOutcomes, artifact, badge } = section;
   const title = pipelineStagesForReport(meta.pipelineName, meta.pipelineConfig)
@@ -141,13 +138,12 @@ export function OutcomeSlot({
 
   return (
     <section className="outcome-slot" data-stage={first.stage} tabIndex={-1}>
-      <StageRunChipsProvider value={showRunChips === true}>
+      <StageRunChipsProvider value={{ visible: showRunChips === true, latestRunId: latestRunId ?? null }}>
         <ReportSection sectionKey={first.stage} title={title} badge={badge}>
           {errorOutcomes.map((outcome, index) => (
             <OutcomeError
               key={`error-${outcome.executionDetails.viewport.label}-${index}`}
               outcome={outcome}
-              latestRun={latestRunId == null || outcome.executionDetails.runId === latestRunId}
             />
           ))}
           {artifact ? <div className="stage-artifact">{artifact}</div> : null}

@@ -39,7 +39,7 @@ export function CodeCoverageArtifactView({
               className="stage-section__head"
               level={5}
               title={entry.executionDetails.viewport.label}
-              badge={<OldRunChip latestRun={entry.latestRun} />}
+              badge={<OldRunChip runId={entry.executionDetails.runId} />}
             />
             <CoveragePreview entry={entry} />
           </div>

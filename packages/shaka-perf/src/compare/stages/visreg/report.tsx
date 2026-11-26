@@ -30,7 +30,6 @@ export function VisregArtifactView({
       artifact,
       entry,
       viewportLabel: entry.executionDetails.viewport.label,
-      latestRun: entry.latestRun,
     })))
     .sort((a, b) => a.artifact.selector.localeCompare(b.artifact.selector) || a.viewportLabel.localeCompare(b.viewportLabel));
 
@@ -58,7 +57,6 @@ export function VisregArtifactView({
 
 interface VisregRow {
   entry: StageRenderEntry<VisregResult>;
-  latestRun: boolean;
   artifact: VisregArtifact;
   viewportLabel: string;
 }
@@ -73,7 +71,7 @@ function VisregCard({ row }: { row: VisregRow }) {
   const changed = artifact.diffImage !== null;
   const head = (
     <div className="artifact-card__head">
-      <ReportHeading className="artifact-card__title" level={5} title={viewportLabel} badge={<OldRunChip latestRun={row.latestRun} />} />
+      <ReportHeading className="artifact-card__title" level={5} title={viewportLabel} badge={<OldRunChip runId={executionDetails.runId} />} />
       <span className="artifact-card__subtitle">{artifact.selector}</span>
       <span className="artifact-card__value">{artifact.misMatchPercentage.toFixed(2)}%</span>
       {changed ? <span className="artifact-card__status">visual change</span> : null}

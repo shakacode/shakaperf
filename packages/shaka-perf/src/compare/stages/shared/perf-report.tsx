@@ -61,7 +61,7 @@ export function PerfArtifactView({
 }
 
 function PerfViewportBlock({ entry }: { entry: StageRenderEntry<PerfArtifact> }) {
-  const { measurement: perf, latestRun } = entry;
+  const { measurement: perf } = entry;
   const viewportLabel = entry.executionDetails.viewport.label;
   const section = useReportSection();
   const sectionKey = `${section ?? 'perf'}:viewport:${viewportLabel}`;
@@ -69,7 +69,6 @@ function PerfViewportBlock({ entry }: { entry: StageRenderEntry<PerfArtifact> })
     <PerformanceViewportSection
       sectionKey={sectionKey}
       executionDetails={entry.executionDetails}
-      latestRun={latestRun}
     >
       <PerfBody
         entry={entry}

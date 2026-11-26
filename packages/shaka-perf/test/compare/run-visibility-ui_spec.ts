@@ -15,8 +15,9 @@ import { chromium, type Browser } from 'playwright';
 import { PHONE_VIEWPORT } from 'shaka-shared';
 import { renderReportHtml, type ReportData, type TestResult } from '../../src/pipeline/report';
 
-import { stageSection } from '../../report-shell/src/components/test-card/OutcomeSlot';
-import * as pipelineArtifacts from '../../src/pipeline/pipeline-artifacts';
+import { OutcomeSlot } from '../../report-shell/src/components/test-card/OutcomeSlot';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 const OLD = '2026-10-01T00:00:00.000Z';
 const LATEST = '2026-10-02T00:00:00.000Z';
@@ -69,24 +70,19 @@ describe('latest measurement run visibility', () => {
     fs.rmSync(directory, { recursive: true, force: true });
   });
 
-  it('passes per-measurement details and run freshness to stage renderers', () => {
-    const render = jest.spyOn(pipelineArtifacts, 'renderPersistedStageArtifacts').mockReturnValue('artifact');
+  it.each([null, LATEST])('labels an older-only stage using the report run %s', async (latestRunId) => {
     const data = fixture('compare', 'full');
-    const outcomes = [LATEST, OLD].map((runId) => ({
-      ...executionFixture({ runId }),
-      kind: 'ok' as const, stage: stageIds.accessibility,
-       measurement: { runId },
-    }));
+    const outcome = data.tests[2].outcomes.find((item) => item.stage === stageIds.visreg)!;
+    const page = await browser.newPage();
     try {
-      stageSection(data.meta, outcomes, LATEST);
-      expect(render).toHaveBeenLastCalledWith('compare', {}, stageIds.accessibility, [
-        { measurement: { runId: LATEST }, executionDetails: outcomes[0]!.executionDetails, latestRun: true },
-        { measurement: { runId: OLD }, executionDetails: outcomes[1]!.executionDetails, latestRun: false },
-      ]);
-      stageSection(data.meta, outcomes, null);
-      expect(render.mock.calls.at(-1)?.[3].map((entry) => entry.latestRun)).toEqual([true, true]);
+      await page.setContent(renderToStaticMarkup(createElement(OutcomeSlot, {
+        meta: data.meta, outcomes: [outcome], latestRunId, showRunChips: true,
+      })));
+      const label = page.locator('.slot-error__label');
+      expect(await label.textContent()).toContain('desktop');
+      expect(await label.locator('.old-run-chip').count()).toBe(latestRunId === null ? 0 : 1);
     } finally {
-      render.mockRestore();
+      await page.close();
     }
   });
 

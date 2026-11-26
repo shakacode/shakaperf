@@ -530,11 +530,11 @@ function AccessibilityCompareViewport({
 }: {
   entry: StageRenderEntry<AccessibilityCompareResult>;
 }) {
-  const { measurement: result, latestRun } = entry;
+  const { measurement: result } = entry;
   const viewportLabel = entry.executionDetails.viewport.label;
   return (
     <div className="stage-section">
-      <ReportHeading className="stage-section__head" level={5} title={viewportLabel} badge={<OldRunChip latestRun={latestRun} />} />
+      <ReportHeading className="stage-section__head" level={5} title={viewportLabel} badge={<OldRunChip runId={entry.executionDetails.runId} />} />
       <div style={CARD_STYLE}>
         <div style={CARD_HEADER_STYLE}>
           <div style={SUMMARY_STYLE}>

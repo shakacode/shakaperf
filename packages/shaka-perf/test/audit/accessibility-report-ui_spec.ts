@@ -66,7 +66,7 @@ describe('accessibility report UI filters', () => {
           },
           children: React.createElement(AccessibilityArtifactView, {
             measurements: [{
-              ...executionFixture(), latestRun: true,
+              ...executionFixture(),
               measurement: result,
 
             }],
@@ -84,7 +84,7 @@ describe('accessibility report UI filters', () => {
     const html = renderToStaticMarkup(
       React.createElement(AccessibilityArtifactView, {
         measurements: [{
-          ...executionFixture(), latestRun: true,
+          ...executionFixture(),
           measurement: accessibilityResult({
             effectiveConfig: {
               tags: ['wcag2a', 'wcag2aa'],
@@ -154,7 +154,7 @@ describe('accessibility report UI filters', () => {
     const html = renderToStaticMarkup(
       React.createElement(AccessibilityArtifactView, {
         measurements: [{
-          ...executionFixture(), latestRun: true,
+          ...executionFixture(),
           measurement: accessibilityResult({
             violations: [violation('button-name', ['wcag2a'])],
           }),

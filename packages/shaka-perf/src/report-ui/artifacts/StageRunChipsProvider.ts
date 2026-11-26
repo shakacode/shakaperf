@@ -7,9 +7,10 @@
 
 import { createContext, useContext } from 'react';
 
-// Whole-test warnings and bisect reports suppress repeated viewport warnings,
-// without changing the freshness metadata supplied to stage renderers.
-const StageRunChipsContext = createContext(true);
+const StageRunChipsContext = createContext<{
+  visible: boolean;
+  latestRunId: string | null;
+}>({ visible: false, latestRunId: null });
 export const StageRunChipsProvider = StageRunChipsContext.Provider;
 
 export function useStageRunChips() {
