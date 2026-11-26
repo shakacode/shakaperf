@@ -5,7 +5,6 @@
  * License in LICENSE.md.
  */
 
-import chalk from 'chalk';
 import _ from 'lodash';
 import { colorizedLogPrefix } from './testContext';
 

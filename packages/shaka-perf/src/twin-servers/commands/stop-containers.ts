@@ -15,7 +15,7 @@ export interface StopContainersOptions {
 
 export async function stopContainers(
   config: ResolvedConfig,
-  options: StopContainersOptions = {}
+  _options: StopContainersOptions = {}
 ): Promise<void> {
   printBanner('Stopping Twin Servers');
 

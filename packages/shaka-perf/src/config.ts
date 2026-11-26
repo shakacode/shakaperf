@@ -476,14 +476,11 @@ type AbTestsConfigParsed = z.infer<typeof AbTestsConfigSchema>;
 
 // Compile-time alignment check between Zod's inferred input and the
 // hand-written `AbTestsConfigInput` in shaka-shared. If you change either
-// side, both `_zodInputSatisfiesShared` and `_sharedSatisfiesZodInput` must
-// continue to type-check — otherwise the user's `defineConfig({...})` will
+// side, both directions must continue to type-check — otherwise the user's `defineConfig({...})` will
 // either reject valid configs or accept invalid ones.
 type _ZodInput = z.input<typeof AbTestsConfigSchema>;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _zodInputSatisfiesShared: _ZodInput extends AbTestsConfigInput ? true : never = true;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _sharedSatisfiesZodInput: AbTestsConfigInput extends _ZodInput ? true : never = true;
+true satisfies (_ZodInput extends AbTestsConfigInput ? true : never);
+true satisfies (AbTestsConfigInput extends _ZodInput ? true : never);
 
 export type SharedConfig = z.infer<typeof SharedConfigSchema>;
 export type VisregConfig = z.infer<typeof VisregConfigSchema>;

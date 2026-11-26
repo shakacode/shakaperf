@@ -6,7 +6,6 @@
  */
 
 import { performanceMetadataFields } from '../../../stage/performance-metadata';
-import type { ReactNode } from 'react';
 import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { PerfConfig, Viewport } from '../../../config';

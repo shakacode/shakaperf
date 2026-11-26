@@ -129,7 +129,7 @@ export function createDispatcher(
         // server replies `exit 0`. Throw a typed `UnknownCommandError` so
         // server.ts maps it to `EXIT_NEVER_DISPATCHED` (2) — the client
         // then falls back to local execution rather than hard-failing.
-        const _exhaustive: never = req;
+        req satisfies never;
         throw new UnknownCommandError((req as { cmd: string }).cmd);
       }
     }

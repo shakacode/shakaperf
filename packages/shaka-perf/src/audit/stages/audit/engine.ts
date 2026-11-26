@@ -113,7 +113,7 @@ export async function runAuditStage(
   const pool = createWorkerLighthouseSamplingPool<NavigationSample>(workerPool, {
     samplingMode: 'sequential',
   });
-  pool.onSampleStart = (_testKey, group, sampleIndex) => {
+  pool.onSampleStart = () => {
     console.log(chalk.dim('starting'));
   };
 

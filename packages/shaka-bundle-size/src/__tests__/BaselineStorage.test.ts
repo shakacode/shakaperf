@@ -5,7 +5,6 @@
  * License in LICENSE.md.
  */
 
-import * as path from 'path';
 import { BaselineStorage } from '../BaselineStorage';
 import { SilentReporter } from '../Reporter';
 

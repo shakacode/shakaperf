@@ -23,10 +23,8 @@ export interface StartContainersOptions {
 
 export async function startContainers(
   config: ResolvedConfig,
-  options: StartContainersOptions = {}
+  _options: StartContainersOptions = {}
 ): Promise<void> {
-  const { verbose } = options;
-
   printBanner('Starting Twin Containers Locally');
 
   console.log('Using images:');
@@ -34,10 +32,7 @@ export async function startContainers(
   console.log(`  - Control: ${config.images.control}`);
   console.log('');
 
-  for (const [name, image] of [
-    ['Experiment', config.images.experiment],
-    ['Control', config.images.control],
-  ]) {
+  for (const image of [config.images.experiment, config.images.control]) {
     if (!dockerImageExists(image)) {
       printWarning(`Image ${image} not found locally`);
       console.log('   Will build on first start (slower) or run:');

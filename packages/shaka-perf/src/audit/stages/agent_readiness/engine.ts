@@ -6,13 +6,12 @@
  */
 
 import chalk from 'chalk';
-import type { Browser, BrowserContext, Page } from 'playwright-core';
+import type { Browser, BrowserContext } from 'playwright-core';
 import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool';
 import type { TestContext } from '../../../stage/stage';
 import { isPublicHost } from '../../../net/public-host';
 import { looksLikeBotWall, scanLandedOnBotWall } from '../../bot-wall';
 import {
-  isRealChromeEnabled,
   realChromeUsesNativeIdentity,
   waitForBotWallToClear,
 } from '../../real-chrome';

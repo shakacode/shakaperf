@@ -5,7 +5,7 @@
  * License in LICENSE.md.
  */
 
-import { abTest, getRegisteredTests, clearRegistry, TestType } from '../ab-test-registry';
+import { abTest, getRegisteredTests, clearRegistry } from '../ab-test-registry';
 import type { AbTestDefinition, TestFnContext } from '../ab-test-registry';
 
 describe('ab-test-registry', () => {

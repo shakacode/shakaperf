@@ -485,7 +485,7 @@ describe('runPipeline', () => {
   ])('saves worker retries (exhausted: %p, derived: %p)', async (exhausted, derived) => {
     const selected = pipeline();
     Object.assign(selected.stages[0]!, { measuresApplication: !derived });
-    selected.stages[0]!.run = async (ctx, pool) => {
+    selected.stages[0]!.run = async (_ctx, pool) => {
       let attempts = 0;
       return pool.submit(async () => {
         attempts++;
@@ -548,7 +548,7 @@ describe('runPipeline', () => {
   it.each([undefined, 1, 3])('reports visual attempts and their limit on mismatches (%p attempts)', async (attempts) => {
     const config = buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, timeoutMs: 1_000, retries: 0, retryDelay: 0 } });
     const selected = createComparePipeline(comparePipelineConfigFromAbTests(config));
-    selected.stages[0]!.run = async (ctx) => {
+    selected.stages[0]!.run = async () => {
       return { measurement: [{ selector: 'document', controlImage: '', experimentImage: '', diffImage: 'diff.png',
         misMatchPercentage: 1, diffPixels: 1, threshold: 0, diffBbox: null, savedByRetries: false,
         visualComparisonCount: attempts, visualComparisonLimit: 3 }], metadata: {} };
@@ -565,7 +565,7 @@ describe('runPipeline', () => {
   it.each([1, 2])('keeps screenshot recovery separate from worker retries (%i visual retries)', async (retries) => {
     const config = buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 }, browserConsole: { failOn: ['error', 'warn'], allowList: [] }, timeoutMs: 1_000, retries: 0, retryDelay: 0 } });
     const selected = createComparePipeline(comparePipelineConfigFromAbTests(config));
-    selected.stages[0]!.run = async (ctx) => {
+    selected.stages[0]!.run = async () => {
       return { measurement: [0, 1].map((selector) => ({
         selector: String(selector), controlImage: '', experimentImage: '', diffImage: null,
         misMatchPercentage: 0, diffPixels: 0, threshold: 0, diffBbox: null, savedByRetries: true,

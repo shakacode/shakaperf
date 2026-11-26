@@ -12,7 +12,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { getChromePath, launch, type LaunchedChrome } from 'chrome-launcher';
-import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
+import { chromium, type BrowserContext, type Page } from 'playwright-core';
 
 import {
   getRegisteredTests,
@@ -43,7 +43,6 @@ import {
   type LighthouseBenchmarkOptions,
   type LighthouseConfig,
   type NavigationSample,
-  type PhaseSample,
 } from './lighthouse-config';
 import { runLighthouse, accessibilityScoreFromLhr } from './run-lighthouse';
 import { SHAKA_PERF_ANNOTATION_PREFIX } from './timeline-comparison';

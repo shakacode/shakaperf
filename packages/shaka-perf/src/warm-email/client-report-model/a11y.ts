@@ -287,7 +287,7 @@ export function buildA11ySection(
   siteUrl: string,
   promptCtx: A11yPromptContext,
 ): A11ySection {
-  const { hasA11y, a11yBlocked, a11yCouldNotMeasure, a11yMeasurable, cardedA11y, fineA11y } = prepared;
+  const { hasA11y, a11yCouldNotMeasure, a11yMeasurable, cardedA11y, fineA11y } = prepared;
   const lowerImpactA11y = fineA11y.filter((view) => view.scan.violations.length > 0);
   const groupLowerImpact = lowerImpactA11y.length > 0
     && lowerImpactA11y.every((view) => {

@@ -13,15 +13,6 @@ import {
 describe('BuildAnnotatedTimelineStage artifact ownership', () => {
   it('strips the screencast from self-contained reports', () => {
     const stage = new BuildAnnotatedTimelineStage();
-    const measurement: BuildAnnotatedTimelineResult = {
-      frames: [{
-        timeMs: 123,
-        imgW: 320,
-        imgH: 180,
-        imageHref: 'timeline.webp',
-      }],
-      screencastHref: 'screencast.mp4',
-    };
 
     expect(stage.selfContainedReportStrip).toEqual({
       screencastHref: true,

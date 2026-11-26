@@ -19,7 +19,7 @@ import {
   DEFAULT_HTML_DIFFS,
   DEFAULT_STORAGE,
 } from '../config';
-import type { BundleSizeConfig, ResolvedConfig } from '../config';
+import type { BundleSizeConfig } from '../config';
 import { RegressionType } from '../types';
 import type { Regression } from '../types';
 
@@ -316,7 +316,6 @@ describe('loadConfigSync', () => {
 
 describe('isBranchAcknowledged', () => {
   const tmpDir = path.join(__dirname, 'tmp-acknowledged');
-  const tmpFile = path.join(tmpDir, 'acknowledged_branches');
 
   beforeEach(() => {
     if (!fs.existsSync(tmpDir)) {

@@ -8,7 +8,6 @@
 import chalk from 'chalk';
 import { type AbTestDefinition } from 'shaka-shared';
 import type { ReactNode } from 'react';
-import type { Viewport } from '../config';
 import type { ChipDescriptor, ReportMeta, SortDescriptor, TestResult } from './report';
 import type { Outcome } from './outcome';
 import type { MeasurementSide } from './run-metadata';
