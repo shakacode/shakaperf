@@ -113,12 +113,8 @@ function makeDeps(produce: Produce, consoleBySide: ConsoleBySide = {}) {
     return produce(Math.floor(idx / 2), idx % 2 === 0 ? 'ref' : 'test');
   });
 
-  const comparisonCounts = new Map<string, number>();
   const deps: CompareAttemptsDeps = {
-    comparisonCounts,
-    incrementVisualRoundCounts(keys) {
-      for (const key of keys) comparisonCounts.set(key, (comparisonCounts.get(key) ?? 0) + 1);
-    },
+    incrementVisualRoundCounts: jest.fn(),
     captureScreenshot,
     createSide,
     preparePage,
@@ -145,7 +141,7 @@ it('attempt 0 clean match: passes without retrying, not flagged saved-by-retries
   expect(outcomes).toHaveLength(1);
   expect(outcomes[0].result.pass).toBe(true);
   expect(outcomes[0].savedByRetries).toBe(false);
-  expect(outcomes[0].visualComparisonCount).toBe(1);
+  expect(deps.incrementVisualRoundCounts).toHaveBeenCalledTimes(1);
   // One attempt only: two fresh sides built and torn down, no backoff sleeps.
   expect(counts()).toEqual({ created: 2, disposed: 2, captureCalls: 2 });
   expect(sleeps).toEqual([]);
@@ -158,7 +154,7 @@ it('mismatch then match on retry: passes and is flagged saved-by-retries', async
 
   expect(outcomes[0].result.pass).toBe(true);
   expect(outcomes[0].savedByRetries).toBe(true);
-  expect(outcomes[0].visualComparisonCount).toBe(2);
+  expect(deps.incrementVisualRoundCounts).toHaveBeenCalledTimes(2);
   // Two attempts, each with its OWN fresh pair (created === disposed === 4).
   expect(counts()).toMatchObject({ created: 4, disposed: 4 });
   expect(sleeps).toEqual([10]); // one backoff before the single retry
@@ -174,9 +170,10 @@ it('keeps a clean selector at one attempt while another selector retries', async
     return png(capture % 2 === 0 ? RED : BLUE, Math.floor(capture / 2) + 1);
   };
   const outcomes = await run(deps, makeConfig({ compareRetries: 2 }), ['.clean', '.changed']);
-  expect(outcomes.map(({ selector, visualComparisonCount }) => ({ selector, visualComparisonCount }))).toEqual([
-    { selector: '.clean', visualComparisonCount: 1 }, { selector: '.changed', visualComparisonCount: 3 },
-  ]);
+  const [clean, changed] = outcomes;
+  expect(deps.incrementVisualRoundCounts).toHaveBeenNthCalledWith(1, [clean.testPair.test, changed.testPair.test]);
+  expect(deps.incrementVisualRoundCounts).toHaveBeenNthCalledWith(2, [changed.testPair.test]);
+  expect(deps.incrementVisualRoundCounts).toHaveBeenNthCalledWith(3, [changed.testPair.test]);
 });
 
 it('resumes pending selectors after a worker failure without recapturing a matched selector', async () => {
@@ -194,7 +191,9 @@ it('resumes pending selectors after a worker failure without recapturing a match
     return png(GREEN);
   };
   const resumed = await run(deps, makeConfig(), selectors);
-  expect(resumed.map(row => [row.result.pass, row.visualComparisonCount])).toEqual([[true, 1], [true, 3]]);
+  expect(resumed.map(row => row.result.pass)).toEqual([true, true]);
+  expect(deps.incrementVisualRoundCounts).toHaveBeenCalledTimes(3);
+  expect(deps.incrementVisualRoundCounts).toHaveBeenLastCalledWith([resumed[1].testPair.test]);
 });
 
 it('stops at the local retry limit and reports the closest pair when only one pool grows', async () => {
@@ -234,7 +233,7 @@ function seedPoolFrame(side: 'control' | 'experiment', buffer: Buffer): void {
   ).add(side, buffer);
 }
 
-it('reports zero started rounds when saved screenshots already match and the count is empty', async () => {
+it('starts no rounds when saved screenshots already match', async () => {
   seedPoolFrame('control', png(GREEN));
   seedPoolFrame('experiment', png(GREEN));
   const { deps, counts } = makeDeps(() => png(BLUE));
@@ -242,7 +241,7 @@ it('reports zero started rounds when saved screenshots already match and the cou
   const [outcome] = await run(deps, makeConfig());
 
   expect(outcome.result.pass).toBe(true);
-  expect(outcome.visualComparisonCount).toBe(0);
+  expect(deps.incrementVisualRoundCounts).not.toHaveBeenCalled();
   expect(counts().captureCalls).toBe(0);
 });
 

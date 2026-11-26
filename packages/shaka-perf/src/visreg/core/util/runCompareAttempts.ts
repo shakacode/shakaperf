@@ -33,7 +33,7 @@ export type CaptureScreenshotFn = (
 ) => Promise<Buffer | null>;
 
 /** Injected collaborators — defaulted to the real implementations; overridden in tests. */
-export interface CompareAttemptsDeps extends VisregRunRuntime {
+export interface CompareAttemptsDeps extends Pick<VisregRunRuntime, 'incrementVisualRoundCounts' | 'captureFailure'> {
   captureScreenshot: CaptureScreenshotFn;
   createSide?: CreateSideFn;
   preparePage?: PreparePageFn;
@@ -59,7 +59,6 @@ export interface CompareSelectorOutcome {
   testFrame: PoolFrame;
   /** Matched, but not by a single clean capture pair (retried or crash-resumed frames). */
   savedByRetries: boolean;
-  visualComparisonCount: number;
 }
 
 interface SelectorRun {
@@ -167,7 +166,6 @@ export async function runCompareAttempts(
   params: CompareAttemptsParams,
 ): Promise<CompareSelectorOutcome[]> {
   const { browser, config, viewport, scenario, scenarioLabelSafe, pixelmatchThreshold } = params;
-  const { comparisonCounts } = deps;
   const captureScreenshot = deps.captureScreenshot;
   const createSide = deps.createSide ?? defaultCreateComparisonSide;
   const preparePage = deps.preparePage ?? defaultPreparePage;
@@ -300,7 +298,6 @@ export async function runCompareAttempts(
       // Clean = the single first capture pair matched. Anything that needed a
       // second frame (a retry or a crash-resumed leftover) was saved by retries.
       savedByRetries: result.pass && (run.control.length > 1 || run.experiment.length > 1),
-      visualComparisonCount: comparisonCounts.get(run.testPair.test) ?? 0,
     };
   });
 }
