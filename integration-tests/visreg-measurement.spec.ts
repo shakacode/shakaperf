@@ -91,7 +91,7 @@ test('a worker restart can match frames captured on different attempts', async (
   const result = measurement.outcome(stageIds.visreg);
   expect(measurement.visits()).toBe(3);
   expect(result.executionDetails.taskRetries).toBe(1);
-  expect(result.executionDetails.measurementMetadata.compareAttempts).toBe(3);
+  expect(result.executionDetails.measurementMetadata.visualComparisonRoundsStarted).toBe(3);
   expect(result.measurement).toEqual([
     expect.objectContaining({ selector: '#frame', diffImage: null, visualComparisonCount: 3, savedByRetries: true }),
     expect.objectContaining({ selector: '#stable', diffImage: null, visualComparisonCount: 1 }),
@@ -116,7 +116,7 @@ test('two interrupted rounds count toward the eight rounds started across three 
   const result = measurement.outcome(stageIds.visreg);
   expect(measurement.visits()).toBe(rounds.length);
   expect(result.executionDetails.taskRetries).toBe(2);
-  expect(result.executionDetails.measurementMetadata.compareAttempts).toBe(rounds.length);
+  expect(result.executionDetails.measurementMetadata.visualComparisonRoundsStarted).toBe(rounds.length);
   expect(result.measurement[0]).toMatchObject({
     selector: '#frame', visualComparisonCount: rounds.length, diffImage: expect.any(String),
   });
@@ -133,7 +133,7 @@ test('a measurement records every started round even when all workers fail', asy
   const result = measurement.outcome(stageIds.visreg);
   expect(result.kind).toBe('error');
   expect(result.executionDetails.taskRetries).toBe(2);
-  expect(result.executionDetails.measurementMetadata.compareAttempts).toBe(3);
+  expect(result.executionDetails.measurementMetadata.visualComparisonRoundsStarted).toBe(3);
   expect(measurement.visits()).toBe(3);
 });
 
