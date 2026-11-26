@@ -57,7 +57,7 @@ function mockPipeline(name: 'compare' | 'audit') {
   return createPipeline({
     name, description: name,
     measurementSides: name === 'compare' ? ['control', 'experiment'] : ['experiment'],
-    derivedResultsDirs: [{ path: 'derived', unitFiles: (unitId) => [`${unitId}.json`] }],
+    derivedResultsDirs: [{ stage: stageIds.codeCoverage, path: 'derived', unitFiles: (unitId) => [`${unitId}.json`] }],
     report: { reportLabel: name, renderHeaderUrls: () => null, testTargets: () => [] },
   }, (builder) => {
     const pool = builder.registerWorkerPool(1);
@@ -233,7 +233,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     fs.writeFileSync(path.join(store().resultsRoot, 'derived', 'sibling.txt'), 'keep');
     await run('--filter', '^Product Detail$', '--viewport', 'phone');
     expect(measured).toEqual(stages.map((stage) => `Product Detail:phone:${stage}`));
-    expect(fs.existsSync(path.join(phoneDir, 'old-frame.txt'))).toBe(false);
+    expect(fs.readFileSync(path.join(phoneDir, 'old-frame.txt'), 'utf8')).toBe('stale');
     expect(fs.readFileSync(path.join(desktopDir, 'sibling.txt'), 'utf8')).toBe('keep');
     expect(fs.existsSync(path.join(store().resultsRoot, 'derived', 'sibling.txt'))).toBe(true);
     for (const entry of before) {
@@ -276,7 +276,26 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     } finally { failCleanup.mockRestore(); error.mockRestore(); }
   });
 
-  if (command === 'audit') it.each([false, true])('invalidates replaced coverage mirrors before a failed rerun (shard=%s)', async (skipReport) => {
+  it('clears obsolete cache files on a full run only when the owning stage is selected', async () => {
+    const [owningStage, otherStage] = stages;
+    const pipeline = {
+      ...mockPipeline(command),
+      derivedResultsDirs: [{ stage: owningStage!, path: 'derived', unitFiles: (id: string) => [`${id}.json`] }],
+    };
+    const cacheDir = path.join(store().resultsRoot, 'derived');
+    fs.mkdirSync(cacheDir, { recursive: true });
+    const obsoleteFile = path.join(cacheDir, 'deleted-test.json');
+    fs.writeFileSync(obsoleteFile, '{}');
+
+    const built = buildAbTestsConfig(config as never);
+    const runtime = { config: built, controlURL: built.shared.controlURL, experimentURL: built.shared.experimentURL };
+    await runPipeline(pipeline, { ...runtime, stages: otherStage! });
+    expect(fs.existsSync(obsoleteFile)).toBe(true);
+    await runPipeline(pipeline, { ...runtime, stages: owningStage! });
+    expect(fs.existsSync(obsoleteFile)).toBe(false);
+  });
+
+  if (command === 'audit') it.each([false, true])('invalidates only measured coverage mirrors (explicit viewport=%s)', async (explicitViewport) => {
     const built = buildAbTestsConfig(config as never);
     const actual = jest.requireActual<typeof import('../../audit/pipeline')>('../../audit/pipeline');
     const pipeline = actual.createAuditPipeline({
@@ -284,7 +303,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
       accessibility: { ...built.accessibility, playwrightOptions: built.shared.playwrightOptions },
       agentReadiness: { ...built.agentReadiness, playwrightOptions: built.shared.playwrightOptions },
     });
-    const test = tests[0]!;
+    const test = definition('Phone coverage', ['phone']);
     const rawCoverage = path.join(cwd, 'coverage.json');
     fs.writeFileSync(rawCoverage, JSON.stringify({ '/app.js': { s: { 0: 1 } } }));
     for (const label of ['desktop', 'phone']) {
@@ -299,7 +318,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     try {
       const result = await runPipeline(pipeline, {
         config: built, tests: [test], controlURL: built.shared.controlURL, experimentURL: built.shared.experimentURL,
-        categories: 'code_coverage', viewportsFilter: ['phone'], preserveOtherViewports: true, skipReport,
+        categories: 'code_coverage', ...(explicitViewport ? { viewportsFilter: ['phone'], preserveOtherViewports: true } : {}), skipReport: explicitViewport,
       });
       expect(result.hasFailures).toBe(true);
       expect(store().readOutcome(test, 'phone', stageIds.codeCoverage)?.kind).toBe('error');
@@ -309,7 +328,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     } finally { failure.mockRestore(); error.mockRestore(); }
   });
 
-  if (command === 'audit') it.each([false, true])('clears abandoned selected coverage when a test narrows its viewports (registry replaced=%s)', async (replaceRegistry) => {
+  if (command === 'audit') it.each([false, true])('prunes obsolete selected coverage mirrors while retaining the saved measurement (registry replaced=%s)', async (replaceRegistry) => {
     const built = buildAbTestsConfig(config as never);
     const narrowed = definition('Narrowed', ['desktop']);
     if (replaceRegistry) narrowed.config = { shared: {
@@ -343,7 +362,7 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
         config: built, tests: [narrowed, active], controlURL: built.shared.controlURL, experimentURL: built.shared.experimentURL,
         categories: 'code_coverage', viewportsFilter: ['phone'], preserveOtherViewports: true, skipReport: true,
       });
-      expect(fs.existsSync(store().unitDirForViewport(narrowed, 'phone'))).toBe(false);
+      expect(store().readOutcome(narrowed, 'phone', stageIds.codeCoverage)?.kind).toBe('ok');
       for (const test of [narrowed, active]) {
         expect(fs.existsSync(path.join(mirrors, `${unitIdForTest(test, 'phone')}.json`))).toBe(false);
       }
@@ -354,14 +373,14 @@ describe.each(['compare', 'audit'] as const)('%s --viewport', (command) => {
     } finally { failure.mockRestore(); error.mockRestore(); }
   });
 
-  it('keeps existing filter-only callers such as troubleshoot on their cleanup contract', async () => {
+  it('preserves other viewports for filter-only callers such as troubleshoot', async () => {
     await run();
     await runPipeline(mockPipeline(command), {
       config: buildAbTestsConfig(config as never), tests: [tests[0]!],
       controlURL: config.shared.controlURL, experimentURL: config.shared.experimentURL,
       viewportsFilter: ['phone'], skipReport: true,
     });
-    expect(store().readOutcome(tests[0]!, 'desktop', stages[0]!)).toBeNull();
+    expect(store().readOutcome(tests[0]!, 'desktop', stages[0]!)?.kind).toBe('ok');
     expect(store().readOutcome(tests[0]!, 'phone', stages[0]!)?.kind).toBe('ok');
   });
 

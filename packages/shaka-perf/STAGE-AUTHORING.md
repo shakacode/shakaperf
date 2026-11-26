@@ -363,7 +363,7 @@ that gets inlined into one self-contained `report.html`. Constraints:
 - In `run()`, return the data that `renderArtifacts` needs in `measurement`.
   Include each artifact as a data URL (`data:image/avif;base64,...`) or save it
   to disk and include its report-relative path from `ctx.artifacts`
-  (`<unit_dir>/artifacts/preview.svg`). The framework embeds referenced
+  (`<unit_dir>/artifacts/<stage-name>/preview.svg`). The framework embeds referenced
   files in the self-contained report.
 - No `fetch` at render time — the report is opened from `file://`
   often.

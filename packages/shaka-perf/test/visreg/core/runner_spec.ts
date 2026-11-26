@@ -8,7 +8,7 @@
 import assert from 'node:assert';
 
 describe('the runner', function () {
-  let runner: (args?: Record<string, unknown>) => Promise<unknown>;
+  let runner: typeof import('../../../src/visreg/core/runner').default;
   let calls: string[];
   let capturedConfig: unknown;
 
@@ -44,7 +44,7 @@ describe('the runner', function () {
   });
 
   it('resolves the config, compares, then reports — in that order', function () {
-    return runner({ some: 'option' }).then(function (result) {
+    return runner({ some: 'option' }, { comparisonCountsBySelector: new Map(), incrementVisualRoundCounts: jest.fn() }).then(function (result) {
       assert.deepStrictEqual(calls, ['makeConfig', 'createComparisonBitmaps', 'report']);
       assert.deepStrictEqual(capturedConfig, { args: { some: 'option' } });
       assert.deepStrictEqual(result, { args: { some: 'option' } });

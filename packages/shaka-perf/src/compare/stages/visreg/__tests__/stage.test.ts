@@ -13,7 +13,7 @@ import type { TestContext } from '../../../../stage/stage';
 
 jest.mock('../run', () => ({ runVisregUnit: jest.fn() }));
 
-it('retries the visreg task after a worker error', async () => {
+it('shares measurement retry state across worker attempts', async () => {
   const ctx = {
     testAndViewportId: 'homepage-desktop',
     viewport: { label: 'desktop', width: 1000, height: 800 },
@@ -25,6 +25,8 @@ it('retries the visreg task after a worker error', async () => {
     .mockResolvedValueOnce([]);
   try {
     await createVisregStage({} as never).run(ctx, pool);
+    const calls = jest.mocked(runVisregUnit).mock.calls;
+    expect(calls[1]![2]).toBe(calls[0]![2]);
     expect(runVisregUnit).toHaveBeenCalledTimes(2);
   } finally {
     await pool.dispose();

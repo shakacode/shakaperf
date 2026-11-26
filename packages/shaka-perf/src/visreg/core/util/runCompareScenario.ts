@@ -85,15 +85,18 @@ async function processCompareView (
   // retry rebuilds fresh, isolated sides the same way (see runCompareAttempts).
   // Per-selector cross-matching and crash-resume live in there too; it hands
   // back one outcome per selector for us to turn into a report entry.
+  const { comparisonCountsBySelector, incrementVisualRoundCounts, captureFailure } = runtime;
+  const resumedComparisons = comparisonCountsBySelector.size > 0;
   const outcomes = await runCompareAttempts(
-    { captureScreenshot, captureFailure: runtime.captureFailure },
+    { incrementVisualRoundCounts, captureFailure, captureScreenshot },
     { browser, config, viewport, scenario, scenarioLabelSafe, pixelmatchThreshold },
   );
 
   for (const outcome of outcomes) {
     const { selector, testPair, result, refFrame, testFrame } = outcome;
-    testPair.visualComparisonCount = outcome.visualComparisonCount;
-    testPair.visualComparisonLimit = config.compareRetries + 1;
+    testPair.visualComparisonCount = comparisonCountsBySelector.get(testPair.test) ?? 0;
+    // The per-worker limit is only a valid denominator for a single invocation.
+    if (!resumedComparisons) testPair.visualComparisonLimit = config.compareRetries + 1;
 
     const refAnalysis = analyzeWhitePixels(refFrame.buffer);
     const testAnalysis = analyzeWhitePixels(testFrame.buffer);

@@ -12,6 +12,15 @@ version being released and updates the "Current version" line at the bottom.
 
 ---
 
+## Unreleased
+
+### `--keep-old-results` removed from `audit` and `compare`
+
+Both commands now reject `--keep-old-results` as an unknown option. Remove
+the flag from scripts and rerun commands copied from older reports. Reruns
+now replace only the selected stages’ results and artifacts for each measured
+test and viewport. Other stages and viewports retain their saved results.
+
 ## 0.7.0 — 2026-11-04
 
 ### `init` creates config only; install agent skills separately

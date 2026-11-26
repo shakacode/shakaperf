@@ -44,7 +44,7 @@ export function MissingArtifactsDetails({ meta, tests, expanded, id }: {
   }
   const pipeline = meta.pipelineName ?? 'compare';
   const names = [...new Set(tests.map((test) => test.name))].map(escapeRegex).join('|');
-  const command = `shaka-perf ${shellArgument(pipeline)} --filter ${shellArgument(`^(?:${names})$`)} --keep-old-results`;
+  const command = `shaka-perf ${shellArgument(pipeline)} --filter ${shellArgument(`^(?:${names})$`)}`;
   return <section id={id} className="missing-artifacts" aria-label="Tests without saved results" hidden={!expanded}>
     {expanded ? <>
       <h3 className="missing-artifacts__title">no artifacts yet</h3>

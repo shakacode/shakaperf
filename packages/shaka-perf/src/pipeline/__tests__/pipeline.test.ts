@@ -385,9 +385,10 @@ describe('runPipeline', () => {
     fs.writeFileSync(file, source);
     const selected = pipeline();
     selected.stages[0]!.run = async (ctx) => {
-      const snapshots = fs.readdirSync(ctx.artifacts.dir).filter((name) => name.startsWith('test-source-'));
+      const sharedDir = path.dirname(ctx.artifacts.dir);
+      const snapshots = fs.readdirSync(sharedDir).filter((name) => name.startsWith('test-source-'));
       expect(snapshots).toHaveLength(1);
-      expect(fs.readFileSync(path.join(ctx.artifacts.dir, snapshots[0]!), 'utf8')).toBe(source);
+      expect(fs.readFileSync(path.join(sharedDir, snapshots[0]!), 'utf8')).toBe(source);
       fs.writeFileSync(file, changed);
       if (failed) throw new Error('measurement failed');
       return { measurement: {}, metadata: {} };
@@ -438,7 +439,7 @@ describe('runPipeline', () => {
       expect(store.readTextArtifact(originalPath)).toBe(source);
       expect(store.readTextArtifact(changedPath)).toBe(changed);
       for (const viewport of new Set(outcomes.map((o) => o.executionDetails.viewport.label))) {
-        expect(fs.readdirSync(store.artifactsDirForViewport(test, viewport))).toHaveLength(2);
+        expect(fs.readdirSync(store.artifactsDirForViewport(test, viewport)).filter(file => file.startsWith('test-source-'))).toHaveLength(2);
         const measuredPaths = new Set(outcomes.filter((o) => o.executionDetails.viewport.label === viewport && o.stage !== stageIds.visreg)
           .map((o) => o.executionDetails.testSourceHref).filter(Boolean));
         expect(measuredPaths.size).toBe(1);
@@ -465,11 +466,11 @@ describe('runPipeline', () => {
       expect(missing.testResults[0]).not.toHaveProperty('code');
       expect(missing.testResults[0]!.outcomes).toHaveLength(retained.testResults[0]!.outcomes.length);
       expect(store.readTextArtifact(originalPath)).toBe(source);
-      // A normal rerun removes obsolete snapshots with the other unit artifacts.
+      // Once every stage is remeasured the old shared snapshot is unreferenced.
       fs.writeFileSync(file, changed);
       await runWithFrozenTest({ cwd, tests: [test], skipReport: true });
       expect(store.readTextArtifact(originalPath)).toBeUndefined();
-      expect(fs.readdirSync(store.artifactsDirForViewport(test, original.executionDetails.viewport.label))).toHaveLength(1);
+      expect(fs.readdirSync(store.artifactsDirForViewport(test, original.executionDetails.viewport.label)).filter(file => file.startsWith('test-source-'))).toHaveLength(1);
     } finally {
       clock.mockRestore();
       fs.rmSync(cwd, { recursive: true, force: true });
@@ -648,10 +649,10 @@ describe('runPipeline', () => {
       expect(report.testResults[0]!.outcomes.find((o) => o.stage === stageIds.visreg && o.executionDetails.viewport.label === before.executionDetails.viewport.label)?.executionDetails.measurementMetadata).toEqual(before.executionDetails.measurementMetadata);
       expect(report.testResults[0]!.outcomes.find((o) => o.stage === stageIds.perf && o.executionDetails.viewport.label === perf.executionDetails.viewport.label)?.executionDetails.measurementMetadata).toEqual(perf.executionDetails.measurementMetadata);
       clock.mockReturnValue(Date.parse('2026-10-20T12:00:00Z'));
-      const replaced = await runWithFrozenTest({ cwd, categories: 'visreg', keepOldResults: true, skipReport: true });
+      const replaced = await runWithFrozenTest({ cwd, categories: 'visreg', skipReport: true });
       const latest = replaced.testResults[0]!.outcomes.find((o) => o.stage === stageIds.visreg && o.kind === 'ok')!;
       expect(latest.executionDetails.runId).not.toBe(before.executionDetails.runId);
-      expect(replaced.testResults[0]!.outcomes.filter((o) => o.kind === 'ok').every((o) => o.stage === stageIds.visreg)).toBe(true);
+      expect(replaced.testResults[0]!.outcomes.find((o) => o.stage === stageIds.perf && o.kind === 'ok')?.executionDetails).toEqual(perf.executionDetails);
     } finally {
       clock.mockRestore();
       process.argv = originalArgv;
@@ -775,7 +776,7 @@ describe('runPipeline', () => {
          error: { message: 'Archived phone error' } });
       const contents = fs.readFileSync(file, 'utf8');
       const mtime = fs.statSync(file).mtimeMs;
-      const desktop = await run('desktop', { keepOldResults: true });
+      const desktop = await run('desktop');
       const result = desktop.testResults[0]!;
       expect(result.outcomes.filter((o) => o.executionDetails.viewport.label === 'phone' && o.kind === 'ok')).toHaveLength(3);
       expect(result.outcomes.filter((o) => o.executionDetails.viewport.label === 'phone').every((o) => o.outsideCurrentConfig)).toBe(true);
@@ -1007,39 +1008,11 @@ describe('pre-run wipe', () => {
     return path.join(store.unitDirForViewport(narrowedTest, viewportLabel), `${stage}.json`);
   }
 
-  it('sweeps a selected stage\'s stale outcomes at viewports outside the current plan', async () => {
-    // visreg ran at desktop before the test narrowed itself to tablet.
-    const staleVisreg = seedOutcome('desktop', stageIds.visreg);
-
+  it('preserves other viewports and other stages at the measured viewport', async () => {
+    const files = [seedOutcome('desktop', stageIds.visreg), seedOutcome('tablet', stageIds.perf)];
+    const previous = files.map(file => fs.readFileSync(file));
     await run({ categories: 'visreg' });
-
-    expect(fs.existsSync(staleVisreg)).toBe(false);
-    // The dir may be re-created by the post-run "--categories skipped" perf
-    // markers, but nothing measured survives — only skip markers.
-    const remaining = fs.existsSync(path.dirname(staleVisreg))
-      ? fs.readdirSync(path.dirname(staleVisreg)).filter((f) => f.endsWith('.json'))
-      : [];
-    for (const file of remaining) {
-      const outcome = JSON.parse(fs.readFileSync(path.join(path.dirname(staleVisreg), file), 'utf8')) as { kind: string };
-      expect(outcome.kind).toBe('skipped');
-    }
-  });
-
-  it('drops other categories\' measured outcomes when sweeping', async () => {
-    // A default run means "this run's results only": the unit dir goes
-    // wholesale so no stale artifact (notably visreg's accumulated screenshot
-    // frames) survives into this run. The perf outcome does not survive as a
-    // measurement — it reappears only as a `--categories` skip marker.
-    const staleVisreg = seedOutcome('desktop', stageIds.visreg);
-    const sweptPerf = seedOutcome('desktop', stageIds.perf);
-
-    await run({ categories: 'visreg' });
-
-    expect(fs.existsSync(staleVisreg)).toBe(false);
-    const perf = fs.existsSync(sweptPerf)
-      ? (JSON.parse(fs.readFileSync(sweptPerf, 'utf8')) as { kind: string })
-      : null;
-    expect(perf?.kind ?? 'absent').not.toBe('ok');
+    expect(files.map(file => fs.readFileSync(file))).toEqual(previous);
   });
 
   it('clears stale artifacts at an IN-PLAN viewport, not just outcomes', async () => {
@@ -1056,7 +1029,7 @@ describe('pre-run wipe', () => {
     const unitDir = store.unitDirForViewport(narrowedTest, 'tablet');
     const staleVisreg = path.join(unitDir, 'visreg.json');
     seedOutcome('tablet', stageIds.perf);
-    const staleFrame = path.join(unitDir, 'artifacts', 'experiment_screenshots', 'S_0_document_0_tablet__deadbeef.png');
+    const staleFrame = path.join(unitDir, 'artifacts', stageIds.visreg, 'experiment_screenshots', 'S_0_document_0_tablet__deadbeef.png');
     fs.mkdirSync(path.dirname(staleFrame), { recursive: true });
     fs.writeFileSync(staleFrame, 'stale frame from a previous run');
 
@@ -1067,14 +1040,6 @@ describe('pre-run wipe', () => {
     // from THIS run's stage (the mock stage succeeds), not the stale error.
     const rewritten = JSON.parse(fs.readFileSync(staleVisreg, 'utf8')) as { kind: string };
     expect(rewritten.kind).toBe('ok');
-  });
-
-  it('leaves stale outcomes alone under --keep-old-results', async () => {
-    const staleVisreg = seedOutcome('desktop', stageIds.visreg);
-
-    await run({ categories: 'visreg', keepOldResults: true });
-
-    expect(fs.existsSync(staleVisreg)).toBe(true);
   });
 });
 
@@ -1312,7 +1277,7 @@ describe('per-side visreg failures', () => {
 
     expect(outcome.kind).toBe('error');
     expect(outcome.failure?.media)
-      .toMatch(/\/artifacts\/experiment-visreg-failure-screenshot\.png$/);
+      .toMatch(/\/artifacts\/visreg\/experiment-visreg-failure-screenshot\.png$/);
     expect(mediaBytes).toEqual(EXPERIMENT_SCREENSHOT);
     expect(selfContainedReport)
       .toContain(`data:image/png;base64,${Base64('experiment')}`);

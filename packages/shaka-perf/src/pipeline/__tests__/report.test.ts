@@ -39,6 +39,7 @@ describe('ArtifactScope', () => {
 
   it('returns report-relative paths for written and existing artifacts', async () => {
     const artifactsDir = path.join(resultsRoot, 'checkout-tablet', 'artifacts');
+    fs.mkdirSync(artifactsDir, { recursive: true });
     const scope = new ArtifactScope(artifactsDir, resultsRoot);
 
     await expect(scope.writeFile('failure.png', Buffer.from('png')))
@@ -68,6 +69,7 @@ describe('reportDataForMode', () => {
   it('packages the execution source explicitly in both modes without a card-level copy', async () => {
     const source = "abTest('Checkout', {}, async () => {});";
     const scope = new ArtifactScope(path.join(resultsRoot, 'checkout-desktop', 'artifacts'), resultsRoot);
+    fs.mkdirSync(scope.dir, { recursive: true });
     const testSourceHref = await scope.writeFile('test-source.ts', source);
     const data = {
       meta: { reportMode: 'full' },

@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../stage/stage-ids';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Command } from 'commander';
@@ -34,7 +35,7 @@ export function findDefaultVisregReports(resultsRoot = DEFAULT_RESULTS_ROOT): st
 
   return fs.readdirSync(resultsRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .map((entry) => path.join(resultsRoot, entry.name, 'artifacts', 'report.json'))
+    .map((entry) => path.join(resultsRoot, entry.name, 'artifacts', stageIds.visreg, 'report.json'))
     .filter((reportPath) => fs.existsSync(reportPath))
     .sort();
 }

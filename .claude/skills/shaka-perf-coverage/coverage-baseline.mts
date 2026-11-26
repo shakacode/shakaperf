@@ -31,7 +31,9 @@ const read = (file: string): string[] => fs.readFileSync(file, 'utf8').split('\n
 const files = (dir: string): string[] => fs.readdirSync(dir, { recursive: true, withFileTypes: true })
   .filter((e) => e.isFile()).map((e) => path.join(e.parentPath, e.name));
 const sourceFiles = (dir: string): string[] => files(dir).filter((f) => path.basename(f) !== 'legend.txt');
-const artifact = (test: Test, name: string): string => path.join(AUDIT, test.id, 'artifacts', name);
+function artifact(test: Test, name: string): string {
+  return path.join(AUDIT, test.id, 'artifacts', 'code_coverage', name);
+}
 function at<K, V>(map: Map<K, V>, key: K, make: () => V): V {
   let value = map.get(key);
   if (value === undefined) {

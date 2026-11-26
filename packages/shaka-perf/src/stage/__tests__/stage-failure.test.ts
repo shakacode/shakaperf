@@ -32,6 +32,7 @@ describe('captureFailureScreenshot', () => {
 
   it('captures, persists, and returns a report-relative path', async () => {
     const artifactsDir = path.join(resultsRoot, 'cart-phone', 'artifacts');
+    fs.mkdirSync(artifactsDir, { recursive: true });
     const artifacts = new ArtifactScope(artifactsDir, resultsRoot);
 
     await expect(captureFailureScreenshot(

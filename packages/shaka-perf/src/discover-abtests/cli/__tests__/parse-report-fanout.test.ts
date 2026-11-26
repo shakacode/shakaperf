@@ -5,6 +5,7 @@
  * License in LICENSE.md.
  */
 
+import { stageIds } from '../../../stage/stage-ids';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { shakaPerfVersion } from '../../../pipeline/saved-result-version';
@@ -37,8 +38,8 @@ describe('parse-report without a path', () => {
   });
 
   it('continues after a malformed report and reports the bad path', async () => {
-    const badReport = path.join(tmpDir, 'compare-results', 'a-bad', 'artifacts', 'report.json');
-    const goodReport = path.join(tmpDir, 'compare-results', 'b-good', 'artifacts', 'report.json');
+    const badReport = path.join(tmpDir, 'compare-results', 'a-bad', 'artifacts', stageIds.visreg, 'report.json');
+    const goodReport = path.join(tmpDir, 'compare-results', 'b-good', 'artifacts', stageIds.visreg, 'report.json');
     fs.mkdirSync(path.dirname(badReport), { recursive: true });
     fs.mkdirSync(path.dirname(goodReport), { recursive: true });
     fs.writeFileSync(badReport, '{');
@@ -51,7 +52,7 @@ describe('parse-report without a path', () => {
     await createDiscoverAbtestsCommand().parseAsync(['node', 'shaka-perf', 'parse-report'], { from: 'node' });
 
     expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to read or parse report compare-results/a-bad/artifacts/report.json'),
+      expect.stringContaining('Failed to read or parse report compare-results/a-bad/artifacts/visreg/report.json'),
     );
     expect(logSpy).toHaveBeenCalledWith('Total: 1  Pass: 1  Fail: 0  Other: 0');
     expect(process.exitCode).toBe(1);

@@ -50,7 +50,6 @@ export function createCompareCommand(
     .option('--viewport <label>', VIEWPORT_OPTION_DESCRIPTION)
     .option('--report-only', 'Re-render the HTML report from existing compare-results/ stage outcomes without re-running engines. Complements --skip-report for sharded CI assembly.', false)
     .option('--skip-report', 'Run the engines but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
-    .option('--keep-old-results', 'Do not wipe compare-results/ before running. Engines still overwrite the files they produce, but unrelated artifacts from a prior run survive instead of being cleared.', false)
     .option('--burn <number>', BURN_OPTION_DESCRIPTION)
     .option('--seconds-to-settle-after-test <seconds>', SETTLE_AFTER_TEST_OPTION_DESCRIPTION)
     .action(async function (this: Command) {
@@ -95,7 +94,6 @@ export function createCompareCommand(
           restartFromStage,
           reportOnly: opts.reportOnly === true,
           skipReport: opts.skipReport === true,
-          keepOldResults: opts.keepOldResults === true,
           headed: opts.headed === true,
           burn,
           settleAfterTestMs,
@@ -112,7 +110,7 @@ export function createCompareCommand(
 
 # For AI
   when analyzing performance regressions, read:
-    compare-results/<test>-<viewport>-<hash>/artifacts/the_only_file_ai_needs_to_analyze.diff
+    compare-results/<test>-<viewport>-<hash>/artifacts/perf-low-noise/the_only_file_ai_needs_to_analyze.diff
   The rest of the perf artifacts are optimized for humans.
 `);
   return compare;

@@ -73,8 +73,17 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
     async run(ctx, pool) {
       const runImpl = './visreg/run';
       const { runVisregUnit } = await import(/* @vite-ignore */ runImpl) as typeof import('./visreg/run');
+      const comparisonCountsBySelector = new Map<string, number>();
+      let visualComparisonRoundsStarted = 0;
+      function incrementVisualRoundCounts(selectorKeysToCompareThisRound: readonly string[]): void {
+        visualComparisonRoundsStarted++;
+        for (const key of selectorKeysToCompareThisRound) {
+          comparisonCountsBySelector.set(key, (comparisonCountsBySelector.get(key) ?? 0) + 1);
+        }
+        ctx.recordMeasurementOptions({ visualComparisonRoundsStarted });
+      }
       const artifacts = await pool.submit(
-        () => runVisregUnit(ctx, config),
+        () => runVisregUnit(ctx, config, comparisonCountsBySelector, incrementVisualRoundCounts),
         { key: ctx.testAndViewportId },
       );
       const { label, width, height } = ctx.viewport;

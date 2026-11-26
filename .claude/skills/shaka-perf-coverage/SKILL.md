@@ -22,7 +22,7 @@ Your one input is the **list of sources** to estimate. Everything else — which
 
 ## Getting the data
 
-The `code_coverage` audit category writes, per test and viewport, `coverage.json` (which statements ran) and `visibility-map.txt` (how much of each rendered element falls inside the test's `visregSelectors`, and the app source line that rendered it) into `audit-results/<unit>/artifacts/`.
+The `code_coverage` audit category writes, per test and viewport, `coverage.json` (which statements ran) and `visibility-map.txt` (how much of each rendered element falls inside the test's `visregSelectors`, and the app source line that rendered it) into `audit-results/<unit>/artifacts/code_coverage/`.
 
 ```bash
 shaka-perf audit --categories code_coverage --url <dev build> --filter <relevant-tests>

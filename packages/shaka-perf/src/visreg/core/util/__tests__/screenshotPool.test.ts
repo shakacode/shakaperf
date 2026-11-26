@@ -103,6 +103,17 @@ describe('ScreenshotPool', () => {
     expect(pool().load('control')).toHaveLength(2);
   });
 
+  it('keeps a red diff image from matching a red control on restart', () => {
+    const control = pool().add('control', png(8, 8, RED));
+    const experiment = pool().add('experiment', png(8, 8, BLUE));
+    const first = crossMatch([control.buffer], [experiment.buffer], OPTS);
+    expect(first.pass).toBe(false);
+    fs.writeFileSync(experiment.path.replace(/\.png$/, '_pixelmatch_diff.png'), first.diffBuffer!);
+
+    const resumed = pool().load('experiment').map(frame => frame.buffer);
+    expect(crossMatch([control.buffer], resumed, OPTS).pass).toBe(false);
+  });
+
   it('resumes: a fresh pool on the same dirs+key sees earlier frames', () => {
     pool().add('control', png(4, 4, RED));
     // Simulate a crash + restart: a brand-new pool instance, same location.
