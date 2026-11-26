@@ -179,10 +179,10 @@ describe('accessibility compare classification', () => {
 
     // An empty element here would render as a blank section inside an
     // otherwise empty card; null lets the report drop both.
-    expect(stage.renderArtifacts([{ measurement, ...executionFixture(), latestRun: true,  }])).toBeNull();
+    expect(stage.renderArtifacts([{ measurement, ...executionFixture() }])).toBeNull();
     expect(stage.renderArtifacts([{
       measurement: { ...measurement, findings: [compareFinding({ ruleId: 'button-name', tags: [] })] },
-      ...executionFixture(), latestRun: true,
+      ...executionFixture(),
 
     }])).not.toBeNull();
   });

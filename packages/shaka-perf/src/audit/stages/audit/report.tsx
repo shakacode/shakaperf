@@ -67,7 +67,7 @@ export function AuditArtifactView({
 }
 
 function MetricTable({ entry }: { entry: StageRenderEntry<AuditResult> }) {
-  const { measurement: audit, latestRun } = entry;
+  const { measurement: audit } = entry;
   const viewportLabel = entry.executionDetails.viewport.label;
   const metrics = audit.metrics ?? [];
   if (metrics.length === 0 && !hasArtifacts(audit)) return null;
@@ -75,7 +75,6 @@ function MetricTable({ entry }: { entry: StageRenderEntry<AuditResult> }) {
     <PerformanceViewportSection
       sectionKey={`audit:viewport:${viewportLabel}`}
       executionDetails={entry.executionDetails}
-      latestRun={latestRun}
     >
       <div style={METRIC_COLUMNS_STYLE}>
         {GROUPS.map((group) => {

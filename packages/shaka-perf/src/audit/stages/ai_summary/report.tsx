@@ -28,7 +28,7 @@ export function displayedSummary(measurements: readonly StageRenderEntry<AiSumma
 
 export function summaryHeadingBadge(measurements: readonly StageRenderEntry<AiSummaryResult>[]) {
   const entry = displayedSummary(measurements);
-  return entry ? <OldRunChip latestRun={entry.latestRun} /> : null;
+  return entry ? <OldRunChip runId={entry.executionDetails.runId} /> : null;
 }
 
 export function AiSummaryArtifactView({

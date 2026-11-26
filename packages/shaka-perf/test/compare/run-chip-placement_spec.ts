@@ -17,7 +17,7 @@ import { chromium, type Browser } from 'playwright';
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
 import { renderPersistedStageArtifacts } from '../../src/pipeline/pipeline-artifacts';
 import { ReportSection } from '../../src/report-ui/sections';
-import { StageArtifactTitle, StageRunChipsProvider } from '../../src/report-ui/artifacts';
+import { StageArtifactTitle, OldRunChipProvider } from '../../src/report-ui/artifacts';
 import { renderReportHtml, type ReportData, type ReportOutcome } from '../../src/pipeline/report';
 
 const LATEST = '2026-10-02T00:00:00.000Z';
@@ -168,16 +168,16 @@ describe('contextual old-run chips', () => {
     try {
       for (const { stage, measurement, heading } of examples) {
         const artifact = renderPersistedStageArtifacts(pipeline, {}, stage, [
-          { measurement,  ...executionFixture(), latestRun: false },
-          { measurement,  ...executionFixture({ viewport: PHONE_VIEWPORT }), latestRun: true },
+          { measurement, ...executionFixture({ runId: OLD }) },
+          { measurement, ...executionFixture({ viewport: PHONE_VIEWPORT, runId: LATEST }) },
         ]);
-        await page.setContent(renderToStaticMarkup(artifact));
+        await page.setContent(renderToStaticMarkup(createElement(OldRunChipProvider, { value: LATEST }, artifact)));
         expect(await page.locator('.stage-artifact__title').count()).toBe(1);
         expect(await page.getByRole('heading').count()).toBe(stage === stageIds.aiSummary ? 1 : 3);
         const headings = page.locator(stage === stageIds.aiSummary ? '.stage-artifact__title' : heading);
         expect(await headings.first().locator('.old-run-chip').count()).toBe(1);
         if (stage !== 'ai_summary') expect(await headings.nth(1).locator('.old-run-chip').count()).toBe(0);
-        await page.setContent(renderToStaticMarkup(createElement(StageRunChipsProvider, { value: false }, artifact)));
+        await page.setContent(renderToStaticMarkup(artifact));
         expect(await page.locator('.old-run-chip').count()).toBe(0);
         expect(await page.getByRole('heading').count()).toBe(stage === stageIds.aiSummary ? 1 : 3);
       }

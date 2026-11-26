@@ -40,12 +40,10 @@ describe('PerfArtifactView', () => {
       measurements: [
         {
           ...executionFixture({ viewport: PHONE_VIEWPORT }),
-          latestRun: true,
           measurement: perfWithMetrics([metric('LCP', 'vitals'), metric('js', 'diagnostics')]),
         },
         {
           ...executionFixture(),
-          latestRun: true,
           measurement: perfWithMetrics([{ ...metric('FCP', 'vitals'), direction: 'none' }]),
         },
       ],
@@ -67,7 +65,6 @@ describe('PerfArtifactView', () => {
       title: 'Performance',
       measurements: [{
         ...executionFixture(),
-        latestRun: true,
         measurement: { timelinePreviewHref: previewHref },
       }],
     }));
