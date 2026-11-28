@@ -80,6 +80,7 @@ export function TestCard({
   const [localTagsExpanded, setLocalTagsExpanded] = useState(true);
   const tagsExpanded = sharedTagsExpanded ?? localTagsExpanded;
   const contentId = useId();
+  const nameId = useId();
   const titleRef = useRef<HTMLButtonElement>(null);
   const scrollPending = useRef(false);
 
@@ -134,6 +135,7 @@ export function TestCard({
                 ref={titleRef}
                 aria-expanded={expanded}
                 aria-controls={contentId}
+                aria-labelledby={nameId}
                 onClick={() => {
                   titleRef.current?.focus({ preventScroll: true });
                   scrollPending.current = !expanded;
@@ -142,8 +144,10 @@ export function TestCard({
                 }}
               >
                 <span className="card__title-caret" aria-hidden="true" />
-                <span>{test.name}</span>
               </button>
+              <span id={nameId} className="card__title-name">
+                {test.name}
+              </span>
             </h3>
           </div>
           <ReviewedCheckbox reviewed={reviewed} onChange={updateReviewed} />
@@ -151,11 +155,15 @@ export function TestCard({
 
         <div id={contentId} hidden={!expanded}>
           <details className="card__disclosure card__tags" open={tagsExpanded}>
-            <summary onClick={(event) => {
-              event.preventDefault();
-              if (onToggleTags) onToggleTags();
-              else setLocalTagsExpanded((previous) => !previous);
-            }}>Tags</summary>
+            <summary
+              onClick={(event) => {
+                event.preventDefault();
+                if (onToggleTags) onToggleTags();
+                else setLocalTagsExpanded((previous) => !previous);
+              }}
+            >
+              Tags
+            </summary>
             <div className="card__tag-list">
               {oldRun ? (
                 <span className="pill pill--gray">
@@ -169,7 +177,11 @@ export function TestCard({
           </details>
 
           <div className="card__metadata-row card__metadata-row--card">
-            <TestSummaryMetadata test={test} expanded={metadataExpanded} onToggleExpanded={onToggleMetadata} />
+            <TestSummaryMetadata
+              test={test}
+              expanded={metadataExpanded}
+              onToggleExpanded={onToggleMetadata}
+            />
             <TestLogsButton test={test} visibleStages={visibleStages} />
           </div>
 
