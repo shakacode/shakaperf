@@ -191,6 +191,8 @@ function ArtifactLinks({ entry }: { entry: StageRenderEntry<PerfArtifact> }) {
     perf.benchReportHref ? ['bench report', perf.benchReportHref] : null,
     perf.controlLighthouseHref ? ['control lh', perf.controlLighthouseHref] : null,
     perf.experimentLighthouseHref ? ['experiment lh', perf.experimentLighthouseHref] : null,
+    perf.controlImageResolutionHref ? ['control images', perf.controlImageResolutionHref] : null,
+    perf.experimentImageResolutionHref ? ['experiment images', perf.experimentImageResolutionHref] : null,
     perf.timelineHref ? ['timeline', perf.timelineHref] : null,
     ...(perf.diffHrefs ?? []).map((link) => [link.label, link.href]),
   ].filter((link): link is string[] => link !== null);
@@ -250,6 +252,8 @@ function hasAttachments(perf: PerfArtifact): boolean {
     perf.benchReportHref ||
     perf.controlLighthouseHref ||
     perf.experimentLighthouseHref ||
+    perf.controlImageResolutionHref ||
+    perf.experimentImageResolutionHref ||
     perf.timelineHref ||
     perf.timelinePreviewHref ||
     perf.framesHref ||

@@ -21,6 +21,8 @@ describe('PerfEngineStage self-contained report stripping', () => {
     expect(stage.selfContainedReportStrip).toEqual({
       controlLighthouseHref: true,
       experimentLighthouseHref: true,
+      controlImageResolutionHref: true,
+      experimentImageResolutionHref: true,
       timelineHref: true,
       framesHref: true,
       benchReportHref: true,

@@ -101,10 +101,12 @@ function ArtifactLinks({ entry }: { entry: StageRenderEntry<AuditResult> }) {
   const links = [
     audit.performanceProfileHref ? ['performance profile', audit.performanceProfileHref] : null,
     audit.networkActivityHref ? ['network activity', audit.networkActivityHref] : null,
+    audit.imageResolutionHref ? ['image resolution', audit.imageResolutionHref] : null,
   ].filter((link): link is string[] => link !== null);
   if (links.length === 0) return null;
+  // The self-contained report keeps only the links it does not strip.
   return (
-    <FullReportOnly>
+    <>
       <div className="artifact-links">
         {links.map(([label, href]) => (
           <DetailedArtifactDialog
@@ -118,7 +120,7 @@ function ArtifactLinks({ entry }: { entry: StageRenderEntry<AuditResult> }) {
           </DetailedArtifactDialog>
         ))}
       </div>
-    </FullReportOnly>
+    </>
   );
 }
 

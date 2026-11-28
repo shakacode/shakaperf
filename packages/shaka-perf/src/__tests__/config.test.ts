@@ -414,6 +414,28 @@ describe('shared.browserConsole config', () => {
   });
 });
 
+describe('shared.imageResolution', () => {
+  it('defaults the limits and lets one test move one of them', () => {
+    const config = buildAbTestsConfig(baseConfig());
+    expect(config.shared.imageResolution).toEqual({ minRatio: 0.9, maxRatio: 2 });
+
+    const effective = applyPerTestConfigOverrides(config, {
+      name: 'Gallery',
+      startingPath: '/gallery',
+      file: null,
+      line: null,
+      testTypes: null,
+      testFn: async () => {},
+      config: { shared: { imageResolution: { minRatio: 0.6 } } },
+    });
+    expect(effective.shared.imageResolution).toEqual({ minRatio: 0.6, maxRatio: 2 });
+  });
+
+  it.each([{ minRatio: 1.1 }, { minRatio: 0 }, { maxRatio: 0.9 }, { enabled: false }])('rejects %j', (imageResolution) => {
+    expect(() => buildAbTestsConfig(baseConfig({ shared: { imageResolution } }))).toThrow();
+  });
+});
+
 describe('playwrightOptions', () => {
   it('is required on shared — no hidden launch defaults', () => {
     expect(() => buildAbTestsConfig({

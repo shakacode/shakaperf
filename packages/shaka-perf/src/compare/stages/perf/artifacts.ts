@@ -205,6 +205,10 @@ export function readPerfArtifact(opts: ReadPerfArtifactOptions): PerfArtifact {
 
   if (controlLighthouseHref) artifact.controlLighthouseHref = controlLighthouseHref;
   if (experimentLighthouseHref) artifact.experimentLighthouseHref = experimentLighthouseHref;
+  const controlImagesHref = relativeHref(files.find((f) => f === 'control_image_resolution.html') ?? null);
+  if (controlImagesHref) artifact.controlImageResolutionHref = controlImagesHref;
+  const experimentImagesHref = relativeHref(files.find((f) => f === 'experiment_image_resolution.html') ?? null);
+  if (experimentImagesHref) artifact.experimentImageResolutionHref = experimentImagesHref;
   const timelineHref = relativeHref(timeline);
   if (timelineHref) artifact.timelineHref = timelineHref;
   if (timelinePreviewHref) artifact.timelinePreviewHref = timelinePreviewHref;

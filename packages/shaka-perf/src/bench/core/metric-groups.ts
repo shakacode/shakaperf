@@ -19,6 +19,9 @@ const DIAGNOSTICS_METRICS = [
   'images-count',
   'fonts',
   'fonts-count',
+  'undersized-images',
+  'oversized-images',
+  'scaled-small-images',
 ];
 
 const DIAGNOSTICS_SET = new Set(DIAGNOSTICS_METRICS);
