@@ -107,6 +107,7 @@ Reproduction steps rules:
 5. All URLs should be clickable links.
 6. Always pair the URLs of control and experiment (unless some side has an individual step). Respect rule 7.
 7. Do not mention experiment/control; use the formatted branch names instead. Always write the full branch name; never shorten it.
+8. When control is the merge-base with the default branch, its branch name is the default branch (`main` or `master`). Then delete the template's `servers checkout control` setup line: `servers checkout <experiment branch>` already puts control on the merge-base, while `checkout control main` would take the tip of `main`.
 
 Screenshot rules:
 1. Always paired - an experiment shot without its control shot proves nothing.
@@ -133,18 +134,14 @@ In the "Why it happens" section, write the explanation in plain language, 70 wor
 
 The resulting report should have no {{placeholders}} from the original template.
 
-## 6. Shut down the servers
+## 6. Clean up
 
-When you are done, whether or not anything was found, stop the `start-servers` process, then run `yarn shaka-perf servers stop-containers`. Check that both `twinServers.ports` are free and the processes are gone.
-
-Set any feature flag you toggled back to the state you recorded before toggling it.
-
-## 7. Clean up
+Set any feature flag you toggled back to the state you recorded before toggling it. Leave the twin servers running.
 
 The resulting HTML reports should be self-contained: clean up the mess, there should be no other files besides the reports in `$QA_DIR`. If some artifact is essential for reproduction, inline it in the HTML report.
 Leave only the `reproduction-steps-*.html` reports in `$QA_DIR`.
 
-## 8. Output
+## 7. Output
 
 Create a table with following columns:
 
