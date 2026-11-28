@@ -145,6 +145,15 @@ describe.each(['compare', 'audit'] as const)('%s card metadata', (pipeline) => {
     expect(await target.locator('.card__target-commits').count()).toBe(0);
   });
 
+  it('lets the test name be selected without toggling the card', async () => {
+    const card = page.locator('[data-report-test-id="homepage"]');
+    const title = card.getByRole('button', { name: 'Homepage', exact: true });
+    const name = card.locator('.card__title-name');
+    await name.dblclick();
+    expect(await page.evaluate(() => window.getSelection()?.toString().trim())).toBe('Homepage');
+    expect(await title.getAttribute('aria-expanded')).toBe('true');
+  });
+
   it.each([1280, 390])('collapses all cards from a title and preserves nested state at %i px', async (width) => {
     await page.setViewportSize({ width, height: 900 });
     const card = page.locator('[data-report-test-id="homepage"]');
