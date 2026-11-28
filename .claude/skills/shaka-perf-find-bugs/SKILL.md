@@ -34,7 +34,7 @@ Run this once and use the printed absolute path everywhere `$QA_DIR` appears bel
 `<slug>` is the branch under test with `/` replaced by `-` (the short SHA when testing a commit).
 
 ## 0. Understand when you need to use a browser or console.
-For things like dev utils and migrations it doesn't make sense to make browser screenshots. Screenshot an output from an actual bash console instead. Use your discression when deciding what type of reproduction each potential issue needs. The main thing is to find all the critical bugs without a false positives, so be careful to not make a synthetic cases like "if someday FE sets this flag, there will be a crash, check out this console output (FE doesn't set this flag now, so I know I will waste your time, but take a look anyway)".
+For things like dev utils and migrations it doesn't make sense to make browser screenshots. Capture the console output on both sides instead and turn it into a screenshot (see "Console reproductions" in step 4). Use your discression when deciding what type of reproduction each potential issue needs. The main thing is to find all the critical bugs without a false positives, so be careful to not make a synthetic cases like "if someday FE sets this flag, there will be a crash, check out this console output (FE doesn't set this flag now, so I know I will waste your time, but take a look anyway)".
 
 ## 1. Sanity-check twin-servers commits
 
@@ -49,7 +49,9 @@ When experiment is the checkout you were started in, don't switch its branch wit
 
 ## 2. Read the diff first
 
-`git diff <control-sha>` from the experiment checkout. Before touching a browser, write down three to five concrete guesses of what could break and the page or action that would show it. Memoization, cached selectors, and context changes tend to break on the second interaction, not the first: add an item, then change it, then remove it.
+`git diff <control-sha>` from the experiment checkout. Work in iterations. Each time, before touching a browser, write down three to five concrete guesses of what could break and the page or action that would show it (take into account your previous attempts). Memoization, cached selectors, and context changes tend to break on the second interaction, not the first: add an item, then change it, then remove it.
+
+Iterate using scientific method: Think => guess issues => attempt reproduction => notice new information => think
 
 Unless the user specified a time budget, guess how much QA time this PR needs, counted after the servers are built: up to 15 minutes for a small PR, 60 minutes for a larger one, and up to 3 hours of careful testing for a massive refactoring. Within that time, try to find as many different critical issues as you can.
 
@@ -67,9 +69,11 @@ The start-servers command runs Overmind and blocks until stopped. Use the docume
 
 ## 4. Reproduce
 
-Follow the project's browser interaction instructions: drive the browser through MCP, never through curl or the Task tool. Do every step on both servers in the same order and take a screenshot at each step where you expect a difference. Save screenshots in `$QA_DIR` (see QA folder above).
+For web pages, follow the project's browser interaction instructions: drive the browser through MCP, never through curl or the Task tool. Do every step on both servers in the same order and take a screenshot at each step where you expect a difference. Save screenshots in `$QA_DIR` (see QA folder above).
 
 Run headless browser.
+
+Console reproductions: run the same command on each side and save its output, e.g. `yarn shaka-perf servers run-cmd control '<command>' > "$QA_DIR/control.out" 2>&1`, then the same for `experiment`. `run-cmd` asks for a terminal; if it fails with "not a TTY", wrap it in `script` (macOS: `script -q /dev/null <cmd>`, Linux: `script -qc "<cmd>" /dev/null`). Drop the lines `run-cmd` prints about itself. For each side, copy `assets/console-screenshot.html` into `$QA_DIR`, fill it in as its comment says, open it in the browser at a 390x620 viewport, and take a full-page screenshot. Use these PNGs in the report exactly where browser screenshots would go.
 
 If the diff adds, checks or removes a feature flag, turn it on before testing. Otherwise experiment runs the old code for a flag it checks, and control runs the old code for a flag the diff removes. Set it the same way on both sides: if each side keeps flags in its own database, change both. Before toggling, record the flag's current state, and ask the user first if it holds anything a plain on/off can't restore (targeted users, groups, percentages). After each toggle, clear both caches and relaunch the servers as described below; toggling doesn't invalidate cached pages. Tell the user which flags you toggled.
 
@@ -81,7 +85,7 @@ The main thing is whenever you change something you must update both sides' data
 
 Then kill and relaunch servers.
 
-If you can't confirm the regression, return to step 2 and try a different hypothesis or reproduction approach, up to three additional attempts. If it remains unconfirmed, discard it from the bug findings. If no regressions are confirmed, report "No confirmed regressions found" and briefly summarize what was tested and any testing blockers.
+If you can't confirm a guess, try up to three different reproduction approaches for it. If it remains unconfirmed, discard it from the bug findings and go back to step 2 for the next iteration, until the time budget runs out. If no regressions are confirmed by then, report "No confirmed regressions found" and briefly summarize what was tested and any testing blockers.
 
 ## 5. Report confirmed bugs
 
@@ -109,6 +113,7 @@ Screenshot rules:
 2. Same step, same viewport, same scroll position on both sides.
 3. Mobile viewport when the bug shows there; it takes less space. Desktop-only bugs may use full-desktop shots. If the element is below the fold, capture with a taller viewport instead of scrolling.
 4. Inline as base64 PNG; crop with the template's img height/margin, not by editing the PNG.
+5. The same rules hold for console screenshots: same command, same inputs, on both sides.
 
 Annotation rules:
 1. Use the `annotations` JSON list to create annotations. Escape `"` as `\"` and `\` as `\\` inside its strings.
