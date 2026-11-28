@@ -13,6 +13,8 @@
   Everything else (revisions, the explanation SVG, sources) goes in the
   sections that follow it, in the order given.
 
+  Reproduction steps: the first step is fixed. Fill {{STEP_1}}..{{STEP_3}} after it and add more <li> as needed.
+
   Copy buttons: "Copy markdown" serializes the headline, steps, outcome, and
   every section below the screenshots as markdown; "Copy image" flattens the
   screenshot stage into one PNG. The two are pasted separately into a PR.
@@ -23,12 +25,20 @@
   taller viewport instead of scrolling. Crop by changing the img height and
   margin-top, not by editing the PNG. Inline the PNGs as base64.
 
-  Annotation overlay: one <g> per difference. The label sits in the 240px
-  center gap (x=510); a green arrow points at the correct element on control,
-  a red one at the broken element on experiment. Arrow endpoints are in the
-  1020x620 viewBox, i.e. the same coordinates as the cropped screenshots.
-  The good/bad circles share one radius, {{CIRCLE_RADIUS}}: pick it so the ring
-  encloses the element it marks (11 fits an icon, 20-30 a chip or a button).
+  Annotations: the JSON list in <script id="annotations">, one entry per
+  difference, as many as the screenshots show. Coordinates are in the 1020x620
+  viewBox, i.e. the same coordinates as the cropped screenshots: the left shot
+  spans x 0..390, the right one x 630..1020. Each entry draws a label in the
+  center gap ("\n" in "label" breaks the line), a dot at "y", and an arrow from the dot to each side's x,y.
+  "ok": true draws the arrow green, false red. "ring" is optional: a radius in pixels
+  that adds a ring around x,y, and the arrow stops at the ring; use it only for
+  large elements. Without "ring" the arrow tip lands on x,y: put x,y on the
+  element's edge that faces the center. A side's
+  "note" is drawn in its arrow color on the middle of its arrow. An entry's own
+  "note" goes under the dot, for something correct on both sides. Keep entries
+  at least 60px apart in "y" so their labels don't overlap. Every string is
+  JSON: write a double quote as \" and a backslash as \\, or the script stops
+  and nothing draws.
 -->
 <style>
   :root { --good: #1b7f3b; --bad: #c8102e; --ink: #14171a; --muted: #5b6470; }
@@ -42,6 +52,13 @@
   .panel h2 { font-size: 22px; line-height: 1.2; margin: 0 0 10px; }
   .steps { margin: 0; padding: 0 0 0 26px; }
   .steps li { margin: 3px 0; }
+  .setup { position: relative; }
+  .setup-copy { padding: 0; font: inherit; text-align: left; vertical-align: top; color: #0969da; background: none; border: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  .setup-tip { display: none; position: absolute; left: 0; top: 100%; z-index: 1; margin: 6px 0 0; padding: 10px 14px; color: #fff; background: var(--ink); border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.2); font: 13px/1.6 ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+  .setup:hover .setup-tip, .setup-copy:focus-visible + .setup-tip { display: block; }
+  code.copyable { position: relative; cursor: copy; border-radius: 3px; }
+  code.copyable:hover { background: #e6e8eb; }
+  code.copyable:hover::after { content: attr(data-copy-label); position: absolute; left: 50%; bottom: 100%; z-index: 1; transform: translateX(-50%); margin-bottom: 4px; padding: 2px 6px; color: #fff; background: var(--ink); border-radius: 4px; font: 600 11px/1.4 system-ui, sans-serif; white-space: nowrap; pointer-events: none; }
   .outcome { margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid #dfe3e8; list-style: none; }
   .outcome li { margin: 3px 0; font-weight: 600; }
   .outcome li.expected { color: var(--good); }
@@ -51,6 +68,7 @@
   .titles { display: grid; align-items: end; grid-template-columns: 390px 240px 390px; font: 700 20px/1.3 ui-monospace, Menlo, Consolas, monospace; color: var(--bad); margin-bottom: 10px; }
   .titles div { overflow-wrap: anywhere; text-align: center; }
   .titles a { color: inherit; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+  .titles code { font: inherit; }
   .shots { position: relative; height: 620px; }
   .shot { position: absolute; top: 0; width: 390px; height: 620px; overflow: hidden; border-radius: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.08); background: #fff; }
   .shot.left { left: 0; } .shot.right { left: 630px; }
@@ -81,13 +99,19 @@
     <div class="panel">
       <h2>Reproduction steps</h2>
       <ol class="steps">
+        <li class="setup">
+          <button class="setup-copy" type="button">Start twin servers on <code>{{EXPERIMENT_BRANCH}}</code> <span class="setup-hint">(click to copy)</span></button>
+          <pre class="setup-tip" role="tooltip">yarn shaka-perf servers checkout {{EXPERIMENT_BRANCH}}
+yarn shaka-perf servers checkout control {{CONTROL_BRANCH}}
+yarn shaka-perf servers</pre>
+        </li>
         <li>{{STEP_1}}</li>
         <li>{{STEP_2}}</li>
         <li>{{STEP_3}}</li>
       </ol>
       <ul class="outcome">
-        <li class="expected">Expected (control): {{WHAT_CONTROL_DOES}}</li>
-        <li class="actual">Actual (experiment): {{WHAT_EXPERIMENT_DOES}}</li>
+        <li class="expected">Expected (<code>{{CONTROL_BRANCH}}</code>): {{WHAT_CONTROL_DOES}}</li>
+        <li class="actual">Actual (<code>{{EXPERIMENT_BRANCH}}</code>): {{WHAT_EXPERIMENT_DOES}}</li>
       </ul>
     </div>
 
@@ -95,9 +119,9 @@
       <button class="copy copy-image" type="button">Copy image (should be copied separately)</button>
       <div class="stage">
         <div class="titles">
-          <div>{{CONTROL_BRANCH}}</div>
+          <div><code>{{CONTROL_BRANCH}}</code></div>
           <div></div>
-          <div>{{EXPERIMENT_BRANCH}} <a href="{{PR_URL}}">(PR #{{PR_NUMBER}})</a></div>
+          <div><code>{{EXPERIMENT_BRANCH}}</code> <a href="{{PR_URL}}">(PR #{{PR_NUMBER}})</a></div>
         </div>
         <div class="shots">
           <div class="shot left"><img src="data:image/png;base64,{{CONTROL_PNG_BASE64}}" alt="control: {{WHAT_CONTROL_SHOWS}}"></div>
@@ -108,6 +132,9 @@
                  so bare selectors here would also restyle the explanation diagram below. */
               svg.overlay text { font: 700 19px/1.2 system-ui, sans-serif; fill: #14171a; text-anchor: middle; }
               svg.overlay text.sub { font-weight: 400; font-size: 16px; fill: #5b6470; }
+              svg.overlay text.note { font-size: 16px; paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+              svg.overlay text.note.good { fill: #1b7f3b; } svg.overlay text.note.bad { fill: #c8102e; }
+              svg.overlay rect.box { fill: #fff; }
               svg.overlay line { stroke-width: 2.5; fill: none; }
               svg.overlay line.good { stroke: #1b7f3b; } svg.overlay line.bad { stroke: #c8102e; }
               svg.overlay circle.dot { fill: #14171a; }
@@ -118,25 +145,16 @@
               <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1b7f3b"/></marker>
               <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#c8102e"/></marker>
             </defs>
-            <!-- Something that is the same on both sides (optional): green arrows both ways. -->
-            <g>
-              <text x="510" y="78">{{SHARED_LABEL}}</text>
-              <text class="sub" x="510" y="100">correct on both sides</text>
-              <line class="good" x1="510" y1="116" x2="374" y2="116" marker-end="url(#ag)"/>
-              <line class="good" x1="510" y1="116" x2="646" y2="116" marker-end="url(#ag)"/>
-              <circle class="dot" cx="510" cy="116" r="3.5"/>
-            </g>
-            <!-- The difference: green arrow to the good element on control, red arrow to the bad one on experiment. -->
-            <g>
-              <text x="510" y="466">{{DIFF_LABEL}}</text>
-              <text class="sub" x="510" y="488">left: {{WHY_CONTROL_IS_RIGHT}}</text>
-              <line class="good" x1="510" y1="507" x2="48" y2="507" marker-end="url(#ag)"/>
-              <line class="bad" x1="510" y1="507" x2="650" y2="507" marker-end="url(#ab)"/>
-              <circle class="dot" cx="510" cy="507" r="3.5"/>
-              <circle class="good" cx="34" cy="507" r="{{CIRCLE_RADIUS}}"/><circle class="bad" cx="664" cy="507" r="{{CIRCLE_RADIUS}}"/>
-              <text class="sub" x="510" y="534">right: {{WHY_EXPERIMENT_IS_WRONG}}</text>
-            </g>
           </svg>
+          <script type="application/json" id="annotations">
+            [
+              { "label": "{{SHARED_LABEL}}", "y": 116, "note": "correct on both sides",
+                "left": { "x": 360, "y": 116, "ring": 11, "ok": true }, "right": { "x": 660, "y": 116, "ring": 11, "ok": true } },
+              { "label": "{{DIFF_LABEL}}", "y": 507,
+                "left": { "x": 34, "y": 507, "ring": 20, "ok": true, "note": "{{WHY_CONTROL_IS_RIGHT}}" },
+                "right": { "x": 664, "y": 507, "ring": 20, "ok": false, "note": "{{WHY_EXPERIMENT_IS_WRONG}}" } }
+            ]
+          </script>
         </div>
         <div class="verdict"><div class="l">{{CONTROL_VERDICT}}</div><div></div><div class="r">{{EXPERIMENT_VERDICT}}</div></div>
       </div>
@@ -170,9 +188,12 @@
     let out = '';
     for (const n of node.childNodes) {
       if (n.nodeType === Node.TEXT_NODE) out += n.textContent;
+      else if (n.nodeType !== Node.ELEMENT_NODE) continue;
       else if (n.tagName === 'CODE') out += '`' + n.textContent + '`';
       else if (n.tagName === 'A') out += `[${mdInline(n)}](${n.getAttribute('href')})`;
       else if (n.tagName === 'BR') out += '\n';
+      else if (n.matches('.setup-hint')) continue;
+      else if (n.matches('.setup-tip')) out += '\n```sh\n' + n.textContent + '\n```';
       else out += mdInline(n);
     }
     return out;
@@ -183,7 +204,8 @@
     for (const el of container.children) {
       if (el.matches('button.copy, .result-label, .stage-box')) continue;
       if (/^H[1-6]$/.test(el.tagName)) out.push(`${'#'.repeat(headingLevel)} ${mdInline(el).trim()}`);
-      else if (el.tagName === 'OL') out.push([...el.children].map((li, i) => `${i + 1}. ${mdInline(li).trim()}`).join('\n'));
+      // Indent continuation lines so a step's code block stays inside its list item.
+      else if (el.tagName === 'OL') out.push([...el.children].map((li, i) => `${i + 1}. ${mdInline(li).trim().replace(/\s*\n\s*```/, '\n```').replace(/\n/g, '\n   ')}`).join('\n'));
       else if (el.tagName === 'UL') out.push([...el.children].map((li) => `- ${mdInline(li).trim()}`).join('\n'));
       else if (el.tagName === 'SVG' || el.tagName === 'svg') out.push(el.outerHTML.trim());
       else if (el.matches('.panel, section')) out.push(...mdBlocks(el, headingLevel + 1));
@@ -208,6 +230,54 @@
       img.src = src;
     });
   }
+
+  function drawAnnotations(svg, annotations) {
+    const cx = svg.viewBox.baseVal.width / 2;
+    const add = (parent, tag, attrs, text) => {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      if (text) el.textContent = text;
+      return parent.appendChild(el);
+    };
+    for (const a of annotations) {
+      const g = add(svg, 'g', {});
+      const lines = a.label.split('\n');
+      const label = add(g, 'text', { x: cx, y: a.y - 14 - (lines.length - 1) * 22 });
+      lines.forEach((line, i) => add(label, 'tspan', { x: cx, dy: i ? 22 : 0 }, line));
+      const sub = add(g, 'text', { class: 'sub', x: cx, y: a.y + 24 }, a.note);
+      const notes = [];
+      for (const side of [a.left, a.right]) {
+        const tone = side.ok ? 'good' : 'bad';
+        const dx = side.x - cx, dy = side.y - a.y, k = (Math.hypot(dx, dy) - (side.ring ? side.ring + 2 : 0)) / Math.hypot(dx, dy);
+        add(g, 'line', { class: tone, x1: cx, y1: a.y, x2: cx + dx * k, y2: a.y + dy * k, 'marker-end': `url(#${side.ok ? 'ag' : 'ab'})` });
+        if (side.ring) add(g, 'circle', { class: tone, cx: side.x, cy: side.y, r: side.ring });
+        if (side.note) notes.push([tone, dx * k, dy * k, side.note]);
+      }
+      add(g, 'circle', { class: 'dot', cx, cy: a.y, r: 3.5 });
+      // Notes go last so neither arrow covers them, and slide toward the ring until they clear the label.
+      const half = label.getBBox().width / 2, texts = [label, sub];
+      for (const [tone, ex, ey, note] of notes) {
+        const text = add(g, 'text', { class: `note ${tone}` }, note);
+        const t = Math.min(0.8, Math.max(0.5, (half + text.getBBox().width / 2 + 10) / Math.abs(ex)));
+        text.setAttribute('x', cx + ex * t);
+        text.setAttribute('y', a.y + ey * t + 5);
+        texts.push(text);
+      }
+      // Each text gets a white box and moves to the top, so no arrow crosses it.
+      for (const text of texts) {
+        if (!text.textContent) continue;
+        const b = text.getBBox();
+        add(g, 'rect', { class: 'box', x: b.x - 4, y: b.y - 1, width: b.width + 8, height: b.height + 2, rx: 3 });
+        g.appendChild(text);
+      }
+    }
+    for (const [side, selectors] of [['left', '.outcome li.expected, .verdict .l'], ['right', '.outcome li.actual, .verdict .r']]) {
+      const color = annotations.some((a) => !a[side].ok) ? 'var(--bad)' : 'var(--good)';
+      for (const el of document.querySelectorAll(selectors)) el.style.color = color;
+    }
+  }
+
+  drawAnnotations(document.querySelector('.shots svg'), JSON.parse(document.getElementById('annotations').textContent));
 
   // Flattens titles + both screenshots + the annotation overlay + verdicts into one PNG.
   async function stageToBlob(stage) {
@@ -269,6 +339,37 @@
     const overlay = await loadImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(svg)));
     ctx.drawImage(overlay, overlayBox.x, overlayBox.y, overlayBox.width, overlayBox.height);
     return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  }
+
+  // Code inside buttons and links keeps its parent's click.
+  for (const code of document.querySelectorAll('code')) {
+    if (code.closest('button, a, svg')) continue;
+    code.classList.add('copyable');
+    code.dataset.copyLabel = 'Copy';
+    code.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(code.textContent);
+        code.dataset.copyLabel = 'Copied';
+      } catch (err) {
+        console.error(err);
+        code.dataset.copyLabel = 'Copy failed';
+      }
+      setTimeout(() => { code.dataset.copyLabel = 'Copy'; }, 1200);
+    });
+  }
+
+  for (const btn of document.querySelectorAll('.setup-copy')) {
+    const hint = btn.querySelector('.setup-hint');
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(btn.nextElementSibling.textContent);
+        hint.textContent = '(copied)';
+      } catch (err) {
+        console.error(err);
+        hint.textContent = '(copy failed)';
+      }
+      setTimeout(() => { hint.textContent = '(click to copy)'; }, 1200);
+    });
   }
 
   for (const btn of document.querySelectorAll('button.copy')) {
