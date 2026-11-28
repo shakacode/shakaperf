@@ -14,6 +14,9 @@
   sections that follow it, in the order given.
 
   Reproduction steps: the first step is fixed. Fill {{STEP_1}}..{{STEP_3}} after it and add more <li> as needed.
+  When control is the merge-base with the default branch, {{CONTROL_BRANCH}} is
+  main/master; delete the "servers checkout control" line of the first step,
+  since checking out the experiment branch already puts control on the merge-base.
 
   Copy buttons: "Copy markdown" serializes the headline, steps, outcome, and
   every section below the screenshots as markdown; "Copy image" flattens the
