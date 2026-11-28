@@ -12,7 +12,8 @@ import { Command } from 'commander';
 import { withAbTestsConfigPath } from '../effective-config';
 import { findAbTestsConfig, loadAbTestsConfig } from '../config-loader';
 import { buildAbTestsConfig, resolvePlaywrightOptions } from '../config';
-import { runPipeline } from '../pipeline/runner';
+import { resultsRootFor, runPipeline } from '../pipeline/runner';
+import { RETRY_FAILED_OPTION_DESCRIPTION, resolveRunFilter } from '../pipeline/retry-failed';
 import { selectedViewportFilter, VIEWPORT_OPTION_DESCRIPTION } from '../pipeline/viewport-selection';
 import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../pipeline/burn';
 import {
@@ -65,6 +66,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
     .option('--skip-report', 'Run the audit engine but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
     .option('--debug-show-all-frames', 'Diagnostics: also render the FULL, non-deduped screencast timeline alongside the normal (deduped) one. Every synced frame is shown, each annotated with the pixel diff vs the previous frame (the signal the dedupe uses to decide what to drop). Off by default — produces a much heavier report.', false)
     .option('--headed', 'Launch the measurement browser headed (visible window) instead of headless. Off by default.', false)
+    .option('--retry-failed', RETRY_FAILED_OPTION_DESCRIPTION, false)
     .option('--burn <number>', BURN_OPTION_DESCRIPTION)
     .option('--seconds-to-settle-after-test <seconds>', SETTLE_AFTER_TEST_OPTION_DESCRIPTION)
     .action(async function (this: Command) {
@@ -100,6 +102,13 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
             playwrightOptions: resolvePlaywrightOptions(config, 'audit'),
           },
         });
+        const runFilter = resolveRunFilter({
+          retryFailed: opts.retryFailed === true,
+          reportOnly: opts.reportOnly === true,
+          filter: opts.filter ?? config.shared.filter,
+          resultsRoot: resultsRootFor(process.cwd(), pipeline),
+        });
+        if ('nothingToRetry' in runFilter) return;
         const restartFromStage = opts.restartFromStage;
         const result = await runPipeline(pipeline, {
           config,
@@ -108,7 +117,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
           controlURL: url,
           experimentURL: url,
           testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
-          filter: opts.filter ?? config.shared.filter,
+          filter: runFilter.filter,
           // --categories always carries its default; only a typed value conflicts with --stages.
           categories: opts.stages != null && this.getOptionValueSource('categories') === 'default'
             ? undefined

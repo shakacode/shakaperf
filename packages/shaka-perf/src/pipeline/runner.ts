@@ -118,7 +118,7 @@ function shardKey(
   return crypto.createHash('sha256').update(input).digest('hex').slice(0, 12);
 }
 
-function resultsRootFor(cwd: string, pipeline: Pipeline): string {
+export function resultsRootFor(cwd: string, pipeline: Pipeline): string {
   return path.resolve(cwd, pipeline.artifactRoot ?? '.', `${pipeline.name}-results`);
 }
 
